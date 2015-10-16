@@ -13,5 +13,13 @@ namespace Livestream.Monitor.Model
                 Game = channel.Game,
             };
         }
+
+        public static void PopulateWithChannel(this ChannelData channelData, Channel channel)
+        {
+            if (channel == null) return;
+
+            channelData.ChannelDescription = channel.Status;
+            channelData.Game = channel.Game;
+        }
     }
 }

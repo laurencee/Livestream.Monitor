@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -18,16 +17,13 @@ namespace TwitchTv
 
             const int itemsPerPage = 100; // 25 is default, 100 is maximum
 
-            HttpClient client = GetHttpClient();
             var request = $"{RequestConstants.UserFollows.Replace("{0}", username)}?limit={itemsPerPage}";
-            var responseString = await client.GetStringAsync(request);
-            var userFollows = JsonConvert.DeserializeObject<UserFollows>(responseString);
+            var userFollows = await ExecuteRequest<UserFollows>(request);
             // if necessary, page until we get all followed streams
             while (userFollows.Total > 0 && userFollows.Follows.Count < userFollows.Total)
             {
                 var pagedRequest = $"{request}&offset={userFollows.Follows.Count}";
-                responseString = await client.GetStringAsync(pagedRequest);
-                var pagedFollows = JsonConvert.DeserializeObject<UserFollows>(responseString);
+                var pagedFollows = await ExecuteRequest<UserFollows>(pagedRequest);
                 userFollows.Follows.AddRange(pagedFollows.Follows);
             }
             return userFollows;
@@ -38,20 +34,20 @@ namespace TwitchTv
             if (IsNullOrWhiteSpace(streamName))
                 throw new ArgumentException("Argument is null or whitespace", nameof(streamName));
 
-            HttpClient client = GetHttpClient();
             var request = RequestConstants.StreamDetails.Replace("{0}", streamName);
-            var responseString = await client.GetStringAsync(request);
-            var streamRoot = JsonConvert.DeserializeObject<StreamRoot>(responseString);
-
+            var streamRoot = await ExecuteRequest<StreamRoot>(request);
             return streamRoot.Stream;
         }
 
-        private HttpClient GetHttpClient()
+        private async Task<T> ExecuteRequest<T>(string request)
         {
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
-
-            return client;
+            // we create a new client each time as it will execute much faster (at the expense of some additional memory)
+            using (HttpClient httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
+                var responseString = await httpClient.GetStringAsync(request);
+                return JsonConvert.DeserializeObject<T>(responseString);
+            }
         }
     }
 }

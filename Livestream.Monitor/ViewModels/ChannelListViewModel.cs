@@ -101,6 +101,7 @@ namespace Livestream.Monitor.ViewModels
                     var streamDetails = task.Stream.Result;
                     if (streamDetails == null) continue;
 
+                    task.ChannelData.PopulateWithChannel(streamDetails.Channel);
                     task.ChannelData.Live = streamDetails.Viewers.HasValue;
                     task.ChannelData.Viewers = streamDetails.Viewers ?? 0;
                     if (streamDetails.CreatedAt != null)
