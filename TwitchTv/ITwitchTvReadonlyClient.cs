@@ -7,5 +7,6 @@ namespace TwitchTv
     {
         Task<UserFollows> GetUserFollows(string username);
         Task<Stream> GetStreamDetails(string streamName);
+        Task<Channel> GetChannelDetails(string username);
     }
 }

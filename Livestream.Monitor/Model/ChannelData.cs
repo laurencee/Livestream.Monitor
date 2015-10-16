@@ -79,6 +79,9 @@ namespace Livestream.Monitor.Model
                 NotifyOfPropertyChange(() => Uptime);
             }
         }
+        
+        /// <summary> The username this Channel came from by importing their follow list </summary>
+        public string ImportedBy { get; set; }
 
         public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
 

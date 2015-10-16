@@ -47,6 +47,10 @@
       <HintPath>..\packages\MahApps.Metro.1.1.2.0\lib\net45\MahApps.Metro.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Newtonsoft.Json, Version=7.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Data" />
     <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
@@ -73,6 +77,7 @@
     </ApplicationDefinition>
     <Compile Include="AppBootstrapper.cs" />
     <Compile Include="Core\StringExtensions.cs" />
+    <Compile Include="Model\ChannelFileData.cs" />
     <Compile Include="Model\MenuItem.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
     <Compile Include="ViewModels\ChannelListViewModel.cs" />
@@ -81,6 +86,7 @@
     <Compile Include="Core\MetroThemeColours.cs" />
     <Compile Include="Core\MetroWindowManager.cs" />
     <Compile Include="Core\WindowSettingsBuilder.cs" />
+    <Compile Include="ViewModels\MessageBoxViewModel.cs" />
     <Compile Include="Views\ChannelListView.xaml.cs">
       <DependentUpon>ChannelListView.xaml</DependentUpon>
     </Compile>
@@ -93,6 +99,9 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Views\MessageBoxView.xaml.cs">
+      <DependentUpon>MessageBoxView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\ThemeSelectorView.xaml.cs">
       <DependentUpon>ThemeSelectorView.xaml</DependentUpon>
     </Compile>
@@ -102,6 +111,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\HeaderView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\MessageBoxView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
