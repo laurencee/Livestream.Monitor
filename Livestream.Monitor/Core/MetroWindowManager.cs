@@ -145,7 +145,7 @@ namespace Livestream.Monitor.Core
                                {
                                    Source =
                                        new Uri(
-                                       "pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml",
+                                       "pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseDark.xaml",
                                        UriKind.RelativeOrAbsolute)
                                }
                        };

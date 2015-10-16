@@ -7,18 +7,20 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
              d:DataContext="{d:DesignInstance Type=viewModels:ChannelListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="500">
     <Grid>
-        <DataGrid x:Name="ChannelData" AutoGenerateColumns="False" IsReadOnly="True" 
+        <DataGrid ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding SelectedChannelData}"
+                  AutoGenerateColumns="False" IsReadOnly="True" 
                   cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
             <DataGrid.Columns>
                 <DataGridCheckBoxColumn Header="Live" Binding="{Binding Live}" />
                 <DataGridTextColumn Header="Channel" Binding="{Binding ChannelName}" Width="1*"/>
                 <DataGridTextColumn Header="Status" Binding="{Binding ChannelDescription}" Width="2*"/>
                 <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="1*" />
-                <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="70" />
+                <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" SortDirection="Descending"/>
                 <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" MinWidth="75" />
             </DataGrid.Columns>
         </DataGrid>

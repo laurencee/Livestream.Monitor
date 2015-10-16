@@ -1,7 +1,9 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Data;
 using System.Windows.Threading;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
@@ -55,6 +57,9 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+
+        public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
+
         public BindableCollection<ChannelData> ChannelData { get; set; } = new BindableCollection<ChannelData>();
 
         protected override async void OnActivate()
@@ -62,9 +67,14 @@ namespace Livestream.Monitor.ViewModels
             Loading = true;
             try
             {
+                ViewSource.Source = ChannelData;
+                ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
+                ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
+
                 var userFollows = await twitchTvClient.GetUserFollows("fxfighter");
                 var channelDatas = userFollows.Follows.Select(x => x.Channel.ToChannelData());
                 ChannelData.AddRange(channelDatas);
+
                 await RefreshChannels();
             }
             catch (Exception ex) 
@@ -99,6 +109,8 @@ namespace Livestream.Monitor.ViewModels
                         task.ChannelData.NotifyOfPropertyChange(nameof(task.ChannelData.Uptime));
                     }
                 }
+
+                ViewSource.View.Refresh();
             }
             catch (Exception)
             {
