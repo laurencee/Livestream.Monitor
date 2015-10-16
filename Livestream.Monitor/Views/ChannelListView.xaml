@@ -1,0 +1,27 @@
+﻿<UserControl x:Class="Livestream.Monitor.Views.ChannelListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" 
+             xmlns:cal="http://www.caliburnproject.org"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             d:DataContext="{d:DesignInstance Type=viewModels:ChannelListViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
+             d:DesignHeight="300" d:DesignWidth="500">
+    <Grid>
+        <DataGrid x:Name="ChannelData" AutoGenerateColumns="False" IsReadOnly="True" 
+                  cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
+            <DataGrid.Columns>
+                <DataGridCheckBoxColumn Header="Live" Binding="{Binding Live}" />
+                <DataGridTextColumn Header="Channel" Binding="{Binding ChannelName}" Width="1*"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding ChannelDescription}" Width="2*"/>
+                <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="1*" />
+                <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="70" />
+                <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" MinWidth="75" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <controls:ProgressRing IsActive="{Binding Loading}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
+    </Grid>
+</UserControl>
