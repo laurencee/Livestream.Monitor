@@ -1,4 +1,5 @@
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.ViewModels;
 using TwitchTv;
 
@@ -24,6 +25,9 @@ namespace Livestream.Monitor
             container.Singleton<IEventAggregator, EventAggregator>();
             container.Singleton<IWindowManager, MetroWindowManager>();
             container.Singleton<ITwitchTvReadonlyClient, TwitchTvReadonlyClient>();
+            container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
+            container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsesFileHandler>();
+
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();
             container.PerRequest<HeaderViewModel>();

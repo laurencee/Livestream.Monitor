@@ -5,19 +5,29 @@ namespace Livestream.Monitor.Model
 {
     public static class TwitchToModelMaps
     {
-        public static ChannelData ToChannelData(this Channel channel)
+        public static ChannelData ToChannelData(this Channel channel, string importedBy = null)
         {
             return new ChannelData()
             {
                 ChannelName = channel.Name,
                 ChannelDescription = channel.Status,
                 Game = channel.Game,
+                ImportedBy = importedBy
             };
         }
 
         public static ChannelData ToChannelData(this ChannelFileData channelFileData)
         {
             return new ChannelData()
+            {
+                ChannelName = channelFileData.ChannelName,
+                ImportedBy = channelFileData.ImportedBy
+            };
+        }
+
+        public static ChannelFileData ToChannelFileData(this ChannelData channelFileData)
+        {
+            return new ChannelFileData()
             {
                 ChannelName = channelFileData.ChannelName,
                 ImportedBy = channelFileData.ImportedBy

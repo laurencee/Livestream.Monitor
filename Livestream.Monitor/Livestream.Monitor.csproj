@@ -86,7 +86,11 @@
     <Compile Include="Core\MetroThemeColours.cs" />
     <Compile Include="Core\MetroWindowManager.cs" />
     <Compile Include="Core\WindowSettingsBuilder.cs" />
+    <Compile Include="Model\IMonitoredStreamsFileHandler.cs" />
+    <Compile Include="Model\IMonitorStreamsModel.cs" />
     <Compile Include="ViewModels\MessageBoxViewModel.cs" />
+    <Compile Include="Model\MonitoredStreamsesFileHandler.cs" />
+    <Compile Include="Model\MonitorStreamsModel.cs" />
     <Compile Include="Views\ChannelListView.xaml.cs">
       <DependentUpon>ChannelListView.xaml</DependentUpon>
     </Compile>

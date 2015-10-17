@@ -29,6 +29,7 @@ namespace Livestream.Monitor.Model
             get { return channelName; }
             set
             {
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(ChannelName));
                 if (value == channelName) return;
                 channelName = value;
                 NotifyOfPropertyChange(() => ChannelName);
@@ -87,5 +88,27 @@ namespace Livestream.Monitor.Model
 
         public override string ToString() => 
             $"{channelName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
+
+        #region Equality members
+
+        protected bool Equals(ChannelData other)
+        {
+            return string.Equals(channelName, other.channelName);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((ChannelData) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return channelName?.GetHashCode() ?? 0;
+        }
+
+        #endregion
     }
 }
