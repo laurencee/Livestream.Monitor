@@ -27,6 +27,7 @@ namespace Livestream.Monitor
             container.Singleton<ITwitchTvReadonlyClient, TwitchTvReadonlyClient>();
             container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsesFileHandler>();
+            container.Singleton<ISettingsHandler, SettingsHandler>();
 
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();

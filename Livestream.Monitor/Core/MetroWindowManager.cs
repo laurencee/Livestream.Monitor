@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Windows;
 using Caliburn.Micro;
-using MahApps.Metro;
 using MahApps.Metro.Controls;
 
 namespace Livestream.Monitor.Core
 {
     public class MetroWindowManager : WindowManager
     {
+        private readonly ISettingsHandler settingsHandler;
         private ResourceDictionary[] resourceDictionaries;
+
+        public MetroWindowManager(ISettingsHandler settingsHandler)
+        {
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+            this.settingsHandler = settingsHandler;
+        }
 
         protected override Window EnsureWindow(object model, object view, bool isDialog)
         {
@@ -45,30 +51,6 @@ namespace Livestream.Monitor.Core
             return window;
         }
 
-        public static void ChangeTheme(MetroThemeBaseColour baseColour)
-        {
-            var currentTheme = ThemeManager.DetectAppStyle(Application.Current.MainWindow);
-            var baseTheme = ThemeManager.GetAppTheme(baseColour.ToString());
-            ChangeTheme(baseTheme, currentTheme.Item2);
-        }
-
-        public static void ChangeTheme(MetroThemeAccentColour accentColour)
-        {
-            var currentTheme = ThemeManager.DetectAppStyle(Application.Current.MainWindow);
-            var accent = ThemeManager.GetAccent(accentColour.ToString());
-            ChangeTheme(currentTheme.Item1, accent);
-        }
-
-        /// <summary> Changes the colour of base and accent colour of the application </summary>
-        public static void ChangeTheme(AppTheme baseColour, Accent accentColour)
-        {
-            // change the theme for the main window so the update is immediate
-            ThemeManager.ChangeAppStyle(Application.Current.MainWindow, accentColour, baseColour);
-
-            // change the default theme for all future windows opened
-            ThemeManager.ChangeAppStyle(Application.Current, accentColour, baseColour);
-        }
-
         public virtual void ConfigureWindow(MetroWindow window)
         {
 
@@ -88,7 +70,7 @@ namespace Livestream.Monitor.Core
                     Content = view
                 };
             }
-
+            
             AddMetroResources(result);
             return result;
         }
@@ -100,6 +82,21 @@ namespace Livestream.Monitor.Core
             {
                 window.Resources.MergedDictionaries.Add(dictionary);
             }
+
+            // get the accent and base colour from the last session (or set defaults)
+            var accentColour = settingsHandler.Settings.MetroThemeAccentColour.HasValue
+                                   ? settingsHandler.Settings.MetroThemeAccentColour
+                                   : MetroThemeAccentColour.Orange;
+
+            var baseColour = settingsHandler.Settings.MetroThemeBaseColour.HasValue
+                                   ? settingsHandler.Settings.MetroThemeBaseColour
+                                   : MetroThemeBaseColour.BaseDark;
+
+            var accentColourPackUri = new Uri($"pack://application:,,,/MahApps.Metro;component/Styles/Accents/{accentColour}.xaml", UriKind.RelativeOrAbsolute);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary() { Source = accentColourPackUri});
+
+            var baseColourPackUri = new Uri($"pack://application:,,,/MahApps.Metro;component/Styles/Accents/{baseColour}.xaml", UriKind.RelativeOrAbsolute);
+            window.Resources.MergedDictionaries.Add(new ResourceDictionary() { Source = baseColourPackUri });
         }
 
         private ResourceDictionary[] LoadResources()
@@ -132,20 +129,6 @@ namespace Livestream.Monitor.Core
                                    Source =
                                        new Uri(
                                        "pack://application:,,,/MahApps.Metro;component/Styles/Controls.AnimatedSingleRowTabControl.xaml",
-                                       UriKind.RelativeOrAbsolute)
-                               },
-                           new ResourceDictionary
-                               {
-                                   Source =
-                                       new Uri(
-                                       "pack://application:,,,/MahApps.Metro;component/Styles/Accents/Orange.xaml",
-                                       UriKind.RelativeOrAbsolute)
-                               },
-                           new ResourceDictionary
-                               {
-                                   Source =
-                                       new Uri(
-                                       "pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseDark.xaml",
                                        UriKind.RelativeOrAbsolute)
                                }
                        };
