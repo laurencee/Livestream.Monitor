@@ -1,4 +1,5 @@
 using System;
+using System.Windows;
 using Caliburn.Micro;
 
 namespace Livestream.Monitor.ViewModels
@@ -6,6 +7,7 @@ namespace Livestream.Monitor.ViewModels
     public class ShellViewModel : Conductor<Screen>.Collection.AllActive
     {
         private readonly IWindowManager windowManager;
+        private WindowState windowState = WindowState.Normal;
 
         public ShellViewModel()
         {
@@ -39,5 +41,24 @@ namespace Livestream.Monitor.ViewModels
         public ThemeSelectorViewModel ThemeSelector { get; set; }
         public HeaderViewModel Header { get; private set; }
         public ChannelListViewModel ChannelList { get; set; }
+
+        public WindowState WindowState
+        {
+            get { return windowState; }
+            set
+            {
+                if (value == windowState) return;
+                windowState = value;
+                NotifyOfPropertyChange(() => WindowState);
+                if (windowState == WindowState.Minimized)
+                    Application.Current.MainWindow.Hide();
+            }
+        }
+
+        public void ShowWindow()
+        {
+            Application.Current.MainWindow.Show();
+            WindowState = WindowState.Normal;
+        }
     }
 }
