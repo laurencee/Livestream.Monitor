@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d">
-    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <TextBlock x:Name="MessageText" Margin="10,10,10,20" MaxWidth="700" />
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MaxWidth="700">
+        <TextBlock x:Name="MessageText" Margin="10,10,10,20" TextWrapping="Wrap" />
     </Grid>
 </UserControl>
