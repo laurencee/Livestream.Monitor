@@ -14,7 +14,6 @@ namespace Livestream.Monitor.ViewModels
 {
     public class ChannelListViewModel : Screen
     {
-        private readonly MessageBoxViewModel messageBoxViewModel = new MessageBoxViewModel();
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly IWindowManager windowManager;
         
@@ -130,7 +129,7 @@ namespace Livestream.Monitor.ViewModels
             const string livestreamPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
             const string livestreamerArgs = @"http://www.twitch.tv/{0}/ source";
 
-            ShowStreamLoadMessageBox(selectedChannel);
+            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel);
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
@@ -145,9 +144,14 @@ namespace Livestream.Monitor.ViewModels
                 };
 
                 // see below for output handler
-                proc.ErrorDataReceived += ProcOnErrorDataReceived;
-                proc.OutputDataReceived += ProcOnOutputDataReceived;
-
+                proc.ErrorDataReceived += (sender, args) => 
+                {
+                    if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                };
+                proc.OutputDataReceived += (sender, args) =>
+                {
+                    if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                };
                 proc.Start();
 
                 proc.BeginErrorReadLine();
@@ -158,25 +162,21 @@ namespace Livestream.Monitor.ViewModels
             });
         }
 
-        private void ShowStreamLoadMessageBox(ChannelData selectedChannel)
+        private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel)
         {
-            messageBoxViewModel.DisplayName = $"Stream '{selectedChannel.ChannelName}'";
-            messageBoxViewModel.MessageText = "Launching livestreamer...";
-            var settings = new WindowSettingsBuilder().SizeToContent().WithWindowStyle(WindowStyle.ToolWindow).WithResizeMode(ResizeMode.NoResize).Create();
+            var messageBoxViewModel = new MessageBoxViewModel
+            {
+                DisplayName = $"Stream '{selectedChannel.ChannelName}'",
+                MessageText = "Launching livestreamer..."
+            };
+
+            var settings = new WindowSettingsBuilder().SizeToContent()
+                                                      .WithWindowStyle(WindowStyle.ToolWindow)
+                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .Create();
 
             windowManager.ShowWindow(messageBoxViewModel, null, settings);
-        }
-
-        private void ProcOnOutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data != null)
-                messageBoxViewModel.MessageText += Environment.NewLine + e.Data;
-        }
-
-        private void ProcOnErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (e.Data != null)
-                messageBoxViewModel.MessageText += Environment.NewLine + e.Data;
+            return messageBoxViewModel;
         }
     }
 }
