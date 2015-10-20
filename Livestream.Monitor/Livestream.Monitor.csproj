@@ -101,7 +101,7 @@
     <Compile Include="Model\IMonitorStreamsModel.cs" />
     <Compile Include="ViewModels\ImportChannelsViewModel.cs" />
     <Compile Include="ViewModels\MessageBoxViewModel.cs" />
-    <Compile Include="Model\MonitoredStreamsesFileHandler.cs" />
+    <Compile Include="Model\MonitoredStreamsFileHandler.cs" />
     <Compile Include="Model\MonitorStreamsModel.cs" />
     <Compile Include="Views\ChannelListView.xaml.cs">
       <DependentUpon>ChannelListView.xaml</DependentUpon>

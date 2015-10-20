@@ -86,6 +86,14 @@ namespace Livestream.Monitor.Model
 
         public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
 
+        /// <summary> Sets the channel to the offline state </summary>
+        public void Offline()
+        {
+            Live = false;
+            Viewers = 0;
+            StartTime = DateTimeOffset.MinValue;
+        }
+
         public override string ToString() => 
             $"{channelName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
 

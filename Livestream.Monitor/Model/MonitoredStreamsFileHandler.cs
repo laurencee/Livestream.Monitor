@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model
 {
-    public class MonitoredStreamsesFileHandler : IMonitoredStreamsFileHandler
+    public class MonitoredStreamsFileHandler : IMonitoredStreamsFileHandler
     {
         public void SaveChannelsToDisk(ChannelData[] channels)
         {

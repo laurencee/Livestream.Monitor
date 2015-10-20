@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using TwitchTv;
-using TwitchTv.Dto;
 using static System.String;
 
 namespace Livestream.Monitor.Model
@@ -104,6 +103,10 @@ namespace Livestream.Monitor.Model
                     if (streamDetails == null)
                     {
                         missingChannelData.Add(task.ChannelData);
+                        if (task.ChannelData.Live) // streamer is no longer live
+                        {
+                            task.ChannelData.Offline();
+                        }
                         continue;
                     }
 
