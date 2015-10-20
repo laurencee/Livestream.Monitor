@@ -3,18 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:local="clr-namespace:Livestream.Monitor"
-             mc:Ignorable="d" d:DesignWidth="300">
+             mc:Ignorable="d">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />
             <ColumnDefinition Width="Auto" />
-            <ColumnDefinition />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition />
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
 
-        <TextBox x:Name="StreamName" Margin="2" />
+        <TextBox x:Name="StreamName" Margin="2" MinWidth="150" />
         <Button Grid.Column="1" x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2">
             <Button.ContentTemplate>
                 <DataTemplate>
@@ -22,5 +21,6 @@
                 </DataTemplate>
             </Button.ContentTemplate>
         </Button>
+        <Button x:Name="ShowImportWindow" Content="Import Channels" Grid.Column="2" Margin="2" />
     </Grid>
 </UserControl>
