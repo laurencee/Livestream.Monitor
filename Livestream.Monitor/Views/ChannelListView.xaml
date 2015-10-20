@@ -7,7 +7,6 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
-             xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=WindowsBase"
              d:DataContext="{d:DesignInstance Type=viewModels:ChannelListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="500">
@@ -16,7 +15,19 @@
                   AutoGenerateColumns="False" IsReadOnly="True" 
                   cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
             <DataGrid.Columns>
-                <DataGridCheckBoxColumn Header="Live" Binding="{Binding Live}" />
+                <DataGridTemplateColumn Header="Live">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Image Name="MyImage" Source="/Livestream.Monitor;component/Images/Live.png" Width="15"
+                                   RenderOptions.BitmapScalingMode="HighQuality" RenderOptions.EdgeMode="Aliased" />
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Live}" Value="False">
+                                    <Setter TargetName="MyImage" Property="Source" Value="/Livestream.Monitor;component/Images/Offline.png"/>
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Channel" Binding="{Binding ChannelName}" Width="1*"/>
                 <DataGridTextColumn Header="Status" Binding="{Binding ChannelDescription}" Width="2*"/>
                 <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="1*" />
