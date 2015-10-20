@@ -5,6 +5,6 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-        <TextBlock x:Name="MessageText" Margin="10,10,10,20" />
+        <TextBlock x:Name="MessageText" Margin="10,10,10,20" MaxWidth="700" />
     </Grid>
 </UserControl>
