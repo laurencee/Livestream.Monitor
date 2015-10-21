@@ -83,5 +83,10 @@ namespace Livestream.Monitor.ViewModels
             taskbarIcon.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
             base.OnDeactivate(close);
         }
+
+        public override void TryClose(bool? dialogResult = null)
+        {
+            base.TryClose(dialogResult);
+        }
     }
 }

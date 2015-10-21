@@ -1,5 +1,5 @@
-<Controls:MetroWindow xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                      xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+<controls:MetroWindow xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                      xmlns:controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:cal="http://www.caliburnproject.org"
                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
@@ -10,12 +10,11 @@
                       d:DataContext="{d:DesignInstance Type=viewModels:ShellViewModel, IsDesignTimeCreatable=True}"
                       cal:Bind.AtDesignTime="True" WindowState="{Binding WindowState}"
                       Height="450" Width="800">
-    <Controls:MetroWindow.RightWindowCommands>
-        <Controls:WindowCommands>
-            <!--<Button Content="Theme" cal:Message.Attach="ShowTheme($source)" />-->
+    <controls:MetroWindow.RightWindowCommands>
+        <controls:WindowCommands>
             <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />
-        </Controls:WindowCommands>
-    </Controls:MetroWindow.RightWindowCommands>
+        </controls:WindowCommands>
+    </controls:MetroWindow.RightWindowCommands>
     
     <Grid>
         <Grid.RowDefinitions>
@@ -26,9 +25,17 @@
 
         <tb:TaskbarIcon x:Name="TrayIcon" Visibility="Visible" 
                         IconSource="/Livestream.Monitor;component/Images/TrayIcon.ico" 
-                        cal:Message.Attach="[Event TrayMouseDoubleClick] = [Action ShowWindow]" />
+                        cal:Message.Attach="[Event TrayMouseDoubleClick] = [Action ShowWindow]">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Show" cal:Message.Attach="[Click] = [ShowWindow]"/>
+                    <Separator />
+                    <MenuItem Header="Exit" cal:Message.Attach="[Click] = [TryClose(true)]"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
         <ContentControl Grid.Row="0" x:Name="Header" Margin="10,0" />
         <Separator Grid.Row="1" />
         <ContentControl Grid.Row="2" x:Name="ChannelList" />
     </Grid>
-</Controls:MetroWindow>
+</controls:MetroWindow>
