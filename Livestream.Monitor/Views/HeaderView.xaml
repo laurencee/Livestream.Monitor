@@ -4,10 +4,16 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:cal="http://www.caliburnproject.org"
+             d:DataContext="{d:DesignInstance Type=viewModels:HeaderViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
              mc:Ignorable="d">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
@@ -27,5 +33,7 @@
         <Button x:Name="ShowImportWindow" Content="Import Channels" Grid.Column="2" Margin="2" ToolTip="Import channels from the provided username" />
         <Separator Grid.Column="3" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <Button x:Name="RefreshChannels" Content="&#x21BB;" FontWeight="ExtraBold" Grid.Column="4" Margin="2" ToolTip="Refresh Channels" />
+        <TextBlock Grid.Column="5" Text="Quality:" VerticalAlignment="Center" Margin="5" />
+        <ComboBox x:Name="StreamQualities" Grid.Column="6" Margin="2" MinWidth="75" />
     </Grid>
 </UserControl>

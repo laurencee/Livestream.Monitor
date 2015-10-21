@@ -89,6 +89,7 @@
     <Compile Include="Core\ISettingsHandler.cs" />
     <Compile Include="Core\Settings.cs" />
     <Compile Include="Core\SettingsHandler.cs" />
+    <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\StringExtensions.cs" />
     <Compile Include="Model\ChannelFileData.cs" />
     <Compile Include="Model\MenuItem.cs" />

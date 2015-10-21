@@ -15,10 +15,11 @@ namespace Livestream.Monitor.ViewModels
     public class ChannelListViewModel : Screen
     {
         private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly IWindowManager windowManager;
-        
-        private bool loading;
         private readonly DispatcherTimer refreshTimer;
+        private readonly ISettingsHandler settingsHandler;
+        private readonly IWindowManager windowManager;
+
+        private bool loading;
         private ChannelData selectedChannelData;
 
         public ChannelListViewModel()
@@ -26,16 +27,19 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-           monitorStreamsModel = new MonitorStreamsModel();
+            monitorStreamsModel = new MonitorStreamsModel();
         }
 
         public ChannelListViewModel(
             IMonitorStreamsModel monitorStreamsModel,
+            ISettingsHandler settingsHandler,
             IWindowManager windowManager)
         {
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
 
             this.monitorStreamsModel = monitorStreamsModel;
+            this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
             refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
             refreshTimer.Tick += async (sender, args) => await RefreshChannels();
@@ -66,52 +70,6 @@ namespace Livestream.Monitor.ViewModels
 
         public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
 
-        protected override async void OnActivate()
-        {
-            Loading = true;
-            try
-            {
-                monitorStreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
-                ViewSource.Source = monitorStreamsModel.FollowedChannels;
-                ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
-                ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
-
-                await RefreshChannels();
-                // hook up followed channels after our initial call so we can refresh immediately as needed
-                monitorStreamsModel.FollowedChannels.CollectionChanged += FollowedChannelsOnCollectionChanged;
-            }
-            catch (Exception) 
-            {
-                // TODO - show the error to the user and log it
-            }
-            
-            Loading = false;
-            base.OnActivate();
-        }
-
-        private void OnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
-        {
-            // We only really care about sorting online channels so this causes the sort descriptions to be applied immediately 
-            ViewSource.View.Refresh();
-        }
-
-        private async void FollowedChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    ViewSource.View.Refresh();
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                    break;
-                case NotifyCollectionChangedAction.Replace:
-                case NotifyCollectionChangedAction.Move:
-                case NotifyCollectionChangedAction.Reset:
-                    await RefreshChannels();
-                    break;
-            }
-        }
-
         public async Task RefreshChannels()
         {
             refreshTimer.Stop();
@@ -127,7 +85,7 @@ namespace Livestream.Monitor.ViewModels
 
             // TODO - do a smarter find for the livestreamer exe and prompt on startup if it can not be found
             const string livestreamPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
-            const string livestreamerArgs = @"http://www.twitch.tv/{0}/ source";
+            string livestreamerArgs = $"http://www.twitch.tv/{selectedChannel.ChannelName}/ {settingsHandler.Settings.DefaultStreamQuality}";
 
             var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel);
 
@@ -138,20 +96,27 @@ namespace Livestream.Monitor.ViewModels
                 {
                     StartInfo =
                     {
-                        FileName = livestreamPath, Arguments = livestreamerArgs.Replace("{0}", selectedChannel.ChannelName), RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true, UseShellExecute = false
+                        FileName = livestreamPath,
+                        Arguments = livestreamerArgs,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true,
+                        UseShellExecute = false
                     },
                     EnableRaisingEvents = true
                 };
 
                 // see below for output handler
-                proc.ErrorDataReceived += (sender, args) => 
-                {
-                    if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
-                };
-                proc.OutputDataReceived += (sender, args) =>
-                {
-                    if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
-                };
+                proc.ErrorDataReceived +=
+                    (sender, args) =>
+                    {
+                        if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                    };
+                proc.OutputDataReceived +=
+                    (sender, args) =>
+                    {
+                        if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                    };
                 proc.Start();
 
                 proc.BeginErrorReadLine();
@@ -184,6 +149,52 @@ namespace Livestream.Monitor.ViewModels
 
             windowManager.ShowWindow(messageBoxViewModel, null, settings);
             return messageBoxViewModel;
+        }
+
+        protected override async void OnActivate()
+        {
+            Loading = true;
+            try
+            {
+                monitorStreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
+                ViewSource.Source = monitorStreamsModel.FollowedChannels;
+                ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
+                ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
+
+                await RefreshChannels();
+                // hook up followed channels after our initial call so we can refresh immediately as needed
+                monitorStreamsModel.FollowedChannels.CollectionChanged += FollowedChannelsOnCollectionChanged;
+            }
+            catch (Exception)
+            {
+                // TODO - show the error to the user and log it
+            }
+
+            Loading = false;
+            base.OnActivate();
+        }
+
+        private void OnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
+        {
+            // We only really care about sorting online channels so this causes the sort descriptions to be applied immediately 
+            ViewSource.View.Refresh();
+        }
+
+        private async void FollowedChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    ViewSource.View.Refresh();
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                case NotifyCollectionChangedAction.Move:
+                case NotifyCollectionChangedAction.Reset:
+                    await RefreshChannels();
+                    break;
+            }
         }
     }
 }

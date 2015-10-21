@@ -7,6 +7,7 @@ namespace Livestream.Monitor.Core
     {
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
+        private StreamQuality defaultStreamQuality;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -29,6 +30,18 @@ namespace Livestream.Monitor.Core
                 if (value == metroThemeAccentColour) return;
                 metroThemeAccentColour = value;
                 NotifyOfPropertyChange(() => MetroThemeAccentColour);
+            }
+        }
+
+        [JsonProperty]
+        public StreamQuality DefaultStreamQuality
+        {
+            get { return defaultStreamQuality; }
+            set
+            {
+                if (value == defaultStreamQuality) return;
+                defaultStreamQuality = value;
+                NotifyOfPropertyChange(() => DefaultStreamQuality);
             }
         }
     }

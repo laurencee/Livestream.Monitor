@@ -11,10 +11,12 @@ namespace Livestream.Monitor.ViewModels
     public class HeaderViewModel : Screen
     {
         private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
         private string streamName;
         private bool canShowImportWindow = true;
         private bool canRefreshChannels;
+        private string streamQuality;
 
         public HeaderViewModel()
         {
@@ -24,12 +26,15 @@ namespace Livestream.Monitor.ViewModels
 
         public HeaderViewModel(
             IMonitorStreamsModel monitorStreamsModel,
+            ISettingsHandler settingsHandler,
             IWindowManager windowManager)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
             
             this.monitorStreamsModel = monitorStreamsModel;
+            this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
         }
 
@@ -69,6 +74,20 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public string SelectedStreamQuality
+        {
+            get { return streamQuality; }
+            set
+            {
+                if (value == streamQuality) return;
+                streamQuality = value;
+                NotifyOfPropertyChange();
+                settingsHandler.Settings.DefaultStreamQuality = (StreamQuality) Enum.Parse(typeof (StreamQuality), streamQuality);
+            }
+        }
+
+        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
+
         public async Task AddStream()
         {
             if (IsNullOrWhiteSpace(StreamName)) return;
@@ -94,6 +113,8 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnActivate()
         {
             monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
+            SelectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
+            StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
             base.OnActivate();
         }
 
