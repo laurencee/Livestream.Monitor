@@ -14,7 +14,6 @@ namespace Livestream.Monitor.ViewModels
 {
     public class ChannelListViewModel : Screen
     {
-        private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly DispatcherTimer refreshTimer;
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
@@ -27,7 +26,7 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            monitorStreamsModel = new MonitorStreamsModel();
+            StreamsModel = new MonitorStreamsModel();
         }
 
         public ChannelListViewModel(
@@ -38,7 +37,7 @@ namespace Livestream.Monitor.ViewModels
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
 
-            this.monitorStreamsModel = monitorStreamsModel;
+            this.StreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
             refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
@@ -56,31 +55,21 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public ChannelData SelectedChannelData
-        {
-            get { return selectedChannelData; }
-            set
-            {
-                if (Equals(value, selectedChannelData)) return;
-                selectedChannelData = value;
-                NotifyOfPropertyChange(() => SelectedChannelData);
-            }
-        }
-
+        public IMonitorStreamsModel StreamsModel { get; }
 
         public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
 
         public async Task RefreshChannels()
         {
             refreshTimer.Stop();
-            await monitorStreamsModel.RefreshChannels();
+            await StreamsModel.RefreshChannels();
             refreshTimer.Start();
         }
 
         /// <summary> Loads the selected stream through livestreamer and displays a messagebox with the loading process details </summary>
         public void StartStream()
         {
-            var selectedChannel = SelectedChannelData;
+            var selectedChannel = StreamsModel.SelectedChannel;
             if (selectedChannel == null || !selectedChannel.Live || Loading) return;
 
             // TODO - do a smarter find for the livestreamer exe and prompt on startup if it can not be found
@@ -124,21 +113,30 @@ namespace Livestream.Monitor.ViewModels
                     {
                         if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
                     };
-                proc.Start();
 
-                proc.BeginErrorReadLine();
-                proc.BeginOutputReadLine();
+                try
+                {
+                    proc.Start();
 
-                proc.WaitForExit();
+                    proc.BeginErrorReadLine();
+                    proc.BeginOutputReadLine();
+
+                    proc.WaitForExit();
+                }
+                catch (Exception)
+                {
+                    // TODO log errors opening stream
+                }
+                
                 messageBoxViewModel.TryClose();
             });
         }
 
         public void RemoveChannel()
         {
-            if (SelectedChannelData == null) return;
+            if (StreamsModel.SelectedChannel == null) return;
 
-            monitorStreamsModel.RemoveChannel(SelectedChannelData);
+            StreamsModel.RemoveChannel(StreamsModel.SelectedChannel);
         }
 
         private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel, StreamQuality streamQuality)
@@ -169,14 +167,14 @@ namespace Livestream.Monitor.ViewModels
             Loading = true;
             try
             {
-                monitorStreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
-                ViewSource.Source = monitorStreamsModel.FollowedChannels;
+                StreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
+                ViewSource.Source = StreamsModel.Channels;
                 ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
                 ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
 
                 await RefreshChannels();
                 // hook up followed channels after our initial call so we can refresh immediately as needed
-                monitorStreamsModel.FollowedChannels.CollectionChanged += FollowedChannelsOnCollectionChanged;
+                StreamsModel.Channels.CollectionChanged += FollowedChannelsOnCollectionChanged;
             }
             catch (Exception)
             {

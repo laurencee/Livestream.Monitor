@@ -18,6 +18,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" /> <!-- This is an expanding space to keep the last column on the far right at all times -->
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
@@ -35,5 +36,6 @@
         <Button x:Name="RefreshChannels" Content="&#x21BB;" FontWeight="ExtraBold" Grid.Column="4" Margin="2" ToolTip="Refresh Channels" />
         <TextBlock Grid.Column="5" Text="Quality:" VerticalAlignment="Center" Margin="5" />
         <ComboBox x:Name="StreamQualities" Grid.Column="6" Margin="2" MinWidth="75" />
+        <Button x:Name="OpenChat" Content="Chat" Grid.Column="7" Margin="2" />
     </Grid>
 </UserControl>

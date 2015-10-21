@@ -11,7 +11,7 @@
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="500">
     <Grid>
-        <DataGrid ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding SelectedChannelData}"
+        <DataGrid ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedChannel}"
                   AutoGenerateColumns="False" IsReadOnly="True" 
                   cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
             <DataGrid.ContextMenu>

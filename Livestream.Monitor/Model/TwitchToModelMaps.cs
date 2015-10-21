@@ -54,6 +54,7 @@ namespace Livestream.Monitor.Model
 
             channelData.ChannelDescription = channel.Status;
             channelData.Game = channel.Game;
+            channelData.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
         }
     }
 }

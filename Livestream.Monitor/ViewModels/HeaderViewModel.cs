@@ -1,5 +1,7 @@
 using System;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -10,6 +12,8 @@ namespace Livestream.Monitor.ViewModels
 {
     public class HeaderViewModel : Screen
     {
+        private const string ChromeLocation = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
+
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
@@ -32,7 +36,7 @@ namespace Livestream.Monitor.ViewModels
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-            
+
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
@@ -82,7 +86,7 @@ namespace Livestream.Monitor.ViewModels
                 if (value == streamQuality) return;
                 streamQuality = value;
                 NotifyOfPropertyChange();
-                settingsHandler.Settings.DefaultStreamQuality = (StreamQuality) Enum.Parse(typeof (StreamQuality), streamQuality);
+                settingsHandler.Settings.DefaultStreamQuality = (StreamQuality)Enum.Parse(typeof(StreamQuality), streamQuality);
             }
         }
 
@@ -91,8 +95,8 @@ namespace Livestream.Monitor.ViewModels
         public async Task AddStream()
         {
             if (IsNullOrWhiteSpace(StreamName)) return;
-            
-            await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName});
+
+            await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
         }
 
         public void ShowImportWindow()
@@ -108,6 +112,39 @@ namespace Livestream.Monitor.ViewModels
         public async Task RefreshChannels()
         {
             await monitorStreamsModel.RefreshChannels();
+        }
+
+        public void OpenChat()
+        {
+            if (!File.Exists(ChromeLocation)) return;
+
+            var selectedChannel = monitorStreamsModel.SelectedChannel;
+            if (selectedChannel == null) return;
+
+            string chromeArgs = $"--app=http://www.twitch.tv/{selectedChannel.ChannelName}/chat?popout=true";
+
+            Task.Run(() =>
+            {
+                try
+                {
+                    var proc = new Process()
+                    {
+                        StartInfo =
+                        {
+                            FileName = ChromeLocation,
+                            Arguments = chromeArgs,
+                            CreateNoWindow = true,
+                            UseShellExecute = false
+                        }
+                    };
+
+                    proc.Start();
+                }
+                catch (Exception)
+                {
+                    // TODO - log errors opening chat
+                }
+            });
         }
 
         protected override void OnActivate()

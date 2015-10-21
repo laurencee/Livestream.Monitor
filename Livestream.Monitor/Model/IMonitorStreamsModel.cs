@@ -7,10 +7,12 @@ namespace Livestream.Monitor.Model
     public interface IMonitorStreamsModel : INotifyPropertyChangedEx
     {
         /// <summary> The list of followed channels, will be initialized on first access. </summary>
-        BindableCollection<ChannelData> FollowedChannels { get; }
+        BindableCollection<ChannelData> Channels { get; }
+
+        ChannelData SelectedChannel { get; set; }
 
         bool CanRefreshChannels { get; }
-
+        
         event EventHandler OnlineChannelsRefreshComplete;
 
         Task AddStream(ChannelData channelData);

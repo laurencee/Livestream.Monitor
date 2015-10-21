@@ -16,6 +16,7 @@ namespace Livestream.Monitor.Model
 
         private bool initialised;
         private bool canRefreshChannels = true;
+        private ChannelData selectedChannel;
 
         #region Design Time Constructor
 
@@ -54,12 +55,23 @@ namespace Livestream.Monitor.Model
             this.twitchTvClient = twitchTvClient;
         }
 
-        public BindableCollection<ChannelData> FollowedChannels
+        public BindableCollection<ChannelData> Channels
         {
             get
             {
                 if (!initialised) LoadChannels();
                 return followedChannels;
+            }
+        }
+
+        public ChannelData SelectedChannel
+        {
+            get { return selectedChannel; }
+            set
+            {
+                if (Equals(value, selectedChannel)) return;
+                selectedChannel = value;
+                NotifyOfPropertyChange();
             }
         }
 
@@ -79,11 +91,11 @@ namespace Livestream.Monitor.Model
         public async Task AddStream(ChannelData channelData)
         {
             if (channelData == null) throw new ArgumentNullException(nameof(channelData));
-            if (FollowedChannels.Any(x => Equals(x, channelData))) return; // ignore duplicate requests
+            if (Channels.Any(x => Equals(x, channelData))) return; // ignore duplicate requests
 
             var stream = await twitchTvClient.GetStreamDetails(channelData.ChannelName);
             channelData.PopulateWithStreamDetails(stream);
-            FollowedChannels.Add(channelData);
+            Channels.Add(channelData);
             SaveChannels();
         }
 
@@ -93,9 +105,9 @@ namespace Livestream.Monitor.Model
             
             var userFollows = await twitchTvClient.GetUserFollows(username);
             var userFollowedChannels = userFollows.Follows.Select(x => x.Channel.ToChannelData(importedBy: username));
-            var newChannels = userFollowedChannels.Except(FollowedChannels); // ignore duplicate channels
+            var newChannels = userFollowedChannels.Except(Channels); // ignore duplicate channels
 
-            FollowedChannels.AddRange(newChannels);
+            Channels.AddRange(newChannels);
             SaveChannels();
         }
 
@@ -106,7 +118,7 @@ namespace Livestream.Monitor.Model
             CanRefreshChannels = false;
 
             var missingChannelData = new List<ChannelData>();
-            var tasks = FollowedChannels.Where(x => !IsNullOrWhiteSpace(x.ChannelName))
+            var tasks = Channels.Where(x => !IsNullOrWhiteSpace(x.ChannelName))
                                         .Select(x => new { ChannelData = x, Stream = twitchTvClient.GetStreamDetails(x.ChannelName) })
                                         .ToList();
 
@@ -160,7 +172,7 @@ namespace Livestream.Monitor.Model
         {
             if (channelData == null) return;
 
-            FollowedChannels.Remove(channelData);
+            Channels.Remove(channelData);
             SaveChannels();
         }
 
@@ -173,7 +185,7 @@ namespace Livestream.Monitor.Model
 
         private void SaveChannels()
         {
-            fileHandler.SaveChannelsToDisk(FollowedChannels.ToArray());
+            fileHandler.SaveChannelsToDisk(Channels.ToArray());
         }
 
         protected virtual void OnOnlineChannelsRefreshComplete()
