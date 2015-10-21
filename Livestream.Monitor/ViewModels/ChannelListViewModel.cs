@@ -162,6 +162,13 @@ namespace Livestream.Monitor.ViewModels
             });
         }
 
+        public void RemoveChannel()
+        {
+            if (SelectedChannelData == null) return;
+
+            monitorStreamsModel.RemoveChannel(SelectedChannelData);
+        }
+
         private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel)
         {
             var messageBoxViewModel = new MessageBoxViewModel

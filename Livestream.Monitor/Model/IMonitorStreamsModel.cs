@@ -17,5 +17,7 @@ namespace Livestream.Monitor.Model
 
         /// <summary> Refreshing data for all followed channels </summary>
         Task RefreshChannels();
+
+        void RemoveChannel(ChannelData channelData);
     }
 }

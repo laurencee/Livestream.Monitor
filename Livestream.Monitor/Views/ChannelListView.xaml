@@ -14,6 +14,11 @@
         <DataGrid ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding SelectedChannelData}"
                   AutoGenerateColumns="False" IsReadOnly="True" 
                   cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
+            <DataGrid.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Remove Channel" cal:Message.Attach="[Click] = [RemoveChannel]" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="Live">
                     <DataGridTemplateColumn.CellTemplate>

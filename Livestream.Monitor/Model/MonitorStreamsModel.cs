@@ -138,6 +138,14 @@ namespace Livestream.Monitor.Model
             }
         }
 
+        public void RemoveChannel(ChannelData channelData)
+        {
+            if (channelData == null) return;
+
+            FollowedChannels.Remove(channelData);
+            SaveChannels();
+        }
+
         private void LoadChannels()
         {
             if (initialised) return;
