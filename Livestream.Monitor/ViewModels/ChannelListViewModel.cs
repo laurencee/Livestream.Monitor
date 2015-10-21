@@ -19,7 +19,6 @@ namespace Livestream.Monitor.ViewModels
         private readonly IWindowManager windowManager;
 
         private bool loading;
-        private ChannelData selectedChannelData;
 
         public ChannelListViewModel()
         {
