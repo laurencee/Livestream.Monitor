@@ -32,14 +32,14 @@ namespace Livestream.Monitor.Core
             var view = screen.GetView() as ContentControl;
             if (view != null)
             {
-                var control = FindChild(view, property);
+                var control = view.FindChild(property);
                 bool focus = control != null && control.Focus();
                 return focus;
             }
             return false;
         }
 
-        private static FrameworkElement FindChild(UIElement parent, string childName)
+        public static FrameworkElement FindChild(this UIElement parent, string childName)
         {
             // Confirm parent and childName are valid. 
             if (parent == null || string.IsNullOrWhiteSpace(childName)) return null;
