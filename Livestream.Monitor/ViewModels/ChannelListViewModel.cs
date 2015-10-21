@@ -85,9 +85,16 @@ namespace Livestream.Monitor.ViewModels
 
             // TODO - do a smarter find for the livestreamer exe and prompt on startup if it can not be found
             const string livestreamPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
-            string livestreamerArgs = $"http://www.twitch.tv/{selectedChannel.ChannelName}/ {settingsHandler.Settings.DefaultStreamQuality}";
 
-            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel);
+            // Fall back to source stream quality for non-partnered channels
+            var streamQuality = (!selectedChannel.IsPartner &&
+                                 settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Source)
+                                    ? StreamQuality.Source
+                                    : settingsHandler.Settings.DefaultStreamQuality;
+
+            string livestreamerArgs = $"http://www.twitch.tv/{selectedChannel.ChannelName}/ {streamQuality}";
+
+            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel, settingsHandler.Settings.DefaultStreamQuality);
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
@@ -134,13 +141,19 @@ namespace Livestream.Monitor.ViewModels
             monitorStreamsModel.RemoveChannel(SelectedChannelData);
         }
 
-        private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel)
+        private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel, StreamQuality streamQuality)
         {
             var messageBoxViewModel = new MessageBoxViewModel
             {
                 DisplayName = $"Stream '{selectedChannel.ChannelName}'",
                 MessageText = "Launching livestreamer..."
             };
+
+            // Notify the user if the quality has been swapped back to source due to the channel not being partenered.
+            if (!selectedChannel.IsPartner && streamQuality != StreamQuality.Source)
+            {
+                messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
+            }
 
             var settings = new WindowSettingsBuilder().SizeToContent()
                                                       .WithWindowStyle(WindowStyle.ToolWindow)

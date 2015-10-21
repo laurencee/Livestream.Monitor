@@ -12,6 +12,7 @@ namespace Livestream.Monitor.Model
                 ChannelName = channel.Name,
                 ChannelDescription = channel.Status,
                 Game = channel.Game,
+                IsPartner = channel.Partner.HasValue && channel.Partner.Value,
                 ImportedBy = importedBy
             };
         }

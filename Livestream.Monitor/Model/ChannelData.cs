@@ -11,6 +11,7 @@ namespace Livestream.Monitor.Model
         private string channelDescription;
         private string channelName;
         private bool live;
+        private bool isPartner;
 
         public bool Live
         {
@@ -80,7 +81,18 @@ namespace Livestream.Monitor.Model
                 NotifyOfPropertyChange(() => Uptime);
             }
         }
-        
+
+        public bool IsPartner
+        {
+            get { return isPartner; }
+            set
+            {
+                if (value == isPartner) return;
+                isPartner = value;
+                NotifyOfPropertyChange();
+            }
+        }
+
         /// <summary> The username this Channel came from by importing their follow list </summary>
         public string ImportedBy { get; set; }
 
