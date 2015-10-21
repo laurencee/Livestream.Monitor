@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -13,6 +14,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly IWindowManager windowManager;
         private string streamName;
         private bool canShowImportWindow = true;
+        private bool canRefreshChannels;
 
         public HeaderViewModel()
         {
@@ -26,7 +28,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-
+            
             this.monitorStreamsModel = monitorStreamsModel;
             this.windowManager = windowManager;
         }
@@ -56,6 +58,17 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool CanRefreshChannels
+        {
+            get { return canRefreshChannels; }
+            set
+            {
+                if (value == canRefreshChannels) return;
+                canRefreshChannels = value;
+                NotifyOfPropertyChange();
+            }
+        }
+
         public async Task AddStream()
         {
             if (IsNullOrWhiteSpace(StreamName)) return;
@@ -71,6 +84,23 @@ namespace Livestream.Monitor.ViewModels
 
             var settings = new WindowSettingsBuilder().SizeToContent().Create();
             windowManager.ShowWindow(importChannelsViewModel, null, settings);
+        }
+
+        public async Task RefreshChannels()
+        {
+            await monitorStreamsModel.RefreshChannels();
+        }
+
+        protected override void OnActivate()
+        {
+            monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
+            base.OnActivate();
+        }
+
+        private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshChannels))
+                CanRefreshChannels = monitorStreamsModel.CanRefreshChannels;
         }
     }
 }

@@ -80,7 +80,7 @@ namespace Livestream.Monitor.ViewModels
                 // hook up followed channels after our initial call so we can refresh immediately as needed
                 monitorStreamsModel.FollowedChannels.CollectionChanged += FollowedChannelsOnCollectionChanged;
             }
-            catch (Exception ex) 
+            catch (Exception) 
             {
                 // TODO - show the error to the user and log it
             }

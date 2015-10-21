@@ -8,13 +8,14 @@ using static System.String;
 
 namespace Livestream.Monitor.Model
 {
-    public class MonitorStreamsModel : IMonitorStreamsModel
+    public class MonitorStreamsModel : PropertyChangedBase, IMonitorStreamsModel
     {
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly BindableCollection<ChannelData> followedChannels = new BindableCollection<ChannelData>();
 
         private bool initialised;
+        private bool canRefreshChannels = true;
 
         #region Design Time Constructor
 
@@ -62,6 +63,17 @@ namespace Livestream.Monitor.Model
             }
         }
 
+        public bool CanRefreshChannels
+        {
+            get { return canRefreshChannels; }
+            private set
+            {
+                if (value == canRefreshChannels) return;
+                canRefreshChannels = value;
+                NotifyOfPropertyChange();
+            }
+        }
+
         public event EventHandler OnlineChannelsRefreshComplete;
 
         public async Task AddStream(ChannelData channelData)
@@ -89,6 +101,10 @@ namespace Livestream.Monitor.Model
 
         public async Task RefreshChannels()
         {
+            if (!CanRefreshChannels) return;
+
+            CanRefreshChannels = false;
+
             var missingChannelData = new List<ChannelData>();
             var tasks = FollowedChannels.Where(x => !IsNullOrWhiteSpace(x.ChannelName))
                                         .Select(x => new { ChannelData = x, Stream = twitchTvClient.GetStreamDetails(x.ChannelName) })
@@ -136,6 +152,8 @@ namespace Livestream.Monitor.Model
             {
                 // TODO - do something with errors, log/report etc
             }
+
+            CanRefreshChannels = true;
         }
 
         public void RemoveChannel(ChannelData channelData)

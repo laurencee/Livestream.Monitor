@@ -51,7 +51,7 @@ namespace Livestream.Monitor.ViewModels
                 await monitorStreamsModel.ImportFollows(Username);
                 TryClose();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // do something with exceptions from imports
             }

@@ -4,10 +4,12 @@ using Caliburn.Micro;
 
 namespace Livestream.Monitor.Model
 {
-    public interface IMonitorStreamsModel
+    public interface IMonitorStreamsModel : INotifyPropertyChangedEx
     {
         /// <summary> The list of followed channels, will be initialized on first access. </summary>
         BindableCollection<ChannelData> FollowedChannels { get; }
+
+        bool CanRefreshChannels { get; }
 
         event EventHandler OnlineChannelsRefreshComplete;
 
