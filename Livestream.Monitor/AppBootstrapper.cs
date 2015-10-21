@@ -33,6 +33,8 @@ namespace Livestream.Monitor
             container.PerRequest<ThemeSelectorViewModel>();
             container.PerRequest<HeaderViewModel>();
             container.PerRequest<ChannelListViewModel>();
+
+            container.PerRequest<StreamLauncher>();
         }
 
         protected override object GetInstance(Type service, string key)

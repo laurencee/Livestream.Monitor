@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -17,10 +18,13 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
+        private readonly StreamLauncher streamLauncher;
         private string streamName;
         private bool canShowImportWindow = true;
         private bool canRefreshChannels;
-        private string streamQuality;
+        private StreamQuality? selectedStreamQuality;
+        private bool canOpenStream;
+        private bool canOpenChat;
 
         public HeaderViewModel()
         {
@@ -31,15 +35,18 @@ namespace Livestream.Monitor.ViewModels
         public HeaderViewModel(
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
-            IWindowManager windowManager)
+            IWindowManager windowManager,
+            StreamLauncher streamLauncher)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
+            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
 
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
+            this.streamLauncher = streamLauncher;
         }
 
         public bool CanAddStream => !IsNullOrWhiteSpace(StreamName);
@@ -78,19 +85,42 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public string SelectedStreamQuality
+        public bool CanOpenStream
         {
-            get { return streamQuality; }
+            get { return canOpenStream; }
             set
             {
-                if (value == streamQuality) return;
-                streamQuality = value;
+                if (value == canOpenStream) return;
+                canOpenStream = value;
                 NotifyOfPropertyChange();
-                settingsHandler.Settings.DefaultStreamQuality = (StreamQuality)Enum.Parse(typeof(StreamQuality), streamQuality);
             }
         }
 
-        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
+        public bool CanOpenChat
+        {
+            get { return canOpenChat; }
+            set
+            {
+                if (value == canOpenChat) return;
+                canOpenChat = value;
+                NotifyOfPropertyChange();
+            }
+        }
+
+        public StreamQuality? SelectedStreamQuality
+        {
+            get { return selectedStreamQuality; }
+            set
+            {
+                if (value == selectedStreamQuality) return;
+                selectedStreamQuality = value;
+                NotifyOfPropertyChange();
+                if (selectedStreamQuality.HasValue)
+                    settingsHandler.Settings.DefaultStreamQuality = selectedStreamQuality.Value;
+            }
+        }
+
+        public BindableCollection<StreamQuality> StreamQualities { get; set; } = new BindableCollection<StreamQuality>();
 
         public async Task AddStream()
         {
@@ -112,6 +142,11 @@ namespace Livestream.Monitor.ViewModels
         public async Task RefreshChannels()
         {
             await monitorStreamsModel.RefreshChannels();
+        }
+
+        public void OpenStream()
+        {
+            streamLauncher.StartStream();
         }
 
         public void OpenChat()
@@ -150,15 +185,39 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnActivate()
         {
             monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
-            SelectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
-            StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
             base.OnActivate();
         }
 
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshChannels))
+            {
                 CanRefreshChannels = monitorStreamsModel.CanRefreshChannels;
+            }
+            else if (e.PropertyName == nameof(monitorStreamsModel.SelectedChannel))
+            {
+                var selectedChannel = monitorStreamsModel.SelectedChannel;
+                CanOpenStream = selectedChannel != null && selectedChannel.Live;
+                CanOpenChat = selectedChannel != null;
+                StreamQualities.Clear();
+                selectedStreamQuality = null;
+                if (CanOpenStream)
+                {
+                    if (selectedChannel.IsPartner)
+                    {
+                        StreamQualities.AddRange(Enum.GetValues(typeof(StreamQuality)).Cast<StreamQuality>());
+                        // set field instead of property so we dont update user settings
+                        selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality;
+                    }
+                    else
+                    {
+                        StreamQualities.Add(StreamQuality.Source); //only source mode is available for non-twitch partners
+                        // set field instead of property so we dont update user settings
+                        selectedStreamQuality = StreamQuality.Source;
+                    }
+                }
+                NotifyOfPropertyChange(() => SelectedStreamQuality);
+            }
         }
     }
 }

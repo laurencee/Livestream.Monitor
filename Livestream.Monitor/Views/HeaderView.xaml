@@ -31,11 +31,13 @@
                 </DataTemplate>
             </Button.ContentTemplate>
         </Button>
-        <Button x:Name="ShowImportWindow" Content="Import Channels" Grid.Column="2" Margin="2" ToolTip="Import channels from the provided username" />
+        <Button Grid.Column="2" x:Name="ShowImportWindow" Content="Import Channels"  Margin="2" ToolTip="Import channels from the provided username" />
         <Separator Grid.Column="3" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button x:Name="RefreshChannels" Content="&#x21BB;" FontWeight="ExtraBold" Grid.Column="4" Margin="2" ToolTip="Refresh Channels" />
+        <Button Grid.Column="4" x:Name="RefreshChannels" Content="&#x21BB;" FontWeight="ExtraBold"  Margin="2" ToolTip="Refresh Channels" />
         <TextBlock Grid.Column="5" Text="Quality:" VerticalAlignment="Center" Margin="5" />
-        <ComboBox x:Name="StreamQualities" Grid.Column="6" Margin="2" MinWidth="75" />
-        <Button x:Name="OpenChat" Content="Chat" Grid.Column="7" Margin="2" />
+        <controls:SplitButton Grid.Column="6" Margin="2" MinWidth="75" VerticalContentAlignment="Center" HorizontalAlignment="Center"
+                              ItemsSource="{Binding StreamQualities}" SelectedItem="{Binding SelectedStreamQuality}" IsEnabled="{Binding CanOpenStream}"
+                              cal:Message.Attach="[Click] = [OpenStream]" />
+        <Button Grid.Column="7" x:Name="OpenChat" Content="Chat"  Margin="2" />
     </Grid>
 </UserControl>
