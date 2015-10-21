@@ -121,7 +121,7 @@ namespace Livestream.Monitor.ViewModels
             var selectedChannel = monitorStreamsModel.SelectedChannel;
             if (selectedChannel == null) return;
 
-            string chromeArgs = $"--app=http://www.twitch.tv/{selectedChannel.ChannelName}/chat?popout=true";
+            string chromeArgs = $"--app=http://www.twitch.tv/{selectedChannel.ChannelName}/chat?popout=true --window-size=350,758";
 
             Task.Run(() =>
             {
