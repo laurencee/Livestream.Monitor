@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
@@ -36,18 +37,23 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
             IWindowManager windowManager,
-            StreamLauncher streamLauncher)
+            StreamLauncher streamLauncher,
+            FilterModel filterModelModel)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-
+            if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
+            
+            FilterModel = filterModelModel;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
             this.streamLauncher = streamLauncher;
         }
+
+        public FilterModel FilterModel { get; }
 
         public bool CanAddStream => !IsNullOrWhiteSpace(StreamName);
 
@@ -180,6 +186,12 @@ namespace Livestream.Monitor.ViewModels
                     // TODO - log errors opening chat
                 }
             });
+        }
+
+        public async void KeyPressed(KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+                await AddStream();
         }
 
         protected override void OnActivate()

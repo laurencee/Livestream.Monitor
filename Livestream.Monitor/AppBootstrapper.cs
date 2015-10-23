@@ -28,6 +28,7 @@ namespace Livestream.Monitor
             container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();
+            container.Singleton<FilterModel>();
 
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();

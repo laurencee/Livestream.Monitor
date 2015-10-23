@@ -43,7 +43,6 @@ namespace Livestream.Monitor.Model
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
             string livestreamerArgs = $"http://www.twitch.tv/{selectedChannel.ChannelName}/ {streamQuality}";
-
             var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel, settingsHandler.Settings.DefaultStreamQuality);
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI

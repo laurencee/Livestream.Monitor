@@ -6,6 +6,7 @@ using System.Windows.Data;
 using System.Windows.Threading;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Core;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -26,6 +27,7 @@ namespace Livestream.Monitor.ViewModels
 
         public ChannelListViewModel(
             IMonitorStreamsModel monitorStreamsModel,
+            FilterModel filterModel,
             StreamLauncher streamLauncher)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
@@ -33,6 +35,7 @@ namespace Livestream.Monitor.ViewModels
 
             this.streamLauncher = streamLauncher;
             this.StreamsModel = monitorStreamsModel;
+            FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
             refreshTimer.Tick += async (sender, args) => await RefreshChannels();
         }
@@ -50,7 +53,8 @@ namespace Livestream.Monitor.ViewModels
 
         public IMonitorStreamsModel StreamsModel { get; }
 
-        public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
+        public FilterModel FilterModel { get; }
+
 
         public async Task RefreshChannels()
         {
@@ -80,13 +84,15 @@ namespace Livestream.Monitor.ViewModels
             try
             {
                 StreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
+                FilterModel.PropertyChanged += (sender, args) => ViewSource.View.Refresh();
                 ViewSource.Source = StreamsModel.Channels;
                 ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
                 ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
+                ViewSource.Filter += ViewSourceOnFilter;
 
                 await RefreshChannels();
                 // hook up followed channels after our initial call so we can refresh immediately as needed
-                StreamsModel.Channels.CollectionChanged += FollowedChannelsOnCollectionChanged;
+                StreamsModel.Channels.CollectionChanged += ChannelsOnCollectionChanged;
             }
             catch (Exception)
             {
@@ -97,20 +103,12 @@ namespace Livestream.Monitor.ViewModels
             base.OnActivate();
         }
 
-        private void OnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
-        {
-            // We only really care about sorting online channels so this causes the sort descriptions to be applied immediately 
-            ViewSource.View.Refresh();
-        }
-
-        private async void FollowedChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private async void ChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
                     ViewSource.View.Refresh();
-                    break;
-                case NotifyCollectionChangedAction.Remove:
                     break;
                 case NotifyCollectionChangedAction.Replace:
                 case NotifyCollectionChangedAction.Move:
@@ -118,6 +116,33 @@ namespace Livestream.Monitor.ViewModels
                     await RefreshChannels();
                     break;
             }
+        }
+
+        public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
+
+        private void ViewSourceOnFilter(object sender, FilterEventArgs e)
+        {
+            var f = FilterModel.Filter;
+            if (string.IsNullOrWhiteSpace(f))
+            {
+                e.Accepted = true;
+                return;
+            }
+
+            var item = e.Item as ChannelData;
+            if (item != null && item.ChannelName.Contains(f, StringComparison.OrdinalIgnoreCase))
+            {
+                e.Accepted = true;
+                return;
+            }
+
+            e.Accepted = false;
+        }
+
+        private void OnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
+        {
+            // We only really care about sorting online channels so this causes the sort descriptions to be applied immediately 
+            ViewSource.View.Refresh();
         }
     }
 }
