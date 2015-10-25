@@ -162,7 +162,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 var msgBox = new MessageBoxViewModel()
                 {
-                    DisplayName = "Livestreamer not found",
+                    DisplayName = "Chrome not found",
                     MessageText = $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function."
                 };
                 var settings = new WindowSettingsBuilder().SizeToContent()
