@@ -63,6 +63,7 @@ namespace Livestream.Monitor.Model
                                                       .WithResizeMode(ResizeMode.NoResize)
                                                       .WithTopLeft(vmTopLeft.Y, vmTopLeft.X)
                                                       .TransparentBackground()
+                                                      .AsTopmost()
                                                       .Create();
 
             var notificationViewModel = new NotificationViewModel(notification);

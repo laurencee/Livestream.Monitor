@@ -80,9 +80,9 @@ namespace Livestream.Monitor.Core
             return this;
         }
 
-        public WindowSettingsBuilder AsTopmost(bool isTopmost)
+        public WindowSettingsBuilder AsTopmost()
         {
-            settings.TopMost = isTopmost;
+            settings.TopMost = true;
             return this;
         }
 
