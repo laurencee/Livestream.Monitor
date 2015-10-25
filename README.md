@@ -3,6 +3,8 @@ A windows GUI for [livestreamer](http://docs.livestreamer.io/install.html#window
 
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a java GUI for livestreamer.
 
+![image](https://cloud.githubusercontent.com/assets/3850553/10718577/2c29d320-7bc2-11e5-8360-49464f16e6b0.png)
+
 ## Pre-requisites
 * [.NET 4.6](https://www.microsoft.com/en-us/download/details.aspx?id=48130) installed
 * [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed
