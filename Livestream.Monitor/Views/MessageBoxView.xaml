@@ -6,7 +6,7 @@
              mc:Ignorable="d">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
         <ScrollViewer MaxWidth="700" MaxHeight="500" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <TextBlock x:Name="MessageText" Margin="10,10,10,20" TextWrapping="Wrap" />
+            <TextBox x:Name="MessageText" Margin="10,10,10,20" TextWrapping="Wrap" IsReadOnly="True" />
         </ScrollViewer>
     </Grid>
 </UserControl>

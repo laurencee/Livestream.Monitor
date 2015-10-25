@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -157,7 +158,20 @@ namespace Livestream.Monitor.ViewModels
 
         public void OpenChat()
         {
-            if (!File.Exists(ChromeLocation)) return;
+            if (!File.Exists(ChromeLocation))
+            {
+                var msgBox = new MessageBoxViewModel()
+                {
+                    DisplayName = "Livestreamer not found",
+                    MessageText = $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function."
+                };
+                var settings = new WindowSettingsBuilder().SizeToContent()
+                                                      .WithWindowStyle(WindowStyle.ToolWindow)
+                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .Create();
+                windowManager.ShowWindow(msgBox, null, settings);
+                return;
+            }
 
             var selectedChannel = monitorStreamsModel.SelectedChannel;
             if (selectedChannel == null) return;

@@ -6,6 +6,11 @@ namespace Livestream.Monitor.ViewModels
     {
         private string messageText;
 
+        public MessageBoxViewModel()
+        {
+            DisplayName = "Livestream Monitor";
+        }
+
         public string MessageText
         {
             get { return messageText; }

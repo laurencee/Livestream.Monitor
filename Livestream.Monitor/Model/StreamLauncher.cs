@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
@@ -30,11 +31,26 @@ namespace Livestream.Monitor.Model
 
         public void StartStream()
         {
-            var selectedChannel = monitorStreamsModel.SelectedChannel;
-            if (selectedChannel == null || !selectedChannel.Live) return;
-
             // TODO - do a smarter find for the livestreamer exe and prompt on startup if it can not be found
             const string livestreamPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
+
+            if (!File.Exists(livestreamPath))
+            {
+                var msgBox = new MessageBoxViewModel()
+                {
+                    DisplayName = "Livestreamer not found",
+                    MessageText = $"Could not find livestreamer @ {livestreamPath}.{Environment.NewLine} Please download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
+                };
+                var settings = new WindowSettingsBuilder().SizeToContent()
+                                                      .WithWindowStyle(WindowStyle.ToolWindow)
+                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .Create();
+                windowManager.ShowWindow(msgBox, null, settings);
+                return;
+            }
+
+            var selectedChannel = monitorStreamsModel.SelectedChannel;
+            if (selectedChannel == null || !selectedChannel.Live) return;
 
             // Fall back to source stream quality for non-partnered channels
             var streamQuality = (!selectedChannel.IsPartner &&
