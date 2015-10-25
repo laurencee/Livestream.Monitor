@@ -1,5 +1,6 @@
 ﻿using System;
 using Caliburn.Micro;
+using TwitchTv.Dto;
 
 namespace Livestream.Monitor.Model
 {
@@ -12,6 +13,7 @@ namespace Livestream.Monitor.Model
         private string channelName;
         private bool live;
         private bool isPartner;
+        private Preview preview;
 
         public bool Live
         {
@@ -90,6 +92,17 @@ namespace Livestream.Monitor.Model
                 if (value == isPartner) return;
                 isPartner = value;
                 NotifyOfPropertyChange();
+            }
+        }
+
+        public Preview Preview
+        {
+            get { return preview; }
+            set
+            {
+                if (Equals(value, preview)) return;
+                preview = value;
+                NotifyOfPropertyChange(() => Preview);
             }
         }
 

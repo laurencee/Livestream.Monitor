@@ -61,6 +61,7 @@ namespace Livestream.Monitor
 
         protected override void OnStartup(object sender, System.Windows.StartupEventArgs e)
         {
+            container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
         }
     }

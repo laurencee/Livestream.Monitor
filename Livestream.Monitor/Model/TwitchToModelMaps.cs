@@ -38,14 +38,17 @@ namespace Livestream.Monitor.Model
         public static void PopulateWithStreamDetails(this ChannelData channelData, Stream streamDetails)
         {
             if (streamDetails == null) return;
-
-            channelData.Live = streamDetails.Viewers.HasValue;
+            
             channelData.Viewers = streamDetails.Viewers ?? 0;
+            channelData.Preview = streamDetails.Preview;
             if (streamDetails.CreatedAt != null)
             {
                 channelData.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);
                 channelData.NotifyOfPropertyChange(nameof(channelData.Uptime));
             }
+
+            // need to update other details before flipping the stream to online
+            channelData.Live = streamDetails.Viewers.HasValue;
         }
 
         public static void PopulateWithChannel(this ChannelData channelData, Channel channel)

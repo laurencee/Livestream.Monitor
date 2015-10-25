@@ -25,6 +25,8 @@ namespace TwitchTv.Dto
         [JsonProperty("is_playlist")]
         public bool? IsPlaylist { get; set; }
 
+        public Preview Preview { get; set; }
+
         public Channel Channel { get; set; }
     }
 }

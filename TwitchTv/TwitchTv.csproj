@@ -48,6 +48,7 @@
     <Compile Include="Dto\Channel.cs" />
     <Compile Include="Dto\Follow.cs" />
     <Compile Include="Dto\ChannelLinks.cs" />
+    <Compile Include="Dto\Preview.cs" />
     <Compile Include="Dto\Stream.cs" />
     <Compile Include="Dto\StreamRoot.cs" />
     <Compile Include="ITwitchTvReadonlyClient.cs" />

@@ -24,16 +24,17 @@ namespace Livestream.Monitor.Model
         private readonly List<Notification> buffer = new List<Notification>();
         private readonly List<Notification> notifications = new List<Notification>();
         private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(5);
-        
+
         private int notificationId;
         private bool hasRefreshed;
 
         public NotificationHandler(IWindowManager windowManager,
-            IMonitorStreamsModel monitorStreamsModel)
+                                   IMonitorStreamsModel monitorStreamsModel)
         {
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-            this.windowManager = windowManager;
+            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
 
+            this.windowManager = windowManager;
             this.monitorStreamsModel = monitorStreamsModel;
 
             foreach (var channelData in monitorStreamsModel.Channels)
@@ -90,14 +91,15 @@ namespace Livestream.Monitor.Model
         private void AdjustWindows()
         {
             var windows = Application.Current.Windows.Cast<Window>()
-                                     .Where(x => x.Title == typeof (NotificationViewModel).FullName)
+                                     .Where(x => x.Title == typeof(NotificationViewModel).FullName)
                                      .OrderBy(x => x.Top)
                                      .ToList();
 
             // drop all remaining windows down to the place of the previous window
             for (int i = 0; i < windows.Count; i++)
             {
-                windows[i].Top = SystemParameters.WorkArea.Bottom - (NotificationViewWindowHeight * (i + 1)) - BottomMargin;
+                windows[i].Top = SystemParameters.WorkArea.Bottom - (NotificationViewWindowHeight * (i + 1)) -
+                                 BottomMargin;
             }
         }
 
@@ -105,7 +107,8 @@ namespace Livestream.Monitor.Model
         {
             if (notification == null) return new Point();
 
-            var index = notifications.IndexOf(notification) + 1; // we care about the order the notifications were added for vertical positioning
+            var index = notifications.IndexOf(notification) + 1;
+            // we care about the order the notifications were added for vertical positioning
             if (index == 0) return new Point();
 
             return new Point()
@@ -175,8 +178,10 @@ namespace Livestream.Monitor.Model
                 var notification = new Notification()
                 {
                     Title = $"{channelData.ChannelName} Online",
-                    Message = channelData.ChannelDescription
+                    Message = channelData.ChannelDescription,
+                    ImageUrl = channelData.Preview?.Small
                 };
+
                 AddNotification(notification);
             }
         }
