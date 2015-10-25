@@ -1,6 +1,7 @@
 ﻿using System.Dynamic;
 using System.Windows;
 using System.Windows.Controls.Primitives;
+using System.Windows.Media;
 
 namespace Livestream.Monitor.Core
 {
@@ -24,8 +25,9 @@ namespace Livestream.Monitor.Core
             return this;
         }
 
-        public WindowSettingsBuilder WithTopLeft(int top = 0, int left = 0)
+        public WindowSettingsBuilder WithTopLeft(double top = 0, double left = 0)
         {
+            WithStartupLocation(WindowStartupLocation.Manual);
             settings.Left = left;
             settings.Top = top;
             return this;
@@ -81,6 +83,13 @@ namespace Livestream.Monitor.Core
         public WindowSettingsBuilder AsTopmost(bool isTopmost)
         {
             settings.TopMost = isTopmost;
+            return this;
+        }
+
+        public WindowSettingsBuilder TransparentBackground()
+        {
+            settings.AllowsTransparency = true;
+            settings.Background = Brushes.Transparent;
             return this;
         }
 

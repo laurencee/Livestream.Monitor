@@ -94,6 +94,8 @@
     <Compile Include="Model\ChannelFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
     <Compile Include="Model\MenuItem.cs" />
+    <Compile Include="Model\Notification.cs" />
+    <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
     <Compile Include="ViewModels\ChannelListViewModel.cs" />
@@ -108,6 +110,7 @@
     <Compile Include="ViewModels\MessageBoxViewModel.cs" />
     <Compile Include="Model\MonitoredStreamsFileHandler.cs" />
     <Compile Include="Model\MonitorStreamsModel.cs" />
+    <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="Views\ChannelListView.xaml.cs">
       <DependentUpon>ChannelListView.xaml</DependentUpon>
     </Compile>
@@ -143,6 +146,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\MessageBoxView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\NotificationView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -195,6 +202,9 @@
   <ItemGroup>
     <Resource Include="Images\Live.png" />
     <Resource Include="Images\Offline.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="SampleData\SampleDataSource\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

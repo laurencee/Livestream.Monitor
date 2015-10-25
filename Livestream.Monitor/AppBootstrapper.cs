@@ -1,3 +1,4 @@
+using System.Windows;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.ViewModels;
@@ -29,6 +30,7 @@ namespace Livestream.Monitor
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();
             container.Singleton<FilterModel>();
+            container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
 
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();
