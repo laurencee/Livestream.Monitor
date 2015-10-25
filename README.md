@@ -7,7 +7,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 
 ## Pre-requisites
 * [.NET 4.6](https://www.microsoft.com/en-us/download/details.aspx?id=48130) installed
-* [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed
+* [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
 * Chrome browser installed (app runs fine without chrome but chrome is required for chat to function)
 
 ## Usage
@@ -26,3 +26,14 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 ### TODO
 * Logging... (much lazyness)
 * Settings screen to enable/disable notifications & configure hardcoded executable lookup locations
+
+## Suggested livestreamer configuration
+1. Edit your livestreamer [configuration file](http://docs.livestreamer.io/cli.html#configuration-file) (%APPDATA%\livestreamer\livestreamerrc) and uncomment your preferred video player
+2. Change the number of threads when streaming HLS/HDS to 4
+```
+# Number of threads to use when streaming HLS streams
+hls-segment-threads=4
+
+# Number of threads to use when streaming HDS streams
+hds-segment-threads=4
+```
