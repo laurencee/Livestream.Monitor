@@ -94,7 +94,7 @@
     <Compile Include="Model\ChannelFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
     <Compile Include="Model\MenuItem.cs" />
-    <Compile Include="Model\Notification.cs" />
+    <Compile Include="Model\ChannelNotification.cs" />
     <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
@@ -203,9 +203,7 @@
     <Resource Include="Images\Live.png" />
     <Resource Include="Images\Offline.png" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="SampleData\SampleDataSource\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -60,6 +60,7 @@ namespace Livestream.Monitor.ViewModels
         {
             Application.Current.MainWindow.Show();
             WindowState = WindowState.Normal;
+            Application.Current.MainWindow.Activate();
         }
 
         private void WindowMinimized()

@@ -21,8 +21,8 @@ namespace Livestream.Monitor.Model
 
         private readonly IWindowManager windowManager;
         private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly List<Notification> buffer = new List<Notification>();
-        private readonly List<Notification> notifications = new List<Notification>();
+        private readonly List<ChannelNotification> buffer = new List<ChannelNotification>();
+        private readonly List<ChannelNotification> notifications = new List<ChannelNotification>();
         private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(5);
 
         private int notificationId;
@@ -45,21 +45,21 @@ namespace Livestream.Monitor.Model
             monitorStreamsModel.Channels.CollectionChanged += ChannelsOnCollectionChanged;
         }
 
-        public void AddNotification(Notification notification)
+        public void AddNotification(ChannelNotification channelNotification)
         {
-            notification.Id = notificationId++;
+            channelNotification.Id = notificationId++;
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
-                buffer.Add(notification);
+                buffer.Add(channelNotification);
             else
             {
-                notifications.Add(notification);
-                ShowNotification(notification);
+                notifications.Add(channelNotification);
+                ShowNotification(channelNotification);
             }
         }
 
-        private void ShowNotification(Notification notification)
+        private void ShowNotification(ChannelNotification channelNotification)
         {
-            var vmTopLeft = GetNotificationTopLeft(notification);
+            var vmTopLeft = GetNotificationTopLeft(channelNotification);
             var settings = new WindowSettingsBuilder().WithWindowStyle(WindowStyle.None)
                                                       .WithResizeMode(ResizeMode.NoResize)
                                                       .WithTopLeft(vmTopLeft.Y, vmTopLeft.X)
@@ -67,18 +67,18 @@ namespace Livestream.Monitor.Model
                                                       .AsTopmost()
                                                       .Create();
 
-            var notificationViewModel = new NotificationViewModel(notification);
+            var notificationViewModel = new NotificationViewModel(channelNotification, monitorStreamsModel);
 
-            // put remaining notifications into their correct position after this notification closes
+            // put remaining notifications into their correct position after this ChannelNotification closes
             notificationViewModel.Deactivated += (sender, args) =>
             {
                 AdjustWindows();
-                RemoveNotification(notificationViewModel.Notification);
+                RemoveNotification(notificationViewModel.ChannelNotification);
             };
             windowManager.ShowWindow(notificationViewModel, null, settings);
 
-            // TODO - do we really need a new dispatch timer every time we create a notification? 
-            // TODO - maybe we could just have 1 long running timer that on tick checks when the notification was added and removes it past its expiry time (5 seconds)
+            // TODO - do we really need a new dispatch timer every time we create a ChannelNotification? 
+            // TODO - maybe we could just have 1 long running timer that on tick checks when the ChannelNotification was added and removes it past its expiry time (5 seconds)
             var timer = new DispatcherTimer() { Interval = notificationDuration };
             timer.Tick += (sender, args) =>
             {
@@ -103,11 +103,11 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        private Point GetNotificationTopLeft(Notification notification)
+        private Point GetNotificationTopLeft(ChannelNotification channelNotification)
         {
-            if (notification == null) return new Point();
+            if (channelNotification == null) return new Point();
 
-            var index = notifications.IndexOf(notification) + 1;
+            var index = notifications.IndexOf(channelNotification) + 1;
             // we care about the order the notifications were added for vertical positioning
             if (index == 0) return new Point();
 
@@ -118,10 +118,10 @@ namespace Livestream.Monitor.Model
             };
         }
 
-        private void RemoveNotification(Notification notification)
+        private void RemoveNotification(ChannelNotification channelNotification)
         {
-            if (notifications.Contains(notification))
-                notifications.Remove(notification);
+            if (notifications.Contains(channelNotification))
+                notifications.Remove(channelNotification);
             if (buffer.Count > 0)
             {
                 AddNotification(buffer[0]);
@@ -181,11 +181,12 @@ namespace Livestream.Monitor.Model
             {
                 if (!channelData.Live) return; // only care about streams coming online
 
-                var notification = new Notification()
+                var notification = new ChannelNotification()
                 {
                     Title = $"{channelData.ChannelName} Online",
                     Message = channelData.ChannelDescription,
-                    ImageUrl = channelData.Preview?.Small
+                    ImageUrl = channelData.Preview?.Small,
+                    ChannelData = channelData
                 };
 
                 AddNotification(notification);
