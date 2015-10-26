@@ -157,14 +157,20 @@ namespace Livestream.Monitor.Model
 
         private void ChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            foreach (ChannelData channelData in e.NewItems)
+            if (e.NewItems != null)
             {
-                HookChannelChangeEvents(channelData);
+                foreach (ChannelData channelData in e.NewItems)
+                {
+                    HookChannelChangeEvents(channelData);
+                }
             }
 
-            foreach (ChannelData removedChannels in e.OldItems)
+            if (e.OldItems != null)
             {
-                UnhookChannelChangeEvents(removedChannels);
+                foreach (ChannelData removedChannels in e.OldItems)
+                {
+                    UnhookChannelChangeEvents(removedChannels);
+                }
             }
         }
 
