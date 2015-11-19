@@ -134,6 +134,7 @@ namespace Livestream.Monitor.ViewModels
             if (IsNullOrWhiteSpace(StreamName)) return;
 
             await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
+            StreamName = null;
         }
 
         public void ShowImportWindow()

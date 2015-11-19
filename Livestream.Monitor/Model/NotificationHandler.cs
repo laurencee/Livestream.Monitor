@@ -14,7 +14,7 @@ namespace Livestream.Monitor.Model
     public class NotificationHandler
     {
         private const double NotificationViewWindowHeight = 100;
-        private const double NotificationViewWindowWidth = 300;
+        private const double NotificationViewWindowWidth = 400;
         private const double BottomMargin = 5;
         private const double RightMargin = 10;
         private const byte MAX_NOTIFICATIONS = 4;
@@ -23,7 +23,7 @@ namespace Livestream.Monitor.Model
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly List<ChannelNotification> buffer = new List<ChannelNotification>();
         private readonly List<ChannelNotification> notifications = new List<ChannelNotification>();
-        private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(5);
+        private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(8);
 
         private int notificationId;
         private bool hasRefreshed;
@@ -49,7 +49,9 @@ namespace Livestream.Monitor.Model
         {
             channelNotification.Id = notificationId++;
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
+            {
                 buffer.Add(channelNotification);
+            }
             else
             {
                 notifications.Add(channelNotification);

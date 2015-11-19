@@ -29,12 +29,12 @@ namespace TwitchTv
             return userFollows;
         }
 
-        public async Task<Channel> GetChannelDetails(string username)
+        public async Task<Channel> GetChannelDetails(string streamName)
         {
-            if (IsNullOrWhiteSpace(username))
-                throw new ArgumentException("Argument is null or whitespace", nameof(username));
+            if (IsNullOrWhiteSpace(streamName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(streamName));
 
-            var request = RequestConstants.ChannelDetails.Replace("{0}", username);
+            var request = RequestConstants.ChannelDetails.Replace("{0}", streamName);
             var channelDetails = await ExecuteRequest<Channel>(request);
             return channelDetails;
         }

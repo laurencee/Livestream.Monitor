@@ -95,6 +95,9 @@ namespace Livestream.Monitor.Model
 
             var stream = await twitchTvClient.GetStreamDetails(channelData.ChannelName);
             channelData.PopulateWithStreamDetails(stream);
+            var channel = await twitchTvClient.GetChannelDetails(channelData.ChannelName);
+            channelData.PopulateWithChannel(channel);
+
             Channels.Add(channelData);
             SaveChannels();
         }
