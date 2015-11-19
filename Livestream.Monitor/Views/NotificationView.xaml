@@ -10,7 +10,7 @@
                       mc:Ignorable="d"
                       d:DataContext="{d:DesignInstance Type=viewModels:NotificationViewModel, IsDesignTimeCreatable=True}"
                       cal:Bind.AtDesignTime="True"
-                      Width="300" Height="100"
+                      Width="400" Height="100"
                       WindowStyle="None" AllowsTransparency="True" Background="Transparent" UseLayoutRounding="True"
                       ShowActivated="False" Topmost="True" ShowInTaskbar="False"
                       ShowTitleBar="False" ShowCloseButton="False" ShowIconOnTitleBar="False" ShowMaxRestoreButton="False" ShowMinButton="False">
