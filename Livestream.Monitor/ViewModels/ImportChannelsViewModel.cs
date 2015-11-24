@@ -51,9 +51,10 @@ namespace Livestream.Monitor.ViewModels
                 await monitorStreamsModel.ImportFollows(Username);
                 TryClose();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // do something with exceptions from imports
+                await this.ShowMessage("Error importing channels", ex.Message);
+                // TODO log import error
             }
             CanImport = true;
         }

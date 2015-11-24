@@ -1,9 +1,14 @@
 using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using System.Windows;
+using Caliburn.Micro;
+using MahApps.Metro.Controls;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.Core
 {
-    public static class StringExtensions
+    public static class Extensions
     {
         /// <summary>
         /// Returns spaced output for a Pascal cased string value
@@ -31,6 +36,23 @@ namespace Livestream.Monitor.Core
         public static bool IsEqualTo(this string original, string value, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
         {
             return String.Compare(original, value, stringComparison) == 0;
+        }
+
+        /// <summary> Save implementation to show messages from viewmodels </summary>
+        public static async Task ShowMessage(this IViewAware screen, string title, string message, 
+            MessageDialogStyle messageDialogStyle = MessageDialogStyle.Affirmative,
+            MetroDialogSettings dialogSettings = null)
+        {
+            if (screen == null) return;
+            var uiElement = screen.GetView() as DependencyObject;
+            if (uiElement != null)
+            {
+                var metroWindow = MetroWindow.GetWindow(uiElement) as MetroWindow;
+                if (metroWindow != null)
+                {
+                    await metroWindow.ShowMessageAsync(title, message, messageDialogStyle, dialogSettings);
+                }
+            }
         }
     }
 }

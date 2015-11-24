@@ -94,9 +94,10 @@ namespace Livestream.Monitor.ViewModels
                 // hook up followed channels after our initial call so we can refresh immediately as needed
                 StreamsModel.Channels.CollectionChanged += ChannelsOnCollectionChanged;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // TODO - show the error to the user and log it
+                await this.ShowMessage("Error loading channel list", ex.Message);
+                // TODO - log the error
             }
 
             Loading = false;

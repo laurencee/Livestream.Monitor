@@ -3,8 +3,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -27,6 +27,7 @@ namespace Livestream.Monitor.ViewModels
         private StreamQuality? selectedStreamQuality;
         private bool canOpenStream;
         private bool canOpenChat;
+        private bool canAddStream;
 
         public HeaderViewModel()
         {
@@ -56,7 +57,16 @@ namespace Livestream.Monitor.ViewModels
 
         public FilterModel FilterModel { get; }
 
-        public bool CanAddStream => !IsNullOrWhiteSpace(StreamName);
+        public bool CanAddStream
+        {
+            get { return canAddStream; }
+            set
+            {
+                if (value == canAddStream) return;
+                canAddStream = value;
+                NotifyOfPropertyChange();
+            }
+        }
 
         public string StreamName
         {
@@ -66,7 +76,7 @@ namespace Livestream.Monitor.ViewModels
                 if (value == streamName) return;
                 streamName = value;
                 NotifyOfPropertyChange(() => StreamName);
-                NotifyOfPropertyChange(() => CanAddStream);
+                CanAddStream = !IsNullOrWhiteSpace(streamName);
             }
         }
 
@@ -131,10 +141,25 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task AddStream()
         {
-            if (IsNullOrWhiteSpace(StreamName)) return;
+            if (IsNullOrWhiteSpace(StreamName) || !CanAddStream) return;
 
-            await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
-            StreamName = null;
+            CanAddStream = false;
+            try
+            {
+                await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
+                StreamName = null;
+            }
+            catch (HttpRequestException httpException)
+                when (httpException.Message == "Response status code does not indicate success: 404 (Not Found).")
+            {
+                CanAddStream = true;
+                await this.ShowMessage("Error adding stream", $"No channel found named '{StreamName}'");
+            }
+            catch (Exception ex)
+            {
+                CanAddStream = true; // on failure streamname not cleared so the user can try adding again
+                await this.ShowMessage("Error adding stream", ex.Message);
+            }
         }
 
         public void ShowImportWindow()
@@ -157,20 +182,12 @@ namespace Livestream.Monitor.ViewModels
             streamLauncher.StartStream();
         }
 
-        public void OpenChat()
+        public async Task OpenChat()
         {
             if (!File.Exists(ChromeLocation))
             {
-                var msgBox = new MessageBoxViewModel()
-                {
-                    DisplayName = "Chrome not found",
-                    MessageText = $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function."
-                };
-                var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .WithWindowStyle(WindowStyle.ToolWindow)
-                                                      .WithResizeMode(ResizeMode.NoResize)
-                                                      .Create();
-                windowManager.ShowWindow(msgBox, null, settings);
+                await this.ShowMessage("Chrome not found",
+                    $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
                 return;
             }
 
@@ -179,7 +196,7 @@ namespace Livestream.Monitor.ViewModels
 
             string chromeArgs = $"--app=http://www.twitch.tv/{selectedChannel.ChannelName}/chat?popout=true --window-size=350,758";
 
-            Task.Run(() =>
+            await Task.Run(async () =>
             {
                 try
                 {
@@ -196,16 +213,16 @@ namespace Livestream.Monitor.ViewModels
 
                     proc.Start();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // TODO - log errors opening chat
+                    await this.ShowMessage("Error launching chat", ex.Message);
                 }
             });
         }
 
         public async void KeyPressed(KeyEventArgs e)
         {
-            if (e.Key == Key.Enter)
+            if (e.Key == Key.Enter && CanAddStream)
                 await AddStream();
         }
 
