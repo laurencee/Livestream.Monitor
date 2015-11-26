@@ -77,7 +77,7 @@ namespace Livestream.Monitor
                 if (!Directory.Exists(logsFolder))
                     Directory.CreateDirectory(logsFolder);
 
-                File.AppendAllText(errorLogFilePath, $"{DateTime.Now}| {e.Exception}"); // global exception logging
+                File.AppendAllText(errorLogFilePath, $"{DateTime.Now.ToString("HH:mm:ss.ffff")}| {e.Exception}"); // global exception logging
             }
             catch 
             {
