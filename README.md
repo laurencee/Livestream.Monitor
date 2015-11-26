@@ -26,7 +26,6 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Change your colour theme using the theme button in the top right
 
 ### TODO
-* Logging... (much lazyness)
 * Settings screen to enable/disable notifications & configure hardcoded executable lookup locations
 
 ## Suggested livestreamer configuration
