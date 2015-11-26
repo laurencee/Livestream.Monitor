@@ -14,6 +14,7 @@
                         <Setter Property="Header" Value="{Binding Name}" />
                         <Setter Property="IsCheckable" Value="True" />
                         <Setter Property="IsChecked" Value="{Binding IsChecked}" />
+                        <Setter Property="StaysOpenOnClick" Value="True" />
                         <Setter Property="cal:Message.Attach" Value="Command()" />
                     </Style>
                 </MenuItem.ItemContainerStyle>
@@ -24,6 +25,7 @@
                         <Setter Property="Header" Value="{Binding Name}" />
                         <Setter Property="IsCheckable" Value="True" />
                         <Setter Property="IsChecked" Value="{Binding IsChecked}" />
+                        <Setter Property="StaysOpenOnClick" Value="True" />
                         <Setter Property="cal:Message.Attach" Value="Command()" />
                     </Style>
                 </MenuItem.ItemContainerStyle>

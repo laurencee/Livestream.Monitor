@@ -69,14 +69,14 @@ namespace Livestream.Monitor.ViewModels
             if (e.PropertyName == nameof(settingsHandler.Settings.MetroThemeAccentColour))
             {
                 AccentColours.ForEach(x => x.IsChecked = false);
-                var menuItem = AccentColours.FirstOrDefault(x => string.Equals(x.Name, settingsHandler.Settings.MetroThemeAccentColour.ToString()));
+                var menuItem = AccentColours.FirstOrDefault(x => string.Equals(x.Name.ReverseFriendlyString(), settingsHandler.Settings.MetroThemeAccentColour.ToString()));
                 if (menuItem != null)
                     menuItem.IsChecked = true;
             }
             else if (e.PropertyName == nameof(settingsHandler.Settings.MetroThemeBaseColour))
             {
                 BaseThemes.ForEach(x => x.IsChecked = false);
-                var menuItem = BaseThemes.FirstOrDefault(x => string.Equals(x.Name, settingsHandler.Settings.MetroThemeBaseColour.ToString()));
+                var menuItem = BaseThemes.FirstOrDefault(x => string.Equals(x.Name.ReverseFriendlyString(), settingsHandler.Settings.MetroThemeBaseColour.ToString()));
                 if (menuItem != null)
                     menuItem.IsChecked = true;
             }

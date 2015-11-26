@@ -21,6 +21,11 @@ namespace Livestream.Monitor.Core
             return Regex.Replace(pascalCaseValue, "(?!^)([A-Z])", " $1");
         }
 
+        public static string ReverseFriendlyString(this string friendlyString)
+        {
+            return friendlyString.Replace(" ", string.Empty);
+        }
+
         /// <summary>
         /// Contains method allowing for a <see cref="StringComparison"/> to be passed in
         /// </summary>
