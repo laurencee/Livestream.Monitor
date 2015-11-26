@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -35,9 +36,11 @@ namespace Livestream.Monitor.ViewModels
             Header = header;
             ChannelList = channelList;
             Items.AddRange(new Screen[] { Header, ChannelList, ThemeSelector });
+            var assemblyVersion = GetType().Assembly.GetName().Version;
+            DisplayName = $"LIVESTREAM MONITOR V{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
         }
 
-        public override string DisplayName { get; set; } = "Livestream Monitor";
+        public override string DisplayName { get; set; }
 
         public ThemeSelectorViewModel ThemeSelector { get; set; }
         public HeaderViewModel Header { get; set; }
