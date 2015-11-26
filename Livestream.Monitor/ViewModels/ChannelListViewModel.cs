@@ -96,7 +96,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessage("Error loading channel list", ex.Message);
+                await this.ShowMessageAsync("Error loading channel list", ex.Message);
                 // TODO - log the error
             }
 

@@ -36,7 +36,7 @@
                               ItemsSource="{Binding StreamQualities}" SelectedItem="{Binding SelectedStreamQuality}" IsEnabled="{Binding CanOpenStream}"
                               cal:Message.Attach="[Click] = [OpenStream]" />
         <Separator Grid.Column="7" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button Grid.Column="8" x:Name="ShowImportWindow" Content="Import Channels"  Margin="2" ToolTip="Import channels from the provided username" />
+        <Button Grid.Column="8" x:Name="ImportFollows" Content="Import Channels"  Margin="2" ToolTip="Import channels from the provided username" />
         <TextBox Grid.Column="9" x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new channel..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
         <Button Grid.Column="10" x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" ToolTip="Add new channel">

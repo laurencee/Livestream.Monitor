@@ -106,7 +106,6 @@
     <Compile Include="Core\WindowSettingsBuilder.cs" />
     <Compile Include="Model\IMonitoredStreamsFileHandler.cs" />
     <Compile Include="Model\IMonitorStreamsModel.cs" />
-    <Compile Include="ViewModels\ImportChannelsViewModel.cs" />
     <Compile Include="ViewModels\MessageBoxViewModel.cs" />
     <Compile Include="Model\MonitoredStreamsFileHandler.cs" />
     <Compile Include="Model\MonitorStreamsModel.cs" />
@@ -123,9 +122,6 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Views\ImportChannelsView.xaml.cs">
-      <DependentUpon>ImportChannelsView.xaml</DependentUpon>
-    </Compile>
     <Compile Include="Views\MessageBoxView.xaml.cs">
       <DependentUpon>MessageBoxView.xaml</DependentUpon>
     </Compile>
@@ -138,10 +134,6 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\HeaderView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Views\ImportChannelsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

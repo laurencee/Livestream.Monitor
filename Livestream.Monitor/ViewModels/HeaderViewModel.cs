@@ -9,6 +9,7 @@ using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
+using MahApps.Metro.Controls.Dialogs;
 using static System.String;
 
 namespace Livestream.Monitor.ViewModels
@@ -19,10 +20,8 @@ namespace Livestream.Monitor.ViewModels
 
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
-        private readonly IWindowManager windowManager;
         private readonly StreamLauncher streamLauncher;
         private string streamName;
-        private bool canShowImportWindow = true;
         private bool canRefreshChannels;
         private StreamQuality? selectedStreamQuality;
         private bool canOpenStream;
@@ -38,20 +37,17 @@ namespace Livestream.Monitor.ViewModels
         public HeaderViewModel(
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
-            IWindowManager windowManager,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
             
             FilterModel = filterModelModel;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
-            this.windowManager = windowManager;
             this.streamLauncher = streamLauncher;
         }
 
@@ -77,17 +73,6 @@ namespace Livestream.Monitor.ViewModels
                 streamName = value;
                 NotifyOfPropertyChange(() => StreamName);
                 CanAddStream = !IsNullOrWhiteSpace(streamName);
-            }
-        }
-
-        public bool CanShowImportWindow
-        {
-            get { return canShowImportWindow; }
-            set
-            {
-                if (value == canShowImportWindow) return;
-                canShowImportWindow = value;
-                NotifyOfPropertyChange();
             }
         }
 
@@ -144,6 +129,7 @@ namespace Livestream.Monitor.ViewModels
             if (IsNullOrWhiteSpace(StreamName) || !CanAddStream) return;
 
             CanAddStream = false;
+            var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
                 await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
@@ -153,23 +139,38 @@ namespace Livestream.Monitor.ViewModels
                 when (httpException.Message == "Response status code does not indicate success: 404 (Not Found).")
             {
                 CanAddStream = true;
-                await this.ShowMessage("Error adding stream", $"No channel found named '{StreamName}'");
+                await this.ShowMessageAsync("Error adding stream", $"No channel found named '{StreamName}'");
             }
             catch (Exception ex)
             {
                 CanAddStream = true; // on failure streamname not cleared so the user can try adding again
-                await this.ShowMessage("Error adding stream", ex.Message);
+                await this.ShowMessageAsync("Error adding stream", ex.Message);
             }
+
+            await dialogController.CloseAsync();
         }
 
-        public void ShowImportWindow()
+        public async Task ImportFollows()
         {
-            CanShowImportWindow = false;
-            var importChannelsViewModel = new ImportChannelsViewModel(monitorStreamsModel);
-            importChannelsViewModel.Deactivated += (sender, args) => CanShowImportWindow = true;
+            var dialogSettings = new MetroDialogSettings() { AffirmativeButtonText = "Import" };
+            var username = await this.ShowDialogAsync("Import Streams", "Enter username for importing followed streams", dialogSettings);
 
-            var settings = new WindowSettingsBuilder().SizeToContent().Create();
-            windowManager.ShowWindow(importChannelsViewModel, null, settings);
+            if (!IsNullOrWhiteSpace(username))
+            {
+                username = username.Trim();
+                var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from user '{username}'");
+                try
+                {
+                    await monitorStreamsModel.ImportFollows(username);
+                }
+                catch (Exception ex)
+                {
+                    await this.ShowMessageAsync("Error importing channels", ex.Message);
+                    // TODO log import error
+                }
+
+                await dialogController.CloseAsync();
+            }
         }
 
         public async Task RefreshChannels()
@@ -186,7 +187,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (!File.Exists(ChromeLocation))
             {
-                await this.ShowMessage("Chrome not found",
+                await this.ShowMessageAsync("Chrome not found",
                     $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
                 return;
             }
@@ -215,7 +216,7 @@ namespace Livestream.Monitor.ViewModels
                 }
                 catch (Exception ex)
                 {
-                    await this.ShowMessage("Error launching chat", ex.Message);
+                    await this.ShowMessageAsync("Error launching chat", ex.Message);
                 }
             });
         }

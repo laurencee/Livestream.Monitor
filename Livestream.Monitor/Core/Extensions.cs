@@ -39,20 +39,37 @@ namespace Livestream.Monitor.Core
         }
 
         /// <summary> Save implementation to show messages from viewmodels </summary>
-        public static async Task ShowMessage(this IViewAware screen, string title, string message, 
+        public static async Task<MessageDialogResult> ShowMessageAsync(this IViewAware screen, string title, string message,
             MessageDialogStyle messageDialogStyle = MessageDialogStyle.Affirmative,
             MetroDialogSettings dialogSettings = null)
         {
-            if (screen == null) return;
-            var uiElement = screen.GetView() as DependencyObject;
-            if (uiElement != null)
-            {
-                var metroWindow = MetroWindow.GetWindow(uiElement) as MetroWindow;
-                if (metroWindow != null)
-                {
-                    await metroWindow.ShowMessageAsync(title, message, messageDialogStyle, dialogSettings);
-                }
-            }
+            return await screen.GetMetroWindowFromScreen().ShowMessageAsync(title, message, messageDialogStyle, dialogSettings);
+        }
+
+        public static async Task<string> ShowDialogAsync(this IViewAware screen, string title, string message,
+            MetroDialogSettings dialogSettings = null)
+        {
+            return await screen.GetMetroWindowFromScreen().ShowInputAsync(title, message, dialogSettings);
+        }
+
+        public static async Task<ProgressDialogController> ShowProgressAsync(this IViewAware screen, string title, string message,
+            bool isCancellable = false,
+            MetroDialogSettings dialogSettings = null)
+        {
+            return await screen.GetMetroWindowFromScreen().ShowProgressAsync(title, message, isCancellable, dialogSettings);
+        }
+
+        private static MetroWindow GetMetroWindowFromScreen(this IViewAware screen)
+        {
+            var uiElement = screen?.GetView() as DependencyObject;
+            if (uiElement == null)
+                throw new InvalidOperationException($"The view for {typeof(Screen).Name} is not a dependency object");
+
+            var metroWindow = MetroWindow.GetWindow(uiElement) as MetroWindow;
+            if (metroWindow == null)
+                throw new InvalidOperationException($"Unable to get metro window from screen '{typeof(Screen).Name}'");
+
+            return metroWindow;
         }
     }
 }

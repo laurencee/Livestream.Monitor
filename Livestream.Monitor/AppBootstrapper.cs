@@ -1,4 +1,6 @@
+using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.ViewModels;
@@ -63,6 +65,26 @@ namespace Livestream.Monitor
         {
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
+        }
+
+        protected override void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                const string logsFolder = "logs";
+                string errorLogFileName = $"{DateTime.Now.ToString("yyyy-MM-dd")}_error.log";
+                string errorLogFilePath = Path.Combine(logsFolder, errorLogFileName);
+                if (!Directory.Exists(logsFolder))
+                    Directory.CreateDirectory(logsFolder);
+
+                File.AppendAllText(errorLogFilePath, $"{DateTime.Now}| {e.Exception}"); // global exception logging
+            }
+            catch 
+            {
+                // can't do anything if we fail to write the exception
+            }
+
+            base.OnUnhandledException(sender, e);
         }
     }
 }
