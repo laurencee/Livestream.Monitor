@@ -65,7 +65,6 @@ namespace Livestream.Monitor.ViewModels
 
         private void WindowMinimized()
         {
-            throw new InvalidOperationException("Test exception");
             Application.Current.MainWindow.Hide();
             if (firstMinimize) // only show the notification one time
             {
