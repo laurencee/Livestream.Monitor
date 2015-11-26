@@ -2,11 +2,14 @@ using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
+using System.Windows.Input;
 using System.Windows.Threading;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Core;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -54,8 +57,7 @@ namespace Livestream.Monitor.ViewModels
         public IMonitorStreamsModel StreamsModel { get; }
 
         public FilterModel FilterModel { get; }
-
-
+        
         public async Task RefreshChannels()
         {
             refreshTimer.Stop();
@@ -71,11 +73,37 @@ namespace Livestream.Monitor.ViewModels
             streamLauncher.StartStream();
         }
 
-        public void RemoveChannel()
+        public async Task DataGridKeyDown(KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete && StreamsModel.SelectedChannel != null)
+            {
+                await RemoveChannel();
+            }
+        }
+
+        public async Task RemoveChannel()
         {
             if (StreamsModel.SelectedChannel == null) return;
 
-            StreamsModel.RemoveChannel(StreamsModel.SelectedChannel);
+            var dialogResult = await this.ShowMessageAsync("Remove channel",
+                $"Are you sure you want to remove channel '{StreamsModel.SelectedChannel.ChannelName}'?",
+                MessageDialogStyle.AffirmativeAndNegative,
+                new MetroDialogSettings() { AffirmativeButtonText = "Remove" });
+
+            if (dialogResult == MessageDialogResult.Affirmative)
+            {
+                StreamsModel.RemoveChannel(StreamsModel.SelectedChannel);
+            }
+
+            // return focus to the datagrid after showing the remove channel dialog
+            this.SetFocus("ChannelListDataGrid");
+        }
+
+        public void CopyChannelUrl()
+        {
+            if (StreamsModel.SelectedChannel == null) return;
+
+            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedChannel.ChannelName}");
         }
 
         protected override async void OnActivate()

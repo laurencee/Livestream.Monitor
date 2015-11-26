@@ -11,12 +11,14 @@
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="500">
     <Grid>
-        <DataGrid ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedChannel}"
-                  AutoGenerateColumns="False" IsReadOnly="True" 
-                  cal:Message.Attach="[Event MouseDoubleClick] = [Action StartStream()]">
+        <DataGrid x:Name="ChannelListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedChannel}"
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                  cal:Message.Attach="[MouseDoubleClick] = [StartStream()];
+                                      [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]">
             <DataGrid.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Remove Channel" cal:Message.Attach="[Click] = [RemoveChannel]" />
+                    <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveChannels]" />
+                    <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyChannelUrl]" />
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
