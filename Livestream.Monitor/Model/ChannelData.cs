@@ -13,7 +13,7 @@ namespace Livestream.Monitor.Model
         private string channelName;
         private bool live;
         private bool isPartner;
-        private Preview preview;
+        private PreviewImage previewImage;
 
         public bool Live
         {
@@ -95,14 +95,14 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public Preview Preview
+        public PreviewImage PreviewImage
         {
-            get { return preview; }
+            get { return previewImage; }
             set
             {
-                if (Equals(value, preview)) return;
-                preview = value;
-                NotifyOfPropertyChange(() => Preview);
+                if (Equals(value, previewImage)) return;
+                previewImage = value;
+                NotifyOfPropertyChange(() => PreviewImage);
             }
         }
 

@@ -28,7 +28,10 @@ namespace Livestream.Monitor.Core
             try
             {
                 if (!File.Exists(SettingsFileName))
+                {
                     settings = new Settings();
+                    SaveSettings();
+                }
                 else
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
 
@@ -69,7 +72,7 @@ namespace Livestream.Monitor.Core
             ThemeManager.ChangeAppStyle(Application.Current, accentColour, baseColour);
         }
 
-        private void SaveSettings()
+        public void SaveSettings()
         {
             try
             {
@@ -77,7 +80,7 @@ namespace Livestream.Monitor.Core
             }
             catch (Exception)
             {
-                // log failure to write settings
+                // can't do much...
             }
         }
     }

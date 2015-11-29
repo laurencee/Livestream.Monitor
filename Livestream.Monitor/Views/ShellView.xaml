@@ -13,16 +13,19 @@
     <controls:MetroWindow.RightWindowCommands>
         <controls:WindowCommands>
             <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />
+            <Button x:Name="ShowSettings" Content="&#x2699;" cal:Message.Attach="[Click] = [ShowSettings]" />
         </controls:WindowCommands>
     </controls:MetroWindow.RightWindowCommands>
-    
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
 
+    <controls:MetroWindow.Flyouts>
+        <controls:FlyoutsControl>
+            <controls:Flyout Header="Settings" Position="Right" Width="300" IsOpen="{Binding IsSettingsOpen}">
+                <ContentControl x:Name="Settings" cal:View.Model="{Binding Settings}" />
+            </controls:Flyout>
+        </controls:FlyoutsControl>
+    </controls:MetroWindow.Flyouts>
+
+    <Grid>
         <tb:TaskbarIcon x:Name="TrayIcon" Visibility="Visible" 
                         IconSource="/Livestream.Monitor;component/Images/TrayIcon.ico" 
                         cal:Message.Attach="[Event TrayMouseDoubleClick] = [Action ShowWindow]">
@@ -34,8 +37,6 @@
                 </ContextMenu>
             </tb:TaskbarIcon.ContextMenu>
         </tb:TaskbarIcon>
-        <ContentControl Grid.Row="0" x:Name="Header" Margin="10,0" />
-        <Separator Grid.Row="1" />
-        <ContentControl Grid.Row="2" x:Name="ChannelList" />
+        <ContentControl Grid.Row="0" x:Name="ActiveItem" />
     </Grid>
 </controls:MetroWindow>

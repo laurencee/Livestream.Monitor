@@ -187,7 +187,7 @@ namespace Livestream.Monitor.Model
                 {
                     Title = $"{channelData.ChannelName} Online",
                     Message = channelData.ChannelDescription,
-                    ImageUrl = channelData.Preview?.Small,
+                    ImageUrl = channelData.PreviewImage?.Small,
                     ChannelData = channelData
                 };
 

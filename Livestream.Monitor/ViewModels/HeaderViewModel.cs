@@ -16,8 +16,6 @@ namespace Livestream.Monitor.ViewModels
 {
     public class HeaderViewModel : Screen
     {
-        private const string ChromeLocation = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
-
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
@@ -185,10 +183,11 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task OpenChat()
         {
-            if (!File.Exists(ChromeLocation))
+            var chromeLocation = settingsHandler.Settings.ChromeFullPath;
+            if (!File.Exists(chromeLocation))
             {
                 await this.ShowMessageAsync("Chrome not found",
-                    $"Could not find chrome @ {ChromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
+                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
                 return;
             }
 
@@ -205,7 +204,7 @@ namespace Livestream.Monitor.ViewModels
                     {
                         StartInfo =
                         {
-                            FileName = ChromeLocation,
+                            FileName = chromeLocation,
                             Arguments = chromeArgs,
                             CreateNoWindow = true,
                             UseShellExecute = false

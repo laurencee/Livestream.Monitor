@@ -37,6 +37,8 @@ namespace Livestream.Monitor
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();
             container.PerRequest<HeaderViewModel>();
+            container.PerRequest<MainViewModel>();
+            container.PerRequest<SettingsViewModel>();
             container.PerRequest<ChannelListViewModel>();
 
             container.PerRequest<StreamLauncher>();

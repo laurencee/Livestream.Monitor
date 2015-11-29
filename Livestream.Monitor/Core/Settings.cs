@@ -1,4 +1,5 @@
-﻿using Caliburn.Micro;
+﻿using System.ComponentModel;
+using Caliburn.Micro;
 using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Core
@@ -8,6 +9,8 @@ namespace Livestream.Monitor.Core
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
         private StreamQuality defaultStreamQuality;
+        private string livestreamerFullPath;
+        private string chromeFullPath;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -42,6 +45,32 @@ namespace Livestream.Monitor.Core
                 if (value == defaultStreamQuality) return;
                 defaultStreamQuality = value;
                 NotifyOfPropertyChange(() => DefaultStreamQuality);
+            }
+        }
+
+        [DefaultValue(@"C:\Program Files (x86)\Livestreamer\livestreamer.exe")]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string LivestreamerFullPath
+        {
+            get { return livestreamerFullPath; }
+            set
+            {
+                if (value == livestreamerFullPath) return;
+                livestreamerFullPath = value;
+                NotifyOfPropertyChange(() => LivestreamerFullPath);
+            }
+        }
+
+        [DefaultValue(@"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string ChromeFullPath
+        {
+            get { return chromeFullPath; }
+            set
+            {
+                if (value == chromeFullPath) return;
+                chromeFullPath = value;
+                NotifyOfPropertyChange(() => ChromeFullPath);
             }
         }
     }

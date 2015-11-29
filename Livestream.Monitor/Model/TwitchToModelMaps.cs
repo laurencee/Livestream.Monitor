@@ -40,7 +40,7 @@ namespace Livestream.Monitor.Model
             if (streamDetails == null) return;
             
             channelData.Viewers = streamDetails.Viewers ?? 0;
-            channelData.Preview = streamDetails.Preview;
+            channelData.PreviewImage = streamDetails.PreviewImage;
             if (streamDetails.CreatedAt != null)
             {
                 channelData.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);

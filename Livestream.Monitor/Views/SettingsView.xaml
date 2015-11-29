@@ -1,0 +1,49 @@
+﻿<UserControl x:Class="Livestream.Monitor.Views.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:Livestream.Monitor.Views"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:cal="http://www.caliburnproject.org"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModels:SettingsViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True" 
+             d:DesignWidth="300">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.Resources>
+                <ResourceDictionary>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="VerticalAlignment" Value="Center" />
+                        <Setter Property="Margin" Value="0,5" />
+                    </Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Margin" Value="0,5" />
+                    </Style>
+                </ResourceDictionary>
+            </Grid.Resources>
+            
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer Path: " />
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="LivestreamerFullPath" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Chrome Path: " />
+            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ChromeFullPath" />
+        </Grid>
+
+        <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20" />
+    </Grid>
+</UserControl>

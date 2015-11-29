@@ -31,9 +31,7 @@ namespace Livestream.Monitor.Model
 
         public void StartStream()
         {
-            // TODO - do a smarter find for the livestreamer exe and prompt on startup if it can not be found
-            const string livestreamPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
-
+            var livestreamPath = settingsHandler.Settings.LivestreamerFullPath;
             if (!File.Exists(livestreamPath))
             {
                 var msgBox = new MessageBoxViewModel()
@@ -52,7 +50,7 @@ namespace Livestream.Monitor.Model
             var selectedChannel = monitorStreamsModel.SelectedChannel;
             if (selectedChannel == null || !selectedChannel.Live) return;
 
-            // Fall back to source stream quality for non-partnered channels
+            // Fall back to source stream quality for non-partnered Channels
             var streamQuality = (!selectedChannel.IsPartner &&
                                  settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Source)
                                     ? StreamQuality.Source

@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics;
 using System.Windows;
 using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
@@ -7,12 +6,13 @@ using MahApps.Metro.Controls;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class ShellViewModel : Conductor<Screen>.Collection.AllActive
+    public class ShellViewModel : Conductor<Screen>.Collection.OneActive
     {
         public const string TrayIconControlName = "TrayIcon";
         private WindowState windowState = WindowState.Normal;
         private TaskbarIcon taskbarIcon;
         private bool firstMinimize = true;
+        private bool isSettingsOpen;
 
         public ShellViewModel()
         {
@@ -20,22 +20,26 @@ namespace Livestream.Monitor.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             ThemeSelector = new ThemeSelectorViewModel();
-            Header = new HeaderViewModel();
-            ChannelList = new ChannelListViewModel();
+            Settings = new SettingsViewModel();
+            ActiveItem = new MainViewModel();
         }
 
         public ShellViewModel(
             ThemeSelectorViewModel themeSelector,
-            HeaderViewModel header,
-            ChannelListViewModel channelList)
+            SettingsViewModel settingsViewModel,
+            MainViewModel mainViewModel)
         {
             if (themeSelector == null) throw new ArgumentNullException(nameof(themeSelector));
-            if (header == null) throw new ArgumentNullException(nameof(header));
-            
+            if (settingsViewModel == null) throw new ArgumentNullException(nameof(settingsViewModel));
+            if (mainViewModel == null) throw new ArgumentNullException(nameof(mainViewModel));
+
             ThemeSelector = themeSelector;
-            Header = header;
-            ChannelList = channelList;
-            Items.AddRange(new Screen[] { Header, ChannelList, ThemeSelector });
+            Settings = settingsViewModel;
+            ActiveItem = mainViewModel;
+
+            Settings.ActivateWith(this);
+            ThemeSelector.ActivateWith(this);
+
             var assemblyVersion = GetType().Assembly.GetName().Version;
             DisplayName = $"LIVESTREAM MONITOR V{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
         }
@@ -43,8 +47,8 @@ namespace Livestream.Monitor.ViewModels
         public override string DisplayName { get; set; }
 
         public ThemeSelectorViewModel ThemeSelector { get; set; }
-        public HeaderViewModel Header { get; set; }
-        public ChannelListViewModel ChannelList { get; set; }
+
+        public SettingsViewModel Settings { get; set; }
 
         public WindowState WindowState
         {
@@ -59,11 +63,27 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool IsSettingsOpen
+        {
+            get { return isSettingsOpen; }
+            set
+            {
+                if (value == isSettingsOpen) return;
+                isSettingsOpen = value;
+                NotifyOfPropertyChange(() => IsSettingsOpen);
+            }
+        }
+
         public void ShowWindow()
         {
             Application.Current.MainWindow.Show();
             WindowState = WindowState.Normal;
             Application.Current.MainWindow.Activate();
+        }
+
+        public void ShowSettings()
+        {
+            IsSettingsOpen = true;
         }
 
         private void WindowMinimized()
