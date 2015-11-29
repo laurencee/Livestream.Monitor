@@ -14,5 +14,11 @@ namespace TwitchTv
         Task<List<Game>> GetTopGames();
         Task<List<Stream>> SearchStreams(string streamName);
         Task<List<Game>> SearchGames(string gameName);
+
+        /// <summary> Gets the top 100 streams </summary>
+        Task<List<Stream>> GetTopStreams();
+
+        /// <summary> Gets the top 100 streams by <paramref name="gameName"/> </summary>
+        Task<List<Stream>> GetTopStreamsByGame(string gameName);
     }
 }

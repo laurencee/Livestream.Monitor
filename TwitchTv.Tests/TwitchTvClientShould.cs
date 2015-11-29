@@ -83,5 +83,24 @@ namespace TwitchTv.Tests
             Assert.NotNull(gamesResult);
             Assert.NotEmpty(gamesResult);
         }
+
+        [Fact]
+        public async Task GetTopStreams()
+        {
+            var topStreams = await sut.GetTopStreams();
+            Assert.NotNull(topStreams);
+            Assert.NotEmpty(topStreams);
+        }
+
+        [InlineData("World of Warcraft")]
+        [InlineData("Minecraft")]
+        [InlineData("League of Legends")]
+        [Theory]
+        public async Task GetTopStreamsByGame(string gameName)
+        {
+            var topGameStreams = await sut.GetTopStreamsByGame(gameName);
+            Assert.NotNull(topGameStreams);
+            Assert.NotEmpty(topGameStreams);
+        }
     }
 }
