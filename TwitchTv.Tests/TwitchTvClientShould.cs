@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace TwitchTv.Tests
@@ -27,6 +28,20 @@ namespace TwitchTv.Tests
         {
             var streamDetails = await sut.GetStreamDetails("etup");
             Assert.NotNull(streamDetails);
+        }
+
+        [Fact]
+        public async Task GetStreamsDetails()
+        {
+            var streamNames = new List<string>(new []
+            {
+                "massansc",
+                "esl_csgo",
+                "saintvicious"
+            });
+            var streamsDetails = await sut.GetStreamsDetails(streamNames);
+            Assert.NotNull(streamsDetails);
+            Assert.NotEmpty(streamsDetails);
         }
 
         [Fact]

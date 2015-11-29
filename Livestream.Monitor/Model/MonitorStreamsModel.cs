@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using Livestream.Monitor.Core;
 using TwitchTv;
-using static System.String;
 
 namespace Livestream.Monitor.Model
 {
@@ -119,36 +118,24 @@ namespace Livestream.Monitor.Model
             if (!CanRefreshChannels) return;
 
             CanRefreshChannels = false;
-
-            var missingChannelData = new List<ChannelData>();
-            var tasks = Channels.Where(x => !IsNullOrWhiteSpace(x.ChannelName))
-                                        .Select(x => new { ChannelData = x, Stream = twitchTvClient.GetStreamDetails(x.ChannelName) })
-                                        .ToList();
-
             try
             {
-                await Task.WhenAll(tasks.Select(x => x.Stream));
-                foreach (var task in tasks)
-                {
-                    var streamDetails = task.Stream.Result;
-                    if (streamDetails == null)
-                    {
-                        missingChannelData.Add(task.ChannelData);
-                        if (task.ChannelData.Live) // streamer is no longer live
-                        {
-                            task.ChannelData.Offline();
-                        }
-                        continue;
-                    }
+                var onlineStreams = await twitchTvClient.GetStreamsDetails(Channels.Select(x => x.ChannelName).ToList());
 
-                    task.ChannelData.PopulateWithChannel(streamDetails.Channel);
-                    task.ChannelData.PopulateWithStreamDetails(streamDetails);
+                foreach (var onlineStream in onlineStreams)
+                {
+                    var channelData = Channels.Single(x => x.ChannelName.IsEqualTo(onlineStream.Channel.Name));
+
+                    channelData.PopulateWithChannel(onlineStream.Channel);
+                    channelData.PopulateWithStreamDetails(onlineStream);
                 }
 
                 // Notify that the most important channels have up to date information
                 OnOnlineChannelsRefreshComplete();
 
-                var offlineTasks = missingChannelData.Select(x => new
+                var offlineStreams = Channels.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.ChannelName))).ToList();
+
+                var offlineTasks = offlineStreams.Select(x => new
                 {
                     ChannelData = x,
                     OfflineData = twitchTvClient.GetChannelDetails(x.ChannelName)
