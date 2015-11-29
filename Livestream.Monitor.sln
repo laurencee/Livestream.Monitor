@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24627.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Livestream.Monitor", "Livestream.Monitor\Livestream.Monitor.csproj", "{16660EA2-733F-4275-8C64-43ABDCCE0AB9}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TwitchTv", "TwitchTv\TwitchTv.csproj", "{D1BF356B-E6F4-4BD6-A8CC-56DDF5983DCB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TwitchTv.Tests", "TwitchTv.Tests\TwitchTv.Tests.csproj", "{2933E51A-14EE-4815-827E-5D3DF181CD89}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{D1BF356B-E6F4-4BD6-A8CC-56DDF5983DCB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D1BF356B-E6F4-4BD6-A8CC-56DDF5983DCB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D1BF356B-E6F4-4BD6-A8CC-56DDF5983DCB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2933E51A-14EE-4815-827E-5D3DF181CD89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2933E51A-14EE-4815-827E-5D3DF181CD89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2933E51A-14EE-4815-827E-5D3DF181CD89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2933E51A-14EE-4815-827E-5D3DF181CD89}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using TwitchTv.Dto;
+using TwitchTv.Dto.QueryRoot;
 
 namespace TwitchTv
 {

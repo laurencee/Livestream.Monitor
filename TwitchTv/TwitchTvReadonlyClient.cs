@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using TwitchTv.Dto;
+using TwitchTv.Dto.QueryRoot;
 using static System.String;
 
 namespace TwitchTv
@@ -47,6 +49,33 @@ namespace TwitchTv
             var request = RequestConstants.StreamDetails.Replace("{0}", streamName);
             var streamRoot = await ExecuteRequest<StreamRoot>(request);
             return streamRoot.Stream;
+        }
+
+        public async Task<List<Game>> GetTopGames()
+        {
+            var request = RequestConstants.TopGames;
+            var gamesRoot = await ExecuteRequest<TopGamesRoot>(request);
+            return gamesRoot.Top;
+        }
+
+        public async Task<List<Stream>> SearchStreams(string streamName)
+        {
+            if (IsNullOrWhiteSpace(streamName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(streamName));
+
+            var request = RequestConstants.SearchStreams.Replace("{0}", streamName);
+            var streamsRoot = await ExecuteRequest<StreamsRoot>(request);
+            return streamsRoot.Streams;
+        }
+
+        public async Task<List<Game>> SearchGames(string gameName)
+        {
+            if (IsNullOrWhiteSpace(gameName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(gameName));
+
+            var request = RequestConstants.SearchGames.Replace("{0}", gameName);
+            var gamesRoot = await ExecuteRequest<GamesRoot>(request);
+            return gamesRoot.Games;
         }
 
         private async Task<T> ExecuteRequest<T>(string request)

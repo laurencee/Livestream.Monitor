@@ -1,4 +1,4 @@
-namespace TwitchTv.Dto
+namespace TwitchTv.Dto.QueryRoot
 {
     /// <summary>
     /// JSON root for the stream information, contains additional data we dont care about

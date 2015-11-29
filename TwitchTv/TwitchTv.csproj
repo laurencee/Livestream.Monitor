@@ -48,12 +48,17 @@
     <Compile Include="Dto\Channel.cs" />
     <Compile Include="Dto\Follow.cs" />
     <Compile Include="Dto\ChannelLinks.cs" />
-    <Compile Include="Dto\Preview.cs" />
+    <Compile Include="Dto\Game.cs" />
+    <Compile Include="Dto\QueryRoot\GamesRoot.cs" />
+    <Compile Include="Dto\PreviewImage.cs" />
+    <Compile Include="Dto\QueryRoot\TopGamesRoot.cs" />
     <Compile Include="Dto\Stream.cs" />
-    <Compile Include="Dto\StreamRoot.cs" />
+    <Compile Include="Dto\QueryRoot\StreamRoot.cs" />
+    <Compile Include="Dto\QueryRoot\StreamsRoot.cs" />
+    <Compile Include="Dto\TopGame.cs" />
     <Compile Include="ITwitchTvReadonlyClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Dto\UserFollows.cs" />
+    <Compile Include="Dto\QueryRoot\UserFollows.cs" />
     <Compile Include="RequestConstants.cs" />
     <Compile Include="TwitchTvReadonlyClient.cs" />
   </ItemGroup>

@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace TwitchTv.Dto
+namespace TwitchTv.Dto.QueryRoot
 {
     public class UserFollows
     {

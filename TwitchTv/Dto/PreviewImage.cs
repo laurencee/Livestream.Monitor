@@ -1,6 +1,6 @@
 namespace TwitchTv.Dto
 {
-    public class Preview
+    public class PreviewImage
     {
         public string Small { get; set; }
 
