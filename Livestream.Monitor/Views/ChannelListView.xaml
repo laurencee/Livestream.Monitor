@@ -17,7 +17,7 @@
                                       [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]">
             <DataGrid.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveChannels]" />
+                    <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveChannel]" />
                     <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyChannelUrl]" />
                 </ContextMenu>
             </DataGrid.ContextMenu>
