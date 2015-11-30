@@ -17,7 +17,7 @@ namespace TwitchTv.Tests
             Assert.NotEmpty(followedStreams.Follows);
         }
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task GetChannelDetails()
         {
             var channelDetails = await sut.GetChannelDetails("etup");
@@ -25,7 +25,7 @@ namespace TwitchTv.Tests
         }
 
         [Fact, Trait("Category", "LocalOnly")]
-        public async Task GetStreamDetails()
+        public async Task GetStreamDetailsForEtup()
         {
             var streamDetails = await sut.GetStreamDetails("etup");
             Assert.NotNull(streamDetails);
@@ -53,7 +53,7 @@ namespace TwitchTv.Tests
             Assert.NotEmpty(topGames);
         }
 
-        [Fact]
+        [Fact, Trait("Category", "LocalOnly")]
         public async Task FindStreamEtup()
         {
             var streamsResult = await sut.SearchStreams("Etup");
