@@ -17,7 +17,7 @@
     <controls:MetroWindow.Resources>
         <DataTemplate x:Key="MessageTemplate" DataType="model:ChannelNotification">
             <Grid x:Name="NotificationWindow" Tag="{Binding Id}" Background="Transparent">
-                <Border x:Name="border" Background="#2a3345" BorderThickness="0" CornerRadius="10" Margin="5">
+                <Border x:Name="border" Background="#FF0A1429" BorderThickness="0"  Margin="5">
                     <Border.Effect>
                         <DropShadowEffect ShadowDepth="0" Opacity="0.8" BlurRadius="10" />
                     </Border.Effect>
@@ -44,7 +44,7 @@
                                    FontFamily="Arial" VerticalAlignment="Center"
                                    Margin="2,2,4,4" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
                         <Button x:Name="CloseButton" Grid.Row="0" Grid.Column="2" Content="X" FontWeight="ExtraBold"
-                                Width="20" Height="25" HorizontalAlignment="Right"
+                                Width="20" Height="20" HorizontalAlignment="Right"
                                 cal:Message.Attach="[Click] = [TryClose(true)]" />
                     </Grid>
                 </Border>

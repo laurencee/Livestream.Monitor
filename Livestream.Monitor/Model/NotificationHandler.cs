@@ -16,7 +16,7 @@ namespace Livestream.Monitor.Model
         private const double NotificationViewWindowHeight = 100;
         private const double NotificationViewWindowWidth = 400;
         private const double BottomMargin = 5;
-        private const double RightMargin = 10;
+        private const double RightMargin = 5;
         private const byte MAX_NOTIFICATIONS = 4;
 
         private readonly IWindowManager windowManager;
@@ -79,8 +79,7 @@ namespace Livestream.Monitor.Model
             };
             windowManager.ShowWindow(notificationViewModel, null, settings);
 
-            // TODO - do we really need a new dispatch timer every time we create a ChannelNotification? 
-            // TODO - maybe we could just have 1 long running timer that on tick checks when the ChannelNotification was added and removes it past its expiry time (5 seconds)
+            // Close the notifications after a few seconds
             var timer = new DispatcherTimer() { Interval = notificationDuration };
             timer.Tick += (sender, args) =>
             {

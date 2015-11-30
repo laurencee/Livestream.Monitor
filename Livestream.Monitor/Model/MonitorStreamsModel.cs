@@ -147,6 +147,7 @@ namespace Livestream.Monitor.Model
                     var offlineData = offlineTask.OfflineData.Result;
                     if (offlineData == null) continue;
 
+                    offlineTask.ChannelData.Offline();
                     offlineTask.ChannelData.PopulateWithChannel(offlineData);
                 }
             }
