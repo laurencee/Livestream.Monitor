@@ -18,10 +18,12 @@
 
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -38,10 +40,12 @@
             </Grid.Resources>
             
             <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer Path: " />
-            <TextBox Grid.Row="0" Grid.Column="1" x:Name="LivestreamerFullPath" />
+            <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
+            <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="Chrome Path: " />
-            <TextBox Grid.Row="1" Grid.Column="1" x:Name="ChromeFullPath" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path: " />
+            <TextBox Grid.Row="3" Grid.Column="0" x:Name="ChromeFullPath" />
+            <Button Grid.Row="3" Grid.Column="1" x:Name="SetChromeFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
         </Grid>
 
         <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20" />

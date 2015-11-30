@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Microsoft.Win32;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -103,6 +104,40 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
             settingsHandler.SaveSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
+        }
+
+        public void SetLivestreamerFilePath()
+        {
+            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe", settingsHandler.Settings.LivestreamerFullPath);
+            if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
+            {
+                LivestreamerFullPath = livestreamerFilePath;
+            }
+        }
+
+        public void SetChromeFilePath()
+        {
+            var chromeFilePath = SelectFile("Chrome|chrome.exe", settingsHandler.Settings.ChromeFullPath);
+            if (!string.IsNullOrWhiteSpace(chromeFilePath))
+            {
+                ChromeFullPath = chromeFilePath;
+            }
+        }
+
+        private string SelectFile(string filter, string startingPath)
+        {
+            var openFileDialog = new OpenFileDialog { Filter = filter };
+
+            startingPath = Path.GetDirectoryName(startingPath);
+            while (!Directory.Exists(Path.GetDirectoryName(startingPath)))
+            {
+                startingPath = Directory.GetParent(startingPath).FullName;
+            }
+
+            openFileDialog.InitialDirectory = startingPath;
+            var showDialog = openFileDialog.ShowDialog();
+
+            return showDialog == true ? openFileDialog.FileName : null;
         }
 
         protected override void OnActivate()
