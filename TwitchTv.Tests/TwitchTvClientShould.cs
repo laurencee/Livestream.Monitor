@@ -17,14 +17,14 @@ namespace TwitchTv.Tests
             Assert.NotEmpty(followedStreams.Follows);
         }
 
-        [Fact, Trait("LocalOnly", "")]
+        [Fact, Trait("Category", "LocalOnly")]
         public async Task GetChannelDetails()
         {
             var channelDetails = await sut.GetChannelDetails("etup");
             Assert.NotNull(channelDetails);
         }
 
-        [Fact, Trait("LocalOnly", "")]
+        [Fact, Trait("Category", "LocalOnly")]
         public async Task GetStreamDetails()
         {
             var streamDetails = await sut.GetStreamDetails("etup");
@@ -64,7 +64,7 @@ namespace TwitchTv.Tests
         [Fact]
         public async Task FindStreamsGivenPartialNames()
         {
-            var streamsResult = await sut.SearchStreams("C9");
+            var streamsResult = await sut.SearchStreams("the");
             Assert.NotNull(streamsResult);
             Assert.NotEmpty(streamsResult);
         }
