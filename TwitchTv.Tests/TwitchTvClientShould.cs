@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
+using Assert = Xunit.Assert;
 
 namespace TwitchTv.Tests
 {
@@ -11,19 +12,19 @@ namespace TwitchTv.Tests
         [Fact]
         public async Task GetFollowsFromUser()
         {
-            var followedStreams = await sut.GetUserFollows("fxfighter");
+            var followedStreams = await sut.GetUserFollows("etup");
             Assert.NotNull(followedStreams);
             Assert.NotEmpty(followedStreams.Follows);
         }
 
-        [Fact]
+        [Fact, Trait("LocalOnly", "")]
         public async Task GetChannelDetails()
         {
-            var channelDetails = await sut.GetChannelDetails("fxfighter");
+            var channelDetails = await sut.GetChannelDetails("etup");
             Assert.NotNull(channelDetails);
         }
 
-        [Fact]
+        [Fact, Trait("LocalOnly", "")]
         public async Task GetStreamDetails()
         {
             var streamDetails = await sut.GetStreamDetails("etup");
