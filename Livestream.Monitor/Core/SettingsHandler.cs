@@ -27,13 +27,29 @@ namespace Livestream.Monitor.Core
             if (settingsLoaded) return;
             try
             {
+                bool saveSettings = false;
                 if (!File.Exists(SettingsFileName))
                 {
                     settings = new Settings();
-                    SaveSettings();
+                    saveSettings = true;
                 }
                 else
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
+
+                // guards against the paths being set to null/empty values
+                if (string.IsNullOrWhiteSpace(settings.ChromeFullPath))
+                {
+                    settings.ChromeFullPath = Settings.DEFAULT_CHROME_FULL_PATH;
+                    saveSettings = true;
+                }
+
+                if (string.IsNullOrWhiteSpace(settings.LivestreamerFullPath))
+                {
+                    settings.LivestreamerFullPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
+                    saveSettings = true;
+                }
+                
+                if (saveSettings) SaveSettings();
 
                 settings.PropertyChanged += SettingsOnPropertyChanged;
                 settingsLoaded = true;
@@ -52,15 +68,15 @@ namespace Livestream.Monitor.Core
                 var currentTheme = ThemeManager.DetectAppStyle(Application.Current.MainWindow);
                 var baseTheme = ThemeManager.GetAppTheme(settings.MetroThemeBaseColour.ToString());
                 ChangeTheme(baseTheme, currentTheme.Item2);
+                SaveSettings();
             }
             else if (e.PropertyName == nameof(settings.MetroThemeAccentColour))
             {
                 var currentTheme = ThemeManager.DetectAppStyle(Application.Current.MainWindow);
                 var accent = ThemeManager.GetAccent(settings.MetroThemeAccentColour.ToString());
                 ChangeTheme(currentTheme.Item1, accent);
+                SaveSettings();
             }
-
-            SaveSettings();
         }
 
         private void ChangeTheme(AppTheme baseColour, Accent accentColour)

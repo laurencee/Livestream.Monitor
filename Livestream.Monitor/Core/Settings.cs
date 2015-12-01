@@ -6,6 +6,9 @@ namespace Livestream.Monitor.Core
 {
     public class Settings : PropertyChangedBase
     {
+        public const string DEFAULT_CHROME_FULL_PATH = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
+        public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
+
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
         private StreamQuality defaultStreamQuality;
@@ -48,7 +51,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(@"C:\Program Files (x86)\Livestreamer\livestreamer.exe")]
+        [DefaultValue(DEFAULT_LIVESTREAMER_FULL_PATH)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string LivestreamerFullPath
         {
@@ -61,7 +64,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(@"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe")]
+        [DefaultValue(DEFAULT_CHROME_FULL_PATH)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string ChromeFullPath
         {

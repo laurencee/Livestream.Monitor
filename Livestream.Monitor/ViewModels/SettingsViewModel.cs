@@ -101,6 +101,8 @@ namespace Livestream.Monitor.ViewModels
 
         public void Save()
         {
+            if (!CanSave) return;
+
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
             settingsHandler.SaveSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
@@ -108,7 +110,11 @@ namespace Livestream.Monitor.ViewModels
 
         public void SetLivestreamerFilePath()
         {
-            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe", settingsHandler.Settings.LivestreamerFullPath);
+            var startingPath = settingsHandler.Settings.LivestreamerFullPath;
+            if (string.IsNullOrWhiteSpace(startingPath))
+                startingPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
+
+            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
             {
                 LivestreamerFullPath = livestreamerFilePath;
@@ -117,7 +123,11 @@ namespace Livestream.Monitor.ViewModels
 
         public void SetChromeFilePath()
         {
-            var chromeFilePath = SelectFile("Chrome|chrome.exe", settingsHandler.Settings.ChromeFullPath);
+            var startingPath = settingsHandler.Settings.ChromeFullPath;
+            if (string.IsNullOrWhiteSpace(startingPath))
+                startingPath = Settings.DEFAULT_CHROME_FULL_PATH;
+
+            var chromeFilePath = SelectFile("Chrome|chrome.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(chromeFilePath))
             {
                 ChromeFullPath = chromeFilePath;
@@ -126,8 +136,11 @@ namespace Livestream.Monitor.ViewModels
 
         private string SelectFile(string filter, string startingPath)
         {
-            var openFileDialog = new OpenFileDialog { Filter = filter };
+            if (filter == null) throw new ArgumentNullException(nameof(filter));
+            if (startingPath == null) throw new ArgumentNullException(nameof(startingPath));
 
+            var openFileDialog = new OpenFileDialog { Filter = filter };
+            
             startingPath = Path.GetDirectoryName(startingPath);
             while (!Directory.Exists(Path.GetDirectoryName(startingPath)))
             {
