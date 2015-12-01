@@ -76,11 +76,17 @@ namespace Livestream.Monitor.Model
                     EnableRaisingEvents = true
                 };
 
+                bool preventClose = false;
+
                 // see below for output handler
                 proc.ErrorDataReceived +=
                     (sender, args) =>
                     {
-                        if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                        if (args.Data != null)
+                        {
+                            preventClose = true;
+                            messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                        }
                     };
                 proc.OutputDataReceived +=
                     (sender, args) =>
@@ -96,13 +102,20 @@ namespace Livestream.Monitor.Model
                     proc.BeginOutputReadLine();
 
                     proc.WaitForExit();
+                    if (proc.ExitCode != 0) preventClose = true;
                 }
                 catch (Exception)
                 {
                     // TODO log errors opening stream
                 }
 
-                messageBoxViewModel.TryClose();
+                if (preventClose)
+                {
+                    messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
+                                                       "ERROR occured in Livestreamer: Manually close this window when you've finished reading the livestreamer output.";
+                }
+                else
+                    messageBoxViewModel.TryClose();
             });
         }
 
