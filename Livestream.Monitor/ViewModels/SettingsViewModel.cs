@@ -104,8 +104,12 @@ namespace Livestream.Monitor.ViewModels
             if (!CanSave) return;
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
+            settingsHandler.Settings.ChromeFullPath = ChromeFullPath;
+            settingsHandler.Settings.LivestreamerFullPath = LivestreamerFullPath;
             settingsHandler.SaveSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
+
+            NotifyOfPropertyChange(() => CanSave);
         }
 
         public void SetLivestreamerFilePath()
@@ -140,14 +144,14 @@ namespace Livestream.Monitor.ViewModels
             if (startingPath == null) throw new ArgumentNullException(nameof(startingPath));
 
             var openFileDialog = new OpenFileDialog { Filter = filter };
-            
-            startingPath = Path.GetDirectoryName(startingPath);
-            while (!Directory.Exists(Path.GetDirectoryName(startingPath)))
+
+            var directoryInfo = new DirectoryInfo(Path.GetDirectoryName(startingPath));
+            while (directoryInfo.Parent != null && !directoryInfo.Exists)
             {
-                startingPath = Directory.GetParent(startingPath).FullName;
+                directoryInfo = directoryInfo.Parent;
             }
 
-            openFileDialog.InitialDirectory = startingPath;
+            openFileDialog.InitialDirectory = directoryInfo.FullName;
             var showDialog = openFileDialog.ShowDialog();
 
             return showDialog == true ? openFileDialog.FileName : null;

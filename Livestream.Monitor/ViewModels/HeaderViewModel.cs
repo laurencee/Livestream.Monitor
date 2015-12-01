@@ -16,6 +16,8 @@ namespace Livestream.Monitor.ViewModels
 {
     public class HeaderViewModel : Screen
     {
+        private const string TIP_ERROR_ADD_STREAM = "Tip: Only input the streamers name and not the full twitch url.";
+
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
@@ -132,20 +134,22 @@ namespace Livestream.Monitor.ViewModels
             {
                 await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
                 StreamName = null;
+                await dialogController.CloseAsync();
             }
             catch (HttpRequestException httpException)
                 when (httpException.Message == "Response status code does not indicate success: 404 (Not Found).")
             {
                 CanAddStream = true;
-                await this.ShowMessageAsync("Error adding stream", $"No channel found named '{StreamName}'");
+                await dialogController.CloseAsync();
+                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}'{Environment.NewLine}" +
+                                                                    $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
             }
             catch (Exception ex)
             {
                 CanAddStream = true; // on failure streamname not cleared so the user can try adding again
-                await this.ShowMessageAsync("Error adding stream", ex.Message);
+                await dialogController.CloseAsync();
+                await this.ShowMessageAsync("Error adding stream.", $"{TIP_ERROR_ADD_STREAM}{Environment.NewLine}{ex.Message}");
             }
-
-            await dialogController.CloseAsync();
         }
 
         public async Task ImportFollows()
@@ -163,6 +167,7 @@ namespace Livestream.Monitor.ViewModels
                 }
                 catch (Exception ex)
                 {
+                    await dialogController.CloseAsync();
                     await this.ShowMessageAsync("Error importing channels", ex.Message);
                     // TODO log import error
                 }

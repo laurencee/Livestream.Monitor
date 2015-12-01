@@ -9,7 +9,7 @@ namespace Livestream.Monitor.Model
     {
         public void SaveChannelsToDisk(ChannelData[] channels)
         {
-            if (channels == null || channels.Length <= 0) return;
+            if (channels == null) return;
 
             var channelFileData = channels.Select(x => x.ToChannelFileData()).ToArray();
             File.WriteAllText("channels.json", JsonConvert.SerializeObject(channelFileData));
