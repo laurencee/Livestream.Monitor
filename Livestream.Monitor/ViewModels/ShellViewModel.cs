@@ -1,14 +1,24 @@
 using System;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
+using Livestream.Monitor.Core;
 using MahApps.Metro.Controls;
+using MahApps.Metro.Controls.Dialogs;
+using Octokit;
+using Application = System.Windows.Application;
 
 namespace Livestream.Monitor.ViewModels
 {
     public class ShellViewModel : Conductor<Screen>.Collection.OneActive
     {
         public const string TrayIconControlName = "TrayIcon";
+
+        private readonly Version currentAppVersion;
         private WindowState windowState = WindowState.Normal;
         private TaskbarIcon taskbarIcon;
         private bool firstMinimize = true;
@@ -40,8 +50,8 @@ namespace Livestream.Monitor.ViewModels
             Settings.ActivateWith(this);
             ThemeSelector.ActivateWith(this);
 
-            var assemblyVersion = GetType().Assembly.GetName().Version;
-            DisplayName = $"LIVESTREAM MONITOR V{assemblyVersion.Major}.{assemblyVersion.Minor}.{assemblyVersion.Build}";
+            currentAppVersion = GetType().Assembly.GetName().Version;
+            DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}";
         }
 
         public override string DisplayName { get; set; }
@@ -96,16 +106,73 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        protected override void OnViewLoaded(object view)
+        protected override async void OnViewLoaded(object view)
         {
             base.OnViewLoaded(view);
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
+            await CheckForNewVersion();
         }
-
+        
         protected override void OnDeactivate(bool close)
         {
             taskbarIcon.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
             base.OnDeactivate(close);
+        }
+
+        private async Task CheckForNewVersion()
+        {
+            var githubClient =
+                new GitHubClient(new ProductHeaderValue("Livestream.Monitor",
+                    $"{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}"));
+
+            const string githubRepository = "Livestream.Monitor";
+            const string githubUsername = "laurencee";
+
+            var dialogController = await this.ShowProgressAsync("Update Check", "Checking for newer version...");
+            try
+            {
+                var releases = await githubClient.Release.GetAll(githubUsername, githubRepository);
+                var latestRelease = releases.FirstOrDefault();
+                if (latestRelease != null)
+                {
+                    if (IsNewerVersion(latestRelease))
+                    {
+                        await dialogController.CloseAsync();
+                        var dialogResult = await this.ShowMessageAsync("New version available",
+                            "There is a newer version available. Go to download page?",
+                            MessageDialogStyle.AffirmativeAndNegative);
+
+                        if (dialogResult == MessageDialogResult.Affirmative)
+                        {
+                            System.Diagnostics.Process.Start(latestRelease.HtmlUrl);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                if (dialogController.IsOpen) await dialogController.CloseAsync();
+                await this.ShowMessageAsync("Error",
+                    $"An error occured while checking for a newer version.{Environment.NewLine}{ex.Message}");
+            }
+
+            if (dialogController.IsOpen) await dialogController.CloseAsync();
+        }
+
+        private bool IsNewerVersion(Release latestRelease)
+        {
+            if (string.IsNullOrWhiteSpace(latestRelease?.TagName)) return false;
+
+            try
+            {
+                var releaseVersion = new Version(latestRelease.TagName);
+                return releaseVersion > currentAppVersion;
+            }
+            catch
+            {
+                // failed to convert the tagname to a version for some reason
+                return false;
+            }
         }
     }
 }
