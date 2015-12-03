@@ -100,15 +100,16 @@
     <Compile Include="Core\SingleInstance.cs" />
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
-    <Compile Include="Model\ChannelFileData.cs" />
+    <Compile Include="Model\LivestreamFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
     <Compile Include="Model\MenuItem.cs" />
-    <Compile Include="Model\ChannelNotification.cs" />
+    <Compile Include="Model\LivestreamNotification.cs" />
     <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
+    <Compile Include="Model\StreamProviders.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
-    <Compile Include="ViewModels\ChannelListViewModel.cs" />
-    <Compile Include="Model\ChannelData.cs" />
+    <Compile Include="ViewModels\LivestreamListViewModel.cs" />
+    <Compile Include="Model\LivestreamModel.cs" />
     <Compile Include="Core\MetroThemeBaseColour.cs" />
     <Compile Include="Core\MetroThemeColours.cs" />
     <Compile Include="Core\MetroWindowManager.cs" />
@@ -121,8 +122,8 @@
     <Compile Include="Model\MonitorStreamsModel.cs" />
     <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
-    <Compile Include="Views\ChannelListView.xaml.cs">
-      <DependentUpon>ChannelListView.xaml</DependentUpon>
+    <Compile Include="Views\LivestreamListView.xaml.cs">
+      <DependentUpon>LivestreamListView.xaml</DependentUpon>
     </Compile>
     <Compile Include="Views\HeaderView.xaml.cs">
       <DependentUpon>HeaderView.xaml</DependentUpon>
@@ -146,7 +147,7 @@
       <DependentUpon>ThemeSelectorView.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModels\ThemeSelectorViewModel.cs" />
-    <Page Include="Views\ChannelListView.xaml">
+    <Page Include="Views\LivestreamListView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

@@ -2,7 +2,7 @@
 
 namespace Livestream.Monitor.Model
 {
-    public class ChannelNotification : PropertyChangedBase
+    public class LivestreamNotification : PropertyChangedBase
     {
         private int id;
         private string imageUrl;
@@ -53,6 +53,6 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public ChannelData ChannelData { get; set; }
+        public LivestreamModel LivestreamModel { get; set; }
     }
 }

@@ -47,17 +47,17 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            var selectedChannel = monitorStreamsModel.SelectedChannel;
-            if (selectedChannel == null || !selectedChannel.Live) return;
+            var selectedLivestream = monitorStreamsModel.SelectedLivestream;
+            if (selectedLivestream == null || !selectedLivestream.Live) return;
 
-            // Fall back to source stream quality for non-partnered Channels
-            var streamQuality = (!selectedChannel.IsPartner &&
+            // Fall back to source stream quality for non-partnered Livestreams
+            var streamQuality = (!selectedLivestream.IsPartner &&
                                  settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Source)
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{selectedChannel.ChannelName}/ {streamQuality}";
-            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedChannel, settingsHandler.Settings.DefaultStreamQuality);
+            string livestreamerArgs = $"http://www.twitch.tv/{selectedLivestream.DisplayName}/ {streamQuality}";
+            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedLivestream, settingsHandler.Settings.DefaultStreamQuality);
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
@@ -119,16 +119,16 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        private MessageBoxViewModel ShowStreamLoadMessageBox(ChannelData selectedChannel, StreamQuality streamQuality)
+        private MessageBoxViewModel ShowStreamLoadMessageBox(LivestreamModel selectedLivestream, StreamQuality streamQuality)
         {
             var messageBoxViewModel = new MessageBoxViewModel
             {
-                DisplayName = $"Stream '{selectedChannel.ChannelName}'",
+                DisplayName = $"Stream '{selectedLivestream.DisplayName}'",
                 MessageText = "Launching livestreamer..."
             };
 
-            // Notify the user if the quality has been swapped back to source due to the channel not being partenered.
-            if (!selectedChannel.IsPartner && streamQuality != StreamQuality.Source)
+            // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
+            if (!selectedLivestream.IsPartner && streamQuality != StreamQuality.Source)
             {
                 messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
             }

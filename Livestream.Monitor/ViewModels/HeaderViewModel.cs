@@ -22,7 +22,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
         private string streamName;
-        private bool canRefreshChannels;
+        private bool canRefreshLivestreams;
         private StreamQuality? selectedStreamQuality;
         private bool canOpenStream;
         private bool canOpenChat;
@@ -76,13 +76,13 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public bool CanRefreshChannels
+        public bool CanRefreshLivestreams
         {
-            get { return canRefreshChannels; }
+            get { return canRefreshLivestreams; }
             set
             {
-                if (value == canRefreshChannels) return;
-                canRefreshChannels = value;
+                if (value == canRefreshLivestreams) return;
+                canRefreshLivestreams = value;
                 NotifyOfPropertyChange();
             }
         }
@@ -132,7 +132,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await monitorStreamsModel.AddStream(new ChannelData() { ChannelName = StreamName });
+                await monitorStreamsModel.AddLivestream(new LivestreamModel() { Id = StreamName });
                 StreamName = null;
                 await dialogController.CloseAsync();
             }
@@ -176,9 +176,9 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public async Task RefreshChannels()
+        public async Task RefreshLivestreams()
         {
-            await monitorStreamsModel.RefreshChannels();
+            await monitorStreamsModel.RefreshLivestreams();
         }
 
         public void OpenStream()
@@ -196,10 +196,10 @@ namespace Livestream.Monitor.ViewModels
                 return;
             }
 
-            var selectedChannel = monitorStreamsModel.SelectedChannel;
-            if (selectedChannel == null) return;
+            var selectedLivestream = monitorStreamsModel.SelectedLivestream;
+            if (selectedLivestream == null) return;
 
-            string chromeArgs = $"--app=http://www.twitch.tv/{selectedChannel.ChannelName}/chat?popout=true --window-size=350,758";
+            string chromeArgs = $"--app=http://www.twitch.tv/{selectedLivestream.DisplayName}/chat?popout=true --window-size=350,758";
 
             await Task.Run(async () =>
             {
@@ -239,20 +239,20 @@ namespace Livestream.Monitor.ViewModels
 
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshChannels))
+            if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshLivestreams))
             {
-                CanRefreshChannels = monitorStreamsModel.CanRefreshChannels;
+                CanRefreshLivestreams = monitorStreamsModel.CanRefreshLivestreams;
             }
-            else if (e.PropertyName == nameof(monitorStreamsModel.SelectedChannel))
+            else if (e.PropertyName == nameof(monitorStreamsModel.SelectedLivestream))
             {
-                var selectedChannel = monitorStreamsModel.SelectedChannel;
-                CanOpenStream = selectedChannel != null && selectedChannel.Live;
-                CanOpenChat = selectedChannel != null;
+                var selectedLivestream = monitorStreamsModel.SelectedLivestream;
+                CanOpenStream = selectedLivestream != null && selectedLivestream.Live;
+                CanOpenChat = selectedLivestream != null;
                 StreamQualities.Clear();
                 selectedStreamQuality = null;
                 if (CanOpenStream)
                 {
-                    if (selectedChannel.IsPartner)
+                    if (selectedLivestream.IsPartner)
                     {
                         StreamQualities.AddRange(Enum.GetValues(typeof(StreamQuality)).Cast<StreamQuality>());
                         // set field instead of property so we dont update user settings

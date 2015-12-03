@@ -39,7 +39,7 @@ namespace Livestream.Monitor
             container.PerRequest<HeaderViewModel>();
             container.PerRequest<MainViewModel>();
             container.PerRequest<SettingsViewModel>();
-            container.PerRequest<ChannelListViewModel>();
+            container.PerRequest<LivestreamListViewModel>();
 
             container.PerRequest<StreamLauncher>();
         }

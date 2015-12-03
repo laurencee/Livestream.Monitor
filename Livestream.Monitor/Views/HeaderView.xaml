@@ -27,19 +27,19 @@
         </Grid.ColumnDefinitions>
 
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox Grid.Column="1" x:Name="FilterModel_Filter" controls:TextBoxHelper.Watermark="channel name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
+        <TextBox Grid.Column="1" x:Name="FilterModel_Filter" controls:TextBoxHelper.Watermark="livestream name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
         <Separator Grid.Column="2" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <Button Grid.Column="3" x:Name="OpenChat" Content="CHAT"  Margin="2" Width="50" />
-        <Button Grid.Column="4" x:Name="RefreshChannels" Content="&#x21BB;" FontWeight="ExtraBold"  Margin="2" ToolTip="Refresh Channels" />
+        <Button Grid.Column="4" x:Name="RefreshLivestream" Content="&#x21BB;" FontWeight="ExtraBold"  Margin="2" ToolTip="Refresh Livestreams" />
         <TextBlock Grid.Column="5" Text="Quality:" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
         <controls:SplitButton Grid.Column="6" Margin="2" MinWidth="75" VerticalContentAlignment="Center" HorizontalAlignment="Center"
                               ItemsSource="{Binding StreamQualities}" SelectedItem="{Binding SelectedStreamQuality}" IsEnabled="{Binding CanOpenStream}"
                               cal:Message.Attach="[Click] = [OpenStream]" />
         <Separator Grid.Column="7" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button Grid.Column="8" x:Name="ImportFollows" Content="Import Channels"  Margin="2" ToolTip="Import channels from the provided username" />
-        <TextBox Grid.Column="9" x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new channel..."
+        <Button Grid.Column="8" x:Name="ImportFollows" Content="Import Livestreams"  Margin="2" ToolTip="Import livestreams from the provided username" />
+        <TextBox Grid.Column="9" x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new livestream..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
-        <Button Grid.Column="10" x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" ToolTip="Add new channel">
+        <Button Grid.Column="10" x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" ToolTip="Add new livestream">
             <Button.ContentTemplate>
                 <DataTemplate>
                     <TextBlock Text="{TemplateBinding Content}" Margin="0,-2,0,0"></TextBlock>

@@ -13,14 +13,14 @@ using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class ChannelListViewModel : Screen
+    public class LivestreamListViewModel : Screen
     {
         private readonly StreamLauncher streamLauncher;
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
 
-        public ChannelListViewModel()
+        public LivestreamListViewModel()
         {
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
@@ -28,7 +28,7 @@ namespace Livestream.Monitor.ViewModels
             StreamsModel = new MonitorStreamsModel();
         }
 
-        public ChannelListViewModel(
+        public LivestreamListViewModel(
             IMonitorStreamsModel monitorStreamsModel,
             FilterModel filterModel,
             StreamLauncher streamLauncher)
@@ -40,7 +40,7 @@ namespace Livestream.Monitor.ViewModels
             this.StreamsModel = monitorStreamsModel;
             FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
-            refreshTimer.Tick += async (sender, args) => await RefreshChannels();
+            refreshTimer.Tick += async (sender, args) => await RefreshLivestreams();
         }
 
         public bool Loading
@@ -58,10 +58,10 @@ namespace Livestream.Monitor.ViewModels
 
         public FilterModel FilterModel { get; }
         
-        public async Task RefreshChannels()
+        public async Task RefreshLivestreams()
         {
             refreshTimer.Stop();
-            await StreamsModel.RefreshChannels();
+            await StreamsModel.RefreshLivestreams();
             refreshTimer.Start();
         }
 
@@ -75,35 +75,35 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task DataGridKeyDown(KeyEventArgs e)
         {
-            if (e.Key == Key.Delete && StreamsModel.SelectedChannel != null)
+            if (e.Key == Key.Delete && StreamsModel.SelectedLivestream != null)
             {
-                await RemoveChannel();
+                await RemoveLivestream();
             }
         }
 
-        public async Task RemoveChannel()
+        public async Task RemoveLivestream()
         {
-            if (StreamsModel.SelectedChannel == null) return;
+            if (StreamsModel.SelectedLivestream == null) return;
 
-            var dialogResult = await this.ShowMessageAsync("Remove channel",
-                $"Are you sure you want to remove channel '{StreamsModel.SelectedChannel.ChannelName}'?",
+            var dialogResult = await this.ShowMessageAsync("Remove livestream",
+                $"Are you sure you want to remove livestream '{StreamsModel.SelectedLivestream.DisplayName}'?",
                 MessageDialogStyle.AffirmativeAndNegative,
                 new MetroDialogSettings() { AffirmativeButtonText = "Remove" });
 
             if (dialogResult == MessageDialogResult.Affirmative)
             {
-                StreamsModel.RemoveChannel(StreamsModel.SelectedChannel);
+                StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream);
             }
 
-            // return focus to the datagrid after showing the remove channel dialog
-            this.SetFocus("ChannelListDataGrid");
+            // return focus to the datagrid after showing the remove livestream dialog
+            this.SetFocus("LivestreamListDataGrid");
         }
 
-        public void CopyChannelUrl()
+        public void CopyLivestreamUrl()
         {
-            if (StreamsModel.SelectedChannel == null) return;
+            if (StreamsModel.SelectedLivestream == null) return;
 
-            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedChannel.ChannelName}");
+            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedLivestream.DisplayName}");
         }
 
         protected override async void OnActivate()
@@ -111,20 +111,20 @@ namespace Livestream.Monitor.ViewModels
             Loading = true;
             try
             {
-                StreamsModel.OnlineChannelsRefreshComplete += OnOnlineChannelsRefreshComplete;
+                StreamsModel.OnlineLivestreamsRefreshComplete += OnOnlineLivestreamsRefreshComplete;
                 FilterModel.PropertyChanged += (sender, args) => ViewSource.View.Refresh();
-                ViewSource.Source = StreamsModel.Channels;
+                ViewSource.Source = StreamsModel.Livestreams;
                 ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
                 ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
                 ViewSource.Filter += ViewSourceOnFilter;
 
-                await RefreshChannels();
-                // hook up followed channels after our initial call so we can refresh immediately as needed
-                StreamsModel.Channels.CollectionChanged += ChannelsOnCollectionChanged;
+                await RefreshLivestreams();
+                // hook up followed livestreams after our initial call so we can refresh immediately as needed
+                StreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error loading channel list", ex.Message);
+                await this.ShowMessageAsync("Error loading livestream list", ex.Message);
                 // TODO - log the error
             }
 
@@ -132,7 +132,7 @@ namespace Livestream.Monitor.ViewModels
             base.OnActivate();
         }
 
-        private async void ChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private async void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             switch (e.Action)
             {
@@ -142,7 +142,7 @@ namespace Livestream.Monitor.ViewModels
                 case NotifyCollectionChangedAction.Replace:
                 case NotifyCollectionChangedAction.Move:
                 case NotifyCollectionChangedAction.Reset:
-                    await RefreshChannels();
+                    await RefreshLivestreams();
                     break;
             }
         }
@@ -158,8 +158,8 @@ namespace Livestream.Monitor.ViewModels
                 return;
             }
 
-            var item = e.Item as ChannelData;
-            if (item != null && item.ChannelName.Contains(f, StringComparison.OrdinalIgnoreCase))
+            var item = e.Item as LivestreamModel;
+            if (item != null && item.DisplayName.Contains(f, StringComparison.OrdinalIgnoreCase))
             {
                 e.Accepted = true;
                 return;
@@ -168,9 +168,9 @@ namespace Livestream.Monitor.ViewModels
             e.Accepted = false;
         }
 
-        private void OnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
+        private void OnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
-            // We only really care about sorting online channels so this causes the sort descriptions to be applied immediately 
+            // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately 
             ViewSource.View.Refresh();
         }
     }

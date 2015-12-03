@@ -5,59 +5,63 @@ namespace Livestream.Monitor.Model
 {
     public static class TwitchToModelMaps
     {
-        public static ChannelData ToChannelData(this Channel channel, string importedBy = null)
+        public static LivestreamModel ToLivestreamData(this Channel channel, string importedBy = null)
         {
-            return new ChannelData()
+            return new LivestreamModel()
             {
-                ChannelName = channel.Name,
-                ChannelDescription = channel.Status,
+                DisplayName = channel.Name,
+                Description = channel.Status,
                 Game = channel.Game,
                 IsPartner = channel.Partner.HasValue && channel.Partner.Value,
-                ImportedBy = importedBy
+                ImportedBy = importedBy,
+                StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
             };
         }
 
-        public static ChannelData ToChannelData(this ChannelFileData channelFileData)
+        public static LivestreamModel ToLivestreamData(this LivestreamFileData livestreamFileData)
         {
-            return new ChannelData()
+            return new LivestreamModel()
             {
-                ChannelName = channelFileData.ChannelName,
+                Id = livestreamFileData.LivestreamId,
+                StreamProvider = livestreamFileData.StreamProvider,
+                ImportedBy = livestreamFileData.ImportedBy
+            };
+        }
+
+        public static LivestreamFileData ToLivestreamFileData(this LivestreamModel channelFileData)
+        {
+            return new LivestreamFileData()
+            {
+                LivestreamId = channelFileData.Id,
+                StreamProvider = channelFileData.StreamProvider,
                 ImportedBy = channelFileData.ImportedBy
             };
         }
 
-        public static ChannelFileData ToChannelFileData(this ChannelData channelFileData)
-        {
-            return new ChannelFileData()
-            {
-                ChannelName = channelFileData.ChannelName,
-                ImportedBy = channelFileData.ImportedBy
-            };
-        }
-
-        public static void PopulateWithStreamDetails(this ChannelData channelData, Stream streamDetails)
+        public static void PopulateWithStreamDetails(this LivestreamModel livestreamModel, Stream streamDetails)
         {
             if (streamDetails == null) return;
             
-            channelData.Viewers = streamDetails.Viewers ?? 0;
-            channelData.PreviewImage = streamDetails.Preview;
+            livestreamModel.Viewers = streamDetails.Viewers ?? 0;
+            livestreamModel.PreviewImage = streamDetails.Preview;
             if (streamDetails.CreatedAt != null)
             {
-                channelData.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);
-                channelData.NotifyOfPropertyChange(nameof(channelData.Uptime));
+                livestreamModel.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);
+                livestreamModel.NotifyOfPropertyChange(nameof(livestreamModel.Uptime));
             }
 
             // need to update other details before flipping the stream to online
-            channelData.Live = streamDetails.Viewers.HasValue;
+            livestreamModel.Live = streamDetails.Viewers.HasValue;
         }
 
-        public static void PopulateWithChannel(this ChannelData channelData, Channel channel)
+        public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)
         {
             if (channel == null) return;
 
-            channelData.ChannelDescription = channel.Status;
-            channelData.Game = channel.Game;
-            channelData.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
+            livestreamModel.DisplayName = channel.DisplayName;
+            livestreamModel.Description = channel.Status;
+            livestreamModel.Game = channel.Game;
+            livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
         }
     }
 }

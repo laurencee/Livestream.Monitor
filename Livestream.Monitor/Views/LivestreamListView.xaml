@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Livestream.Monitor.Views.ChannelListView"
+﻿<UserControl x:Class="Livestream.Monitor.Views.LivestreamListView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -7,18 +7,19 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
-             d:DataContext="{d:DesignInstance Type=viewModels:ChannelListViewModel, IsDesignTimeCreatable=True}"
+             xmlns:model="clr-namespace:Livestream.Monitor.Model"
+             d:DataContext="{d:DesignInstance Type=viewModels:LivestreamListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="500">
     <Grid>
-        <DataGrid x:Name="ChannelListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedChannel}"
+        <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                   cal:Message.Attach="[MouseDoubleClick] = [StartStream()];
                                       [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]">
             <DataGrid.ContextMenu>
                 <ContextMenu>
-                    <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveChannel]" />
-                    <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyChannelUrl]" />
+                    <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
+                    <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
                 </ContextMenu>
             </DataGrid.ContextMenu>
             <DataGrid.Columns>
@@ -35,8 +36,8 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Channel" Binding="{Binding ChannelName}" Width="1*"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding ChannelDescription}" Width="2*"/>
+                <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="1*"/>
+                <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="2*"/>
                 <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="1*" />
                 <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" SortDirection="Descending"/>
                 <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" MinWidth="75" />

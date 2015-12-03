@@ -6,22 +6,22 @@ namespace Livestream.Monitor.Model
 {
     public interface IMonitorStreamsModel : INotifyPropertyChangedEx
     {
-        /// <summary> The list of followed channels, will be initialized on first access. </summary>
-        BindableCollection<ChannelData> Channels { get; }
+        /// <summary> The list of followed livestreams, will be initialized on first access. </summary>
+        BindableCollection<LivestreamModel> Livestreams { get; }
 
-        ChannelData SelectedChannel { get; set; }
+        LivestreamModel SelectedLivestream { get; set; }
 
-        bool CanRefreshChannels { get; }
+        bool CanRefreshLivestreams { get; }
         
-        event EventHandler OnlineChannelsRefreshComplete;
+        event EventHandler OnlineLivestreamsRefreshComplete;
 
-        Task AddStream(ChannelData channelData);
+        Task AddLivestream(LivestreamModel livestreamModel);
 
         Task ImportFollows(string username);
 
-        /// <summary> Refreshing data for all followed channels </summary>
-        Task RefreshChannels();
+        /// <summary> Refreshing data for all followed livestreams </summary>
+        Task RefreshLivestreams();
 
-        void RemoveChannel(ChannelData channelData);
+        void RemoveLivestream(LivestreamModel livestreamModel);
     }
 }

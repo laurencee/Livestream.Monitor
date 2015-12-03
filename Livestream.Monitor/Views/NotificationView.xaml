@@ -15,7 +15,7 @@
                       ShowActivated="False" Topmost="True" ShowInTaskbar="False"
                       ShowTitleBar="False" ShowCloseButton="False" ShowIconOnTitleBar="False" ShowMaxRestoreButton="False" ShowMinButton="False">
     <controls:MetroWindow.Resources>
-        <DataTemplate x:Key="MessageTemplate" DataType="model:ChannelNotification">
+        <DataTemplate x:Key="MessageTemplate" DataType="model:LivestreamNotification">
             <Grid x:Name="NotificationWindow" Tag="{Binding Id}" Background="Transparent">
                 <Border x:Name="border" Background="#FF0A1429" BorderThickness="0"  Margin="5">
                     <Border.Effect>
@@ -51,6 +51,6 @@
             </Grid>
         </DataTemplate>
     </controls:MetroWindow.Resources>
-    <ContentControl Content="{Binding ChannelNotification}" FocusVisualStyle="{x:Null}" ContentTemplate="{StaticResource MessageTemplate}"
+    <ContentControl Content="{Binding LivestreamNotification}" FocusVisualStyle="{x:Null}" ContentTemplate="{StaticResource MessageTemplate}"
                     cal:Message.Attach="[MouseLeftButtonDown] = [Clicked]"/>
 </controls:MetroWindow>

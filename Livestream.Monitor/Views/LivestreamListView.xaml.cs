@@ -16,11 +16,11 @@ using System.Windows.Shapes;
 namespace Livestream.Monitor.Views
 {
     /// <summary>
-    /// Interaction logic for ChannelListView.xaml
+    /// Interaction logic for LivestreamListView.xaml
     /// </summary>
-    public partial class ChannelListView : UserControl
+    public partial class LivestreamListView : UserControl
     {
-        public ChannelListView()
+        public LivestreamListView()
         {
             InitializeComponent();
         }

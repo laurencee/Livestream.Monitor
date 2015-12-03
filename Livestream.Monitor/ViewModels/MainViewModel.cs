@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Caliburn.Micro;
 
 namespace Livestream.Monitor.ViewModels
@@ -15,25 +11,25 @@ namespace Livestream.Monitor.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             Header = new HeaderViewModel();
-            ChannelList = new ChannelListViewModel();
+            LivestreamList = new LivestreamListViewModel();
         }
 
-        public MainViewModel(HeaderViewModel header, ChannelListViewModel channelList)
+        public MainViewModel(HeaderViewModel header, LivestreamListViewModel livestreamList)
         {
             if (header == null) throw new ArgumentNullException(nameof(header));
-            if (channelList == null) throw new ArgumentNullException(nameof(channelList));
+            if (livestreamList == null) throw new ArgumentNullException(nameof(livestreamList));
 
             Header = header;
-            ChannelList = channelList;
+            LivestreamList = livestreamList;
 
             Header.ActivateWith(this);
             Header.DeactivateWith(this);
-            ChannelList.ActivateWith(this);
-            ChannelList.DeactivateWith(this);
+            LivestreamList.ActivateWith(this);
+            LivestreamList.DeactivateWith(this);
         }
 
         public HeaderViewModel Header { get; set; }
 
-        public ChannelListViewModel ChannelList { get; set; }
+        public LivestreamListViewModel LivestreamList { get; set; }
     }
 }

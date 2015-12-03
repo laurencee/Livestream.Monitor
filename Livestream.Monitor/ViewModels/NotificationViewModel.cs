@@ -16,32 +16,32 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            ChannelNotification = new ChannelNotification()
+            LivestreamNotification = new LivestreamNotification()
             {
                 Title = "Someones stream is online",
-                Message = "Channel description for someones stream"
+                Message = "Livestream description for someones stream"
             };
         }
 
         public NotificationViewModel(
-            ChannelNotification channelNotification,
+            LivestreamNotification livestreamNotification,
             IMonitorStreamsModel model)
         {
-            if (channelNotification == null) throw new ArgumentNullException(nameof(channelNotification));
+            if (livestreamNotification == null) throw new ArgumentNullException(nameof(livestreamNotification));
             if (model == null) throw new ArgumentNullException(nameof(model));
 
-            ChannelNotification = channelNotification;
+            LivestreamNotification = livestreamNotification;
             this.model = model;
         }
 
-        public ChannelNotification ChannelNotification { get; }
+        public LivestreamNotification LivestreamNotification { get; }
 
         public async void Clicked()
         {
-            var channel = model.Channels.FirstOrDefault(x => Equals(x, ChannelNotification.ChannelData));
-            if (channel != null)
+            var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, LivestreamNotification.LivestreamModel));
+            if (livestream != null)
             {
-                model.SelectedChannel = channel;
+                model.SelectedLivestream = livestream;
             }
 
             Application.Current.MainWindow.Show();

@@ -11,11 +11,11 @@ namespace Livestream.Monitor.Model
     {
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
-        private readonly BindableCollection<ChannelData> followedChannels = new BindableCollection<ChannelData>();
+        private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
 
         private bool initialised;
-        private bool canRefreshChannels = true;
-        private ChannelData selectedChannel;
+        private bool canRefreshLivestreams = true;
+        private LivestreamModel selectedLivestream;
 
         #region Design Time Constructor
 
@@ -29,11 +29,11 @@ namespace Livestream.Monitor.Model
 
             for (int i = 0; i < 100; i++)
             {
-                followedChannels.Add(new ChannelData()
+                followedLivestreams.Add(new LivestreamModel()
                 {
                     Live = i < 14,
-                    ChannelName = $"Channel Name {i + 1}",
-                    ChannelDescription = $"Channel Description {i + 1}",
+                    DisplayName = $"Channel Name {i + 1}",
+                    Description = $"Channel Description {i + 1}",
                     Game = i < 50 ? "Game A" : "Game B",
                     StartTime = i < 14 ? DateTimeOffset.Now.AddSeconds(-(rnd.Next(10000))) : DateTimeOffset.MinValue,
                     Viewers = i < 14 ? rnd.Next(50000) : 0
@@ -54,51 +54,53 @@ namespace Livestream.Monitor.Model
             this.twitchTvClient = twitchTvClient;
         }
 
-        public BindableCollection<ChannelData> Channels
+        public BindableCollection<LivestreamModel> Livestreams
         {
             get
             {
-                if (!initialised) LoadChannels();
-                return followedChannels;
+                if (!initialised) LoadLivestreams();
+                return followedLivestreams;
             }
         }
 
-        public ChannelData SelectedChannel
+        public LivestreamModel SelectedLivestream
         {
-            get { return selectedChannel; }
+            get { return selectedLivestream; }
             set
             {
-                if (Equals(value, selectedChannel)) return;
-                selectedChannel = value;
+                if (Equals(value, selectedLivestream)) return;
+                selectedLivestream = value;
                 NotifyOfPropertyChange();
             }
         }
 
-        public bool CanRefreshChannels
+        public bool CanRefreshLivestreams
         {
-            get { return canRefreshChannels; }
+            get { return canRefreshLivestreams; }
             private set
             {
-                if (value == canRefreshChannels) return;
-                canRefreshChannels = value;
+                if (value == canRefreshLivestreams) return;
+                canRefreshLivestreams = value;
                 NotifyOfPropertyChange();
             }
         }
 
-        public event EventHandler OnlineChannelsRefreshComplete;
+        public event EventHandler OnlineLivestreamsRefreshComplete;
 
-        public async Task AddStream(ChannelData channelData)
+        public async Task AddLivestream(LivestreamModel livestreamModel)
         {
-            if (channelData == null) throw new ArgumentNullException(nameof(channelData));
-            if (Channels.Any(x => Equals(x, channelData))) return; // ignore duplicate requests
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
+            if (Livestreams.Any(x => Equals(x, livestreamModel))) return; // ignore duplicate requests
 
-            var stream = await twitchTvClient.GetStreamDetails(channelData.ChannelName);
-            channelData.PopulateWithStreamDetails(stream);
-            var channel = await twitchTvClient.GetChannelDetails(channelData.ChannelName);
-            channelData.PopulateWithChannel(channel);
+            // TODO - move this type specific code to a "twitchtv livestream service provider" that would handle calls for twitch livestreams
+            var stream = await twitchTvClient.GetStreamDetails(livestreamModel.Id);
+            livestreamModel.PopulateWithStreamDetails(stream);
+            var channel = await twitchTvClient.GetChannelDetails(livestreamModel.Id);
+            livestreamModel.PopulateWithChannel(channel);
+            livestreamModel.StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER;
 
-            Channels.Add(channelData);
-            SaveChannels();
+            Livestreams.Add(livestreamModel);
+            SaveLivestreams();
         }
 
         public async Task ImportFollows(string username)
@@ -106,39 +108,39 @@ namespace Livestream.Monitor.Model
             if (username == null) throw new ArgumentNullException(nameof(username));
             
             var userFollows = await twitchTvClient.GetUserFollows(username);
-            var userFollowedChannels = userFollows.Follows.Select(x => x.Channel.ToChannelData(importedBy: username));
-            var newChannels = userFollowedChannels.Except(Channels); // ignore duplicate channels
-
-            Channels.AddRange(newChannels);
-            SaveChannels();
+            var userFollowedChannels = userFollows.Follows.Select(x => x.Channel.ToLivestreamData(importedBy: username));
+            var newChannels = userFollowedChannels.Except(Livestreams); // ignore duplicate channels
+            
+            Livestreams.AddRange(newChannels);
+            SaveLivestreams();
         }
 
-        public async Task RefreshChannels()
+        public async Task RefreshLivestreams()
         {
-            if (!CanRefreshChannels) return;
+            if (!CanRefreshLivestreams) return;
 
-            CanRefreshChannels = false;
+            CanRefreshLivestreams = false;
             try
             {
-                var onlineStreams = await twitchTvClient.GetStreamsDetails(Channels.Select(x => x.ChannelName).ToList());
+                var onlineStreams = await twitchTvClient.GetStreamsDetails(Livestreams.Select(x => x.Id).ToList());
 
                 foreach (var onlineStream in onlineStreams)
                 {
-                    var channelData = Channels.Single(x => x.ChannelName.IsEqualTo(onlineStream.Channel.Name));
+                    var livestream = Livestreams.Single(x => x.Id.IsEqualTo(onlineStream.Channel.Name));
 
-                    channelData.PopulateWithChannel(onlineStream.Channel);
-                    channelData.PopulateWithStreamDetails(onlineStream);
+                    livestream.PopulateWithChannel(onlineStream.Channel);
+                    livestream.PopulateWithStreamDetails(onlineStream);
                 }
 
-                // Notify that the most important channels have up to date information
-                OnOnlineChannelsRefreshComplete();
+                // Notify that the most important livestreams have up to date information
+                OnOnlineLivestreamsRefreshComplete();
 
-                var offlineStreams = Channels.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.ChannelName))).ToList();
+                var offlineStreams = Livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
 
                 var offlineTasks = offlineStreams.Select(x => new
                 {
-                    ChannelData = x,
-                    OfflineData = twitchTvClient.GetChannelDetails(x.ChannelName)
+                    Livestream = x,
+                    OfflineData = twitchTvClient.GetChannelDetails(x.Id)
                 }).ToList();
 
                 await Task.WhenAll(offlineTasks.Select(x => x.OfflineData));
@@ -147,8 +149,8 @@ namespace Livestream.Monitor.Model
                     var offlineData = offlineTask.OfflineData.Result;
                     if (offlineData == null) continue;
 
-                    offlineTask.ChannelData.Offline();
-                    offlineTask.ChannelData.PopulateWithChannel(offlineData);
+                    offlineTask.Livestream.Offline();
+                    offlineTask.Livestream.PopulateWithChannel(offlineData);
                 }
             }
             catch (Exception)
@@ -156,32 +158,34 @@ namespace Livestream.Monitor.Model
                 // TODO - do something with errors, log/report etc
             }
 
-            CanRefreshChannels = true;
+            CanRefreshLivestreams = true;
         }
 
-        public void RemoveChannel(ChannelData channelData)
+        public void RemoveLivestream(LivestreamModel livestreamModel)
         {
-            if (channelData == null) return;
+            if (livestreamModel == null) return;
 
-            Channels.Remove(channelData);
-            SaveChannels();
+            Livestreams.Remove(livestreamModel);
+            SaveLivestreams();
         }
 
-        private void LoadChannels()
+        private void LoadLivestreams()
         {
             if (initialised) return;
-            followedChannels.AddRange(fileHandler.LoadChannelsFromDisk());
+            var livestreams = fileHandler.LoadFromDisk();
+            livestreams.ForEach(x => x.DisplayName = x.Id); // give livestreams some initial displayname before they have been queried
+            followedLivestreams.AddRange(livestreams);
             initialised = true;
         }
 
-        private void SaveChannels()
+        private void SaveLivestreams()
         {
-            fileHandler.SaveChannelsToDisk(Channels.ToArray());
+            fileHandler.SaveToDisk(Livestreams.ToArray());
         }
 
-        protected virtual void OnOnlineChannelsRefreshComplete()
+        protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
-            OnlineChannelsRefreshComplete?.Invoke(this, EventArgs.Empty);
+            OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
         }
     }
 }

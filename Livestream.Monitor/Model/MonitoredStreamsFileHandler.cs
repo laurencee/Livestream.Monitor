@@ -7,23 +7,57 @@ namespace Livestream.Monitor.Model
 {
     public class MonitoredStreamsFileHandler : IMonitoredStreamsFileHandler
     {
-        public void SaveChannelsToDisk(ChannelData[] channels)
-        {
-            if (channels == null) return;
+        private const string OldFileName = "channels.json";
+        private const string FileName = "livestreams.json";
 
-            var channelFileData = channels.Select(x => x.ToChannelFileData()).ToArray();
-            File.WriteAllText("channels.json", JsonConvert.SerializeObject(channelFileData));
+        public void SaveToDisk(IEnumerable<LivestreamModel> livestreams)
+        {
+            if (livestreams == null) return;
+
+            var livestreamFileData = livestreams.Select(x => x.ToLivestreamFileData());
+            SaveToDisk(livestreamFileData);
         }
 
-        public List<ChannelData> LoadChannelsFromDisk()
+        public List<LivestreamModel> LoadFromDisk()
         {
-            if (File.Exists("channels.json"))
+            if (File.Exists(OldFileName)) MigrateOldFile();
+
+            if (File.Exists(FileName))
             {
-                var channelFileData = JsonConvert.DeserializeObject<List<ChannelFileData>>(File.ReadAllText("channels.json"));
-                return channelFileData.Select(x => x.ToChannelData()).ToList();
+                var livestreamFileData = JsonConvert.DeserializeObject<List<LivestreamFileData>>(File.ReadAllText(FileName));
+                return livestreamFileData.Select(x => x.ToLivestreamData()).ToList();
             }
 
-            return new List<ChannelData>();
+            return new List<LivestreamModel>();
+        }
+
+        private void SaveToDisk(IEnumerable<LivestreamFileData> livestreamFileData)
+        {
+            File.WriteAllText(FileName, JsonConvert.SerializeObject(livestreamFileData));
+        }
+
+        private void MigrateOldFile()
+        {
+            var oldLivestreamFileFormat = JsonConvert.DeserializeObject<List<OldFileDefinition>>(File.ReadAllText(OldFileName));
+            var livestreamFileFormat = (from oldFormat in oldLivestreamFileFormat
+                                       select new LivestreamFileData()
+                                       {
+                                           LivestreamId = oldFormat.ChannelName,
+                                           ImportedBy = oldFormat.ImportedBy,
+                                           StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER
+                                       }).ToList();
+
+            File.Delete(OldFileName);
+            SaveToDisk(livestreamFileFormat);
+        }
+
+        private class OldFileDefinition
+        {
+            [JsonRequired]
+            public string ChannelName { get; set; }
+
+            /// <summary> The username this Channel was imported from </summary>
+            public string ImportedBy { get; set; }
         }
     }
 }

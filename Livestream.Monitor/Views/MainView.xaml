@@ -18,6 +18,6 @@
         </Grid.RowDefinitions>
         <ContentControl Grid.Row="0" x:Name="Header" Margin="10,0" />
         <Separator Grid.Row="1" />
-        <ContentControl Grid.Row="2" x:Name="ChannelList" />
+        <ContentControl Grid.Row="2" x:Name="LivestreamList" />
     </Grid>
 </UserControl>

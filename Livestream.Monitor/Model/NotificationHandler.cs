@@ -21,8 +21,8 @@ namespace Livestream.Monitor.Model
 
         private readonly IWindowManager windowManager;
         private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly List<ChannelNotification> buffer = new List<ChannelNotification>();
-        private readonly List<ChannelNotification> notifications = new List<ChannelNotification>();
+        private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
+        private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
         private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(8);
 
         private int notificationId;
@@ -37,31 +37,31 @@ namespace Livestream.Monitor.Model
             this.windowManager = windowManager;
             this.monitorStreamsModel = monitorStreamsModel;
 
-            foreach (var channelData in monitorStreamsModel.Channels)
+            foreach (var livestream in monitorStreamsModel.Livestreams)
             {
-                HookChannelChangeEvents(channelData);
+                HookLivestreamChangeEvents(livestream);
             }
-            monitorStreamsModel.OnlineChannelsRefreshComplete += MonitorStreamsModelOnOnlineChannelsRefreshComplete;
-            monitorStreamsModel.Channels.CollectionChanged += ChannelsOnCollectionChanged;
+            monitorStreamsModel.OnlineLivestreamsRefreshComplete += MonitorStreamsModelOnOnlineLivestreamsRefreshComplete;
+            monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
         }
 
-        public void AddNotification(ChannelNotification channelNotification)
+        public void AddNotification(LivestreamNotification livestreamNotification)
         {
-            channelNotification.Id = notificationId++;
+            livestreamNotification.Id = notificationId++;
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
             {
-                buffer.Add(channelNotification);
+                buffer.Add(livestreamNotification);
             }
             else
             {
-                notifications.Add(channelNotification);
-                ShowNotification(channelNotification);
+                notifications.Add(livestreamNotification);
+                ShowNotification(livestreamNotification);
             }
         }
 
-        private void ShowNotification(ChannelNotification channelNotification)
+        private void ShowNotification(LivestreamNotification livestreamNotification)
         {
-            var vmTopLeft = GetNotificationTopLeft(channelNotification);
+            var vmTopLeft = GetNotificationTopLeft(livestreamNotification);
             var settings = new WindowSettingsBuilder().WithWindowStyle(WindowStyle.None)
                                                       .WithResizeMode(ResizeMode.NoResize)
                                                       .WithTopLeft(vmTopLeft.Y, vmTopLeft.X)
@@ -69,13 +69,13 @@ namespace Livestream.Monitor.Model
                                                       .AsTopmost()
                                                       .Create();
 
-            var notificationViewModel = new NotificationViewModel(channelNotification, monitorStreamsModel);
+            var notificationViewModel = new NotificationViewModel(livestreamNotification, monitorStreamsModel);
 
-            // put remaining notifications into their correct position after this ChannelNotification closes
+            // put remaining notifications into their correct position after this LivestreamNotification closes
             notificationViewModel.Deactivated += (sender, args) =>
             {
                 AdjustWindows();
-                RemoveNotification(notificationViewModel.ChannelNotification);
+                RemoveNotification(notificationViewModel.LivestreamNotification);
             };
             windowManager.ShowWindow(notificationViewModel, null, settings);
 
@@ -104,11 +104,11 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        private Point GetNotificationTopLeft(ChannelNotification channelNotification)
+        private Point GetNotificationTopLeft(LivestreamNotification livestreamNotification)
         {
-            if (channelNotification == null) return new Point();
+            if (livestreamNotification == null) return new Point();
 
-            var index = notifications.IndexOf(channelNotification) + 1;
+            var index = notifications.IndexOf(livestreamNotification) + 1;
             // we care about the order the notifications were added for vertical positioning
             if (index == 0) return new Point();
 
@@ -119,10 +119,10 @@ namespace Livestream.Monitor.Model
             };
         }
 
-        private void RemoveNotification(ChannelNotification channelNotification)
+        private void RemoveNotification(LivestreamNotification livestreamNotification)
         {
-            if (notifications.Contains(channelNotification))
-                notifications.Remove(channelNotification);
+            if (notifications.Contains(livestreamNotification))
+                notifications.Remove(livestreamNotification);
             if (buffer.Count > 0)
             {
                 AddNotification(buffer[0]);
@@ -130,21 +130,21 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        private void UnhookChannelChangeEvents(ChannelData removedChannel)
+        private void UnhookLivestreamChangeEvents(LivestreamModel removedLivestream)
         {
-            if (removedChannel == null) throw new ArgumentNullException(nameof(removedChannel));
+            if (removedLivestream == null) throw new ArgumentNullException(nameof(removedLivestream));
 
-            removedChannel.PropertyChanged += ChannelDataOnPropertyChanged;
+            removedLivestream.PropertyChanged += LivestreamOnPropertyChanged;
         }
 
-        private void HookChannelChangeEvents(ChannelData newChannel)
+        private void HookLivestreamChangeEvents(LivestreamModel newLivestream)
         {
-            if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
+            if (newLivestream == null) throw new ArgumentNullException(nameof(newLivestream));
 
-            newChannel.PropertyChanged += ChannelDataOnPropertyChanged;
+            newLivestream.PropertyChanged += LivestreamOnPropertyChanged;
         }
 
-        private void MonitorStreamsModelOnOnlineChannelsRefreshComplete(object sender, EventArgs eventArgs)
+        private void MonitorStreamsModelOnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
             if (!hasRefreshed) // only listen to stream change events after the first refresh has occurred
             {
@@ -152,42 +152,42 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            // Only hook up channel change events 1 time
-            monitorStreamsModel.OnlineChannelsRefreshComplete -= MonitorStreamsModelOnOnlineChannelsRefreshComplete;
+            // Only hook up livestream change events 1 time
+            monitorStreamsModel.OnlineLivestreamsRefreshComplete -= MonitorStreamsModelOnOnlineLivestreamsRefreshComplete;
         }
 
-        private void ChannelsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null)
             {
-                foreach (ChannelData channelData in e.NewItems)
+                foreach (LivestreamModel livestream in e.NewItems)
                 {
-                    HookChannelChangeEvents(channelData);
+                    HookLivestreamChangeEvents(livestream);
                 }
             }
 
             if (e.OldItems != null)
             {
-                foreach (ChannelData removedChannels in e.OldItems)
+                foreach (LivestreamModel removedLivestream in e.OldItems)
                 {
-                    UnhookChannelChangeEvents(removedChannels);
+                    UnhookLivestreamChangeEvents(removedLivestream);
                 }
             }
         }
 
-        private void ChannelDataOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void LivestreamOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            var channelData = (ChannelData)sender;
-            if (e.PropertyName == nameof(ChannelData.Live) && hasRefreshed) // dont show notifications for the initial refresh
+            var livestreamModel = (LivestreamModel)sender;
+            if (e.PropertyName == nameof(LivestreamModel.Live) && hasRefreshed) // dont show notifications for the initial refresh
             {
-                if (!channelData.Live) return; // only care about streams coming online
+                if (!livestreamModel.Live) return; // only care about streams coming online
 
-                var notification = new ChannelNotification()
+                var notification = new LivestreamNotification()
                 {
-                    Title = $"{channelData.ChannelName} Online",
-                    Message = channelData.ChannelDescription,
-                    ImageUrl = channelData.PreviewImage?.Small,
-                    ChannelData = channelData
+                    Title = $"{livestreamModel.DisplayName} Online",
+                    Message = livestreamModel.Description,
+                    ImageUrl = livestreamModel.PreviewImage?.Small,
+                    LivestreamModel = livestreamModel
                 };
 
                 AddNotification(notification);

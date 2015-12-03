@@ -4,16 +4,22 @@ using TwitchTv.Dto;
 
 namespace Livestream.Monitor.Model
 {
-    public class ChannelData : PropertyChangedBase
+    public class LivestreamModel : PropertyChangedBase
     {
         private DateTimeOffset startTime;
         private long viewers;
         private string game;
-        private string channelDescription;
-        private string channelName;
+        private string description;
+        private string displayName;
         private bool live;
         private bool isPartner;
         private PreviewImage previewImage;
+
+        /// <summary> The unique identifier for the livestream </summary>
+        public string Id { get; set; }
+
+        /// <summary> The name of the service who hosts this livestream (twitchtv, youtube etc.) </summary>
+        public string StreamProvider { get; set; }
 
         public bool Live
         {
@@ -27,26 +33,26 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public string ChannelName
+        public string DisplayName
         {
-            get { return channelName; }
+            get { return displayName; }
             set
             {
-                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(ChannelName));
-                if (value == channelName) return;
-                channelName = value;
-                NotifyOfPropertyChange(() => ChannelName);
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(DisplayName));
+                if (value == displayName) return;
+                displayName = value;
+                NotifyOfPropertyChange(() => DisplayName);
             }
         }
 
-        public string ChannelDescription
+        public string Description
         {
-            get { return channelDescription; }
+            get { return description; }
             set
             {
-                if (value == channelDescription) return;
-                channelDescription = value;
-                NotifyOfPropertyChange(() => ChannelDescription);
+                if (value == description) return;
+                description = value;
+                NotifyOfPropertyChange(() => Description);
             }
         }
 
@@ -106,12 +112,12 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        /// <summary> The username this Channel came from by importing their follow list </summary>
+        /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }
 
         public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
 
-        /// <summary> Sets the channel to the offline state </summary>
+        /// <summary> Sets the livestream to the offline state </summary>
         public void Offline()
         {
             Live = false;
@@ -120,13 +126,13 @@ namespace Livestream.Monitor.Model
         }
 
         public override string ToString() => 
-            $"{channelName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
+            $"{displayName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
 
         #region Equality members
 
-        protected bool Equals(ChannelData other)
+        protected bool Equals(LivestreamModel other)
         {
-            return string.Equals(channelName, other.channelName);
+            return string.Equals(displayName, other.displayName);
         }
 
         public override bool Equals(object obj)
@@ -134,12 +140,12 @@ namespace Livestream.Monitor.Model
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != this.GetType()) return false;
-            return Equals((ChannelData) obj);
+            return Equals((LivestreamModel) obj);
         }
 
         public override int GetHashCode()
         {
-            return channelName?.GetHashCode() ?? 0;
+            return displayName?.GetHashCode() ?? 0;
         }
 
         #endregion
