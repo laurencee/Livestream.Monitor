@@ -136,6 +136,7 @@ namespace Livestream.Monitor.Model
                 OnOnlineLivestreamsRefreshComplete();
 
                 var offlineStreams = Livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
+                offlineStreams.ForEach(x => x.Offline()); // mark all remaining streams as offline immediately
 
                 var offlineTasks = offlineStreams.Select(x => new
                 {
@@ -148,8 +149,7 @@ namespace Livestream.Monitor.Model
                 {
                     var offlineData = offlineTask.OfflineData.Result;
                     if (offlineData == null) continue;
-
-                    offlineTask.Livestream.Offline();
+                    
                     offlineTask.Livestream.PopulateWithChannel(offlineData);
                 }
             }
