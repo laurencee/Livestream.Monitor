@@ -1,4 +1,5 @@
 ﻿using System;
+using Livestream.Monitor.Model.Monitoring;
 using TwitchTv.Dto;
 
 namespace Livestream.Monitor.Model
@@ -52,6 +53,9 @@ namespace Livestream.Monitor.Model
 
             // need to update other details before flipping the stream to online
             livestreamModel.Live = streamDetails.Viewers.HasValue;
+
+            if (streamDetails.Channel != null)
+                livestreamModel.PopulateWithChannel(streamDetails.Channel);
         }
 
         public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)

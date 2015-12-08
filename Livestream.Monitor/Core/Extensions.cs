@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
@@ -75,6 +77,11 @@ namespace Livestream.Monitor.Core
                 throw new InvalidOperationException($"Unable to get metro window from screen '{typeof(Screen).Name}'");
 
             return metroWindow;
+        }
+
+        public static IEnumerable<T> SkipAndTake<T>(this IEnumerable<T> query, int skip, int take)
+        {
+            return query.Skip(skip).Take(take);
         }
     }
 }

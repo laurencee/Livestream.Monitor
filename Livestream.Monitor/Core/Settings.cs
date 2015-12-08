@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel;
 using Caliburn.Micro;
+using Livestream.Monitor.Core.UI;
 using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Core

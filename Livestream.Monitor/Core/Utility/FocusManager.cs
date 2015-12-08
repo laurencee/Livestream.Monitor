@@ -7,7 +7,7 @@ using System.Windows.Data;
 using System.Windows.Media;
 using Caliburn.Micro;
 
-namespace Livestream.Monitor.Core
+namespace Livestream.Monitor.Core.Utility
 {
     /// <summary> Set keyboard focus extension usable from an IViewAware screen </summary>
     /// <remarks> Sourced from: http://stackoverflow.com/a/20936288 </remarks>

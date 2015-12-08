@@ -88,7 +88,7 @@ namespace TwitchTv.Tests
         [Fact]
         public async Task GetTopStreams()
         {
-            var topStreams = await sut.GetTopStreams();
+            var topStreams = await sut.GetTopStreams(skip: 0, take: 100);
             Assert.NotNull(topStreams);
             Assert.NotEmpty(topStreams);
         }

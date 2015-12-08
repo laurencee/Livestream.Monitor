@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public interface IMonitorStreamsModel : INotifyPropertyChangedEx
     {

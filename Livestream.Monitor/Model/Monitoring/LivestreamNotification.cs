@@ -1,6 +1,6 @@
 ﻿using Caliburn.Micro;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamNotification : PropertyChangedBase
     {

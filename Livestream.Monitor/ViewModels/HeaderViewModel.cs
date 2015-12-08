@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls.Dialogs;
 using static System.String;
 
@@ -21,6 +23,8 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
+        private readonly TopTwitchStreamsViewModel topTwitchStreamsViewModel;
+        private readonly IEventAggregator eventAggregator;
         private string streamName;
         private bool canRefreshLivestreams;
         private StreamQuality? selectedStreamQuality;
@@ -38,17 +42,23 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
-            FilterModel filterModelModel)
+            FilterModel filterModelModel,
+            TopTwitchStreamsViewModel topTwitchStreamsViewModel,
+            IEventAggregator eventAggregator)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
-            
+            if (topTwitchStreamsViewModel == null) throw new ArgumentNullException(nameof(topTwitchStreamsViewModel));
+            if (eventAggregator == null) throw new ArgumentNullException(nameof(eventAggregator));
+
             FilterModel = filterModelModel;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
+            this.topTwitchStreamsViewModel = topTwitchStreamsViewModel;
+            this.eventAggregator = eventAggregator;
         }
 
         public FilterModel FilterModel { get; }
@@ -229,6 +239,11 @@ namespace Livestream.Monitor.ViewModels
         {
             if (e.Key == Key.Enter && CanAddStream)
                 await AddStream();
+        }
+
+        public void ShowTopTwitchStreams()
+        {
+            eventAggregator.PublishOnUIThread(new ActivateScreen(topTwitchStreamsViewModel));
         }
 
         protected override void OnActivate()

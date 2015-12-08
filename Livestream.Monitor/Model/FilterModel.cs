@@ -4,16 +4,16 @@ namespace Livestream.Monitor.Model
 {
     public class FilterModel : PropertyChangedBase
     {
-        private string filter;
+        private string livestreamNameFilter;
 
-        public string Filter
+        public string LivestreamNameFilter
         {
-            get { return filter; }
+            get { return livestreamNameFilter; }
             set
             {
-                if (value == filter) return;
-                filter = value;
-                NotifyOfPropertyChange(() => Filter);
+                if (value == livestreamNameFilter) return;
+                livestreamNameFilter = value;
+                NotifyOfPropertyChange(() => LivestreamNameFilter);
             }
         }
     }

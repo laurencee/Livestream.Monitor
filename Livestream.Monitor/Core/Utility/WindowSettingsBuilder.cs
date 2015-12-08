@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
-namespace Livestream.Monitor.Core
+namespace Livestream.Monitor.Core.Utility
 {
     public class WindowSettingsBuilder
     {

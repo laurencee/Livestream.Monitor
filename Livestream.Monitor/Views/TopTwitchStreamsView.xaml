@@ -1,0 +1,38 @@
+﻿<UserControl x:Class="Livestream.Monitor.Views.TopTwitchStreamsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:cal="http://www.caliburnproject.org"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:model="clr-namespace:Livestream.Monitor.Model"
+             d:DataContext="{d:DesignInstance Type=viewModels:TopTwitchStreamsViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
+             d:DesignHeight="300" d:DesignWidth="500">
+    <UserControl.Resources>
+        <DataTemplate x:Key="TwitchStreamTemplate" DataType="model:TwitchSearchStreamResult">
+            <StackPanel Margin="10" Width="100">
+                <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
+                <TextBlock Text="{Binding LivestreamModel.Description}" MaxWidth="100" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding LivestreamModel.Game}" />
+                <TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />
+                <TextBlock Text="{Binding LivestreamModel.Viewers}" />
+                <TextBlock Text="{Binding IsMonitored}" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+    <Grid>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="Items" ItemTemplate="{StaticResource TwitchStreamTemplate}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+            </ItemsControl>
+        </ScrollViewer>
+        <Button x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />
+    </Grid>
+</UserControl>

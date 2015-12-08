@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamFileData
     {

@@ -1,12 +1,11 @@
 using System;
-using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.UI;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Octokit;
@@ -14,7 +13,7 @@ using Application = System.Windows.Application;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class ShellViewModel : Conductor<Screen>.Collection.OneActive
+    public class ShellViewModel : Conductor<Screen>.Collection.OneActive, IHandle<ActivateScreen>
     {
         public const string TrayIconControlName = "TrayIcon";
 
@@ -37,7 +36,8 @@ namespace Livestream.Monitor.ViewModels
         public ShellViewModel(
             ThemeSelectorViewModel themeSelector,
             SettingsViewModel settingsViewModel,
-            MainViewModel mainViewModel)
+            MainViewModel mainViewModel,
+            IEventAggregator eventAggregator)
         {
             if (themeSelector == null) throw new ArgumentNullException(nameof(themeSelector));
             if (settingsViewModel == null) throw new ArgumentNullException(nameof(settingsViewModel));
@@ -47,6 +47,7 @@ namespace Livestream.Monitor.ViewModels
             Settings = settingsViewModel;
             ActiveItem = mainViewModel;
 
+            eventAggregator.Subscribe(this);
             Settings.ActivateWith(this);
             ThemeSelector.ActivateWith(this);
 
@@ -173,6 +174,12 @@ namespace Livestream.Monitor.ViewModels
                 // failed to convert the tagname to a version for some reason
                 return false;
             }
+        }
+
+        public void Handle(ActivateScreen message)
+        {
+            Items.Add(message.Screen);
+            ActivateItem(message.Screen);
         }
     }
 }

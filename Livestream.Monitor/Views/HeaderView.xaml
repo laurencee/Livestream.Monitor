@@ -20,14 +20,19 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" /> <!-- Col 10 -->
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" /> <!-- This is an expanding space to keep the last column on the far right at all times -->
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
 
+        <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox Grid.Column="1" x:Name="FilterModel_Filter" controls:TextBoxHelper.Watermark="livestream name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
+        <TextBox Grid.Column="1" x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="livestream name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
+
+        <!-- Open Chat & Set Stream Quality -->
         <Separator Grid.Column="2" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <Button Grid.Column="3" x:Name="OpenChat" Content="CHAT"  Margin="2" Width="50" />
         <Button Grid.Column="4" x:Name="RefreshLivestreams" Content="&#x21BB;" FontWeight="ExtraBold"  Margin="2" ToolTip="Refresh Livestreams" />
@@ -35,8 +40,10 @@
         <controls:SplitButton Grid.Column="6" Margin="2" MinWidth="75" VerticalContentAlignment="Center" HorizontalAlignment="Center"
                               ItemsSource="{Binding StreamQualities}" SelectedItem="{Binding SelectedStreamQuality}" IsEnabled="{Binding CanOpenStream}"
                               cal:Message.Attach="[Click] = [OpenStream]" />
+
+        <!-- Importing & Adding new streams -->
         <Separator Grid.Column="7" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button Grid.Column="8" x:Name="ImportFollows" Content="Import Livestreams"  Margin="2" ToolTip="Import livestreams from the provided username" />
+        <Button Grid.Column="8" x:Name="ImportFollows" Content="Import"  Margin="2" ToolTip="Import livestreams from the provided username" />
         <TextBox Grid.Column="9" x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new livestream..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
         <Button Grid.Column="10" x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" ToolTip="Add new livestream">
@@ -46,5 +53,9 @@
                 </DataTemplate>
             </Button.ContentTemplate>
         </Button>
+        
+        <!-- Search functions -->
+        <Separator Grid.Column="11" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
+        <Button Grid.Column="12" x:Name="ShowTopTwitchStreams" Content="Top Streams" Margin="2" />
     </Grid>
 </UserControl>

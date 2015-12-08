@@ -2,7 +2,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
 using TwitchTv;
 
@@ -40,6 +42,7 @@ namespace Livestream.Monitor
             container.PerRequest<MainViewModel>();
             container.PerRequest<SettingsViewModel>();
             container.PerRequest<LivestreamListViewModel>();
+            container.PerRequest<TopTwitchStreamsViewModel>();
 
             container.PerRequest<StreamLauncher>();
         }

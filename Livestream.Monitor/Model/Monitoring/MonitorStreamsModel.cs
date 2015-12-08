@@ -5,7 +5,7 @@ using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using TwitchTv;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public class MonitorStreamsModel : PropertyChangedBase, IMonitorStreamsModel
     {

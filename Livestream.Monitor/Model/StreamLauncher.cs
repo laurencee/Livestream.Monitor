@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
 
 namespace Livestream.Monitor.Model

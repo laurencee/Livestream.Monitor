@@ -9,6 +9,8 @@ using System.Windows.Threading;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.ViewModels
@@ -151,7 +153,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {
-            var f = FilterModel.Filter;
+            var f = FilterModel.LivestreamNameFilter;
             if (string.IsNullOrWhiteSpace(f))
             {
                 e.Accepted = true;

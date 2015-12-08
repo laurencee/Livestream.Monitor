@@ -2,7 +2,7 @@
 using Caliburn.Micro;
 using TwitchTv.Dto;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamModel : PropertyChangedBase
     {

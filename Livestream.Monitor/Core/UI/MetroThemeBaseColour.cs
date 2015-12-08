@@ -1,4 +1,4 @@
-namespace Livestream.Monitor.Core
+namespace Livestream.Monitor.Core.UI
 {
     public enum MetroThemeBaseColour
     {

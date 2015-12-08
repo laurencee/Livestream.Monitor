@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace Livestream.Monitor.Model
+namespace Livestream.Monitor.Model.Monitoring
 {
     public interface IMonitoredStreamsFileHandler
     {

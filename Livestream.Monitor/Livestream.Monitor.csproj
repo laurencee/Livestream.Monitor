@@ -93,35 +93,39 @@
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="AppBootstrapper.cs" />
-    <Compile Include="Core\FocusManager.cs" />
+    <Compile Include="Core\Utility\FocusManager.cs" />
     <Compile Include="Core\ISettingsHandler.cs" />
+    <Compile Include="Core\UI\PagingConductor.cs" />
     <Compile Include="Core\Settings.cs" />
     <Compile Include="Core\SettingsHandler.cs" />
-    <Compile Include="Core\SingleInstance.cs" />
+    <Compile Include="Core\Utility\SingleInstance.cs" />
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
-    <Compile Include="Model\LivestreamFileData.cs" />
+    <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Model\Monitoring\LivestreamFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
     <Compile Include="Model\MenuItem.cs" />
-    <Compile Include="Model\LivestreamNotification.cs" />
+    <Compile Include="Model\Monitoring\LivestreamNotification.cs" />
     <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
     <Compile Include="Model\StreamProviders.cs" />
+    <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />
-    <Compile Include="Model\LivestreamModel.cs" />
-    <Compile Include="Core\MetroThemeBaseColour.cs" />
-    <Compile Include="Core\MetroThemeColours.cs" />
-    <Compile Include="Core\MetroWindowManager.cs" />
-    <Compile Include="Core\WindowSettingsBuilder.cs" />
-    <Compile Include="Model\IMonitoredStreamsFileHandler.cs" />
-    <Compile Include="Model\IMonitorStreamsModel.cs" />
+    <Compile Include="Model\Monitoring\LivestreamModel.cs" />
+    <Compile Include="Core\UI\MetroThemeBaseColour.cs" />
+    <Compile Include="Core\UI\MetroThemeColours.cs" />
+    <Compile Include="Core\UI\MetroWindowManager.cs" />
+    <Compile Include="Core\Utility\WindowSettingsBuilder.cs" />
+    <Compile Include="Model\Monitoring\IMonitoredStreamsFileHandler.cs" />
+    <Compile Include="Model\Monitoring\IMonitorStreamsModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\MessageBoxViewModel.cs" />
-    <Compile Include="Model\MonitoredStreamsFileHandler.cs" />
-    <Compile Include="Model\MonitorStreamsModel.cs" />
+    <Compile Include="Model\Monitoring\MonitoredStreamsFileHandler.cs" />
+    <Compile Include="Model\Monitoring\MonitorStreamsModel.cs" />
     <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
+    <Compile Include="ViewModels\TopTwitchStreamsViewModel.cs" />
     <Compile Include="Views\LivestreamListView.xaml.cs">
       <DependentUpon>LivestreamListView.xaml</DependentUpon>
     </Compile>
@@ -178,6 +182,10 @@
     <Page Include="Views\ThemeSelectorView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\TopTwitchStreamsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
     </Page>
   </ItemGroup>
   <ItemGroup>

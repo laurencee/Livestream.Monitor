@@ -3,7 +3,7 @@ using System.Windows;
 using Caliburn.Micro;
 using MahApps.Metro.Controls;
 
-namespace Livestream.Monitor.Core
+namespace Livestream.Monitor.Core.UI
 {
     public class MetroWindowManager : WindowManager
     {

@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 
 namespace Livestream.Monitor.ViewModels
