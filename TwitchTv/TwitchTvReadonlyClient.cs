@@ -48,7 +48,7 @@ namespace TwitchTv
             if (take > 100) throw new ArgumentOutOfRangeException(nameof(take), "Top stream query maximum request size is 100");
             if (skip < 0) skip = 0;
 
-            var request = $"{RequestConstants.Streams}?offset{skip}&limit={take}";
+            var request = $"{RequestConstants.Streams}?offset={skip}&limit={take}";
             var streamRoot = await ExecuteRequest<StreamsRoot>(request);
             return streamRoot.Streams;
         }

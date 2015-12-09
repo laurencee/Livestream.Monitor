@@ -252,6 +252,12 @@ namespace Livestream.Monitor.ViewModels
             base.OnActivate();
         }
 
+        protected override void OnDeactivate(bool close)
+        {
+            monitorStreamsModel.PropertyChanged -= MonitorStreamsModelOnPropertyChanged;
+            base.OnDeactivate(close);
+        }
+
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshLivestreams))

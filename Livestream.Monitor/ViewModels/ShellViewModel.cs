@@ -109,14 +109,16 @@ namespace Livestream.Monitor.ViewModels
 
         protected override async void OnViewLoaded(object view)
         {
-            base.OnViewLoaded(view);
+            if (Execute.InDesignMode) return;
+            
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
             await CheckForNewVersion();
+            base.OnViewLoaded(view);
         }
-        
+
         protected override void OnDeactivate(bool close)
         {
-            taskbarIcon.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
+            taskbarIcon?.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
             base.OnDeactivate(close);
         }
 

@@ -16,6 +16,8 @@
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            
             <!--Design time hack to set the background color so we can work on user controls in dark VS theme-->
             <Style TargetType="{x:Type UserControl}">
                 <Style.Triggers>

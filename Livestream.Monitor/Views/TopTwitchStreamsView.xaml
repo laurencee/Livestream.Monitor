@@ -10,7 +10,7 @@
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
              d:DataContext="{d:DesignInstance Type=viewModels:TopTwitchStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
-             d:DesignHeight="300" d:DesignWidth="500">
+             d:DesignHeight="600" d:DesignWidth="500">
     <UserControl.Resources>
         <DataTemplate x:Key="TwitchStreamTemplate" DataType="model:TwitchSearchStreamResult">
             <StackPanel Margin="10" Width="100">
@@ -24,6 +24,10 @@
         </DataTemplate>
     </UserControl.Resources>
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="Items" ItemTemplate="{StaticResource TwitchStreamTemplate}">
                 <ItemsControl.ItemsPanel>
@@ -33,6 +37,12 @@
                 </ItemsControl.ItemsPanel>
             </ItemsControl>
         </ScrollViewer>
-        <Button x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />
+        <Button Grid.Row="0" x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />
+        <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
+            <Button x:Name="Previous" Content="Previous" />
+            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
+            <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
+            <Button x:Name="Next" Content="Next" />
+        </StackPanel>
     </Grid>
 </UserControl>

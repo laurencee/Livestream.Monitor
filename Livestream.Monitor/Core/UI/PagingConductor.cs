@@ -39,9 +39,9 @@ namespace Livestream.Monitor.Core.UI
         /// <summary> Will return to the start or end of the list on executing Next/Previous. </summary>
         protected bool Circular { get; set; }
 
-        public bool CanNext => Circular || Page < TotalPages;
+        public virtual bool CanNext => Circular || Page < TotalPages;
 
-        public bool CanPrevious => Circular || Page > 1;
+        public virtual bool CanPrevious => Circular || Page > 1;
 
         public virtual void Next()
         {

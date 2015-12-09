@@ -17,6 +17,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private List<Stream> topStreams;
+        private bool loadingItems;
 
         #region Design time constructor
 
@@ -59,6 +60,7 @@ namespace Livestream.Monitor.ViewModels
             }
 
             Items.AddRange(designTimeItems);
+            ItemsPerPage = 25;
         }
 
         #endregion
@@ -73,12 +75,38 @@ namespace Livestream.Monitor.ViewModels
             this.monitorStreamsModel = monitorStreamsModel;
 
             ItemsPerPage = 25;
+            PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == nameof(Page))
+                {
+                    NotifyOfPropertyChange(() => CanPrevious);
+                }
+            };
         }
 
         protected override async void OnViewLoaded(object view)
         {
-            if (!Execute.InDesignMode) await EnsureItems();
+            if (Execute.InDesignMode) return;
+
+            await EnsureItems();
             base.OnViewLoaded(view);
+        }
+
+        public override bool CanPrevious => Page > 1 && !LoadingItems;
+
+        public override bool CanNext => !LoadingItems;
+
+        public bool LoadingItems
+        {
+            get { return loadingItems; }
+            set
+            {
+                if (value == loadingItems) return;
+                loadingItems = value;
+                NotifyOfPropertyChange(() => LoadingItems);
+                NotifyOfPropertyChange(() => CanPrevious);
+                NotifyOfPropertyChange(() => CanNext);
+            }
         }
 
         protected override async void MovePage()
@@ -90,8 +118,12 @@ namespace Livestream.Monitor.ViewModels
         // Makes sure the items collection is populated with items for the current page
         private async Task EnsureItems()
         {
+            LoadingItems = true;
+
             try
             {
+                Items.Clear();
+
                 int skip = (Page - 1) * ItemsPerPage;
                 topStreams = await twitchTvClient.GetTopStreams(skip, ItemsPerPage);
                 var monitoredStreams = monitorStreamsModel.Livestreams;
@@ -112,6 +144,8 @@ namespace Livestream.Monitor.ViewModels
                 await this.ShowMessageAsync("Error",
                     $"An error occured attempting to get top twitch streams.{Environment.NewLine}{Environment.NewLine}{ex}");
             }
+
+            LoadingItems = false;
         }
     }
 }

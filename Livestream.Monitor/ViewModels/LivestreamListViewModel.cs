@@ -114,7 +114,7 @@ namespace Livestream.Monitor.ViewModels
             try
             {
                 StreamsModel.OnlineLivestreamsRefreshComplete += OnOnlineLivestreamsRefreshComplete;
-                FilterModel.PropertyChanged += (sender, args) => ViewSource.View.Refresh();
+                FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
                 ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
                 ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
@@ -132,6 +132,20 @@ namespace Livestream.Monitor.ViewModels
 
             Loading = false;
             base.OnActivate();
+        }
+
+        
+
+        protected override void OnDeactivate(bool close)
+        {
+            StreamsModel.OnlineLivestreamsRefreshComplete -= OnOnlineLivestreamsRefreshComplete;
+            FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
+            ViewSource.Filter -= ViewSourceOnFilter;
+            ViewSource.SortDescriptions.Clear();
+
+            StreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
+
+            base.OnDeactivate(close);
         }
 
         private async void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -173,6 +187,11 @@ namespace Livestream.Monitor.ViewModels
         private void OnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
             // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately 
+            ViewSource.View.Refresh();
+        }
+
+        private void OnFilterModelOnPropertyChanged(object sender, PropertyChangedEventArgs args)
+        {
             ViewSource.View.Refresh();
         }
     }
