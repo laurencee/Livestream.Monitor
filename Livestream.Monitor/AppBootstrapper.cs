@@ -30,7 +30,6 @@ namespace Livestream.Monitor
             container.Singleton<IEventAggregator, EventAggregator>();
             container.Singleton<IWindowManager, MetroWindowManager>();
             container.Singleton<ITwitchTvReadonlyClient, TwitchTvReadonlyClient>();
-            container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();
             container.Singleton<FilterModel>();
@@ -45,6 +44,12 @@ namespace Livestream.Monitor
             container.PerRequest<TopTwitchStreamsViewModel>();
 
             container.PerRequest<StreamLauncher>();
+
+#if DEBUG
+            container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();
+#else
+            container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
+#endif
         }
 
         protected override object GetInstance(Type service, string key)
@@ -70,6 +75,11 @@ namespace Livestream.Monitor
         {
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
+
+#if DEBUG
+            var windowManager = container.GetInstance<IWindowManager>();
+            windowManager.ShowWindow(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
+#endif
         }
 
         protected override void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
@@ -84,7 +94,7 @@ namespace Livestream.Monitor
 
                 File.AppendAllText(errorLogFilePath, $"{DateTime.Now.ToString("HH:mm:ss.ffff")}| {e.Exception}"); // global exception logging
             }
-            catch 
+            catch
             {
                 // can't do anything if we fail to write the exception
             }

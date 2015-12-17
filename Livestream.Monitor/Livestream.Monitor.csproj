@@ -102,6 +102,7 @@
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Model\Monitoring\FakeMonitorStreamsModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
     <Compile Include="Model\MenuItem.cs" />
@@ -111,6 +112,7 @@
     <Compile Include="Model\StreamProviders.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
+    <Compile Include="ViewModels\EmulatorViewModel.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamModel.cs" />
     <Compile Include="Core\UI\MetroThemeBaseColour.cs" />
@@ -126,6 +128,9 @@
     <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
     <Compile Include="ViewModels\TopTwitchStreamsViewModel.cs" />
+    <Compile Include="Views\EmulatorView.xaml.cs">
+      <DependentUpon>EmulatorView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\LivestreamListView.xaml.cs">
       <DependentUpon>LivestreamListView.xaml</DependentUpon>
     </Compile>
@@ -151,6 +156,10 @@
       <DependentUpon>ThemeSelectorView.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModels\ThemeSelectorViewModel.cs" />
+    <Page Include="Views\EmulatorView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\LivestreamListView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

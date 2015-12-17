@@ -53,7 +53,7 @@ namespace Livestream.Monitor.ViewModels
             ThemeSelector.ActivateWith(this);
 
             currentAppVersion = GetType().Assembly.GetName().Version;
-            DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}";
+            DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build} (BETA)";
         }
 
         public override string DisplayName { get; set; }

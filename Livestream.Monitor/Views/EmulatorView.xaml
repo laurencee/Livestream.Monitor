@@ -1,0 +1,13 @@
+﻿<controls:MetroWindow x:Class="Livestream.Monitor.Views.EmulatorView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Livestream.Monitor.Views"
+        xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+        mc:Ignorable="d" SizeToContent="WidthAndHeight"
+        Title="EmulatorView" >
+    <Grid>
+        <Button x:Name="ToggleOnline" Content="Toggle Online/Offline" VerticalAlignment="Center" HorizontalAlignment="Center" />
+    </Grid>
+</controls:MetroWindow>
