@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -116,8 +117,8 @@ namespace Livestream.Monitor.ViewModels
                 StreamsModel.OnlineLivestreamsRefreshComplete += OnOnlineLivestreamsRefreshComplete;
                 FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
-                ViewSource.SortDescriptions.Add(new SortDescription("Viewers", ListSortDirection.Descending));
-                ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
+                ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
+                ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Viewers), ListSortDirection.Descending));
                 ViewSource.Filter += ViewSourceOnFilter;
 
                 foreach (LivestreamModel livestream in StreamsModel.Livestreams)
@@ -201,7 +202,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void LivestreamOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(LivestreamModel.Live)) 
+            if (ViewSource.SortDescriptions.Any(x => x.PropertyName == e.PropertyName)) 
             {
                 // make sure streams going online/offline cause the view sort descriptions to be applied immediately
                 ViewSource.View.Refresh();
