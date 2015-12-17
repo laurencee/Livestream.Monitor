@@ -10,7 +10,7 @@
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
              d:DataContext="{d:DesignInstance Type=viewModels:LivestreamListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
-             d:DesignHeight="300" d:DesignWidth="500">
+             d:DesignHeight="300" d:DesignWidth="600">
     <Grid>
         <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
@@ -36,9 +36,9 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="1*"/>
-                <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="2*"/>
-                <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="1*" />
+                <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="130" MinWidth="80" />
+                <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="5*"/>
+                <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="2*" />
                 <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" SortDirection="Descending"/>
                 <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" MinWidth="75" />
             </DataGrid.Columns>
