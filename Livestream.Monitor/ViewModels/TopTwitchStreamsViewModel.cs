@@ -109,6 +109,53 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public async Task StreamClicked(TwitchSearchStreamResult twitchSearchStreamResult)
+        {
+            if (twitchSearchStreamResult.IsBusy) return;
+            twitchSearchStreamResult.IsBusy = true;
+
+            if (twitchSearchStreamResult.IsMonitored)
+            {
+                await UnmonitorStream(twitchSearchStreamResult);
+            }
+            else
+            {
+                await MonitorStream(twitchSearchStreamResult);
+            }
+
+            twitchSearchStreamResult.IsBusy = false;
+        }
+
+        private async Task UnmonitorStream(TwitchSearchStreamResult twitchSearchStreamResult)
+        {
+            try
+            {
+                var livestreamModel = monitorStreamsModel.Livestreams.FirstOrDefault(x => x.Id == twitchSearchStreamResult.LivestreamModel.Id);
+                if (livestreamModel != null)
+                {
+                    monitorStreamsModel.RemoveLivestream(livestreamModel);
+                }
+                twitchSearchStreamResult.IsMonitored = false;
+            }
+            catch (Exception ex)
+            {
+                await this.ShowMessageAsync("Error", "An error occured removing the stream from monitoring:" + ex.Message);
+            }
+        }
+
+        private async Task MonitorStream(TwitchSearchStreamResult twitchSearchStreamResult)
+        {
+            try
+            {
+                await monitorStreamsModel.AddLivestream(twitchSearchStreamResult.LivestreamModel);
+                twitchSearchStreamResult.IsMonitored = true;
+            }
+            catch (Exception ex)
+            {
+                await this.ShowMessageAsync("Error", "An error occured adding the stream for monitoring: " + ex.Message);
+            }
+        }
+
         protected override async void MovePage()
         {
             await EnsureItems();

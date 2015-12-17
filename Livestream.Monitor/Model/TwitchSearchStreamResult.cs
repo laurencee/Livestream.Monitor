@@ -7,6 +7,7 @@ namespace Livestream.Monitor.Model
     public class TwitchSearchStreamResult : PropertyChangedBase
     {
         private bool isMonitored;
+        private bool isBusy;
 
         public bool IsMonitored
         {
@@ -16,6 +17,17 @@ namespace Livestream.Monitor.Model
                 if (value == isMonitored) return;
                 isMonitored = value;
                 NotifyOfPropertyChange(() => IsMonitored);
+            }
+        }
+
+        public bool IsBusy
+        {
+            get { return isBusy; }
+            set
+            {
+                if (value == isBusy) return;
+                isBusy = value;
+                NotifyOfPropertyChange(() => IsBusy);
             }
         }
 

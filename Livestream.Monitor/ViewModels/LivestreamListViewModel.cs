@@ -120,6 +120,11 @@ namespace Livestream.Monitor.ViewModels
                 ViewSource.SortDescriptions.Add(new SortDescription("Live", ListSortDirection.Descending));
                 ViewSource.Filter += ViewSourceOnFilter;
 
+                foreach (LivestreamModel livestream in StreamsModel.Livestreams)
+                {
+                    HookLiveStreamEvents(livestream);
+                }
+
                 await RefreshLivestreams();
                 // hook up followed livestreams after our initial call so we can refresh immediately as needed
                 StreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
@@ -134,8 +139,6 @@ namespace Livestream.Monitor.ViewModels
             base.OnActivate();
         }
 
-        
-
         protected override void OnDeactivate(bool close)
         {
             StreamsModel.OnlineLivestreamsRefreshComplete -= OnOnlineLivestreamsRefreshComplete;
@@ -144,22 +147,64 @@ namespace Livestream.Monitor.ViewModels
             ViewSource.SortDescriptions.Clear();
 
             StreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
+            foreach (LivestreamModel livestream in StreamsModel.Livestreams)
+            {
+                UnhookLiveStreamEvents(livestream);
+            }
 
             base.OnDeactivate(close);
         }
 
         private async void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
+            if (e.NewItems != null)
+            {
+                foreach (LivestreamModel livestream in e.NewItems)
+                {
+                    HookLiveStreamEvents(livestream);
+                }
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (LivestreamModel livestream in e.OldItems)
+                {
+                    UnhookLiveStreamEvents(livestream);
+                }
+            }
+
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
                     ViewSource.View.Refresh();
                     break;
+                case NotifyCollectionChangedAction.Remove:
                 case NotifyCollectionChangedAction.Replace:
-                case NotifyCollectionChangedAction.Move:
                 case NotifyCollectionChangedAction.Reset:
                     await RefreshLivestreams();
                     break;
+                case NotifyCollectionChangedAction.Move:
+                    await RefreshLivestreams();
+                    break;
+            }
+        }
+
+        private void HookLiveStreamEvents(LivestreamModel livestream)
+        {
+            livestream.PropertyChanged += LivestreamOnPropertyChanged;
+        }
+
+        private void UnhookLiveStreamEvents(LivestreamModel livestream)
+        {
+            livestream.PropertyChanged -= LivestreamOnPropertyChanged;
+        }
+
+        private void LivestreamOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(LivestreamModel.Live)) 
+            {
+                // make sure streams going online/offline cause the view sort descriptions to be applied immediately
+                ViewSource.View.Refresh();
             }
         }
 
@@ -167,15 +212,15 @@ namespace Livestream.Monitor.ViewModels
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {
-            var f = FilterModel.LivestreamNameFilter;
-            if (string.IsNullOrWhiteSpace(f))
+            var filter = FilterModel.LivestreamNameFilter;
+            if (string.IsNullOrWhiteSpace(filter))
             {
                 e.Accepted = true;
                 return;
             }
 
             var item = e.Item as LivestreamModel;
-            if (item != null && item.DisplayName.Contains(f, StringComparison.OrdinalIgnoreCase))
+            if (item != null && item.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase))
             {
                 e.Accepted = true;
                 return;

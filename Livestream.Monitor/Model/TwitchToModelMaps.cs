@@ -42,7 +42,8 @@ namespace Livestream.Monitor.Model
         public static void PopulateWithStreamDetails(this LivestreamModel livestreamModel, Stream streamDetails)
         {
             if (streamDetails == null) return;
-            
+
+            livestreamModel.Id = streamDetails.Channel?.Name;
             livestreamModel.Viewers = streamDetails.Viewers ?? 0;
             livestreamModel.PreviewImage = streamDetails.Preview;
             if (streamDetails.CreatedAt != null)
