@@ -25,17 +25,17 @@
         </Style>
         <DataTemplate x:Key="TwitchStreamTemplate" DataType="model:TwitchSearchStreamResult">
             <Grid>
-                <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]">
+                <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120">
                     <controls:Tile.Content>
-                        <StackPanel Width="100">
+                        <StackPanel Width="110">
                             <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
-                            <TextBlock Text="{Binding LivestreamModel.Description}" MaxWidth="100" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
                             <TextBlock Text="{Binding LivestreamModel.Game}" />
-                            <TextBlock />
                             <!-- Blank spacer -->
-                            <TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />
+                            <TextBlock />
+                            <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
                             <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
-                            <TextBlock>
+                            <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
                                 <TextBlock.Style>
                                     <Style TargetType="{x:Type TextBlock}">
                                         <Style.Triggers>

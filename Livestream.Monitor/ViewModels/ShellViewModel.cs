@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -112,7 +113,7 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
             
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
-            await CheckForNewVersion();
+            if (!Debugger.IsAttached) await CheckForNewVersion();
             base.OnViewLoaded(view);
         }
 
