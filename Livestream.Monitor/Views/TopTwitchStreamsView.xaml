@@ -68,6 +68,7 @@
             </ItemsControl>
         </ScrollViewer>
         <Button Grid.Row="0" x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />
+        <TextBlock Grid.Row="1" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
             <Button x:Name="Previous" Content="Previous" />
             <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
