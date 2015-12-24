@@ -1,5 +1,5 @@
 #if DEBUG
-    #define FAKE_DATA // comment out this line to use real data in debug mode
+    //#define FAKE_DATA // uncomment this line to use fake data in debug mode
 #endif
 
 using System.IO;

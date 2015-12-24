@@ -9,7 +9,7 @@
                       xmlns:tb="http://www.hardcodet.net/taskbar"
                       d:DataContext="{d:DesignInstance Type=viewModels:ShellViewModel, IsDesignTimeCreatable=True}"
                       cal:Bind.AtDesignTime="True" WindowState="{Binding WindowState}" AllowsTransparency="True"
-                      Height="450" Width="900">
+                      Height="450" Width="750">
     <mah:MetroWindow.RightWindowCommands>
         <mah:WindowCommands>
             <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />

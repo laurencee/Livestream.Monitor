@@ -56,6 +56,6 @@
         
         <!-- Search functions -->
         <Separator Grid.Column="11" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button Grid.Column="12" x:Name="ShowTopTwitchStreams" Content="Top Streams" Margin="2" />
+        <Button Grid.Column="12" x:Name="ShowTopTwitchStreams" Content="Top Streams" Margin="2" ToolTip="Show top streams from twitch" />
     </Grid>
 </UserControl>

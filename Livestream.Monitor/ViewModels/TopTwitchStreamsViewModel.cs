@@ -14,6 +14,8 @@ namespace Livestream.Monitor.ViewModels
 {
     public class TopTwitchStreamsViewModel : PagingConductor<TwitchSearchStreamResult>
     {
+        private const int ITEMS_PER_PAGE = 15;
+
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly StreamLauncher streamLauncher;
@@ -61,7 +63,7 @@ namespace Livestream.Monitor.ViewModels
             }
 
             Items.AddRange(designTimeItems);
-            ItemsPerPage = 25;
+            ItemsPerPage = ITEMS_PER_PAGE;
         }
 
         #endregion
@@ -79,7 +81,7 @@ namespace Livestream.Monitor.ViewModels
             this.monitorStreamsModel = monitorStreamsModel;
             this.streamLauncher = streamLauncher;
 
-            ItemsPerPage = 25;
+            ItemsPerPage = ITEMS_PER_PAGE;
             PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(Page))
