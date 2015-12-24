@@ -16,6 +16,7 @@ namespace Livestream.Monitor.ViewModels
     {
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly StreamLauncher streamLauncher;
         private List<Stream> topStreams;
         private bool loadingItems;
 
@@ -67,12 +68,16 @@ namespace Livestream.Monitor.ViewModels
 
         public TopTwitchStreamsViewModel(
             ITwitchTvReadonlyClient twitchTvClient,
-            IMonitorStreamsModel monitorStreamsModel)
+            IMonitorStreamsModel monitorStreamsModel,
+            StreamLauncher streamLauncher)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
+            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
+
             this.twitchTvClient = twitchTvClient;
             this.monitorStreamsModel = monitorStreamsModel;
+            this.streamLauncher = streamLauncher;
 
             ItemsPerPage = 25;
             PropertyChanged += (sender, args) =>
@@ -107,6 +112,13 @@ namespace Livestream.Monitor.ViewModels
                 NotifyOfPropertyChange(() => CanPrevious);
                 NotifyOfPropertyChange(() => CanNext);
             }
+        }
+
+        public void LaunchStream(TwitchSearchStreamResult stream)
+        {
+            if (stream == null) return;
+
+            streamLauncher.StartStream(stream.LivestreamModel);
         }
 
         public async Task StreamClicked(TwitchSearchStreamResult twitchSearchStreamResult)

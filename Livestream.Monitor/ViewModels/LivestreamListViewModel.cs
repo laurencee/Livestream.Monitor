@@ -73,7 +73,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (Loading) return;
 
-            streamLauncher.StartStream();
+            streamLauncher.StartStream(StreamsModel.SelectedLivestream);
         }
 
         public async Task DataGridKeyDown(KeyEventArgs e)

@@ -193,7 +193,7 @@ namespace Livestream.Monitor.ViewModels
 
         public void OpenStream()
         {
-            streamLauncher.StartStream();
+            streamLauncher.StartStream(monitorStreamsModel.SelectedLivestream);
         }
 
         public async Task OpenChat()

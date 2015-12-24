@@ -13,26 +13,22 @@ namespace Livestream.Monitor.Model
 {
     public class StreamLauncher
     {
-        private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
 
-        public StreamLauncher(
-            IMonitorStreamsModel monitorStreamsModel,
-            ISettingsHandler settingsHandler,
-            IWindowManager windowManager)
+        public StreamLauncher(ISettingsHandler settingsHandler, IWindowManager windowManager)
         {
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-
-            this.monitorStreamsModel = monitorStreamsModel;
+            
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
         }
 
-        public void StartStream()
+        public void StartStream(LivestreamModel livestreamModel)
         {
+            if (livestreamModel == null || !livestreamModel.Live) return;
+
             var livestreamPath = settingsHandler.Settings.LivestreamerFullPath;
             if (!File.Exists(livestreamPath))
             {
@@ -49,17 +45,14 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            var selectedLivestream = monitorStreamsModel.SelectedLivestream;
-            if (selectedLivestream == null || !selectedLivestream.Live) return;
-
             // Fall back to source stream quality for non-partnered Livestreams
-            var streamQuality = (!selectedLivestream.IsPartner &&
+            var streamQuality = (!livestreamModel.IsPartner &&
                                  settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Source)
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{selectedLivestream.DisplayName}/ {streamQuality}";
-            var messageBoxViewModel = ShowStreamLoadMessageBox(selectedLivestream, settingsHandler.Settings.DefaultStreamQuality);
+            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/ {streamQuality}";
+            var messageBoxViewModel = ShowStreamLoadMessageBox(livestreamModel, settingsHandler.Settings.DefaultStreamQuality);
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>

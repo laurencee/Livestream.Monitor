@@ -23,35 +23,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <DataTemplate x:Key="TwitchStreamTemplate" DataType="model:TwitchSearchStreamResult">
-            <Grid>
-                <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120">
-                    <controls:Tile.Content>
-                        <StackPanel Width="110">
-                            <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
-                            <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Text="{Binding LivestreamModel.Game}" />
-                            <!-- Blank spacer -->
-                            <TextBlock />
-                            <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
-                            <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
-                            <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
-                                <TextBlock.Style>
-                                    <Style TargetType="{x:Type TextBlock}">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsMonitored}" Value="True">
-                                                <Setter Property="Text" Value="FOLLOWING" />
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </TextBlock.Style>
-                            </TextBlock>
-                        </StackPanel>
-                    </controls:Tile.Content>
-                </controls:Tile>
-                <controls:ProgressRing IsActive="{Binding IsBusy}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
-            </Grid>
-        </DataTemplate>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -59,12 +30,49 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <ItemsControl x:Name="Items" ItemTemplate="{StaticResource TwitchStreamTemplate}">
+            <ItemsControl x:Name="Items">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="model:TwitchSearchStreamResult">
+                        <Grid>
+                            <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120">
+                                <controls:Tile.ContextMenu>
+                                    <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
+                                    <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
+                                        <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [LaunchStream($dataContext)]" />
+                                    </ContextMenu>
+                                </controls:Tile.ContextMenu>
+                                <controls:Tile.Content>
+                                    <StackPanel Width="110">
+                                        <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
+                                        <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding LivestreamModel.Game}" />
+                                        <!-- Blank spacer -->
+                                        <TextBlock />
+                                        <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
+                                        <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
+                                        <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="{x:Type TextBlock}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMonitored}" Value="True">
+                                                            <Setter Property="Text" Value="FOLLOWING" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </controls:Tile.Content>
+                            </controls:Tile>
+                            <controls:ProgressRing IsActive="{Binding IsBusy}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
         <Button Grid.Row="0" x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />

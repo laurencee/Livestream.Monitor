@@ -1,3 +1,7 @@
+#if DEBUG
+    #define FAKE_DATA // comment out this line to use real data in debug mode
+#endif
+
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
@@ -45,7 +49,7 @@ namespace Livestream.Monitor
 
             container.PerRequest<StreamLauncher>();
 
-#if DEBUG
+#if FAKE_DATA // comment out the define at the top of this file to launch debug mode with real data
             container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();
 #else
             container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
@@ -76,7 +80,7 @@ namespace Livestream.Monitor
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
 
-#if DEBUG
+#if FAKE_DATA
             var windowManager = container.GetInstance<IWindowManager>();
             windowManager.ShowWindow(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
 #endif
