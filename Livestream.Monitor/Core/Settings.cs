@@ -9,13 +9,14 @@ namespace Livestream.Monitor.Core
     {
         public const string DEFAULT_CHROME_FULL_PATH = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
         public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
+        public const int DEFAULT_MINIMUM_EVENT_VIEWERS = 30000;
 
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
         private StreamQuality defaultStreamQuality;
         private string livestreamerFullPath;
         private string chromeFullPath;
-        private int minimumEventViewers;
+        private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -79,8 +80,8 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(30000)]
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        [DefaultValue(DEFAULT_MINIMUM_EVENT_VIEWERS)]
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore)]
         public int MinimumEventViewers
         {
             get { return minimumEventViewers; }
