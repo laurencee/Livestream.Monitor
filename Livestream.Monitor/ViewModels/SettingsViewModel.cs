@@ -16,6 +16,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private string chromeFullPath;
         private string livestreamerFullPath;
+        private int minimumEventViewers;
 
         public SettingsViewModel()
         {
@@ -24,6 +25,7 @@ namespace Livestream.Monitor.ViewModels
 
             LivestreamerFullPath = "Livestreamer path - design time";
             ChromeFullPath = "Chrome path - design time";
+            MinimumEventViewers = 30000;
         }
 
         public SettingsViewModel(ISettingsHandler settingsHandler)
@@ -72,6 +74,20 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public int MinimumEventViewers
+        {
+            get { return minimumEventViewers; }
+            set
+            {
+                if (value == minimumEventViewers) return;
+                if (value < 0) value = 0;
+
+                minimumEventViewers = value;
+                NotifyOfPropertyChange(() => MinimumEventViewers);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         public bool CanSave
         {
             get
@@ -82,7 +98,8 @@ namespace Livestream.Monitor.ViewModels
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
                 return ChromeFullPath != settingsHandler.Settings.ChromeFullPath ||
-                       LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath;
+                       LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath ||
+                       MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers;
             }
         }
 
@@ -104,9 +121,12 @@ namespace Livestream.Monitor.ViewModels
             if (!CanSave) return;
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
+
             settingsHandler.Settings.ChromeFullPath = ChromeFullPath;
             settingsHandler.Settings.LivestreamerFullPath = LivestreamerFullPath;
+            settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.SaveSettings();
+
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
 
             NotifyOfPropertyChange(() => CanSave);
@@ -162,6 +182,7 @@ namespace Livestream.Monitor.ViewModels
             // We need to keep these as isolated properties so we can determine if a valid change has been made 
             LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
             ChromeFullPath = settingsHandler.Settings.ChromeFullPath;
+            MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();
@@ -173,6 +194,8 @@ namespace Livestream.Monitor.ViewModels
                 LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
             else if (e.PropertyName == nameof(Settings.ChromeFullPath))
                 ChromeFullPath = settingsHandler.Settings.ChromeFullPath;
+            else if (e.PropertyName == nameof(Settings.MinimumEventViewers))
+                MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
         }
 
         private void AddError(string propertyName, string error)

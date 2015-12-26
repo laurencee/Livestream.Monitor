@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:cal="http://www.caliburnproject.org"
+             xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewModels:SettingsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True" 
@@ -25,6 +26,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
             <Grid.Resources>
                 <ResourceDictionary>
@@ -38,13 +41,19 @@
                 </ResourceDictionary>
             </Grid.Resources>
             
-            <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer Path: " />
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer Path" />
             <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
             <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path: " />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path" />
             <TextBox Grid.Row="3" Grid.Column="0" x:Name="ChromeFullPath" />
             <Button Grid.Row="3" Grid.Column="1" x:Name="SetChromeFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Popular stream minimum viewers (0 for off)"
+                       ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
+            <TextBox Grid.Row="5" Grid.Column="0" x:Name="MinimumEventViewers" MaxLength="7"
+                     ui:BindableBehaviors.Behaviors="{StaticResource NumericRestriction}"
+                     ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
         </Grid>
 
         <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20" />

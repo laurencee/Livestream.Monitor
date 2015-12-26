@@ -94,6 +94,8 @@
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="AppBootstrapper.cs" />
+    <Compile Include="Core\UI\BindableBehaviors.cs" />
+    <Compile Include="Core\UI\RestrictTextBoxInputBehavior.cs" />
     <Compile Include="Core\Utility\FocusManager.cs" />
     <Compile Include="Core\ISettingsHandler.cs" />
     <Compile Include="Core\UI\PagingConductor.cs" />
