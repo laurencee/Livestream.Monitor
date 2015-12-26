@@ -6,20 +6,28 @@ namespace Livestream.Monitor.Model
 {
     public static class TwitchToModelMaps
     {
-        public static LivestreamModel ToLivestreamData(this Channel channel, string importedBy = null)
+        public static LivestreamModel ToLivestreamModel(this Stream stream)
+        {
+            var livestreamModel = new LivestreamModel();
+            livestreamModel.PopulateWithStreamDetails(stream);
+            return livestreamModel;
+        }
+
+        public static LivestreamModel ToLivestreamModel(this Follow follow, string importedBy = null)
         {
             return new LivestreamModel()
             {
-                DisplayName = channel.Name,
-                Description = channel.Status,
-                Game = channel.Game,
-                IsPartner = channel.Partner.HasValue && channel.Partner.Value,
+                Id = follow.Channel?.Name,
+                DisplayName = follow.Channel?.Name,
+                Description = follow.Channel?.Status,
+                Game = follow.Channel?.Game,
+                IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
                 ImportedBy = importedBy,
                 StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
             };
         }
 
-        public static LivestreamModel ToLivestreamData(this LivestreamFileData livestreamFileData)
+        public static LivestreamModel ToLivestreamModel(this LivestreamFileData livestreamFileData)
         {
             return new LivestreamModel()
             {
@@ -70,3 +78,4 @@ namespace Livestream.Monitor.Model
         }
     }
 }
+

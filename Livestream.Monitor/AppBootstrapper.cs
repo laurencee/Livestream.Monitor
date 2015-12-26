@@ -3,6 +3,8 @@
 #endif
 
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using Livestream.Monitor.Core;
@@ -38,6 +40,7 @@ namespace Livestream.Monitor
             container.Singleton<ISettingsHandler, SettingsHandler>();
             container.Singleton<FilterModel>();
             container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
+            container.Singleton<LivestreamEventWatcher>();
 
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();
@@ -80,10 +83,13 @@ namespace Livestream.Monitor
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
 
+            var livestreamEventWatcher = container.GetInstance<LivestreamEventWatcher>();
+            livestreamEventWatcher.StartWatching();
+
 #if FAKE_DATA
             var windowManager = container.GetInstance<IWindowManager>();
             windowManager.ShowWindow(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
-#endif
+#endif      
         }
 
         protected override void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

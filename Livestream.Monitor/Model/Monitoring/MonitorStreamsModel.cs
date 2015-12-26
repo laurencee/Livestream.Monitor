@@ -108,7 +108,7 @@ namespace Livestream.Monitor.Model.Monitoring
             if (username == null) throw new ArgumentNullException(nameof(username));
             
             var userFollows = await twitchTvClient.GetUserFollows(username);
-            var userFollowedChannels = userFollows.Follows.Select(x => x.Channel.ToLivestreamData(importedBy: username));
+            var userFollowedChannels = userFollows.Follows.Select(x => x.ToLivestreamModel(importedBy: username));
             var newChannels = userFollowedChannels.Except(Livestreams); // ignore duplicate channels
             
             Livestreams.AddRange(newChannels);

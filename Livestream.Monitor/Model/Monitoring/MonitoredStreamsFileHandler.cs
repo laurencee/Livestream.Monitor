@@ -25,7 +25,7 @@ namespace Livestream.Monitor.Model.Monitoring
             if (File.Exists(FileName))
             {
                 var livestreamFileData = JsonConvert.DeserializeObject<List<LivestreamFileData>>(File.ReadAllText(FileName));
-                return livestreamFileData.Select(x => x.ToLivestreamData()).ToList();
+                return livestreamFileData.Select(x => x.ToLivestreamModel()).ToList();
             }
 
             return new List<LivestreamModel>();

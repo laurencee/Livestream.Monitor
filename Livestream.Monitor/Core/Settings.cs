@@ -15,6 +15,7 @@ namespace Livestream.Monitor.Core
         private StreamQuality defaultStreamQuality;
         private string livestreamerFullPath;
         private string chromeFullPath;
+        private int minimumEventViewers;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -75,6 +76,19 @@ namespace Livestream.Monitor.Core
                 if (value == chromeFullPath) return;
                 chromeFullPath = value;
                 NotifyOfPropertyChange(() => ChromeFullPath);
+            }
+        }
+
+        [DefaultValue(30000)]
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public int MinimumEventViewers
+        {
+            get { return minimumEventViewers; }
+            set
+            {
+                if (value == minimumEventViewers) return;
+                minimumEventViewers = value;
+                NotifyOfPropertyChange(() => MinimumEventViewers);
             }
         }
     }

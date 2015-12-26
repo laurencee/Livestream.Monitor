@@ -6,7 +6,6 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Caliburn.Micro;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
@@ -25,7 +24,6 @@ namespace Livestream.Monitor.Model
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
         private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
-        private readonly TimeSpan notificationDuration = TimeSpan.FromSeconds(8);
 
         private int notificationId;
         private bool hasRefreshed;
@@ -82,7 +80,7 @@ namespace Livestream.Monitor.Model
             windowManager.ShowWindow(notificationViewModel, null, settings);
 
             // Close the notifications after a few seconds
-            var timer = new DispatcherTimer() { Interval = notificationDuration };
+            var timer = new DispatcherTimer() { Interval = livestreamNotification.Duration };
             timer.Tick += (sender, args) =>
             {
                 notificationViewModel.TryClose();
@@ -189,7 +187,7 @@ namespace Livestream.Monitor.Model
                     Title = $"{livestreamModel.DisplayName} Online",
                     Message = livestreamModel.Description,
                     ImageUrl = livestreamModel.PreviewImage?.Small,
-                    LivestreamModel = livestreamModel
+                    LivestreamModel = livestreamModel,
                 };
 
                 AddNotification(notification);
