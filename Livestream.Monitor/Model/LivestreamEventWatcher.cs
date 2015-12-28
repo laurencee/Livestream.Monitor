@@ -94,7 +94,7 @@ namespace Livestream.Monitor.Model
                             LivestreamModel = stream,
                             ImageUrl = stream.PreviewImage?.Small,
                             Message = stream.Description,
-                            Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers] {stream.DisplayName}",
+                            Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
                             Duration = TimeSpan.FromSeconds(30) // keep this up for a longer time than usual notifications
                         });
                     }
