@@ -131,6 +131,8 @@ namespace Livestream.Monitor.Model
                                               x.Channel?.Name != null &&
                                               !notifiedEvents.Contains(x.Channel?.Name)
                             ));
+
+                    requeries++;
                 }
             }
             catch

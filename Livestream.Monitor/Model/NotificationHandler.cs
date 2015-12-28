@@ -77,16 +77,20 @@ namespace Livestream.Monitor.Model
                 AdjustWindows();
                 RemoveNotification(notificationViewModel.LivestreamNotification);
             };
-            windowManager.ShowWindow(notificationViewModel, null, settings);
 
-            // Close the notifications after a few seconds
-            var timer = new DispatcherTimer() { Interval = livestreamNotification.Duration };
-            timer.Tick += (sender, args) =>
+            Execute.OnUIThread(() =>
             {
-                notificationViewModel.TryClose();
-                timer.Stop();
-            };
-            timer.Start();
+                windowManager.ShowWindow(notificationViewModel, null, settings);
+
+                // Close the popup after a brief duration
+                var timer = new DispatcherTimer() { Interval = livestreamNotification.Duration };
+                timer.Tick += (sender, args) =>
+                {
+                    notificationViewModel.TryClose();
+                    timer.Stop();
+                };
+                timer.Start();
+            });
         }
 
         private void AdjustWindows()
