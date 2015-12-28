@@ -95,6 +95,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public Task RefreshLivestreams()
         {
+            OnOnlineLivestreamsRefreshComplete();
             return Task.CompletedTask;
         }
 

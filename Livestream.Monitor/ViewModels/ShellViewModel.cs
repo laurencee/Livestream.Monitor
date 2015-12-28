@@ -54,6 +54,10 @@ namespace Livestream.Monitor.ViewModels
 
             currentAppVersion = GetType().Assembly.GetName().Version;
             DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build} (BETA)";
+#if DEBUG
+            // helps to know that we're running the debug rather than release version of the exe
+            DisplayName += " (DEBUG)";
+#endif
         }
 
         public override string DisplayName { get; set; }
