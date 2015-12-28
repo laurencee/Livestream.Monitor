@@ -13,7 +13,7 @@ using TwitchTv.Dto;
 namespace Livestream.Monitor.Model
 {
     /// <summary>  Watches for popular livestreams/special events and notifies the user that something might going on  </summary>
-    public class LivestreamEventWatcher
+    public class PopularLivestreamWatcher
     {
         private const int PollMs = 30000;
 
@@ -26,7 +26,7 @@ namespace Livestream.Monitor.Model
         private bool stoppedWatching;
         private int minimumEventViewers;
         
-        public LivestreamEventWatcher(
+        public PopularLivestreamWatcher(
             ITwitchTvReadonlyClient twitchTvClient,
             ISettingsHandler settingsHandler,
             NotificationHandler notificationHandler)

@@ -105,7 +105,7 @@
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
-    <Compile Include="Model\LivestreamEventWatcher.cs" />
+    <Compile Include="Model\PopularLivestreamWatcher.cs" />
     <Compile Include="Model\Monitoring\FakeMonitorStreamsModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamFileData.cs" />
     <Compile Include="Model\FilterModel.cs" />
