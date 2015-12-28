@@ -80,7 +80,8 @@ namespace Livestream.Monitor.Model
                 while (watching)
                 {
                     var livestreamModels = await GetPopularStreams();
-                    
+                    livestreamModels.Reverse(); // this ensures the notifications are displayed in descending order of popularity (most popular on top)
+
                     foreach (var stream in livestreamModels)
                     {
                         // don't notify about the same event again within the next hour
