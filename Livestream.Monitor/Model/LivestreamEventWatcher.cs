@@ -122,13 +122,15 @@ namespace Livestream.Monitor.Model
                 while (popularStreams.Count < maxReturnCount && requeries < 3)
                 {
                     var possibleStreams = await twitchTvClient.GetTopStreams(skip: requeries * maxReturnCount, take: maxReturnCount);
-                    if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break; // no events/streams we care about
+
+                    // perform this check before further filtering since this is the most important check
+                    if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break;
 
                     popularStreams.AddRange(
                         possibleStreams.Where(x =>
                                               x.Viewers >= MinimumEventViewers &&
                                               !ExcludedGames.Contains(x.Game) &&
-                                              x.Channel?.Name != null &&
+                                              x.Channel?.Name != null && // prevent adding streams we've already shown recently
                                               !notifiedEvents.Contains(x.Channel?.Name)
                             ));
 

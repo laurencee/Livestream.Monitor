@@ -7,6 +7,7 @@ using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
+using Livestream.Monitor.Views;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Octokit;
@@ -105,6 +106,15 @@ namespace Livestream.Monitor.ViewModels
         private void WindowMinimized()
         {
             Application.Current.MainWindow.Hide();
+
+            // Prevent minimizing notification windows
+            // I just don't want notifications to minimize in the first place but can't find any other way to do this...
+            foreach (var window in Application.Current.Windows)
+            {
+                var notificationWindow = window as NotificationView;
+                notificationWindow?.Show();
+            }
+
             if (firstMinimize) // only show the notification one time
             {
                 taskbarIcon.ShowBalloonTip("Livestream Monitor", "Livestream Monitored minimized to tray", BalloonIcon.Info);
