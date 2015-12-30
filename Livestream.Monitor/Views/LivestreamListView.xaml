@@ -16,12 +16,17 @@
                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                   cal:Message.Attach="[MouseDoubleClick] = [StartStream()];
                                       [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]">
-            <DataGrid.ContextMenu>
-                <ContextMenu>
+            <DataGrid.Resources>
+                <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LivestreamListDataGrid}, Path=DataContext}">
                     <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                     <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
                 </ContextMenu>
-            </DataGrid.ContextMenu>
+            </DataGrid.Resources>
+            <DataGrid.RowStyle >
+                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MetroDataGridRow}">
+                    <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
+                </Style>
+            </DataGrid.RowStyle>
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="Live">
                     <DataGridTemplateColumn.CellTemplate>
