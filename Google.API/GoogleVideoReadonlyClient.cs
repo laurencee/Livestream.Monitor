@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Google.API.Dto;
@@ -28,7 +29,10 @@ namespace Google.API
         private async Task<T> ExecuteRequest<T>(string request)
         {
             // we create a new client each time as it will execute much faster (at the expense of some additional memory)
-            using (HttpClient httpClient = new HttpClient())
+            using (HttpClient httpClient = new HttpClient(new HttpClientHandler()
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            }))
             {
                 var responseString = await httpClient.GetStringAsync(request);
                 return JsonConvert.DeserializeObject<T>(responseString);

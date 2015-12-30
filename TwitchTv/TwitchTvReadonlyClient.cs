@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
@@ -118,7 +119,10 @@ namespace TwitchTv
         private async Task<T> ExecuteRequest<T>(string request)
         {
             // we create a new client each time as it will execute much faster (at the expense of some additional memory)
-            using (HttpClient httpClient = new HttpClient())
+            using (HttpClient httpClient = new HttpClient(new HttpClientHandler()
+            {
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
+            }))
             {
                 httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
                 var responseString = await httpClient.GetStringAsync(request);
