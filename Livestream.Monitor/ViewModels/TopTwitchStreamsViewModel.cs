@@ -185,8 +185,8 @@ namespace Livestream.Monitor.ViewModels
             {
                 Items.Clear();
 
-                int skip = (Page - 1) * ItemsPerPage;
-                topStreams = await twitchTvClient.GetTopStreams(skip, ItemsPerPage);
+                var topStreamsQuery = new TopStreamQuery() { Skip = (Page - 1) * ItemsPerPage, Take = ItemsPerPage };
+                topStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
                 var monitoredStreams = monitorStreamsModel.Livestreams;
 
                 var twitchStreams = new List<TwitchSearchStreamResult>();

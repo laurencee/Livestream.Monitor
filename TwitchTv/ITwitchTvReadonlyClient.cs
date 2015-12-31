@@ -22,11 +22,6 @@ namespace TwitchTv
         Task<List<Game>> SearchGames(string gameName);
 
         /// <summary> Gets the top streams </summary>
-        /// <param name="skip">Number of streams to skip</param>
-        /// <param name="take">Number of streams to take (max 100)</param>
-        Task<List<Stream>> GetTopStreams(int skip, int take = 25);
-
-        /// <summary> Gets the top 100 streams by <paramref name="gameName"/> </summary>
-        Task<List<Stream>> GetTopStreamsByGame(string gameName);
+        Task<List<Stream>> GetTopStreams(TopStreamQuery topStreamQuery);
     }
 }

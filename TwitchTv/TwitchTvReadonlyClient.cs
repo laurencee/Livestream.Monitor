@@ -13,13 +13,13 @@ namespace TwitchTv
 {
     public class TwitchTvReadonlyClient : ITwitchTvReadonlyClient
     {
-        const int ItemsPerQuery = 100; // 25 is default, 100 is maximum
+        public const int DefaultItemsPerQuery = 100; // 25 is default, 100 is maximum
 
         public async Task<UserFollows> GetUserFollows(string username)
         {
             if (IsNullOrWhiteSpace(username)) throw new ArgumentNullException(nameof(username));
 
-            var request = $"{RequestConstants.UserFollows.Replace("{0}", username)}?limit={ItemsPerQuery}";
+            var request = $"{RequestConstants.UserFollows.Replace("{0}", username)}?limit={DefaultItemsPerQuery}";
             var userFollows = await ExecuteRequest<UserFollows>(request);
             // if necessary, page until we get all followed streams
             while (userFollows.Total > 0 && userFollows.Follows.Count < userFollows.Total)
@@ -41,25 +41,14 @@ namespace TwitchTv
         }
 
         /// <summary> Gets the top streams </summary>
-        /// <param name="skip">Number of streams to skip</param>
-        /// <param name="take">Number of streams to take (max 100)</param>
-        public async Task<List<Stream>> GetTopStreams(int skip, int take = 25)
+        public async Task<List<Stream>> GetTopStreams(TopStreamQuery topStreamQuery)
         {
-            if (take <= 0) throw new ArgumentOutOfRangeException(nameof(take), "Top stream query minimum request size is 1");
-            if (take > 100) throw new ArgumentOutOfRangeException(nameof(take), "Top stream query maximum request size is 100");
-            if (skip < 0) skip = 0;
+            if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
-            var request = $"{RequestConstants.Streams}?offset={skip}&limit={take}";
-            var streamRoot = await ExecuteRequest<StreamsRoot>(request);
-            return streamRoot.Streams;
-        }
+            var request = $"{RequestConstants.Streams}?offset={topStreamQuery.Skip}&limit={topStreamQuery.Take}";
+            if (!IsNullOrWhiteSpace(topStreamQuery.GameName))
+                request += $"game={topStreamQuery.GameName}";
 
-        /// <summary> Gets the top 100 streams by <paramref name="gameName"/> </summary>
-        public async Task<List<Stream>> GetTopStreamsByGame(string gameName)
-        {
-            if (IsNullOrWhiteSpace(gameName)) throw new ArgumentNullException(nameof(gameName));
-
-            var request = $"{RequestConstants.Streams}?game={gameName}&limit={ItemsPerQuery}";
             var streamRoot = await ExecuteRequest<StreamsRoot>(request);
             return streamRoot.Streams;
         }
@@ -77,7 +66,7 @@ namespace TwitchTv
         {
             if (streamNames == null) throw new ArgumentNullException(nameof(streamNames));
             
-            var request = $"{RequestConstants.Streams}?channel={Join(",", streamNames)}&limit={ItemsPerQuery}";
+            var request = $"{RequestConstants.Streams}?channel={Join(",", streamNames)}&limit={DefaultItemsPerQuery}";
             var streamRoot = await ExecuteRequest<StreamsRoot>(request);
 
             // if necessary, page until we get all followed streams

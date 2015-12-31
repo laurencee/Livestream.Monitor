@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
@@ -121,7 +120,8 @@ namespace Livestream.Monitor.Model
             {
                 while (popularStreams.Count < maxReturnCount && requeries < 3)
                 {
-                    var possibleStreams = await twitchTvClient.GetTopStreams(skip: requeries * maxReturnCount, take: maxReturnCount);
+                    var topStreamsQuery = new TopStreamQuery() { Skip = requeries & maxReturnCount, Take = maxReturnCount};
+                    var possibleStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
 
                     // perform this check before further filtering since this is the most important check
                     if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break;
@@ -139,8 +139,7 @@ namespace Livestream.Monitor.Model
             }
             catch
             {
-                // nothing we can really do here, we dont want the polling to stop and only care about the actual error while debugging...
-                if (Debugger.IsAttached) throw;
+                // nothing we can really do here, we just wanna make sure the polling continues
             }
             
 
