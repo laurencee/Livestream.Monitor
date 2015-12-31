@@ -127,6 +127,13 @@ namespace Livestream.Monitor.ViewModels
             streamLauncher.StartStream(stream.LivestreamModel);
         }
 
+        public async Task OpenChat(TwitchSearchStreamResult stream)
+        {
+            if (stream == null) return;
+
+            await streamLauncher.OpenChat(stream.LivestreamModel, this);
+        }
+
         public void ToggleNotify(TwitchSearchStreamResult stream)
         {
             if (stream == null) return;

@@ -25,6 +25,44 @@ namespace Livestream.Monitor.Model
             this.windowManager = windowManager;
         }
 
+        public async Task OpenChat(LivestreamModel livestreamModel, IViewAware fromScreen)
+        {
+            if (livestreamModel == null) return;
+
+            var chromeLocation = settingsHandler.Settings.ChromeFullPath;
+            if (!File.Exists(chromeLocation))
+            {
+                await fromScreen.ShowMessageAsync("Chrome not found",
+                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
+                return;
+            }
+
+            string chromeArgs = $"--app=http://www.twitch.tv/{livestreamModel.DisplayName}/chat?popout=true --window-size=350,758";
+
+            await Task.Run(async () =>
+            {
+                try
+                {
+                    var proc = new Process()
+                    {
+                        StartInfo =
+                        {
+                            FileName = chromeLocation,
+                            Arguments = chromeArgs,
+                            CreateNoWindow = true,
+                            UseShellExecute = false
+                        }
+                    };
+
+                    proc.Start();
+                }
+                catch (Exception ex)
+                {
+                    await fromScreen.ShowMessageAsync("Error launching chat", ex.Message);
+                }
+            });
+        }
+
         public void StartStream(LivestreamModel livestreamModel)
         {
             if (livestreamModel == null || !livestreamModel.Live) return;

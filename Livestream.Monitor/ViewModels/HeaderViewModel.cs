@@ -1,7 +1,5 @@
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -198,41 +196,10 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task OpenChat()
         {
-            var chromeLocation = settingsHandler.Settings.ChromeFullPath;
-            if (!File.Exists(chromeLocation))
-            {
-                await this.ShowMessageAsync("Chrome not found",
-                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
-                return;
-            }
-
             var selectedLivestream = monitorStreamsModel.SelectedLivestream;
             if (selectedLivestream == null) return;
 
-            string chromeArgs = $"--app=http://www.twitch.tv/{selectedLivestream.DisplayName}/chat?popout=true --window-size=350,758";
-
-            await Task.Run(async () =>
-            {
-                try
-                {
-                    var proc = new Process()
-                    {
-                        StartInfo =
-                        {
-                            FileName = chromeLocation,
-                            Arguments = chromeArgs,
-                            CreateNoWindow = true,
-                            UseShellExecute = false
-                        }
-                    };
-
-                    proc.Start();
-                }
-                catch (Exception ex)
-                {
-                    await this.ShowMessageAsync("Error launching chat", ex.Message);
-                }
-            });
+            await streamLauncher.OpenChat(selectedLivestream, this);
         }
 
         public async void KeyPressed(KeyEventArgs e)
