@@ -52,6 +52,7 @@ namespace Livestream.Monitor.Core
                 if (saveSettings) SaveSettings();
 
                 settings.PropertyChanged += SettingsOnPropertyChanged;
+                settings.ExcludeFromNotifying.CollectionChanged += (sender, args) => SaveSettings();
                 settingsLoaded = true;
             }
             catch (Exception)

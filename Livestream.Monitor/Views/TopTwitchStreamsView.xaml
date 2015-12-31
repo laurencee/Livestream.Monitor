@@ -44,6 +44,9 @@
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [LaunchStream($dataContext)]" />
+                                        <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]" 
+                                                  IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
+                                                  ToolTip="Untick this to prevent popup notifications about this stream coming online (if being followed) or showing up as a popular stream"/>
                                     </ContextMenu>
                                 </controls:Tile.ContextMenu>
                                 <controls:Tile.Content>

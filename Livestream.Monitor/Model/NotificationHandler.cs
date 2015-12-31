@@ -47,6 +47,8 @@ namespace Livestream.Monitor.Model
 
         public void AddNotification(LivestreamNotification livestreamNotification)
         {
+            if (livestreamNotification.LivestreamModel.DontNotify) return;
+
             livestreamNotification.Id = notificationId++;
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
             {

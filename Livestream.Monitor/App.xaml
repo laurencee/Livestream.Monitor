@@ -18,6 +18,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+            <ui:InvertedBoolenConverter x:Key="InvertedBoolenConverter" />
 
             <ui:Behaviors x:Key="NumericRestriction" x:Shared="False">
                 <ui:RestrictTextBoxInputBehavior RegularExpression="^\d+$" />

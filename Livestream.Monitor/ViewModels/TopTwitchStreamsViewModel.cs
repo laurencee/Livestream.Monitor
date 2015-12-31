@@ -18,6 +18,7 @@ namespace Livestream.Monitor.ViewModels
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
         private List<Stream> topStreams;
         private bool loadingItems;
@@ -71,14 +72,17 @@ namespace Livestream.Monitor.ViewModels
         public TopTwitchStreamsViewModel(
             ITwitchTvReadonlyClient twitchTvClient,
             IMonitorStreamsModel monitorStreamsModel,
+            ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
 
             this.twitchTvClient = twitchTvClient;
             this.monitorStreamsModel = monitorStreamsModel;
+            this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
 
             ItemsPerPage = ITEMS_PER_PAGE;
@@ -121,6 +125,21 @@ namespace Livestream.Monitor.ViewModels
             if (stream == null) return;
 
             streamLauncher.StartStream(stream.LivestreamModel);
+        }
+
+        public void ToggleNotify(TwitchSearchStreamResult stream)
+        {
+            if (stream == null) return;
+
+            stream.LivestreamModel.DontNotify = !stream.LivestreamModel.DontNotify;
+            if (settingsHandler.Settings.ExcludeFromNotifying.Any(x => x.IsEqualTo(stream.LivestreamModel.Id)))
+            {
+                settingsHandler.Settings.ExcludeFromNotifying.Remove(stream.LivestreamModel.Id);
+            }
+            else
+            {
+                settingsHandler.Settings.ExcludeFromNotifying.Add(stream.LivestreamModel.Id);
+            }
         }
 
         public async Task StreamClicked(TwitchSearchStreamResult twitchSearchStreamResult)
@@ -195,6 +214,8 @@ namespace Livestream.Monitor.ViewModels
                     var twitchStream = new TwitchSearchStreamResult();
                     twitchStream.IsMonitored = monitoredStreams.Any(x => x.Id == topStream.Channel?.Name);
                     twitchStream.LivestreamModel.PopulateWithStreamDetails(topStream);
+                    twitchStream.LivestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
+
                     twitchStreams.Add(twitchStream);
                 }
 

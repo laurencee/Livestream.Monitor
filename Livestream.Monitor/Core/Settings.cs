@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
 using Newtonsoft.Json;
@@ -92,5 +93,11 @@ namespace Livestream.Monitor.Core
                 NotifyOfPropertyChange(() => MinimumEventViewers);
             }
         }
+
+        /// <summary>
+        /// Channel names in this collection should not raise notifications. <para/>
+        /// We store these in settings so it can apply to both monitored and popular streams.
+        /// </summary>
+        public ObservableCollection<string> ExcludeFromNotifying { get; } = new ObservableCollection<string>();
     }
 }

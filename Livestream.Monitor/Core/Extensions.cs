@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
+using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 
@@ -82,6 +83,12 @@ namespace Livestream.Monitor.Core
         public static IEnumerable<T> SkipAndTake<T>(this IEnumerable<T> query, int skip, int take)
         {
             return query.Skip(skip).Take(take);
+        }
+
+        public static void SetLivestreamNotifyState(this LivestreamModel livestreamModel, Settings settings)
+        {
+            if (livestreamModel == null) return;
+            livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => x.IsEqualTo(livestreamModel.Id));
         }
     }
 }

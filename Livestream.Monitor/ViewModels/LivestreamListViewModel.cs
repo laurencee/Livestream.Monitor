@@ -28,7 +28,8 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            StreamsModel = new MonitorStreamsModel();
+            StreamsModel = new FakeMonitorStreamsModel();
+            FilterModel = new FilterModel();
         }
 
         public LivestreamListViewModel(
@@ -74,6 +75,14 @@ namespace Livestream.Monitor.ViewModels
             if (Loading) return;
 
             streamLauncher.StartStream(StreamsModel.SelectedLivestream);
+        }
+
+        public void ToggleNotify()
+        {
+            var stream = StreamsModel.SelectedLivestream;
+            if (stream == null) return;
+
+            stream.DontNotify = !stream.DontNotify;
         }
 
         public async Task DataGridKeyDown(KeyEventArgs e)

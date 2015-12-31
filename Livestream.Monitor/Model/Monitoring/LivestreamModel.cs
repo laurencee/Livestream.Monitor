@@ -14,6 +14,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private bool live;
         private bool isPartner;
         private PreviewImage previewImage;
+        private bool dontNotify;
 
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
@@ -116,6 +117,18 @@ namespace Livestream.Monitor.Model.Monitoring
         public string ImportedBy { get; set; }
 
         public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
+
+        /// <summary> Exclude this livestream from raising popup notifications </summary>
+        public bool DontNotify
+        {
+            get { return dontNotify; }
+            set
+            {
+                if (value == dontNotify) return;
+                dontNotify = value;
+                NotifyOfPropertyChange(() => DontNotify);
+            }
+        }
 
         /// <summary> Sets the livestream to the offline state </summary>
         public void Offline()

@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
@@ -11,6 +13,7 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
+        private readonly ISettingsHandler settingsHandler;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
 
         private bool initialised;
@@ -45,13 +48,16 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public MonitorStreamsModel(
             IMonitoredStreamsFileHandler fileHandler,
-            ITwitchTvReadonlyClient twitchTvClient)
+            ITwitchTvReadonlyClient twitchTvClient,
+            ISettingsHandler settingsHandler)
         {
             if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
             this.fileHandler = fileHandler;
             this.twitchTvClient = twitchTvClient;
+            this.settingsHandler = settingsHandler;
         }
 
         public BindableCollection<LivestreamModel> Livestreams
@@ -97,6 +103,7 @@ namespace Livestream.Monitor.Model.Monitoring
             livestreamModel.PopulateWithStreamDetails(stream);
             var channel = await twitchTvClient.GetChannelDetails(livestreamModel.Id);
             livestreamModel.PopulateWithChannel(channel);
+            livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
             livestreamModel.StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER;
 
             Livestreams.Add(livestreamModel);
@@ -109,8 +116,9 @@ namespace Livestream.Monitor.Model.Monitoring
             
             var userFollows = await twitchTvClient.GetUserFollows(username);
             var userFollowedChannels = userFollows.Follows.Select(x => x.ToLivestreamModel(importedBy: username));
-            var newChannels = userFollowedChannels.Except(Livestreams); // ignore duplicate channels
-            
+            var newChannels = userFollowedChannels.Except(Livestreams).ToList(); // ignore duplicate channels
+            newChannels.ForEach(x => x.SetLivestreamNotifyState(settingsHandler.Settings));
+
             Livestreams.AddRange(newChannels);
             SaveLivestreams();
         }
@@ -169,12 +177,30 @@ namespace Livestream.Monitor.Model.Monitoring
             SaveLivestreams();
         }
 
+        protected virtual void OnOnlineLivestreamsRefreshComplete()
+        {
+            OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+        }
+
         private void LoadLivestreams()
         {
             if (initialised) return;
             var livestreams = fileHandler.LoadFromDisk();
-            livestreams.ForEach(x => x.DisplayName = x.Id); // give livestreams some initial displayname before they have been queried
+            
+            foreach (var livestream in livestreams)
+            {
+                livestream.DisplayName = livestream.Id; // give livestreams some initial displayname before they have been queried
+                livestream.SetLivestreamNotifyState(settingsHandler.Settings);
+            } 
+
             followedLivestreams.AddRange(livestreams);
+            followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
+
+            foreach (var livestreamModel in followedLivestreams)
+            {
+                livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
+            }
+            
             initialised = true;
         }
 
@@ -183,9 +209,35 @@ namespace Livestream.Monitor.Model.Monitoring
             fileHandler.SaveToDisk(Livestreams.ToArray());
         }
 
-        protected virtual void OnOnlineLivestreamsRefreshComplete()
+        private void FollowedLivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+            if (e.NewItems != null)
+            {
+                foreach (var livestreamModel in e.NewItems.Cast<LivestreamModel>())
+                {
+                    livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
+                }
+            }
+
+            if (e.OldItems != null)
+            {
+                foreach (var livestreamModel in e.OldItems.Cast<LivestreamModel>())
+                {
+                    livestreamModel.PropertyChanged -= LivestreamModelOnPropertyChanged;
+                }
+            }
+        }
+
+        private void LivestreamModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            var livestream = (LivestreamModel)sender;
+            if (e.PropertyName == nameof(LivestreamModel.DontNotify))
+            {
+                if (livestream.DontNotify)
+                    settingsHandler.Settings.ExcludeFromNotifying.Add(livestream.Id);
+                else
+                    settingsHandler.Settings.ExcludeFromNotifying.Remove(livestream.Id);
+            }
         }
     }
 }
