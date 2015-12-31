@@ -188,6 +188,10 @@ namespace Livestream.Monitor.Model
             {
                 if (!livestreamModel.Live) return; // only care about streams coming online
 
+                // avoid a twitch api bug where sometimes online streams will not be returned when querying for online streams
+                // the best way we can work around this is to pick a reasonable uptime value after which we will never show online notifications
+                if (livestreamModel.Uptime > TimeSpan.FromMinutes(5)) return;
+
                 var notification = new LivestreamNotification()
                 {
                     Title = $"{livestreamModel.DisplayName} Online",
