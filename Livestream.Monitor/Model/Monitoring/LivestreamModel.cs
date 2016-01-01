@@ -15,6 +15,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private bool isPartner;
         private PreviewImage previewImage;
         private bool dontNotify;
+        private DateTimeOffset? lastLiveTime;
 
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
@@ -31,6 +32,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 live = value;
                 NotifyOfPropertyChange(() => Live);
                 NotifyOfPropertyChange(() => Uptime);
+
+                // must update after notifying property change to give time to inspect LastLiveTime property before live state changed
+                if (live)
+                    LastLiveTime = DateTimeOffset.Now;
             }
         }
 
@@ -117,6 +122,17 @@ namespace Livestream.Monitor.Model.Monitoring
         public string ImportedBy { get; set; }
 
         public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
+
+        public DateTimeOffset? LastLiveTime
+        {
+            get { return lastLiveTime; }
+            set
+            {
+                if (value.Equals(lastLiveTime)) return;
+                lastLiveTime = value;
+                NotifyOfPropertyChange(() => LastLiveTime);
+            }
+        }
 
         /// <summary> Exclude this livestream from raising popup notifications </summary>
         public bool DontNotify

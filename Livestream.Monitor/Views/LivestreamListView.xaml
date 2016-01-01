@@ -13,9 +13,7 @@
              d:DesignHeight="300" d:DesignWidth="600">
     <Grid>
         <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
-                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
-                  cal:Message.Attach="[MouseDoubleClick] = [StartStream()];
-                                      [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]">
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
             <DataGrid.Resources>
                 <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LivestreamListDataGrid}, Path=DataContext}">
                     <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
@@ -28,6 +26,8 @@
             <DataGrid.RowStyle >
                 <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MetroDataGridRow}">
                     <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
+                    <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [StartStream()];
+                                                                 [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
                 </Style>
             </DataGrid.RowStyle>
             <DataGrid.Columns>

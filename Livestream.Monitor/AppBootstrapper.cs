@@ -3,9 +3,6 @@
 #endif
 
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Threading;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
