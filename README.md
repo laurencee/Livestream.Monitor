@@ -38,3 +38,9 @@ hls-segment-threads=4
 # Number of threads to use when streaming HDS streams
 hds-segment-threads=4
 ```
+* If you want to view vods (and be able to seek times in your player) then you need to pass through hls
+```
+# Use this if you want Livestreamer to only pass a URL to your player and
+# let it handle the transport of the stream itself.
+player-passthrough=http,hls,rtmp
+```
