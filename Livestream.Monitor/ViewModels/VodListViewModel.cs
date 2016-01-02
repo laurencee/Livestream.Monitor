@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -202,6 +203,10 @@ namespace Livestream.Monitor.ViewModels
                 });
 
                 Items.AddRange(vods);
+            }
+            catch (HttpRequestException ex) when (ex.Message == "Response status code does not indicate success: 404 (Not Found).")
+            {
+                await this.ShowMessageAsync("Error", $"Unknown stream name '{StreamName}'.");
             }
             catch (Exception ex)
             {
