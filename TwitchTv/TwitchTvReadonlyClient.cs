@@ -48,7 +48,7 @@ namespace TwitchTv
 
             var request = $"{RequestConstants.Streams}?offset={topStreamQuery.Skip}&limit={topStreamQuery.Take}";
             if (!IsNullOrWhiteSpace(topStreamQuery.GameName))
-                request += $"game={topStreamQuery.GameName}";
+                request += $"&game={topStreamQuery.GameName}";
 
             var streamRoot = await ExecuteRequest<StreamsRoot>(request);
             return streamRoot.Streams;
