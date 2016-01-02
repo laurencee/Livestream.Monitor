@@ -8,6 +8,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
+using Livestream.Monitor.Views;
 
 namespace Livestream.Monitor.Model
 {
@@ -63,25 +64,9 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        public void StartStream(LivestreamModel livestreamModel)
+        public void OpenStream(LivestreamModel livestreamModel)
         {
             if (livestreamModel == null || !livestreamModel.Live) return;
-
-            var livestreamPath = settingsHandler.Settings.LivestreamerFullPath;
-            if (!File.Exists(livestreamPath))
-            {
-                var msgBox = new MessageBoxViewModel()
-                {
-                    DisplayName = "Livestreamer not found",
-                    MessageText = $"Could not find livestreamer @ {livestreamPath}.{Environment.NewLine} Please download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
-                };
-                var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .WithWindowStyle(WindowStyle.ToolWindow)
-                                                      .WithResizeMode(ResizeMode.NoResize)
-                                                      .Create();
-                windowManager.ShowWindow(msgBox, null, settings);
-                return;
-            }
 
             // Fall back to source stream quality for non-partnered Livestreams
             var streamQuality = (!livestreamModel.IsPartner &&
@@ -89,17 +74,57 @@ namespace Livestream.Monitor.Model
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/ {streamQuality}";
-            var messageBoxViewModel = ShowStreamLoadMessageBox(livestreamModel, settingsHandler.Settings.DefaultStreamQuality);
+            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/{streamQuality}";
+            var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
+                title: $"Stream '{livestreamModel.DisplayName}'", 
+                messageText: "Launching livestreamer...");
+
+            // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
+            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Source)
+            {
+                messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
+            }
+
+            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
+        }
+
+        public void OpenVod(VodDetails vodDetails)
+        {
+            if (string.IsNullOrWhiteSpace(vodDetails.Url) || !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute)) return;
+
+            string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} best";
+            const int maxTitleLength = 70;
+            var title = vodDetails.Title?.Length > maxTitleLength ? vodDetails.Title.Substring(0, maxTitleLength) + "..." : vodDetails.Title;
+
+            var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
+                title: title,
+                messageText: "Launching livestreamer....");
+
+            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
+        }
+
+        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel)
+        {
+            if (!CheckLivestreamerExists()) return;
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
             {
+                // work around an issue where focus isn't returned to the main window on the messagebox window closing (even though the owner is set correctly)
+                messageBoxViewModel.Deactivated += (sender, args) =>
+                {
+                    var mainWindow = Application.Current.MainWindow;
+                    if (mainWindow != null && mainWindow.IsVisible)
+                    {
+                        mainWindow.Activate();
+                    }
+                };
+
                 var proc = new Process
                 {
                     StartInfo =
                     {
-                        FileName = livestreamPath,
+                        FileName = settingsHandler.Settings.LivestreamerFullPath,
                         Arguments = livestreamerArgs,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -152,19 +177,13 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        private MessageBoxViewModel ShowStreamLoadMessageBox(LivestreamModel selectedLivestream, StreamQuality streamQuality)
+        private MessageBoxViewModel ShowLivestreamerLoadMessageBox(string title, string messageText)
         {
             var messageBoxViewModel = new MessageBoxViewModel
             {
-                DisplayName = $"Stream '{selectedLivestream.DisplayName}'",
-                MessageText = "Launching livestreamer..."
+                DisplayName = title,
+                MessageText = messageText
             };
-
-            // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
-            if (!selectedLivestream.IsPartner && streamQuality != StreamQuality.Source)
-            {
-                messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
-            }
 
             var settings = new WindowSettingsBuilder().SizeToContent()
                                                       .WithWindowStyle(WindowStyle.ToolWindow)
@@ -173,6 +192,26 @@ namespace Livestream.Monitor.Model
 
             windowManager.ShowWindow(messageBoxViewModel, null, settings);
             return messageBoxViewModel;
+        }
+
+        private bool CheckLivestreamerExists()
+        {
+            if (File.Exists(settingsHandler.Settings.LivestreamerFullPath)) return true;
+
+            var msgBox = new MessageBoxViewModel()
+            {
+                DisplayName = "Livestreamer not found",
+                MessageText =
+                    $"Could not find livestreamer @ {settingsHandler.Settings.LivestreamerFullPath}.{Environment.NewLine} Please download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
+            };
+
+            var settings = new WindowSettingsBuilder().SizeToContent()
+                                                      .WithWindowStyle(WindowStyle.ToolWindow)
+                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .Create();
+
+            windowManager.ShowWindow(msgBox, null, settings);
+            return false;
         }
     }
 }

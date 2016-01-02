@@ -15,7 +15,7 @@ using Application = System.Windows.Application;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class ShellViewModel : Conductor<Screen>.Collection.OneActive, IHandle<ActivateScreen>
+    public class ShellViewModel : Conductor<IScreen>.Collection.OneActive, IHandle<ActivateScreen>
     {
         public const string TrayIconControlName = "TrayIcon";
 

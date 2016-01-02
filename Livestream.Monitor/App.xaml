@@ -3,6 +3,7 @@
              xmlns:local="clr-namespace:Livestream.Monitor"
              xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=PresentationFramework"
              xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
+             xmlns:system="clr-namespace:System;assembly=mscorlib"
              x:Class="Livestream.Monitor.App">
     <Application.Resources>
         <ResourceDictionary>
@@ -19,6 +20,8 @@
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <ui:InvertedBoolenConverter x:Key="InvertedBoolenConverter" />
+            <system:String x:Key="BackButtonText">&#9664;</system:String>
+            <system:String x:Key="BackButtonTooltipText">Go back to livestream list</system:String>
 
             <ui:Behaviors x:Key="NumericRestriction" x:Shared="False">
                 <ui:RestrictTextBoxInputBehavior RegularExpression="^\d+$" />
@@ -32,7 +35,17 @@
                     </Trigger>
                 </Style.Triggers>
             </Style>
+
+            <Style x:Key="BackButton" TargetType="Button" BasedOn="{StaticResource MetroButton}" >
+                <Setter Property="Content" Value="{StaticResource BackButtonText}" />
+                <Setter Property="ToolTip" Value="{StaticResource BackButtonTooltipText}" />
+                <Setter Property="Width" Value="25" />
+                <Setter Property="Margin" Value="3" />
+            </Style>
+            <Style x:Key="HeaderTextblock" TargetType="TextBlock" BasedOn="{StaticResource MetroTextBlock}">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="5" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
-

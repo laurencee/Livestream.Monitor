@@ -8,20 +8,23 @@ using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using TwitchTv;
-using TwitchTv.Dto;
+using TwitchTv.Query;
 
 namespace Livestream.Monitor.ViewModels
 {
     public class TopTwitchStreamsViewModel : PagingConductor<TwitchSearchStreamResult>
     {
-        private const int ITEMS_PER_PAGE = 15;
+        private const int STREAM_TILES_PER_PAGE = 15;
 
-        private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
-        private List<Stream> topStreams;
+
+        private readonly ITwitchTvReadonlyClient twitchTvClient;
         private bool loadingItems;
+        private string gameName;
+        private BindableCollection<string> possibleGameNames = new BindableCollection<string>();
+        private bool showPossibleGames;
 
         #region Design time constructor
 
@@ -32,10 +35,10 @@ namespace Livestream.Monitor.ViewModels
 
             var designTimeItems = new List<TwitchSearchStreamResult>(new[]
             {
-                new TwitchSearchStreamResult()
+                new TwitchSearchStreamResult
                 {
                     IsMonitored = false,
-                    LivestreamModel = new LivestreamModel()
+                    LivestreamModel = new LivestreamModel
                     {
                         DisplayName = "Bob Ross",
                         Game = "Creative",
@@ -44,27 +47,27 @@ namespace Livestream.Monitor.ViewModels
                         StartTime = DateTimeOffset.Now.AddHours(-3),
                         Viewers = 50000
                     }
-                },
+                }
             });
 
-            for (int i = 0; i < 9; i++)
+            for (var i = 0; i < 9; i++)
             {
                 var stream = new TwitchSearchStreamResult();
                 stream.IsMonitored = i % 3 == 0;
-                stream.LivestreamModel = new LivestreamModel()
+                stream.LivestreamModel = new LivestreamModel
                 {
                     Description = "Design time item " + i,
                     DisplayName = "Display Name " + i,
                     Game = "Random Game " + i,
                     Live = true,
                     StartTime = DateTimeOffset.Now.AddMinutes(-29 - i),
-                    Viewers = 30000 - (i * 200)
+                    Viewers = 30000 - i * 200
                 };
                 designTimeItems.Add(stream);
             }
 
             Items.AddRange(designTimeItems);
-            ItemsPerPage = ITEMS_PER_PAGE;
+            ItemsPerPage = STREAM_TILES_PER_PAGE;
         }
 
         #endregion
@@ -85,7 +88,7 @@ namespace Livestream.Monitor.ViewModels
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
 
-            ItemsPerPage = ITEMS_PER_PAGE;
+            ItemsPerPage = STREAM_TILES_PER_PAGE;
             PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(Page))
@@ -93,14 +96,6 @@ namespace Livestream.Monitor.ViewModels
                     NotifyOfPropertyChange(() => CanPrevious);
                 }
             };
-        }
-
-        protected override async void OnViewLoaded(object view)
-        {
-            if (Execute.InDesignMode) return;
-
-            await EnsureItems();
-            base.OnViewLoaded(view);
         }
 
         public override bool CanPrevious => Page > 1 && !LoadingItems;
@@ -120,11 +115,46 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public void LaunchStream(TwitchSearchStreamResult stream)
+        public string GameName
+        {
+            get { return gameName; }
+            set
+            {
+                if (value == gameName) return;
+                gameName = value;
+                NotifyOfPropertyChange(() => GameName);
+                if (!PossibleGameNames.Any(x => x.IsEqualTo(gameName))) UpdatePossibleGameNames();
+                MovePage();
+            }
+        }
+
+        public BindableCollection<string> PossibleGameNames
+        {
+            get { return possibleGameNames; }
+            set
+            {
+                if (Equals(value, possibleGameNames)) return;
+                possibleGameNames = value;
+                NotifyOfPropertyChange(() => PossibleGameNames);
+            }
+        }
+
+        public bool ShowPossibleGames
+        {
+            get { return showPossibleGames; }
+            set
+            {
+                if (value == showPossibleGames) return;
+                showPossibleGames = value;
+                NotifyOfPropertyChange(() => ShowPossibleGames);
+            }
+        }
+
+        public void OpenStream(TwitchSearchStreamResult stream)
         {
             if (stream == null) return;
 
-            streamLauncher.StartStream(stream.LivestreamModel);
+            streamLauncher.OpenStream(stream.LivestreamModel);
         }
 
         public async Task OpenChat(TwitchSearchStreamResult stream)
@@ -166,11 +196,20 @@ namespace Livestream.Monitor.ViewModels
             twitchSearchStreamResult.IsBusy = false;
         }
 
+        protected override async void OnViewLoaded(object view)
+        {
+            if (Execute.InDesignMode) return;
+
+            await EnsureItems();
+            base.OnViewLoaded(view);
+        }
+
         private async Task UnmonitorStream(TwitchSearchStreamResult twitchSearchStreamResult)
         {
             try
             {
                 var livestreamModel = monitorStreamsModel.Livestreams.FirstOrDefault(x => x.Id == twitchSearchStreamResult.LivestreamModel.Id);
+
                 if (livestreamModel != null)
                 {
                     monitorStreamsModel.RemoveLivestream(livestreamModel);
@@ -211,8 +250,13 @@ namespace Livestream.Monitor.ViewModels
             {
                 Items.Clear();
 
-                var topStreamsQuery = new TopStreamQuery() { Skip = (Page - 1) * ItemsPerPage, Take = ItemsPerPage };
-                topStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
+                var topStreamsQuery = new TopStreamQuery
+                {
+                    GameName = GameName,
+                    Skip = (Page - 1) * ItemsPerPage,
+                    Take = ItemsPerPage,
+                };
+                var topStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
                 var monitoredStreams = monitorStreamsModel.Livestreams;
 
                 var twitchStreams = new List<TwitchSearchStreamResult>();
@@ -235,6 +279,24 @@ namespace Livestream.Monitor.ViewModels
             }
 
             LoadingItems = false;
+        }
+
+        private async void UpdatePossibleGameNames()
+        {
+            var game = GameName; // store local variable in case GameName changes while this is running
+            if (string.IsNullOrWhiteSpace(game)) return;
+
+            try
+            {
+                var games = await twitchTvClient.SearchGames(game);
+                PossibleGameNames.Clear();
+                PossibleGameNames.AddRange(games.Select(x => x.Name).ToList());
+                ShowPossibleGames = true;
+            }
+            catch
+            {
+                // make sure we dont crash just updating auto-completion options
+            }
         }
     }
 }

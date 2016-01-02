@@ -24,6 +24,7 @@
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" /> <!-- This is an expanding space to keep the last column on the far right at all times -->
             <ColumnDefinition />
         </Grid.ColumnDefinitions>
@@ -57,5 +58,6 @@
         <!-- Search functions -->
         <Separator Grid.Column="11" Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <Button Grid.Column="12" x:Name="ShowTopTwitchStreams" Content="Top Streams" Margin="2" ToolTip="Show top streams from twitch" />
+        <Button Grid.Column="13" x:Name="ShowVodViewer" Content="View Vods" Margin="2" ToolTip="View and open vods from twitch streams" />
     </Grid>
 </UserControl>

@@ -94,6 +94,8 @@
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="AppBootstrapper.cs" />
+    <Compile Include="Core\INavigationService.cs" />
+    <Compile Include="Core\NavigationService.cs" />
     <Compile Include="Core\UI\BindableBehaviors.cs" />
     <Compile Include="Core\UI\InvertedBooleanConverter.cs" />
     <Compile Include="Core\UI\RestrictTextBoxInputBehavior.cs" />
@@ -117,6 +119,7 @@
     <Compile Include="Model\StreamProviders.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
+    <Compile Include="Model\VodDetails.cs" />
     <Compile Include="ViewModels\EmulatorViewModel.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamModel.cs" />
@@ -133,6 +136,7 @@
     <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
     <Compile Include="ViewModels\TopTwitchStreamsViewModel.cs" />
+    <Compile Include="ViewModels\VodListViewModel.cs" />
     <Compile Include="Views\EmulatorView.xaml.cs">
       <DependentUpon>EmulatorView.xaml</DependentUpon>
     </Compile>
@@ -198,6 +202,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\TopTwitchStreamsView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="Views\VodListView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -1,0 +1,73 @@
+﻿<UserControl x:Class="Livestream.Monitor.Views.VodListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:cal="http://www.caliburnproject.org"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:model="clr-namespace:Livestream.Monitor.Model"
+             xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
+             d:DataContext="{d:DesignInstance Type=viewModels:VodListViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
+             d:DesignHeight="300" d:DesignWidth="700">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <!-- Header panel -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5,0,0,0">
+            <StackPanel.Resources>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource HeaderTextblock}" />
+                <Style TargetType="TextBox" BasedOn="{StaticResource MetroTextBox}">
+                    <Setter Property="MinWidth" Value="80" />
+                    <Setter Property="Margin" Value="3" />
+                </Style>
+            </StackPanel.Resources>
+            <Button x:Name="TryClose" Style="{StaticResource BackButton}" HorizontalAlignment="Right" />
+            <TextBlock Text="Stream" />
+            <ComboBox x:Name="KnownStreamNames" Margin="3" Text="{Binding StreamName, Delay=500}" Width="140"
+                      IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"  
+                      controls:TextBoxHelper.Watermark="stream name..." />
+            <TextBlock Text="Filter" />
+            <TextBox x:Name="VodFilter" Margin="3" ToolTip="Text to search for within vod title/description" />
+            <TextBlock Text="Vod URL" />
+            <TextBox x:Name="VodUrl" MinWidth="225" />
+            <Button x:Name="OpenVod" Content="Open VOD" Margin="3"
+                    ToolTip="Opens up the VOD through livestreamer (with HLS passthrough to allow seeking)"/>
+        </StackPanel>
+        
+        <!-- Vod list -->
+        <ItemsControl Grid.Row="1" x:Name="Items">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="model:VodDetails">
+                    <Grid>
+                        <controls:Tile cal:Message.Attach="[Click] = [VodClicked($dataContext)]" Height="120" Width="155">
+                            <controls:Tile.Content>
+                                <StackPanel Width="130">
+                                    <TextBlock Text="{Binding Title}" />
+                                    <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Game}" />
+                                    <!-- Blank spacer -->
+                                    <TextBlock />
+                                    <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
+                                    <TextBlock Text="{Binding Views, StringFormat={}Viewers: {0}}" />
+                                    <TextBlock Text="{Binding Length, StringFormat={}Length: {0:hh}h {0:mm}m {0:ss}s}" />
+                                </StackPanel>
+                            </controls:Tile.Content>
+                        </controls:Tile>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
+                               IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
+    </Grid>
+</UserControl>
