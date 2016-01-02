@@ -1,5 +1,6 @@
 ﻿using System;
 using Caliburn.Micro;
+using Action = System.Action;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -73,6 +74,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 NotifyOfPropertyChange(() => Duration);
             }
         }
+
+        public Action ClickAction { get; set; }
 
         public LivestreamModel LivestreamModel { get; set; }
     }
