@@ -58,7 +58,7 @@
                                     <!-- Blank spacer -->
                                     <TextBlock />
                                     <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
-                                    <TextBlock Text="{Binding Views, StringFormat={}Viewers: {0}}" />
+                                    <TextBlock Text="{Binding Views, StringFormat={}Views: {0}}" />
                                     <TextBlock Text="{Binding Length, StringFormat={}Length: {0:hh}h {0:mm}m {0:ss}s}" />
                                 </StackPanel>
                             </controls:Tile.Content>

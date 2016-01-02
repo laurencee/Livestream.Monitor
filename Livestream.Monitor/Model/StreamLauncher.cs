@@ -74,7 +74,7 @@ namespace Livestream.Monitor.Model
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/{streamQuality}";
+            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/ {streamQuality}";
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'", 
                 messageText: "Launching livestreamer...");
