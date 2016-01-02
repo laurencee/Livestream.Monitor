@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using TwitchTv.Query;
 using Xunit;
@@ -98,6 +99,11 @@ namespace TwitchTv.Tests
             var topStreams = await sut.GetTopStreams(topStreamsQuery);
             Assert.NotNull(topStreams);
             Assert.NotEmpty(topStreams);
+
+            if (topStreamsQuery.GameName != null)
+            {
+                Assert.All(topStreams, stream => Assert.Contains(topStreamsQuery.GameName, stream.Game, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         [InlineData(StreamName, true, true)]
