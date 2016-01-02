@@ -17,6 +17,7 @@ namespace Livestream.Monitor.ViewModels
 {
     public class ShellViewModel : Conductor<IScreen>.Collection.OneActive, IHandle<ActivateScreen>
     {
+        private readonly MainViewModel mainViewModel;
         public const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
@@ -47,6 +48,7 @@ namespace Livestream.Monitor.ViewModels
 
             ThemeSelector = themeSelector;
             Settings = settingsViewModel;
+            this.mainViewModel = mainViewModel;
             ActiveItem = mainViewModel;
 
             eventAggregator.Subscribe(this);
@@ -195,6 +197,12 @@ namespace Livestream.Monitor.ViewModels
 
         public void Handle(ActivateScreen message)
         {
+            if (ActiveItem.GetType() == message.Screen.GetType())
+                return;
+
+            if (ActiveItem != mainViewModel)
+                DeactivateItem(ActiveItem, true);
+
             Items.Add(message.Screen);
             ActivateItem(message.Screen);
         }
