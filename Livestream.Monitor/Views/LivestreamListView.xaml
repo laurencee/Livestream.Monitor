@@ -26,7 +26,7 @@
             <DataGrid.RowStyle >
                 <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MetroDataGridRow}">
                     <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
-                    <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [StartStream()];
+                    <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [OpenStream()];
                                                                  [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
                 </Style>
             </DataGrid.RowStyle>

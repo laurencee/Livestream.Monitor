@@ -8,6 +8,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using TwitchTv;
 using TwitchTv.Dto;
+using TwitchTv.Query;
 
 namespace Livestream.Monitor.Model
 {

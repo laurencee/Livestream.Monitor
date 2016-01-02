@@ -46,8 +46,17 @@ namespace Livestream.Monitor
             container.PerRequest<SettingsViewModel>();
             container.PerRequest<LivestreamListViewModel>();
             container.PerRequest<TopTwitchStreamsViewModel>();
+            container.PerRequest<VodListViewModel>();
 
             container.PerRequest<StreamLauncher>();
+
+            // singleton instance of the navigation service - this relies on using the container so it needs special registration
+            INavigationService navigationService = null;
+            container.RegisterHandler(typeof (INavigationService), null,
+                simpleContainer => navigationService ?? (navigationService = new NavigationService(
+                                                                                simpleContainer,
+                                                                                simpleContainer.GetInstance<IEventAggregator>())
+                                                                                ));
 
 #if FAKE_DATA // comment out the define at the top of this file to launch debug mode with real data
             container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();

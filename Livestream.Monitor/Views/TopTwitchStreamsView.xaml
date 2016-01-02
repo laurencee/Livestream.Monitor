@@ -8,6 +8,7 @@
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
+             xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
              d:DataContext="{d:DesignInstance Type=viewModels:TopTwitchStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="600" d:DesignWidth="500">
@@ -26,10 +27,26 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,0,0,0">
+            <StackPanel.Resources>
+                <Style TargetType="TextBlock" BasedOn="{StaticResource HeaderTextblock}" />
+            </StackPanel.Resources>
+            <Button x:Name="TryClose" Style="{StaticResource BackButton}" />
+            <TextBlock Text="Game Filter" />
+            <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ShowPossibleGames}"
+                      Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. This must be an EXACT match e.g. League of Legends rather than just league, so use the auto-completion drop down option."
+                     controls:TextBoxHelper.Watermark="Partial game name..."
+                     IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False" />
+        </StackPanel>
+        
+        <!-- Content -->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="Items">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
@@ -39,11 +56,11 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="model:TwitchSearchStreamResult">
                         <Grid>
-                            <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120">
+                            <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120" Width="155">
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
-                                        <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [LaunchStream($dataContext)]" />
+                                        <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
                                         <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]" 
                                                   IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
@@ -51,7 +68,7 @@
                                     </ContextMenu>
                                 </controls:Tile.ContextMenu>
                                 <controls:Tile.Content>
-                                    <StackPanel Width="110">
+                                    <StackPanel Width="130">
                                         <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
                                         <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding LivestreamModel.Game}" />
@@ -79,14 +96,16 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-        <Button Grid.Row="0" x:Name="TryClose" Content="Close" VerticalAlignment="Top" HorizontalAlignment="Right" Margin="20,5" />
-        <TextBlock Grid.Row="1" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
-        <StackPanel Grid.Row="1" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
+        
+        <!-- Footer -->
+        <TextBlock Grid.Row="2" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
             <Button x:Name="Previous" Content="Previous" />
             <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
             <Button x:Name="Next" Content="Next" />
         </StackPanel>
-        <controls:ProgressRing IsActive="{Binding LoadingItems}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
+        <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
+                               IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
     </Grid>
 </UserControl>
