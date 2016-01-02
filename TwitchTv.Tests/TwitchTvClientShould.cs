@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using TwitchTv.Query;
 using Xunit;
 using Assert = Xunit.Assert;
 
@@ -7,12 +8,13 @@ namespace TwitchTv.Tests
 {
     public class TwitchTvClientShould
     {
+        private const string StreamName = "etup";
         private readonly TwitchTvReadonlyClient sut = new TwitchTvReadonlyClient();
 
         [Fact]
         public async Task GetFollowsFromUser()
         {
-            var followedStreams = await sut.GetUserFollows("etup");
+            var followedStreams = await sut.GetUserFollows(StreamName);
             Assert.NotNull(followedStreams);
             Assert.NotEmpty(followedStreams.Follows);
         }
@@ -20,14 +22,14 @@ namespace TwitchTv.Tests
         [Fact]
         public async Task GetChannelDetails()
         {
-            var channelDetails = await sut.GetChannelDetails("etup");
+            var channelDetails = await sut.GetChannelDetails(StreamName);
             Assert.NotNull(channelDetails);
         }
 
         [Fact, Trait("Category", "LocalOnly")]
         public async Task GetStreamDetailsForEtup()
         {
-            var streamDetails = await sut.GetStreamDetails("etup");
+            var streamDetails = await sut.GetStreamDetails(StreamName);
             Assert.NotNull(streamDetails);
         }
 
@@ -56,7 +58,7 @@ namespace TwitchTv.Tests
         [Fact, Trait("Category", "LocalOnly")]
         public async Task FindStreamEtup()
         {
-            var streamsResult = await sut.SearchStreams("Etup");
+            var streamsResult = await sut.SearchStreams(StreamName);
             Assert.NotNull(streamsResult);
             Assert.NotEmpty(streamsResult);
         }
@@ -96,6 +98,23 @@ namespace TwitchTv.Tests
             var topStreams = await sut.GetTopStreams(topStreamsQuery);
             Assert.NotNull(topStreams);
             Assert.NotEmpty(topStreams);
+        }
+
+        [InlineData(StreamName, true, true)]
+        [InlineData(StreamName, true, false)]
+        [InlineData(StreamName, false, false)]
+        [Theory]
+        public async Task GetChannelVideos(string channelName, bool broadcastsOnly, bool hlsVodsOnly)
+        {
+            var channelVideosQuery = new ChannelVideosQuery()
+            {
+                ChannelName = channelName,
+                BroadcastsOnly = broadcastsOnly,
+                HLSVodsOnly = hlsVodsOnly,
+            };
+            var channelVideos = await sut.GetChannelVideos(channelVideosQuery);
+            Assert.NotNull(channelVideos);
+            Assert.NotEmpty(channelVideos);
         }
     }
 }

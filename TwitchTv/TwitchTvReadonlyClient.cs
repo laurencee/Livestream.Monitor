@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 using TwitchTv.Dto;
 using TwitchTv.Dto.QueryRoot;
+using TwitchTv.Query;
 using static System.String;
 
 namespace TwitchTv
@@ -103,6 +104,22 @@ namespace TwitchTv
             var request = RequestConstants.SearchGames.Replace("{0}", gameName);
             var gamesRoot = await ExecuteRequest<GamesRoot>(request);
             return gamesRoot.Games;
+        }
+
+        public async Task<List<Video>> GetChannelVideos(ChannelVideosQuery channelVideosQuery)
+        {
+            if (channelVideosQuery == null) throw new ArgumentNullException(nameof(channelVideosQuery));
+            if (IsNullOrWhiteSpace(channelVideosQuery.ChannelName)) throw new ArgumentNullException(nameof(channelVideosQuery.ChannelName));
+
+            var request = RequestConstants.ChannelVideos.Replace("{0}", channelVideosQuery.ChannelName);
+            request += $"?offset={channelVideosQuery.Skip}&limit={channelVideosQuery.Take}";
+            if (channelVideosQuery.BroadcastsOnly)
+                request += "&broadcasts=true";
+            if (channelVideosQuery.HLSVodsOnly)
+                request += "&hls=true";
+
+            var channelVideosRoot = await ExecuteRequest<ChannelVideosRoot>(request);
+            return channelVideosRoot.Videos;
         }
 
         private async Task<T> ExecuteRequest<T>(string request)
