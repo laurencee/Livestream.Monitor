@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using TwitchTv.Dto;
 using TwitchTv.Dto.QueryRoot;
+using TwitchTv.Query;
 
 namespace TwitchTv
 {
@@ -23,5 +24,7 @@ namespace TwitchTv
 
         /// <summary> Gets the top streams </summary>
         Task<List<Stream>> GetTopStreams(TopStreamQuery topStreamQuery);
+
+        Task<List<Video>> GetChannelVideos(ChannelVideosQuery channelVideosQuery);
     }
 }

@@ -1,12 +1,10 @@
-using System;
+﻿using System;
 
-namespace TwitchTv
+namespace TwitchTv.Query
 {
-    public class TopStreamQuery
+    public class PagedQuery
     {
         private int take = TwitchTvReadonlyClient.DefaultItemsPerQuery;
-
-        public string GameName { get; set; }
 
         public int Skip { get; set; }
 
@@ -16,8 +14,8 @@ namespace TwitchTv
             get { return take; }
             set
             {
-                if (take <= 0) throw new ArgumentOutOfRangeException(nameof(take), "Top stream query minimum request size is 1");
-                if (take > 100) throw new ArgumentOutOfRangeException(nameof(take), "Top stream query maximum request size is 100");
+                if (take <= 0) throw new ArgumentOutOfRangeException(nameof(take), "Must request at least 1 query item");
+                if (take > 100) throw new ArgumentOutOfRangeException(nameof(take), "Can not request more than 100 query items");
                 take = value;
             }
         }
