@@ -3,7 +3,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
-using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.ViewModels
@@ -39,6 +38,13 @@ namespace Livestream.Monitor.ViewModels
 
         public async void Clicked()
         {
+            if (LivestreamNotification.ClickAction != null)
+            {
+                LivestreamNotification.ClickAction();
+                await SafeClose();
+                return;
+            }
+
             var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, LivestreamNotification.LivestreamModel));
             if (livestream != null)
             {
@@ -48,6 +54,11 @@ namespace Livestream.Monitor.ViewModels
             Application.Current.MainWindow.Show();
             Application.Current.MainWindow.WindowState = WindowState.Normal;
             Application.Current.MainWindow.Activate();
+            await SafeClose();
+        }
+
+        private async Task SafeClose()
+        {
             await Task.Delay(100); // avoids some crash from 'MahApps.Metro.Controls.MetroWindow.TitleBarMouseDown', not sure what the deal is
             TryClose();
         }

@@ -6,6 +6,7 @@ using System.Runtime.Caching;
 using System.Threading.Tasks;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.ViewModels;
 using TwitchTv;
 using TwitchTv.Dto;
 using TwitchTv.Query;
@@ -21,6 +22,7 @@ namespace Livestream.Monitor.Model
         private readonly ISettingsHandler settingsHandler;
         private readonly NotificationHandler notificationHandler;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
+        private readonly Action clickAction;
 
         private bool watching = true;
         private bool stoppedWatching;
@@ -29,15 +31,19 @@ namespace Livestream.Monitor.Model
         public PopularLivestreamWatcher(
             ITwitchTvReadonlyClient twitchTvClient,
             ISettingsHandler settingsHandler,
-            NotificationHandler notificationHandler)
+            NotificationHandler notificationHandler,
+            INavigationService navigationService)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
+            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
 
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
             this.notificationHandler = notificationHandler;
+
+            clickAction = navigationService.NavigateTo<TopTwitchStreamsViewModel>;
 
             settingsHandler.Settings.PropertyChanged += (sender, args) =>
             {
@@ -95,7 +101,8 @@ namespace Livestream.Monitor.Model
                             ImageUrl = stream.PreviewImage?.Small,
                             Message = stream.Description,
                             Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
-                            Duration = LivestreamNotification.MaxDuration
+                            Duration = LivestreamNotification.MaxDuration,
+                            ClickAction = clickAction
                         });
                     }
 
