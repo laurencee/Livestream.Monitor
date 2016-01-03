@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.ViewModels
@@ -39,19 +37,7 @@ namespace Livestream.Monitor.ViewModels
 
         public async void Clicked()
         {
-            if (LivestreamNotification.ClickAction != null)
-            {
-                LivestreamNotification.ClickAction();
-                await CloseAndShowApp();
-                return;
-            }
-
-            var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, LivestreamNotification.LivestreamModel));
-            if (livestream != null)
-            {
-                model.SelectedLivestream = livestream;
-            }
-            
+            LivestreamNotification.ClickAction?.Invoke(model, LivestreamNotification);
             await CloseAndShowApp();
         }
 

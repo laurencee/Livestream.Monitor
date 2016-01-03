@@ -49,7 +49,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="model:VodDetails">
                     <Grid>
-                        <controls:Tile cal:Message.Attach="[Click] = [VodClicked($dataContext)]" Height="120" Width="155">
+                        <controls:Tile x:Name="VodTile" cal:Message.Attach="[Click] = [VodClicked($dataContext)]" Height="120" Width="155">
                             <controls:Tile.Content>
                                 <StackPanel Width="130">
                                     <TextBlock Text="{Binding Title}" />
@@ -64,6 +64,13 @@
                                 </StackPanel>
                             </controls:Tile.Content>
                         </controls:Tile>
+                        <Popup IsOpen="{Binding ElementName=VodTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                               AllowsTransparency="True" PopupAnimation="Slide" 
+                               HorizontalOffset="-35" VerticalOffset="0">
+                            <Border BorderThickness="1" BorderBrush="Black">
+                                <Image Margin="2" Source="{Binding PreviewImage, IsAsync=True}" />
+                            </Border>
+                        </Popup>
                     </Grid>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

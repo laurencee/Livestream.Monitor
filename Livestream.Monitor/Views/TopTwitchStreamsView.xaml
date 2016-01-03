@@ -56,7 +56,7 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="model:TwitchSearchStreamResult">
                         <Grid>
-                            <controls:Tile Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120" Width="155">
+                            <controls:Tile x:Name="StreamTile" Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120" Width="155">
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
@@ -90,6 +90,13 @@
                                     </StackPanel>
                                 </controls:Tile.Content>
                             </controls:Tile>
+                            <Popup IsOpen="{Binding ElementName=StreamTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                                   AllowsTransparency="True" PopupAnimation="Slide" 
+                                   HorizontalOffset="-35" VerticalOffset="0">
+                                <Border BorderThickness="1" BorderBrush="Black">
+                                    <Image Margin="2" Source="{Binding LivestreamModel.PreviewImage.Medium, IsAsync=True}" />
+                                </Border>
+                            </Popup>
                             <controls:ProgressRing IsActive="{Binding IsBusy}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
                         </Grid>
                     </DataTemplate>

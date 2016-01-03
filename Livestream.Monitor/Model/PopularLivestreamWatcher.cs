@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Model
         private readonly ISettingsHandler settingsHandler;
         private readonly NotificationHandler notificationHandler;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
-        private readonly Action clickAction;
+        private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
 
         private bool watching = true;
         private bool stoppedWatching;
@@ -32,18 +32,27 @@ namespace Livestream.Monitor.Model
             ITwitchTvReadonlyClient twitchTvClient,
             ISettingsHandler settingsHandler,
             NotificationHandler notificationHandler,
-            INavigationService navigationService)
+            INavigationService navigationService,
+            IMonitorStreamsModel monitorStreamsModel)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
+            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
 
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
             this.notificationHandler = notificationHandler;
 
-            clickAction = navigationService.NavigateTo<TopTwitchStreamsViewModel>;
+            clickAction = (model, notification) =>
+            {
+                var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, notification.LivestreamModel));
+                if (livestream != null)
+                    model.SelectedLivestream = livestream;
+                else
+                    navigationService.NavigateTo<TopTwitchStreamsViewModel>();
+            };
 
             settingsHandler.Settings.PropertyChanged += (sender, args) =>
             {

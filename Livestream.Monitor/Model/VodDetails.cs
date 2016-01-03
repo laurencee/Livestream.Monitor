@@ -12,6 +12,7 @@ namespace Livestream.Monitor.Model
         private string game;
         private string description;
         private string title;
+        private string previewImage;
 
         public string Url
         {
@@ -87,6 +88,17 @@ namespace Livestream.Monitor.Model
                 if (value == game) return;
                 game = value;
                 NotifyOfPropertyChange(() => Game);
+            }
+        }
+
+        public string PreviewImage
+        {
+            get { return previewImage; }
+            set
+            {
+                if (value == previewImage) return;
+                previewImage = value;
+                NotifyOfPropertyChange(() => PreviewImage);
             }
         }
     }

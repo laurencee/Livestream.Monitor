@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Caliburn.Micro;
 using Action = System.Action;
 
@@ -8,6 +9,15 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(8);
         public static readonly TimeSpan MaxDuration = TimeSpan.FromSeconds(60);
+
+        public static readonly Action<IMonitorStreamsModel, LivestreamNotification> DefaultClickAction = (model, notification) =>
+        {
+            var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, notification.LivestreamModel));
+            if (livestream != null)
+            {
+                model.SelectedLivestream = livestream;
+            }
+        };
 
         private int id;
         private string imageUrl;
@@ -75,7 +85,7 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public Action ClickAction { get; set; }
+        public Action<IMonitorStreamsModel, LivestreamNotification> ClickAction { get; set; } = DefaultClickAction;
 
         public LivestreamModel LivestreamModel { get; set; }
     }

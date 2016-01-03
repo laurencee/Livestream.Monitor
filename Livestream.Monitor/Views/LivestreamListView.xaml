@@ -28,6 +28,13 @@
                     <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
                     <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [OpenStream()];
                                                                  [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
+                    <Setter Property="ToolTip">
+                        <Setter.Value>
+                            <Border BorderThickness="1" BorderBrush="Black">
+                                <Image Margin="2" Source="{Binding PreviewImage.Medium, IsAsync=True}" />
+                            </Border>
+                        </Setter.Value>
+                    </Setter>
                 </Style>
             </DataGrid.RowStyle>
             <DataGrid.Columns>

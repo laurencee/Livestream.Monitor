@@ -215,7 +215,8 @@ namespace Livestream.Monitor.ViewModels
                     Views = channelVideo.Views,
                     Game = channelVideo.Game,
                     Description = channelVideo.Description,
-                    Title = channelVideo.Title
+                    Title = channelVideo.Title,
+                    PreviewImage = channelVideo.Preview
                 });
 
                 Items.AddRange(vods);
