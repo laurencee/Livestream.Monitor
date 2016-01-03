@@ -52,6 +52,10 @@ namespace Livestream.Monitor.ViewModels
             ItemsPerPage = VOD_TILES_PER_PAGE;
         }
 
+        public override bool CanPrevious => Page > 1 && !LoadingItems;
+
+        public override bool CanNext => !LoadingItems && Items.Count == VOD_TILES_PER_PAGE;
+
         public string StreamName
         {
             get { return streamName; }
@@ -107,6 +111,8 @@ namespace Livestream.Monitor.ViewModels
                 if (value == loadingItems) return;
                 loadingItems = value;
                 NotifyOfPropertyChange(() => LoadingItems);
+                NotifyOfPropertyChange(() => CanPrevious);
+                NotifyOfPropertyChange(() => CanNext);
             }
         }
 
