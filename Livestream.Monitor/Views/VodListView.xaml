@@ -35,7 +35,7 @@
             <TextBlock Text="Filter" />
             <TextBox x:Name="VodFilter" Margin="3" ToolTip="Text to search for within vod title/description" />
             <TextBlock Text="Vod URL" />
-            <TextBox x:Name="VodUrl" MinWidth="225" />
+            <TextBox x:Name="VodUrl" MinWidth="225" ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
             <Button x:Name="OpenVod" Content="Open VOD" Margin="3"
                     ToolTip="Opens up the VOD through livestreamer (with HLS passthrough to allow seeking)"/>
         </StackPanel>
