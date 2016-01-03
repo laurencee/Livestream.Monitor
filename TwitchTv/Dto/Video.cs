@@ -27,7 +27,7 @@ namespace TwitchTv.Dto
         public string Game { get; set; }
 
         /// <summary>  Length of the broadcast in seconds </summary>
-        public int Length { get; set; }
+        public double Length { get; set; }
 
         [JsonProperty("delete_at")]
         public DateTime? DeleteAt { get; set; }

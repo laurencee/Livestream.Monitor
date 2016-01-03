@@ -16,6 +16,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!-- Header panel -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5,0,0,0">
@@ -57,9 +58,10 @@
                                     <TextBlock Text="{Binding Game}" />
                                     <!-- Blank spacer -->
                                     <TextBlock />
-                                    <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
-                                    <TextBlock Text="{Binding Views, StringFormat={}Views: {0}}" />
-                                    <TextBlock Text="{Binding Length, StringFormat={}Length: {0:hh}h {0:mm}m {0:ss}s}" />
+                                    <TextBlock Text="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}" />
+                                    <!-- Blank spacer -->
+                                    <TextBlock />
+                                    <TextBlock Text="{Binding RecordedAt, StringFormat={}{0:MMM} {0:dd}\, {0:yyyy}}" />
                                 </StackPanel>
                             </controls:Tile.Content>
                         </controls:Tile>
@@ -67,6 +69,15 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- Footer -->
+        <TextBlock Grid.Row="2" Text="Click on a tile to put the url in the vod url textbox" HorizontalAlignment="Left" Margin="10" />
+        <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
+            <Button x:Name="Previous" Content="Previous" />
+            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
+            <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
+            <Button x:Name="Next" Content="Next" />
+        </StackPanel>
         <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
                                IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
     </Grid>

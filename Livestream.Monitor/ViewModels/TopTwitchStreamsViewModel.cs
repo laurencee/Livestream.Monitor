@@ -100,7 +100,7 @@ namespace Livestream.Monitor.ViewModels
 
         public override bool CanPrevious => Page > 1 && !LoadingItems;
 
-        public override bool CanNext => !LoadingItems;
+        public override bool CanNext => !LoadingItems && Items.Count == STREAM_TILES_PER_PAGE;
 
         public bool LoadingItems
         {

@@ -20,6 +20,7 @@
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <ui:InvertedBoolenConverter x:Key="InvertedBoolenConverter" />
+            <ui:TotalHoursTimespanConverter x:Key="TotalHoursTimespanConverter" />
             <system:String x:Key="BackButtonText">&#9664;</system:String>
             <system:String x:Key="BackButtonTooltipText">Go back to livestream list</system:String>
 
