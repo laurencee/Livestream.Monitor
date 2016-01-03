@@ -16,25 +16,29 @@ namespace Livestream.Monitor.ViewModels
     public class VodListViewModel : PagingConductor<VodDetails>
     {
         private const int VOD_TILES_PER_PAGE = 15;
+        private const string BroadcastStreamType = "Broadcasts";
+        private const string HighlightStreamType = "Highlights";
 
         private readonly StreamLauncher streamLauncher;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
 
-        private string vodFilter;
         private string streamName;
         private string vodUrl;
         private VodDetails selectedItem;
         private BindableCollection<string> knownStreamNames = new BindableCollection<string>();
         private bool loadingItems;
+        private string selectedStreamType = BroadcastStreamType;
+
+        #region Design time constructor
 
         public VodListViewModel()
         {
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
-
-            
         }
+
+        #endregion
 
         public VodListViewModel(
             StreamLauncher streamLauncher,
@@ -80,14 +84,20 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public string VodFilter
+        public List<string> StreamTypes { get; } = new List<string>(new []
         {
-            get { return vodFilter; }
+            BroadcastStreamType, HighlightStreamType
+        });
+
+        public string SelectedStreamType
+        {
+            get { return selectedStreamType; }
             set
             {
-                if (value == vodFilter) return;
-                vodFilter = value;
-                NotifyOfPropertyChange(() => VodFilter);
+                if (value == selectedStreamType) return;
+                selectedStreamType = value;
+                NotifyOfPropertyChange(() => SelectedStreamType);
+                UpdateItems();
             }
         }
 
@@ -190,7 +200,7 @@ namespace Livestream.Monitor.ViewModels
                 var channelVideosQuery = new ChannelVideosQuery()
                 {
                     ChannelName = StreamName,
-                    BroadcastsOnly = true,
+                    BroadcastsOnly = SelectedStreamType == BroadcastStreamType,
                     HLSVodsOnly = true,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,

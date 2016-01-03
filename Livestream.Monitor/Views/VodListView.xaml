@@ -32,8 +32,7 @@
             <ComboBox x:Name="KnownStreamNames" Margin="3" Text="{Binding StreamName, Delay=500}" Width="140"
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"  
                       controls:TextBoxHelper.Watermark="stream name..." />
-            <TextBlock Text="Filter" />
-            <TextBox x:Name="VodFilter" Margin="3" ToolTip="Text to search for within vod title/description" />
+            <ComboBox x:Name="StreamTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedStreamType}" />
             <TextBlock Text="Vod URL" />
             <TextBox x:Name="VodUrl" MinWidth="225" ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
             <Button x:Name="OpenVod" Content="Open VOD" Margin="3"
