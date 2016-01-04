@@ -3,7 +3,7 @@ A windows GUI for [livestreamer](http://docs.livestreamer.io/install.html#window
 
 [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)
 
-![image](https://cloud.githubusercontent.com/assets/3850553/10718577/2c29d320-7bc2-11e5-8360-49464f16e6b0.png)
+![image](https://cloud.githubusercontent.com/assets/3850553/12081811/3e3b8374-b2d1-11e5-9a1c-a3b5d47a7ced.png)
 
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a java GUI for livestreamer.
 
