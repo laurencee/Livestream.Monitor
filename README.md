@@ -18,10 +18,13 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 3. Add other channels manually
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
-## Other Features
+## Features
+* Open twitch chat for the selected stream (requires chrome)
+* Search for top streams and filter top streams by game
+* Search for VODS by streamer and launch vods through livestreamer (you can also just paste a twitch vod url and launch that)
 * Ability to choose quality of stream (before opening the stream)
-* Open twitch chat for the selected stream
 * Toast notifications for streams coming online
+* Toast notifications for popular streams (so you never miss a special event)
 * Filter your channel list to find streams quickly
 * Change your colour theme using the theme button in the top right
 
@@ -38,3 +41,6 @@ hls-segment-threads=4
 # Number of threads to use when streaming HDS streams
 hds-segment-threads=4
 ```
+
+### Why make another livestreamer GUI?
+I didn't like the large amount of memory used by java/web based GUIs for livestreamer and there were some features I wanted that the others didn't provide.
