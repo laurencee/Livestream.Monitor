@@ -19,8 +19,9 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## Features
+* Import and add your favourite livestreams to be monitored
 * Open twitch chat for the selected stream (requires chrome)
-* Search for top streams and filter top streams by game
+* Search for top streams and filter top streams by game (add for monitoring with 1 click)
 * Search for VODS by streamer and launch vods through livestreamer (you can also just paste a twitch vod url and launch that)
 * Ability to choose quality of stream (before opening the stream)
 * Toast notifications for streams coming online
