@@ -28,8 +28,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Filter your channel list to find streams quickly
 * Change your colour theme using the theme button in the top right
 
-### TODO
-* Settings screen to enable/disable notifications & configure hardcoded executable lookup locations
+TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
 ## Suggested livestreamer configuration
 1. Edit your livestreamer [configuration file](http://docs.livestreamer.io/cli.html#configuration-file) (%APPDATA%\livestreamer\livestreamerrc) and uncomment your preferred video player
