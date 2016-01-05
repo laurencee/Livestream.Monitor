@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Google.API.Tests", "Google.API.Tests\Google.API.Tests.csproj", "{15E3F8AC-DD2B-44B5-AAC0-84E94A9A82E1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Livestream.Monitor.Tests", "Livestream.Monitor.Tests\Livestream.Monitor.Tests.csproj", "{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{15E3F8AC-DD2B-44B5-AAC0-84E94A9A82E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{15E3F8AC-DD2B-44B5-AAC0-84E94A9A82E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{15E3F8AC-DD2B-44B5-AAC0-84E94A9A82E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
