@@ -111,6 +111,7 @@ namespace Livestream.Monitor.Core
         /// Channel names in this collection should not raise notifications. <para/>
         /// We store these in settings so it can apply to both monitored and popular streams.
         /// </summary>
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public ObservableCollection<string> ExcludeFromNotifying { get; } = new ObservableCollection<string>();
     }
 }
