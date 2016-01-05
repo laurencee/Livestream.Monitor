@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Threading;
 using Caliburn.Micro;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
@@ -22,20 +23,25 @@ namespace Livestream.Monitor.Model
 
         private readonly IWindowManager windowManager;
         private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly ISettingsHandler settingsHandler;
         private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
         private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
 
         private int notificationId;
         private bool hasRefreshed;
 
-        public NotificationHandler(IWindowManager windowManager,
-                                   IMonitorStreamsModel monitorStreamsModel)
+        public NotificationHandler(
+            IWindowManager windowManager,
+            IMonitorStreamsModel monitorStreamsModel,
+            ISettingsHandler settingsHandler)
         {
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
             this.windowManager = windowManager;
             this.monitorStreamsModel = monitorStreamsModel;
+            this.settingsHandler = settingsHandler;
 
             foreach (var livestream in monitorStreamsModel.Livestreams)
             {
@@ -47,6 +53,7 @@ namespace Livestream.Monitor.Model
 
         public void AddNotification(LivestreamNotification livestreamNotification)
         {
+            if (settingsHandler.Settings.DisableNotifications) return;
             if (livestreamNotification.LivestreamModel.DontNotify) return;
 
             livestreamNotification.Id = notificationId++;

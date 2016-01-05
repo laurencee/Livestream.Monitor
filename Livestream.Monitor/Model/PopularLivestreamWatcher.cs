@@ -65,6 +65,14 @@ namespace Livestream.Monitor.Model
                     else if (stoppedWatching)
                         StartWatching();
                 }
+                else if (args.PropertyName == nameof(Settings.DisableNotifications))
+                {
+                    if (!settingsHandler.Settings.DisableNotifications)
+                    {
+                        // clear the existing cache so the next poll can re-add notifications
+                        notifiedEvents.ToList().ForEach(x => notifiedEvents.Remove(x.Key));
+                    }
+                }
             };
         }
 

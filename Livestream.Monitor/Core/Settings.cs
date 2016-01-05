@@ -18,6 +18,7 @@ namespace Livestream.Monitor.Core
         private string livestreamerFullPath;
         private string chromeFullPath;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
+        private bool disableNotifications;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -91,6 +92,18 @@ namespace Livestream.Monitor.Core
                 if (value == minimumEventViewers) return;
                 minimumEventViewers = value;
                 NotifyOfPropertyChange(() => MinimumEventViewers);
+            }
+        }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool DisableNotifications
+        {
+            get { return disableNotifications; }
+            set
+            {
+                if (value == disableNotifications) return;
+                disableNotifications = value;
+                NotifyOfPropertyChange(() => DisableNotifications);
             }
         }
 
