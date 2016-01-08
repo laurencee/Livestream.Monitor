@@ -2,7 +2,6 @@
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-                      xmlns:model="clr-namespace:Livestream.Monitor.Model"
                       xmlns:cal="http://www.caliburnproject.org"
                       xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
                       xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
@@ -17,39 +16,37 @@
                       ShowTitleBar="False" ShowCloseButton="False" ShowIconOnTitleBar="False" ShowMaxRestoreButton="False" ShowMinButton="False">
     <controls:MetroWindow.Resources>
         <DataTemplate x:Key="MessageTemplate" DataType="monitoring:LivestreamNotification">
-            <Grid x:Name="NotificationWindow" Tag="{Binding Id}" Background="Transparent">
-                <Border x:Name="border" Background="#FF0A1429" BorderThickness="0"  Margin="5">
-                    <Border.Effect>
-                        <DropShadowEffect ShadowDepth="0" Opacity="0.8" BlurRadius="10" />
-                    </Border.Effect>
-                    <Grid Margin="6">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <Image Grid.RowSpan="2" Source="{Binding ImageUrl}" Margin="4" Width="80" />
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}"
+            <Border x:Name="border" Background="#FF0A1429" BorderThickness="0"  Margin="5">
+                <Border.Effect>
+                    <DropShadowEffect ShadowDepth="0" Opacity="0.8" BlurRadius="10" />
+                </Border.Effect>
+                <Grid Margin="6">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Image Grid.RowSpan="2" Source="{Binding ImageUrl}" Margin="4" Width="80" />
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}"
                                    TextOptions.TextRenderingMode="ClearType"
                                    TextOptions.TextFormattingMode="Display" Foreground="White"
                                    FontFamily="Arial" FontSize="14" FontWeight="Bold"
                                    VerticalAlignment="Center" Margin="2,4,4,2"
                                    TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Message}"
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Message}"
                                    TextOptions.TextRenderingMode="ClearType"
                                    TextOptions.TextFormattingMode="Display" Foreground="White"
                                    FontFamily="Arial" VerticalAlignment="Center"
                                    Margin="2,2,4,4" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
-                        <Button x:Name="CloseButton" Grid.Row="0" Grid.Column="2" Content="X" FontWeight="UltraBold"
+                    <Button x:Name="CloseButton" Grid.Row="0" Grid.Column="2" Content="X" FontWeight="UltraBold"
                                 Width="20" Height="20" HorizontalAlignment="Right"
                                 cal:Message.Attach="[Click] = [TryClose(true)]" />
-                    </Grid>
-                </Border>
-            </Grid>
+                </Grid>
+            </Border>
         </DataTemplate>
     </controls:MetroWindow.Resources>
     <ContentControl Content="{Binding LivestreamNotification}" FocusVisualStyle="{x:Null}" ContentTemplate="{StaticResource MessageTemplate}"

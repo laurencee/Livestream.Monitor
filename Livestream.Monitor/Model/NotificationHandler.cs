@@ -26,8 +26,7 @@ namespace Livestream.Monitor.Model
         private readonly ISettingsHandler settingsHandler;
         private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
         private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
-
-        private int notificationId;
+        
         private bool hasRefreshed;
 
         public NotificationHandler(
@@ -55,8 +54,7 @@ namespace Livestream.Monitor.Model
         {
             if (settingsHandler.Settings.DisableNotifications) return;
             if (livestreamNotification.LivestreamModel.DontNotify) return;
-
-            livestreamNotification.Id = notificationId++;
+            
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
             {
                 buffer.Add(livestreamNotification);

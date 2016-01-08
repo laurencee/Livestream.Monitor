@@ -112,6 +112,7 @@ namespace Livestream.Monitor.Model
 
                         notifiedEvents.Set(stream.Id, stream, DateTimeOffset.Now.AddHours(1));
 
+                        stream.SetLivestreamNotifyState(settingsHandler.Settings);
                         notificationHandler.AddNotification(new LivestreamNotification()
                         {
                             LivestreamModel = stream,
@@ -145,7 +146,7 @@ namespace Livestream.Monitor.Model
             {
                 while (popularStreams.Count < maxReturnCount && requeries < 3)
                 {
-                    var topStreamsQuery = new TopStreamQuery() { Skip = requeries & maxReturnCount, Take = maxReturnCount};
+                    var topStreamsQuery = new TopStreamQuery() { Skip = requeries * maxReturnCount, Take = maxReturnCount};
                     var possibleStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
 
                     // perform this check before further filtering since this is the most important check

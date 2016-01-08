@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using Caliburn.Micro;
-using Action = System.Action;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -19,7 +18,6 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         };
 
-        private int id;
         private string imageUrl;
         private string message;
         private string title;
@@ -32,18 +30,6 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 if (message == value) return;
                 message = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        /// <summary> For internal usage by the <see cref="NotificationHandler"/>, will be overwritten if set </summary>
-        public int Id
-        {
-            get { return id; }
-            set
-            {
-                if (id == value) return;
-                id = value;
                 NotifyOfPropertyChange();
             }
         }
