@@ -13,7 +13,8 @@
                       Width="400" Height="100"
                       WindowStyle="None" AllowsTransparency="True" Background="Transparent" UseLayoutRounding="True"
                       ShowActivated="False" Topmost="True" ShowInTaskbar="False"
-                      ShowTitleBar="False" ShowCloseButton="False" ShowIconOnTitleBar="False" ShowMaxRestoreButton="False" ShowMinButton="False">
+                      ShowTitleBar="False" ShowCloseButton="False" ShowIconOnTitleBar="False" ShowMaxRestoreButton="False" ShowMinButton="False"
+                      BorderThickness="0">
     <controls:MetroWindow.Resources>
         <DataTemplate x:Key="MessageTemplate" DataType="monitoring:LivestreamNotification">
             <Border x:Name="border" Background="#FF0A1429" BorderThickness="0"  Margin="5">
