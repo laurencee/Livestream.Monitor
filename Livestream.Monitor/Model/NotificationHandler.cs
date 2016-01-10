@@ -69,8 +69,7 @@ namespace Livestream.Monitor.Model
         private void ShowNotification(LivestreamNotification livestreamNotification)
         {
             var vmTopLeft = GetNotificationTopLeft(livestreamNotification);
-            var settings = new WindowSettingsBuilder().WithWindowStyle(WindowStyle.None)
-                                                      .WithResizeMode(ResizeMode.NoResize)
+            var settings = new WindowSettingsBuilder().NoResizeBorderless()
                                                       .WithTopLeft(vmTopLeft.Y, vmTopLeft.X)
                                                       .TransparentBackground()
                                                       .AsTopmost()

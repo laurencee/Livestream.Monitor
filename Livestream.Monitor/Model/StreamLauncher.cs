@@ -8,7 +8,6 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
-using Livestream.Monitor.Views;
 
 namespace Livestream.Monitor.Model
 {
@@ -184,10 +183,9 @@ namespace Livestream.Monitor.Model
                 DisplayName = title,
                 MessageText = messageText
             };
-
+            
             var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .WithWindowStyle(WindowStyle.ToolWindow)
-                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .NoResizeBorderless()
                                                       .Create();
 
             windowManager.ShowWindow(messageBoxViewModel, null, settings);
@@ -206,8 +204,7 @@ namespace Livestream.Monitor.Model
             };
 
             var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .WithWindowStyle(WindowStyle.ToolWindow)
-                                                      .WithResizeMode(ResizeMode.NoResize)
+                                                      .NoResizeBorderless()
                                                       .Create();
 
             windowManager.ShowWindow(msgBox, null, settings);

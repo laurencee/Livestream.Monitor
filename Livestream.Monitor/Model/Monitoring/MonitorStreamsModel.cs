@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         private bool initialised;
         private bool canRefreshLivestreams = true;
+        private bool queryOfflineStreams = true;
         private LivestreamModel selectedLivestream;
 
         #region Design Time Constructor
@@ -146,19 +148,12 @@ namespace Livestream.Monitor.Model.Monitoring
                 var offlineStreams = Livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
                 offlineStreams.ForEach(x => x.Offline()); // mark all remaining streams as offline immediately
 
-                var offlineTasks = offlineStreams.Select(x => new
+                if (queryOfflineStreams)
                 {
-                    Livestream = x,
-                    OfflineData = twitchTvClient.GetChannelDetails(x.Id)
-                }).ToList();
-
-                await Task.WhenAll(offlineTasks.Select(x => x.OfflineData));
-                foreach (var offlineTask in offlineTasks)
-                {
-                    var offlineData = offlineTask.OfflineData.Result;
-                    if (offlineData == null) continue;
-                    
-                    offlineTask.Livestream.PopulateWithChannel(offlineData);
+                    await QueryOfflineStreams(offlineStreams);
+                    // We only need to query offline streams one time to get the channel info
+                    // It's a waste of resources to query for updates to offline streams 
+                    queryOfflineStreams = false;
                 }
             }
             catch (Exception)
@@ -180,6 +175,24 @@ namespace Livestream.Monitor.Model.Monitoring
         protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
             OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+        }
+
+        private async Task QueryOfflineStreams(List<LivestreamModel> offlineStreams)
+        {
+            var offlineTasks = offlineStreams.Select(x => new
+            {
+                Livestream = x,
+                OfflineData = twitchTvClient.GetChannelDetails(x.Id)
+            }).ToList();
+
+            await Task.WhenAll(offlineTasks.Select(x => x.OfflineData));
+            foreach (var offlineTask in offlineTasks)
+            {
+                var offlineData = offlineTask.OfflineData.Result;
+                if (offlineData == null) continue;
+
+                offlineTask.Livestream.PopulateWithChannel(offlineData);
+            }
         }
 
         private void LoadLivestreams()

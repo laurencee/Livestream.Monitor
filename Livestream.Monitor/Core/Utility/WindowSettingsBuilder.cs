@@ -38,6 +38,7 @@ namespace Livestream.Monitor.Core.Utility
         {
             WithResizeMode(ResizeMode.NoResize);
             WithWindowStyle(WindowStyle.None);
+            settings.BorderThickness = new Thickness(0);
             return this;
         }
 
