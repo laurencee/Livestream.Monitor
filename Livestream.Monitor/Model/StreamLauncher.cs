@@ -73,10 +73,10 @@ namespace Livestream.Monitor.Model
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.DisplayName}/ {streamQuality}";
+            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.Id}/ {streamQuality}";
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
-                title: $"Stream '{livestreamModel.DisplayName}'", 
-                messageText: "Launching livestreamer...");
+                title: $"Stream '{livestreamModel.DisplayName}'",
+                messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
 
             // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
             if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Source)
@@ -97,7 +97,7 @@ namespace Livestream.Monitor.Model
 
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: title,
-                messageText: "Launching livestreamer....");
+                messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
 
             StartLivestreamer(livestreamerArgs, messageBoxViewModel);
         }
