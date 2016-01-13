@@ -115,7 +115,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (StreamsModel.SelectedLivestream == null) return;
 
-            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedLivestream.DisplayName}");
+            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedLivestream.Id}");
         }
 
         protected override async void OnActivate()

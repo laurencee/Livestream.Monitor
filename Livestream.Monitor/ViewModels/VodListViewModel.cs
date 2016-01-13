@@ -169,7 +169,7 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
-            var orderedStreamNames = monitorStreamsModel.Livestreams.Select(x => x.DisplayName).OrderBy(x => x);
+            var orderedStreamNames = monitorStreamsModel.Livestreams.Select(x => x.Id).OrderBy(x => x);
             KnownStreamNames = new BindableCollection<string>(orderedStreamNames);
 
             base.OnActivate();

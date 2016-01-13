@@ -37,7 +37,7 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            string chromeArgs = $"--app=http://www.twitch.tv/{livestreamModel.DisplayName}/chat?popout=true --window-size=350,758";
+            string chromeArgs = $"--app=http://www.twitch.tv/{livestreamModel.Id}/chat?popout=true --window-size=350,758";
 
             await Task.Run(async () =>
             {
