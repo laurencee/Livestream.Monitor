@@ -19,6 +19,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 var livestream = new LivestreamModel()
                 {
                     Id = "Livestream " + i,
+                    StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
                     DisplayName = "Livestream " + i,
                 };
 

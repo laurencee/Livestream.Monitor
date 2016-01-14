@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
@@ -8,13 +10,18 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
+using Action = System.Action;
 
 namespace Livestream.Monitor.Model
 {
     public class StreamLauncher
     {
+        // used for 
+        private static readonly object watchingStreamsLock = new object();
+
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
+        private readonly List<LivestreamModel> watchingStreams = new List<LivestreamModel>();
 
         public StreamLauncher(ISettingsHandler settingsHandler, IWindowManager windowManager)
         {
@@ -24,10 +31,22 @@ namespace Livestream.Monitor.Model
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
         }
+        
+        public List<LivestreamModel> WatchingStreams
+        {
+            get
+            {
+                lock (watchingStreamsLock)
+                {
+                    // return a copy of the streams to prevent modification issues
+                    return watchingStreams.ToList();
+                }
+            }
+        }
 
         public async Task OpenChat(LivestreamModel livestreamModel, IViewAware fromScreen)
         {
-            if (livestreamModel == null) return;
+            if (livestreamModel == null || livestreamModel.StreamProvider != StreamProviders.TWITCH_STREAM_PROVIDER) return;
 
             var chromeLocation = settingsHandler.Settings.ChromeFullPath;
             if (!File.Exists(chromeLocation))
@@ -65,7 +84,9 @@ namespace Livestream.Monitor.Model
 
         public void OpenStream(LivestreamModel livestreamModel)
         {
-            if (livestreamModel == null || !livestreamModel.Live) return;
+            if (livestreamModel == null || 
+                !livestreamModel.Live || 
+                !StreamProviders.IsValidProvider(livestreamModel.StreamProvider)) return;
 
             // Fall back to source stream quality for non-partnered Livestreams
             var streamQuality = (!livestreamModel.IsPartner &&
@@ -73,7 +94,10 @@ namespace Livestream.Monitor.Model
                                     ? StreamQuality.Source
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            string livestreamerArgs = $"http://www.twitch.tv/{livestreamModel.Id}/ {streamQuality}";
+            // TODO - create a "GetStreamUrl" function in IStreamProvider when youtube streams are supported
+            string baseUrl = StreamProviders.GetBaseUrl(livestreamModel.StreamProvider);
+
+            string livestreamerArgs = $"{baseUrl}{livestreamModel.Id}/ {streamQuality}";
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
@@ -84,7 +108,18 @@ namespace Livestream.Monitor.Model
                 messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
             }
 
-            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
+            lock (watchingStreamsLock)
+            {
+                watchingStreams.Add(livestreamModel);
+            }
+            
+            StartLivestreamer(livestreamerArgs, messageBoxViewModel, onClose: () =>
+            {
+                lock (watchingStreamsLock)
+                {
+                    watchingStreams.Remove(livestreamModel);
+                }
+            });
         }
 
         public void OpenVod(VodDetails vodDetails)
@@ -102,7 +137,7 @@ namespace Livestream.Monitor.Model
             StartLivestreamer(livestreamerArgs, messageBoxViewModel);
         }
 
-        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel)
+        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
         {
             if (!CheckLivestreamerExists()) return;
 
@@ -160,6 +195,8 @@ namespace Livestream.Monitor.Model
 
                     proc.WaitForExit();
                     if (proc.ExitCode != 0) preventClose = true;
+
+                    onClose?.Invoke();
                 }
                 catch (Exception)
                 {

@@ -20,6 +20,7 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
 
+        // TODO - replace with IStreamProvider when youtube support is added
         /// <summary> The name of the service who hosts this livestream (twitchtv, youtube etc.) </summary>
         public string StreamProvider { get; set; }
 
@@ -161,7 +162,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         protected bool Equals(LivestreamModel other)
         {
-            return string.Equals(displayName, other.displayName);
+            return string.Equals(Id, other.Id);
         }
 
         public override bool Equals(object obj)
@@ -174,7 +175,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public override int GetHashCode()
         {
-            return displayName?.GetHashCode() ?? 0;
+            return Id?.GetHashCode() ?? 0;
         }
 
         #endregion

@@ -38,6 +38,7 @@ namespace Livestream.Monitor
             container.Singleton<FilterModel>();
             container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
             container.Singleton<PopularLivestreamWatcher>();
+            container.Singleton<StreamLauncher>();
 
             container.PerRequest<ShellViewModel>();
             container.PerRequest<ThemeSelectorViewModel>();
@@ -47,8 +48,6 @@ namespace Livestream.Monitor
             container.PerRequest<LivestreamListViewModel>();
             container.PerRequest<TopTwitchStreamsViewModel>();
             container.PerRequest<VodListViewModel>();
-
-            container.PerRequest<StreamLauncher>();
 
             // singleton instance of the navigation service - this relies on using the container so it needs special registration
             INavigationService navigationService = null;

@@ -24,6 +24,7 @@ namespace Livestream.Monitor.Model
         private readonly IWindowManager windowManager;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
+        private readonly StreamLauncher streamLauncher;
         private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
         private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
         
@@ -32,15 +33,18 @@ namespace Livestream.Monitor.Model
         public NotificationHandler(
             IWindowManager windowManager,
             IMonitorStreamsModel monitorStreamsModel,
-            ISettingsHandler settingsHandler)
+            ISettingsHandler settingsHandler,
+            StreamLauncher streamLauncher)
         {
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
 
             this.windowManager = windowManager;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
+            this.streamLauncher = streamLauncher;
 
             foreach (var livestream in monitorStreamsModel.Livestreams)
             {
@@ -54,6 +58,8 @@ namespace Livestream.Monitor.Model
         {
             if (settingsHandler.Settings.DisableNotifications) return;
             if (livestreamNotification.LivestreamModel.DontNotify) return;
+            // don't notify for streams that are being watched right now
+            if (streamLauncher.WatchingStreams.Contains(livestreamNotification.LivestreamModel)) return;
             
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
             {

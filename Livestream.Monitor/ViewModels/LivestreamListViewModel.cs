@@ -113,9 +113,11 @@ namespace Livestream.Monitor.ViewModels
 
         public void CopyLivestreamUrl()
         {
-            if (StreamsModel.SelectedLivestream == null) return;
+            if (StreamsModel.SelectedLivestream == null || !StreamProviders.IsValidProvider(StreamsModel.SelectedLivestream.StreamProvider)) return;
 
-            Clipboard.SetText($"http://www.twitch.tv/{StreamsModel.SelectedLivestream.Id}");
+            // TODO - create a "GetStreamUrl" function in IStreamProvider when youtube streams are supported
+            var baseUrl = StreamProviders.GetBaseUrl(StreamsModel.SelectedLivestream.StreamProvider);
+            Clipboard.SetText($"{baseUrl}{StreamsModel.SelectedLivestream.Id}");
         }
 
         protected override async void OnActivate()

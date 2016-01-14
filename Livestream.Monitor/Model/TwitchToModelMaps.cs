@@ -52,6 +52,7 @@ namespace Livestream.Monitor.Model
             if (streamDetails == null) return;
 
             livestreamModel.Id = streamDetails.Channel?.Name;
+            livestreamModel.StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER;
             livestreamModel.Viewers = streamDetails.Viewers ?? 0;
             livestreamModel.PreviewImage = streamDetails.Preview;
             if (streamDetails.CreatedAt != null)
