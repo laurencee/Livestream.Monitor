@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace TwitchTv
+namespace TwitchTv.Helpers
 {
     // Credits to http://stackoverflow.com/a/18997172/2631967
     /// <summary> Handles json properties that both return a single result or an array of a results for the same property </summary>

@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using TwitchTv.Dto;
 
-namespace TwitchTv
+namespace TwitchTv.Helpers
 {
     /// <summary>
     /// Special case converter since sometimes thumbnails are returned as just the string url of the thumbnail

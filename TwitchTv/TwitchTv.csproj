@@ -71,8 +71,8 @@
     <Compile Include="Query\PagedQuery.cs" />
     <Compile Include="RequestConstants.cs" />
     <Compile Include="Query\TopStreamQuery.cs" />
-    <Compile Include="SingleOrArrayConverter.cs" />
-    <Compile Include="SingleOrArrayThumbnailConverter.cs" />
+    <Compile Include="Helpers\SingleOrArrayConverter.cs" />
+    <Compile Include="Helpers\SingleOrArrayThumbnailConverter.cs" />
     <Compile Include="TwitchTvReadonlyClient.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -16,6 +16,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private PreviewImage previewImage;
         private bool dontNotify;
         private DateTimeOffset? lastLiveTime;
+        private string language;
 
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
@@ -116,6 +117,17 @@ namespace Livestream.Monitor.Model.Monitoring
                 if (Equals(value, previewImage)) return;
                 previewImage = value;
                 NotifyOfPropertyChange(() => PreviewImage);
+            }
+        }
+        
+        public string Language
+        {
+            get { return language; }
+            set
+            {
+                if (value == language) return;
+                language = value;
+                NotifyOfPropertyChange(() => Language);
             }
         }
 

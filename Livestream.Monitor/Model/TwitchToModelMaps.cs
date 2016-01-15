@@ -18,12 +18,13 @@ namespace Livestream.Monitor.Model
             return new LivestreamModel()
             {
                 Id = follow.Channel?.Name,
+                StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
                 DisplayName = follow.Channel?.Name,
                 Description = follow.Channel?.Status,
                 Game = follow.Channel?.Game,
                 IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
                 ImportedBy = importedBy,
-                StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
+                Language = follow.Channel?.Language
             };
         }
 
@@ -76,6 +77,7 @@ namespace Livestream.Monitor.Model
             livestreamModel.Description = channel.Status;
             livestreamModel.Game = channel.Game;
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
+            livestreamModel.Language = channel.Language;
         }
     }
 }

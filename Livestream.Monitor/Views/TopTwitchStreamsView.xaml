@@ -68,26 +68,31 @@
                                     </ContextMenu>
                                 </controls:Tile.ContextMenu>
                                 <controls:Tile.Content>
-                                    <StackPanel Width="130">
-                                        <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
-                                        <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
-                                        <TextBlock Text="{Binding LivestreamModel.Game}" />
-                                        <!-- Blank spacer -->
-                                        <TextBlock />
-                                        <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
-                                        <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
-                                        <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
-                                            <TextBlock.Style>
-                                                <Style TargetType="{x:Type TextBlock}">
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsMonitored}" Value="True">
-                                                            <Setter Property="Text" Value="FOLLOWING" />
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                    </StackPanel>
+                                    <Grid Width="130">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
+                                            <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding LivestreamModel.Game}" />
+                                            <!-- Blank spacer -->
+                                            <TextBlock />
+                                            <!--<TextBlock Text="{Binding LivestreamModel.Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" />-->
+                                            <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
+                                            <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="{x:Type TextBlock}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsMonitored}" Value="True">
+                                                                <Setter Property="Text" Value="FOLLOWING" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Image Source="{Binding LivestreamModel.Language, Converter={StaticResource CountryIdToFlagImageSourceConverter}}"
+                                               Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                               ToolTip="{Binding LivestreamModel.Language}"/>
+                                    </Grid>
                                 </controls:Tile.Content>
                             </controls:Tile>
                             <Popup IsOpen="{Binding ElementName=StreamTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
