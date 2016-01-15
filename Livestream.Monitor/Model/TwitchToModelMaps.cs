@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Model
                 Game = follow.Channel?.Game,
                 IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
                 ImportedBy = importedBy,
-                Language = follow.Channel?.Language
+                Language = follow.Channel?.BroadcasterLanguage
             };
         }
 
@@ -77,7 +77,7 @@ namespace Livestream.Monitor.Model
             livestreamModel.Description = channel.Status;
             livestreamModel.Game = channel.Game;
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
-            livestreamModel.Language = channel.Language;
+            livestreamModel.Language = channel.BroadcasterLanguage;
         }
     }
 }

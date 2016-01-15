@@ -11,6 +11,7 @@ namespace TwitchTv.Dto
 
         public object Banner { get; set; }
 
+        [JsonProperty("broadcaster_language")]
         public string BroadcasterLanguage { get; set; }
 
         [JsonProperty("display_name")]
