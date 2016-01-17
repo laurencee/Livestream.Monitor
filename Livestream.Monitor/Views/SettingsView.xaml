@@ -46,7 +46,7 @@
             <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
             <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 
-            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path" />
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path (Optional)" />
             <TextBox Grid.Row="3" Grid.Column="0" x:Name="ChromeFullPath" />
             <Button Grid.Row="3" Grid.Column="1" x:Name="SetChromeFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 

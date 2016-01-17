@@ -37,7 +37,7 @@ namespace Livestream.Monitor.Core
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
 
                 // guards against the paths being set to null/empty values
-                if (string.IsNullOrWhiteSpace(settings.ChromeFullPath))
+                if (settings.ChromeFullPath == null)
                 {
                     settings.ChromeFullPath = Settings.DEFAULT_CHROME_FULL_PATH;
                     saveSettings = true;

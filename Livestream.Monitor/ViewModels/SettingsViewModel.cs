@@ -62,10 +62,9 @@ namespace Livestream.Monitor.ViewModels
             set
             {
                 if (value == chromeFullPath) return;
-                
-                if (string.IsNullOrWhiteSpace(value))
-                    AddError(nameof(ChromeFullPath), "Chrome path must not be empty");
-                else if (!File.Exists(value))
+
+                // Must allow chrome full path to be blank as it's an optional component for chat only
+                if (!string.IsNullOrWhiteSpace(value) && !File.Exists(value))
                     AddError(nameof(ChromeFullPath), "File not found");
                 else
                     RemoveErrors(nameof(ChromeFullPath));
@@ -106,9 +105,9 @@ namespace Livestream.Monitor.ViewModels
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(ChromeFullPath)) return false;
                 if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
-                if (!File.Exists(ChromeFullPath)) return false;
+                // Must allow chrome full path to be blank as it's an optional component for chat only
+                if (!string.IsNullOrWhiteSpace(ChromeFullPath) && !File.Exists(ChromeFullPath)) return false;
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
                 return ChromeFullPath != settingsHandler.Settings.ChromeFullPath ||

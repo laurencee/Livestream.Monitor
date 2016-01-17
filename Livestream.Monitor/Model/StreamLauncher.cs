@@ -27,11 +27,11 @@ namespace Livestream.Monitor.Model
         {
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-            
+
             this.settingsHandler = settingsHandler;
             this.windowManager = windowManager;
         }
-        
+
         public List<LivestreamModel> WatchingStreams
         {
             get
@@ -48,11 +48,18 @@ namespace Livestream.Monitor.Model
         {
             if (livestreamModel == null || livestreamModel.StreamProvider != StreamProviders.TWITCH_STREAM_PROVIDER) return;
 
+            // guard against invalid/missing chrome path
             var chromeLocation = settingsHandler.Settings.ChromeFullPath;
+            if (string.IsNullOrWhiteSpace(chromeLocation))
+            {
+                await fromScreen.ShowMessageAsync("No chrome locations specified",
+                    $"Chrome location is not set in settings.{Environment.NewLine}Chat relies on chrome to function.");
+                return;
+            }
             if (!File.Exists(chromeLocation))
             {
                 await fromScreen.ShowMessageAsync("Chrome not found",
-                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine} The chat function relies on chrome to function.");
+                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine}Chat relies on chrome to function.");
                 return;
             }
 
@@ -84,8 +91,8 @@ namespace Livestream.Monitor.Model
 
         public void OpenStream(LivestreamModel livestreamModel)
         {
-            if (livestreamModel == null || 
-                !livestreamModel.Live || 
+            if (livestreamModel == null ||
+                !livestreamModel.Live ||
                 !StreamProviders.IsValidProvider(livestreamModel.StreamProvider)) return;
 
             // Fall back to source stream quality for non-partnered Livestreams
@@ -112,7 +119,7 @@ namespace Livestream.Monitor.Model
             {
                 watchingStreams.Add(livestreamModel);
             }
-            
+
             StartLivestreamer(livestreamerArgs, messageBoxViewModel, onClose: () =>
             {
                 lock (watchingStreamsLock)
@@ -220,7 +227,7 @@ namespace Livestream.Monitor.Model
                 DisplayName = title,
                 MessageText = messageText
             };
-            
+
             var settings = new WindowSettingsBuilder().SizeToContent()
                                                       .NoResizeBorderless()
                                                       .Create();
