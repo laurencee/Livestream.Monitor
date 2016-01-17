@@ -56,7 +56,7 @@
                      ui:BindableBehaviors.Behaviors="{StaticResource NumericRestriction}"
                      ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
             <CheckBox Grid.Row="6" x:Name="DisableNotifications" Content="Disable Notifications"
-                      ToolTip="Disables all notifications (including online notifications) from displaything" />
+                      ToolTip="When unchecked, will disable all notifications (including online notifications) from displaying" />
         </Grid>
 
         <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20" />
