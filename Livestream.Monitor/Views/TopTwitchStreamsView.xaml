@@ -62,6 +62,7 @@
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
+                                        <MenuItem Header="Open Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
                                         <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]" 
                                                   IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                                                   ToolTip="Untick this to prevent popup notifications about this stream coming online (if being followed) or showing up as a popular stream"/>

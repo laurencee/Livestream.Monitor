@@ -19,6 +19,7 @@ namespace Livestream.Monitor.ViewModels
     public class LivestreamListViewModel : Screen
     {
         private readonly StreamLauncher streamLauncher;
+        private readonly INavigationService navigationService;
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
@@ -35,12 +36,15 @@ namespace Livestream.Monitor.ViewModels
         public LivestreamListViewModel(
             IMonitorStreamsModel monitorStreamsModel,
             FilterModel filterModel,
-            StreamLauncher streamLauncher)
+            StreamLauncher streamLauncher,
+            INavigationService navigationService)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
+            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
 
             this.streamLauncher = streamLauncher;
+            this.navigationService = navigationService;
             this.StreamsModel = monitorStreamsModel;
             FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
@@ -83,6 +87,14 @@ namespace Livestream.Monitor.ViewModels
             if (stream == null) return;
 
             stream.DontNotify = !stream.DontNotify;
+        }
+
+        public void GotoVodViewer()
+        {
+            var stream = StreamsModel.SelectedLivestream;
+            if (stream == null) return;
+
+            navigationService.NavigateTo<VodListViewModel>(vm => vm.StreamName = stream.Id);
         }
 
         public async Task DataGridKeyDown(KeyEventArgs e)

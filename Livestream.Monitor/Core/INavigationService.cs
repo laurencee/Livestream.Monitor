@@ -1,9 +1,10 @@
-﻿using Caliburn.Micro;
+﻿using System;
+using Caliburn.Micro;
 
 namespace Livestream.Monitor.Core
 {
     public interface INavigationService
     {
-        void NavigateTo<T>() where T : IScreen;
+        void NavigateTo<T>(Action<T> initAction = null) where T : IScreen;
     }
 }

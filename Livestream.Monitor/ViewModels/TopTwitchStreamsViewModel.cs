@@ -19,6 +19,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
+        private readonly INavigationService navigationService;
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private bool loadingItems;
@@ -76,17 +77,20 @@ namespace Livestream.Monitor.ViewModels
             ITwitchTvReadonlyClient twitchTvClient,
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
-            StreamLauncher streamLauncher)
+            StreamLauncher streamLauncher,
+            INavigationService navigationService)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
+            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
 
             this.twitchTvClient = twitchTvClient;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
+            this.navigationService = navigationService;
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
             PropertyChanged += (sender, args) =>
@@ -162,6 +166,13 @@ namespace Livestream.Monitor.ViewModels
             if (stream == null) return;
 
             await streamLauncher.OpenChat(stream.LivestreamModel, this);
+        }
+
+        public void GotoVodViewer(TwitchSearchStreamResult stream)
+        {
+            if (stream?.LivestreamModel == null) return;
+
+            navigationService.NavigateTo<VodListViewModel>(vm => vm.StreamName = stream.LivestreamModel.Id);
         }
 
         public void ToggleNotify(TwitchSearchStreamResult stream)

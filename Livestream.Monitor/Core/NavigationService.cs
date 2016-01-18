@@ -18,12 +18,13 @@ namespace Livestream.Monitor.Core
             this.eventAggregator = eventAggregator;
         }
 
-        public void NavigateTo<T>() where T : IScreen
+        public void NavigateTo<T>(Action<T> initAction = null) where T : IScreen
         {
             var screen = container.GetInstance<T>();
             if (screen == null)
                 throw new InvalidOperationException($"Could not navigate to {typeof(T).FullName}. Type not registered");
 
+            initAction?.Invoke(screen);
             eventAggregator.PublishOnUIThread(new ActivateScreen(screen));
         }
     }

@@ -7,7 +7,6 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
-             xmlns:model="clr-namespace:Livestream.Monitor.Model"
              d:DataContext="{d:DesignInstance Type=viewModels:LivestreamListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="600">
@@ -18,6 +17,7 @@
                 <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LivestreamListDataGrid}, Path=DataContext}">
                     <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                     <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
+                    <MenuItem Header="Open in Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer]" />
                     <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]" 
                               IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                               ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
