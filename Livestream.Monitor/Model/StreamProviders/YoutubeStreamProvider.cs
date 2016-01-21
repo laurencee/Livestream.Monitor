@@ -71,8 +71,8 @@ namespace Livestream.Monitor.Model.StreamProviders
                         if (livestreamDetails.ActualStartTime.HasValue)
                         {
                             livestreamModel.StartTime = livestreamDetails.ActualStartTime.Value;
-                            livestreamModel.Live = true;
-                            isOffline = false;
+                            livestreamModel.Live = snippet.LiveBroadcastContent != "none";
+                            isOffline = livestreamModel.Live;
                         }
                     }
                 }
