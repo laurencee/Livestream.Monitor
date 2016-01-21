@@ -49,8 +49,8 @@ hds-segment-threads=4
 I didn't like the large amount of memory used by java/web based GUIs for livestreamer and there were some features I wanted that the others didn't provide.
 
 ### FAQ
-Q. How do I add YouTube streams?
+**Q. How do I add YouTube streams?** <br />
 A. You need to copy the video id from the url (the characters after '**watch?v=**' in: https://www.youtube.com/watch?v=knUZi4NkduA)
 
-Q. When I launch chat for a YouTube stream it shows an error page, why?
+**Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?** <br />
 A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser). Currently I don't know how to find out if chat is disabled/enabled through the YouTube API
