@@ -142,6 +142,7 @@ namespace Livestream.Monitor.Model.Monitoring
             Livestreams.AddRange(newChannels);
             SaveLivestreams();
         }
+
         public async Task RefreshLivestreams()
         {
             if (!CanRefreshLivestreams) return;

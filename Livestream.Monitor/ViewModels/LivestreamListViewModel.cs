@@ -104,7 +104,7 @@ namespace Livestream.Monitor.ViewModels
         public void GotoVodViewer()
         {
             var stream = StreamsModel.SelectedLivestream;
-            if (stream == null) return;
+            if (stream == null || !stream.StreamProvider.HasVodViewerSupport) return;
 
             navigationService.NavigateTo<VodListViewModel>(vm => vm.StreamName = stream.Id);
         }
