@@ -50,7 +50,8 @@ I didn't like the large amount of memory used by java/web based GUIs for livestr
 
 ### FAQ
 **Q. How do I add YouTube streams?** <br />
-A. You need to copy the video id from the url (the characters after '**watch?v=**' in: https://www.youtube.com/watch?v=knUZi4NkduA)
+A. You need to copy the video id from the url <br />
+(the characters after '**watch?v=**' in: https://www.youtube.com/watch?v=knUZi4NkduA)
 
 **Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?** <br />
 A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser). Currently I don't know how to find out if chat is disabled/enabled through the YouTube API
