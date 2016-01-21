@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using HttpCommon;
 using TwitchTv.Dto;
 using TwitchTv.Dto.QueryRoot;
 using TwitchTv.Query;
@@ -122,18 +121,11 @@ namespace TwitchTv
             return channelVideosRoot.Videos;
         }
 
-        private async Task<T> ExecuteRequest<T>(string request)
+        private Task<T> ExecuteRequest<T>(string request)
         {
-            // we create a new client each time as it will execute much faster (at the expense of some additional memory)
-            using (HttpClient httpClient = new HttpClient(new HttpClientHandler()
-            {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-            }))
-            {
-                httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
-                var responseString = await httpClient.GetStringAsync(request);
-                return JsonConvert.DeserializeObject<T>(responseString);
-            }
+            HttpClient httpClient = HttpClientExtensions.CreateCompressionHttpClient();
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
+            return httpClient.ExecuteRequest<T>(request);
         }
     }
 }

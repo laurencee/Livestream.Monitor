@@ -29,12 +29,20 @@ namespace Livestream.Monitor.ViewModels
             MinimumEventViewers = 30000;
         }
 
-        public SettingsViewModel(ISettingsHandler settingsHandler)
+        public SettingsViewModel(
+            ISettingsHandler settingsHandler,
+            ThemeSelectorViewModel themeSelectorViewModel)
         {
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+            if (themeSelectorViewModel == null) throw new ArgumentNullException(nameof(themeSelectorViewModel));
 
             this.settingsHandler = settingsHandler;
+            ThemeSelector = themeSelectorViewModel;
+
+            ThemeSelector.ActivateWith(this);
         }
+
+        public ThemeSelectorViewModel ThemeSelector { get; set; }
 
         public string LivestreamerFullPath
         {

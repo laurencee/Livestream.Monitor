@@ -1,6 +1,6 @@
 ﻿using System;
 using Caliburn.Micro;
-using TwitchTv.Dto;
+using Livestream.Monitor.Model.StreamProviders;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -13,17 +13,16 @@ namespace Livestream.Monitor.Model.Monitoring
         private string displayName;
         private bool live;
         private bool isPartner;
-        private PreviewImage previewImage;
+        private ThumbnailUrls thumbnailUrls;
         private bool dontNotify;
         private DateTimeOffset? lastLiveTime;
+        private string broadcasterLanguage;
         private string language;
 
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
-
-        // TODO - replace with IStreamProvider when youtube support is added
-        /// <summary> The name of the service who hosts this livestream (twitchtv, youtube etc.) </summary>
-        public string StreamProvider { get; set; }
+        
+        public IStreamProvider StreamProvider { get; set; }
 
         public bool Live
         {
@@ -109,17 +108,28 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public PreviewImage PreviewImage
+        public ThumbnailUrls ThumbnailUrls
         {
-            get { return previewImage; }
+            get { return thumbnailUrls; }
             set
             {
-                if (Equals(value, previewImage)) return;
-                previewImage = value;
-                NotifyOfPropertyChange(() => PreviewImage);
+                if (Equals(value, thumbnailUrls)) return;
+                thumbnailUrls = value;
+                NotifyOfPropertyChange(() => ThumbnailUrls);
             }
         }
         
+        public string BroadcasterLanguage
+        {
+            get { return broadcasterLanguage; }
+            set
+            {
+                if (value == broadcasterLanguage) return;
+                broadcasterLanguage = value;
+                NotifyOfPropertyChange(() => BroadcasterLanguage);
+            }
+        }
+
         public string Language
         {
             get { return language; }
@@ -130,6 +140,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 NotifyOfPropertyChange(() => Language);
             }
         }
+
+        public string StreamUrl => StreamProvider?.GetStreamUrl(Id);
+
+        public string ChatUrl => StreamProvider?.GetChatUrl(Id);
 
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }

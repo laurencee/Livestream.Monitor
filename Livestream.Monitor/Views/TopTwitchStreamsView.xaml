@@ -8,7 +8,6 @@
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
-             xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
              d:DataContext="{d:DesignInstance Type=viewModels:TopTwitchStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="600" d:DesignWidth="500">
@@ -90,9 +89,17 @@
                                                 </TextBlock.Style>
                                             </TextBlock>
                                         </StackPanel>
-                                        <Image Source="{Binding LivestreamModel.Language, Converter={StaticResource CountryIdToFlagImageSourceConverter}}"
-                                               Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top"
-                                               ToolTip="{Binding LivestreamModel.Language}"/>
+                                        <Image Source="{Binding LivestreamModel.BroadcasterLanguage, Converter={StaticResource CountryIdToFlagImageSourceConverter}}"
+                                               Stretch="None" HorizontalAlignment="Right" VerticalAlignment="Top" >
+                                            <Image.ToolTip>
+                                                <ToolTip>
+                                                    <!-- I'd do this inline with a stringformat off the tooltip binding but that doesn't work for some reason -->
+                                                    <TextBlock>
+                                                        Broadcast Language: <Run Text="{Binding LivestreamModel.BroadcasterLanguage}" />
+                                                    </TextBlock>
+                                                </ToolTip>
+                                            </Image.ToolTip>
+                                        </Image>
                                     </Grid>
                                 </controls:Tile.Content>
                             </controls:Tile>
@@ -100,7 +107,7 @@
                                    AllowsTransparency="True" PopupAnimation="Slide" 
                                    HorizontalOffset="-35" VerticalOffset="0">
                                 <Border BorderThickness="1" BorderBrush="Black">
-                                    <Image Margin="2" Source="{Binding LivestreamModel.PreviewImage.Medium, IsAsync=True}" />
+                                    <Image Margin="2" Source="{Binding LivestreamModel.ThumbnailUrls.Medium, IsAsync=True}" />
                                 </Border>
                             </Popup>
                             <controls:ProgressRing IsActive="{Binding IsBusy}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />

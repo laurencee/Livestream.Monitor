@@ -20,6 +20,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Google.API.Tests", "Google.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Livestream.Monitor.Tests", "Livestream.Monitor.Tests\Livestream.Monitor.Tests.csproj", "{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HttpCommon", "HttpCommon\HttpCommon.csproj", "{69111CE8-11F3-4B3E-A40B-35F277EE6726}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,10 @@ Global
 		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69111CE8-11F3-4B3E-A40B-35F277EE6726}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69111CE8-11F3-4B3E-A40B-35F277EE6726}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69111CE8-11F3-4B3E-A40B-35F277EE6726}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69111CE8-11F3-4B3E-A40B-35F277EE6726}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

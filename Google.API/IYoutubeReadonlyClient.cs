@@ -3,7 +3,7 @@ using Google.API.Dto;
 
 namespace Google.API
 {
-    public interface IGoogleVideoReadonlyClient
+    public interface IYoutubeReadonlyClient
     {
         Task<VideoRoot> GetLivestreamDetails(string videoId);
     }

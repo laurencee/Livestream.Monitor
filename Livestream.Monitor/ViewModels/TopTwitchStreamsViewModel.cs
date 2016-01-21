@@ -7,6 +7,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Model.StreamProviders;
 using TwitchTv;
 using TwitchTv.Query;
 
@@ -20,6 +21,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
         private readonly INavigationService navigationService;
+        private readonly IStreamProviderFactory streamProviderFactory;
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private bool loadingItems;
@@ -78,19 +80,22 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
-            INavigationService navigationService)
+            INavigationService navigationService,
+            IStreamProviderFactory streamProviderFactory)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
+            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
 
             this.twitchTvClient = twitchTvClient;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
             this.navigationService = navigationService;
+            this.streamProviderFactory = streamProviderFactory;
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
             PropertyChanged += (sender, args) =>
@@ -153,7 +158,7 @@ namespace Livestream.Monitor.ViewModels
                 NotifyOfPropertyChange(() => ShowPossibleGames);
             }
         }
-
+        
         public void OpenStream(TwitchSearchStreamResult stream)
         {
             if (stream == null) return;
@@ -275,7 +280,7 @@ namespace Livestream.Monitor.ViewModels
                 {
                     var twitchStream = new TwitchSearchStreamResult();
                     twitchStream.IsMonitored = monitoredStreams.Any(x => x.Id == topStream.Channel?.Name);
-                    twitchStream.LivestreamModel.PopulateWithStreamDetails(topStream);
+                    twitchStream.LivestreamModel.PopulateWithStreamDetails(topStream, streamProviderFactory.Get<TwitchStreamProvider>());
                     twitchStream.LivestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
 
                     twitchStreams.Add(twitchStream);

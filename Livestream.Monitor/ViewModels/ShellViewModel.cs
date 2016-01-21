@@ -18,6 +18,7 @@ namespace Livestream.Monitor.ViewModels
     public class ShellViewModel : Conductor<IScreen>.Collection.OneActive, IHandle<ActivateScreen>
     {
         private readonly MainViewModel mainViewModel;
+        private readonly INavigationService navigationService;
         public const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
@@ -30,30 +31,28 @@ namespace Livestream.Monitor.ViewModels
         {
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
-
-            ThemeSelector = new ThemeSelectorViewModel();
+            
             Settings = new SettingsViewModel();
             ActiveItem = new MainViewModel();
         }
 
         public ShellViewModel(
-            ThemeSelectorViewModel themeSelector,
             SettingsViewModel settingsViewModel,
             MainViewModel mainViewModel,
-            IEventAggregator eventAggregator)
+            IEventAggregator eventAggregator,
+            INavigationService navigationService)
         {
-            if (themeSelector == null) throw new ArgumentNullException(nameof(themeSelector));
             if (settingsViewModel == null) throw new ArgumentNullException(nameof(settingsViewModel));
             if (mainViewModel == null) throw new ArgumentNullException(nameof(mainViewModel));
-
-            ThemeSelector = themeSelector;
+            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
+            
             Settings = settingsViewModel;
             this.mainViewModel = mainViewModel;
+            this.navigationService = navigationService;
             ActiveItem = mainViewModel;
 
             eventAggregator.Subscribe(this);
             Settings.ActivateWith(this);
-            ThemeSelector.ActivateWith(this);
 
             currentAppVersion = GetType().Assembly.GetName().Version;
             DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}";
@@ -64,9 +63,7 @@ namespace Livestream.Monitor.ViewModels
         }
 
         public override string DisplayName { get; set; }
-
-        public ThemeSelectorViewModel ThemeSelector { get; set; }
-
+        
         public SettingsViewModel Settings { get; set; }
 
         public WindowState WindowState
@@ -105,6 +102,43 @@ namespace Livestream.Monitor.ViewModels
             IsSettingsOpen = true;
         }
 
+        public void GotoTopStreams()
+        {
+            navigationService.NavigateTo<TopTwitchStreamsViewModel>();
+        }
+
+        public void GotoVodViewer()
+        {
+            navigationService.NavigateTo<VodListViewModel>();
+        }
+
+        public void Handle(ActivateScreen message)
+        {
+            if (ActiveItem.GetType() == message.Screen.GetType())
+                return;
+
+            if (ActiveItem != mainViewModel)
+                DeactivateItem(ActiveItem, true);
+
+            Items.Add(message.Screen);
+            ActivateItem(message.Screen);
+        }
+
+        protected override async void OnViewLoaded(object view)
+        {
+            if (Execute.InDesignMode) return;
+            
+            taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
+            if (!Debugger.IsAttached) await CheckForNewVersion();
+            base.OnViewLoaded(view);
+        }
+
+        protected override void OnDeactivate(bool close)
+        {
+            taskbarIcon?.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
+            base.OnDeactivate(close);
+        }
+
         private void WindowMinimized()
         {
             Application.Current.MainWindow.Hide();
@@ -122,21 +156,6 @@ namespace Livestream.Monitor.ViewModels
                 taskbarIcon.ShowBalloonTip("Livestream Monitor", "Livestream Monitored minimized to tray", BalloonIcon.Info);
                 firstMinimize = false;
             }
-        }
-
-        protected override async void OnViewLoaded(object view)
-        {
-            if (Execute.InDesignMode) return;
-            
-            taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
-            if (!Debugger.IsAttached) await CheckForNewVersion();
-            base.OnViewLoaded(view);
-        }
-
-        protected override void OnDeactivate(bool close)
-        {
-            taskbarIcon?.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
-            base.OnDeactivate(close);
         }
 
         private async Task CheckForNewVersion()
@@ -193,18 +212,6 @@ namespace Livestream.Monitor.ViewModels
                 // failed to convert the tagname to a version for some reason
                 return false;
             }
-        }
-
-        public void Handle(ActivateScreen message)
-        {
-            if (ActiveItem.GetType() == message.Screen.GetType())
-                return;
-
-            if (ActiveItem != mainViewModel)
-                DeactivateItem(ActiveItem, true);
-
-            Items.Add(message.Screen);
-            ActivateItem(message.Screen);
         }
     }
 }

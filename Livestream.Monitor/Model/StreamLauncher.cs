@@ -46,8 +46,6 @@ namespace Livestream.Monitor.Model
 
         public async Task OpenChat(LivestreamModel livestreamModel, IViewAware fromScreen)
         {
-            if (livestreamModel == null || livestreamModel.StreamProvider != StreamProviders.TWITCH_STREAM_PROVIDER) return;
-
             // guard against invalid/missing chrome path
             var chromeLocation = settingsHandler.Settings.ChromeFullPath;
             if (string.IsNullOrWhiteSpace(chromeLocation))
@@ -62,8 +60,15 @@ namespace Livestream.Monitor.Model
                     $"Could not find chrome @ {chromeLocation}.{Environment.NewLine}Chat relies on chrome to function.");
                 return;
             }
-
-            string chromeArgs = $"--app=http://www.twitch.tv/{livestreamModel.Id}/chat?popout=true --window-size=350,758";
+            // guard against stream provider not having chat support
+            if (!livestreamModel.StreamProvider.HasChatSupport)
+            {
+                await fromScreen.ShowMessageAsync("Chat not supported",
+                    $"No external chat support for stream provider '{livestreamModel.StreamProvider.ProviderName}'");
+                return;
+            }
+            
+            string chromeArgs = $"--app={livestreamModel.ChatUrl} --window-size=350,758";
 
             await Task.Run(async () =>
             {
@@ -91,26 +96,22 @@ namespace Livestream.Monitor.Model
 
         public void OpenStream(LivestreamModel livestreamModel)
         {
-            if (livestreamModel == null ||
-                !livestreamModel.Live ||
-                !StreamProviders.IsValidProvider(livestreamModel.StreamProvider)) return;
+            if (livestreamModel?.StreamProvider == null || !livestreamModel.Live) return;
 
+            // TODO - move the stream quality into the IStreamProvider
             // Fall back to source stream quality for non-partnered Livestreams
             var streamQuality = (!livestreamModel.IsPartner &&
-                                 settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Source)
-                                    ? StreamQuality.Source
+                                 settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Best)
+                                    ? StreamQuality.Best
                                     : settingsHandler.Settings.DefaultStreamQuality;
 
-            // TODO - create a "GetStreamUrl" function in IStreamProvider when youtube streams are supported
-            string baseUrl = StreamProviders.GetBaseUrl(livestreamModel.StreamProvider);
-
-            string livestreamerArgs = $"{baseUrl}{livestreamModel.Id}/ {streamQuality}";
+            string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
 
             // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
-            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Source)
+            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best)
             {
                 messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
             }

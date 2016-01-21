@@ -2,8 +2,10 @@
 {
     public class ThumbnailResolution
     {
-        public string url { get; set; }
-        public int width { get; set; }
-        public int height { get; set; }
+        public string Url { get; set; }
+
+        public int Width { get; set; }
+
+        public int Height { get; set; }
     }
 }

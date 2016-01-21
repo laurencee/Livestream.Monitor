@@ -23,6 +23,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
+        private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
         {
@@ -65,7 +66,18 @@ namespace Livestream.Monitor.ViewModels
         public IMonitorStreamsModel StreamsModel { get; }
 
         public FilterModel FilterModel { get; }
-        
+
+        public LivestreamsLayoutMode LayoutModeMode
+        {
+            get { return layoutModeMode; }
+            set
+            {
+                if (value == layoutModeMode) return;
+                layoutModeMode = value;
+                NotifyOfPropertyChange(() => LayoutModeMode);
+            }
+        }
+
         public async Task RefreshLivestreams()
         {
             refreshTimer.Stop();
@@ -125,11 +137,10 @@ namespace Livestream.Monitor.ViewModels
 
         public void CopyLivestreamUrl()
         {
-            if (StreamsModel.SelectedLivestream == null || !StreamProviders.IsValidProvider(StreamsModel.SelectedLivestream.StreamProvider)) return;
+            if (StreamsModel.SelectedLivestream?.StreamProvider == null) return;
 
             // TODO - create a "GetStreamUrl" function in IStreamProvider when youtube streams are supported
-            var baseUrl = StreamProviders.GetBaseUrl(StreamsModel.SelectedLivestream.StreamProvider);
-            Clipboard.SetText($"{baseUrl}{StreamsModel.SelectedLivestream.Id}");
+            Clipboard.SetText(StreamsModel.SelectedLivestream.StreamUrl);
         }
 
         protected override async void OnActivate()

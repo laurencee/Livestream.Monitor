@@ -1,61 +1,28 @@
 ﻿using System;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Model.StreamProviders;
 using TwitchTv.Dto;
 
 namespace Livestream.Monitor.Model
 {
     public static class TwitchToModelMaps
     {
-        public static LivestreamModel ToLivestreamModel(this Stream stream)
+        public static LivestreamModel PopulateWithStreamDetails(
+            this LivestreamModel livestreamModel, 
+            Stream streamDetails, 
+            IStreamProvider twitchStreamProvider)
         {
-            var livestreamModel = new LivestreamModel();
-            livestreamModel.PopulateWithStreamDetails(stream);
-            return livestreamModel;
-        }
-
-        public static LivestreamModel ToLivestreamModel(this Follow follow, string importedBy = null)
-        {
-            return new LivestreamModel()
-            {
-                Id = follow.Channel?.Name,
-                StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER,
-                DisplayName = follow.Channel?.Name,
-                Description = follow.Channel?.Status,
-                Game = follow.Channel?.Game,
-                IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
-                ImportedBy = importedBy,
-                Language = follow.Channel?.BroadcasterLanguage
-            };
-        }
-
-        public static LivestreamModel ToLivestreamModel(this LivestreamFileData livestreamFileData)
-        {
-            return new LivestreamModel()
-            {
-                Id = livestreamFileData.LivestreamId,
-                StreamProvider = livestreamFileData.StreamProvider,
-                ImportedBy = livestreamFileData.ImportedBy
-            };
-        }
-
-        public static LivestreamFileData ToLivestreamFileData(this LivestreamModel channelFileData)
-        {
-            return new LivestreamFileData()
-            {
-                LivestreamId = channelFileData.Id,
-                StreamProvider = channelFileData.StreamProvider,
-                ImportedBy = channelFileData.ImportedBy
-            };
-        }
-
-        public static void PopulateWithStreamDetails(this LivestreamModel livestreamModel, Stream streamDetails)
-        {
-            if (streamDetails == null) return;
+            if (streamDetails == null) return livestreamModel;
 
             livestreamModel.Id = streamDetails.Channel?.Name;
-            livestreamModel.StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER;
+            livestreamModel.StreamProvider = twitchStreamProvider;
             livestreamModel.Viewers = streamDetails.Viewers ?? 0;
-            livestreamModel.PreviewImage = streamDetails.Preview;
+            livestreamModel.ThumbnailUrls = new ThumbnailUrls()
+            {
+                Large = streamDetails.Preview.Large,
+                Medium = streamDetails.Preview.Medium,
+                Small = streamDetails.Preview.Small,
+            };
             if (streamDetails.CreatedAt != null)
             {
                 livestreamModel.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);
@@ -67,6 +34,8 @@ namespace Livestream.Monitor.Model
 
             if (streamDetails.Channel != null)
                 livestreamModel.PopulateWithChannel(streamDetails.Channel);
+
+            return livestreamModel;
         }
 
         public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)
@@ -77,7 +46,8 @@ namespace Livestream.Monitor.Model
             livestreamModel.Description = channel.Status;
             livestreamModel.Game = channel.Game;
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
-            livestreamModel.Language = channel.BroadcasterLanguage;
+            livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
+            livestreamModel.Language = channel.Language;
         }
     }
 }

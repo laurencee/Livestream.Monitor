@@ -8,10 +8,10 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Livestream.Monitor.Properties
-{
-
-
+namespace Livestream.Monitor.Properties {
+    using System;
+    
+    
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -22,49 +22,50 @@ namespace Livestream.Monitor.Properties
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "4.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Resources
-    {
-
+    internal class Resources {
+        
         private static global::System.Resources.ResourceManager resourceMan;
-
+        
         private static global::System.Globalization.CultureInfo resourceCulture;
-
+        
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
-        internal Resources()
-        {
+        internal Resources() {
         }
-
+        
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager
-        {
-            get
-            {
-                if ((resourceMan == null))
-                {
+        internal static global::System.Resources.ResourceManager ResourceManager {
+            get {
+                if (object.ReferenceEquals(resourceMan, null)) {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("Livestream.Monitor.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
             }
         }
-
+        
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture
-        {
-            get
-            {
+        internal static global::System.Globalization.CultureInfo Culture {
+            get {
                 return resourceCulture;
             }
-            set
-            {
+            set {
                 resourceCulture = value;
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {&quot;aa&quot;:&quot;dj&quot;,&quot;af&quot;:&quot;af&quot;,&quot;ak&quot;:&quot;gh&quot;,&quot;am&quot;:&quot;am&quot;,&quot;ar&quot;:&quot;ar&quot;,&quot;as&quot;:&quot;as&quot;,&quot;az&quot;:&quot;az&quot;,&quot;ba&quot;:&quot;ba&quot;,&quot;be&quot;:&quot;be&quot;,&quot;bg&quot;:&quot;bg&quot;,&quot;bm&quot;:&quot;ml&quot;,&quot;bn&quot;:&quot;bn&quot;,&quot;bo&quot;:&quot;bo&quot;,&quot;br&quot;:&quot;br&quot;,&quot;bs&quot;:&quot;bs&quot;,&quot;ca&quot;:&quot;ca&quot;,&quot;co&quot;:&quot;co&quot;,&quot;cs&quot;:&quot;cz&quot;,&quot;cy&quot;:&quot;cy&quot;,&quot;da&quot;:&quot;dk&quot;,&quot;de&quot;:&quot;de&quot;,&quot;dv&quot;:&quot;mv&quot;,&quot;dz&quot;:&quot;bt&quot;,&quot;ee&quot;:&quot;gh&quot;,&quot;el&quot;:&quot;cy&quot;,&quot;es&quot;:&quot;es&quot;,&quot;et&quot;:&quot;et&quot;,&quot;eu&quot;:&quot;es&quot;,&quot;fa&quot;:&quot;ir&quot;,&quot;ff&quot;:&quot;cm&quot;,&quot;fi&quot;:&quot;fi&quot;,&quot;fo&quot;:&quot;fo&quot;,&quot;fr&quot;:&quot;fr&quot;,&quot;fy&quot;:&quot;nl&quot;,....
+        /// </summary>
+        internal static string countryIdIsoMappings {
+            get {
+                return ResourceManager.GetString("countryIdIsoMappings", resourceCulture);
             }
         }
     }

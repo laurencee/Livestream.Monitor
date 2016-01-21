@@ -6,6 +6,7 @@ using System.Runtime.Caching;
 using System.Threading.Tasks;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
 using TwitchTv;
 using TwitchTv.Dto;
@@ -21,6 +22,7 @@ namespace Livestream.Monitor.Model
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
         private readonly NotificationHandler notificationHandler;
+        private readonly IStreamProviderFactory streamProviderFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
 
@@ -33,17 +35,20 @@ namespace Livestream.Monitor.Model
             ISettingsHandler settingsHandler,
             NotificationHandler notificationHandler,
             INavigationService navigationService,
-            IMonitorStreamsModel monitorStreamsModel)
+            IMonitorStreamsModel monitorStreamsModel,
+            IStreamProviderFactory streamProviderFactory)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
+            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
 
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
             this.notificationHandler = notificationHandler;
+            this.streamProviderFactory = streamProviderFactory;
 
             clickAction = (model, notification) =>
             {
@@ -116,7 +121,7 @@ namespace Livestream.Monitor.Model
                         notificationHandler.AddNotification(new LivestreamNotification()
                         {
                             LivestreamModel = stream,
-                            ImageUrl = stream.PreviewImage?.Small,
+                            ImageUrl = stream.ThumbnailUrls?.Small,
                             Message = stream.Description,
                             Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
                             Duration = LivestreamNotification.MaxDuration,
@@ -167,9 +172,10 @@ namespace Livestream.Monitor.Model
             {
                 // nothing we can really do here, we just wanna make sure the polling continues
             }
-            
 
-            return popularStreams.Select(x => x.ToLivestreamModel()).ToList();
+
+            return popularStreams.Select(x => new LivestreamModel().PopulateWithStreamDetails(x, streamProviderFactory.Get<TwitchStreamProvider>()))
+                                 .ToList();
         }
     }
 }

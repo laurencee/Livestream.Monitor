@@ -5,8 +5,6 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamFileData
     {
-        private string streamProvider;
-
         [JsonRequired]
         public string LivestreamId { get; set; }
 
@@ -14,20 +12,7 @@ namespace Livestream.Monitor.Model.Monitoring
         public string ImportedBy { get; set; }
 
         /// <summary> The site which this livestream belongs to (twitch/youtube etc.) </summary>
-        public string StreamProvider
-        {
-            get { return streamProvider; }
-            set
-            {
-                if (!StreamProviders.IsValidProvider(value))
-                {
-                    throw new ArgumentException(
-                        $"Service provider must be one of the known valid service provider types: {String.Join(",", StreamProviders.ValidProviders)}",
-                        nameof(value));
-                }
-
-                streamProvider = value;
-            }
-        }
+        [JsonRequired]
+        public string StreamProvider { get; set; }
     }
 }

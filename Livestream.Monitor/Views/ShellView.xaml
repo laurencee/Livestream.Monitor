@@ -12,7 +12,11 @@
                       Height="475" Width="820">
     <mah:MetroWindow.RightWindowCommands>
         <mah:WindowCommands>
-            <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />
+            <!--<ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />-->
+            <Button x:Name="TopStreams" Content="Top Streams" ToolTip="Show top streams from twitch"
+                    cal:Message.Attach="[Click] = [GotoTopStreams]" />
+            <Button x:Name="VodViewer" Content="Vod Viewer" ToolTip="View and open vods from twitch streams"
+                    cal:Message.Attach="[Click] = [GotoVodViewer]" />
             <Button x:Name="ShowSettings" Content="&#x2699;" cal:Message.Attach="[Click] = [ShowSettings]" />
         </mah:WindowCommands>
     </mah:MetroWindow.RightWindowCommands>

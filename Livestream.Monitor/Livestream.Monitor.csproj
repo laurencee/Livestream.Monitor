@@ -51,12 +51,12 @@
       <HintPath>..\packages\Hardcodet.NotifyIcon.Wpf.1.0.5\lib\net451\Hardcodet.Wpf.TaskbarNotification.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="MahApps.Metro, Version=1.2.0.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f, processorArchitecture=MSIL">
-      <HintPath>..\packages\MahApps.Metro.1.2.0.0\lib\net45\MahApps.Metro.dll</HintPath>
+    <Reference Include="MahApps.Metro, Version=1.2.3.0, Culture=neutral, PublicKeyToken=f4fb5a3c4d1e5b4f, processorArchitecture=MSIL">
+      <HintPath>..\packages\MahApps.Metro.1.2.3.0\lib\net45\MahApps.Metro.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <HintPath>..\packages\Newtonsoft.Json.8.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Octokit, Version=0.17.0.0, Culture=neutral, processorArchitecture=MSIL">
@@ -69,7 +69,7 @@
     <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Runtime.Remoting" />
     <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\MahApps.Metro.1.2.0.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
+      <HintPath>..\packages\MahApps.Metro.1.2.3.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml" />
@@ -110,6 +110,10 @@
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Model\LivestreamsLayoutMode.cs" />
+    <Compile Include="Model\StreamProviders\IStreamProviderFactory.cs" />
+    <Compile Include="Model\StreamProviders\StreamProviderFactory.cs" />
+    <Compile Include="Model\Monitoring\ThumbnailUrls.cs" />
     <Compile Include="Model\PopularLivestreamWatcher.cs" />
     <Compile Include="Model\Monitoring\FakeMonitorStreamsModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamFileData.cs" />
@@ -118,7 +122,9 @@
     <Compile Include="Model\Monitoring\LivestreamNotification.cs" />
     <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
-    <Compile Include="Model\StreamProviders.cs" />
+    <Compile Include="Model\StreamProviders\IStreamProvider.cs" />
+    <Compile Include="Model\StreamProviders\TwitchStreamProvider.cs" />
+    <Compile Include="Model\StreamProviders\YoutubeStreamProvider.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
     <Compile Include="Model\VodDetails.cs" />
@@ -230,6 +236,7 @@
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
+    <None Include="countryIdIsoMappings.json" />
     <None Include="packages.config">
       <SubType>Designer</SubType>
     </None>
@@ -243,6 +250,14 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Google.API\Google.API.csproj">
+      <Project>{0E4E46DB-D208-46BB-B60A-357A8CE61560}</Project>
+      <Name>Google.API</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\HttpCommon\HttpCommon.csproj">
+      <Project>{69111CE8-11F3-4B3E-A40B-35F277EE6726}</Project>
+      <Name>HttpCommon</Name>
+    </ProjectReference>
     <ProjectReference Include="..\TwitchTv\TwitchTv.csproj">
       <Project>{D1BF356B-E6F4-4BD6-A8CC-56DDF5983DCB}</Project>
       <Name>TwitchTv</Name>
@@ -504,6 +519,7 @@
     <Resource Include="Images\CountryFlags\zm.png" />
     <Resource Include="Images\CountryFlags\zw.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

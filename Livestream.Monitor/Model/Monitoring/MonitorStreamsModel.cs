@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Model.StreamProviders;
 using TwitchTv;
 
 namespace Livestream.Monitor.Model.Monitoring
@@ -15,11 +16,12 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
+        private readonly IStreamProviderFactory streamProviderFactory;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
 
         private bool initialised;
-        private bool canRefreshLivestreams = true;
         private bool queryOfflineStreams = true;
+        private bool canRefreshLivestreams = true;
         private LivestreamModel selectedLivestream;
 
         #region Design Time Constructor
@@ -51,15 +53,18 @@ namespace Livestream.Monitor.Model.Monitoring
         public MonitorStreamsModel(
             IMonitoredStreamsFileHandler fileHandler,
             ITwitchTvReadonlyClient twitchTvClient,
-            ISettingsHandler settingsHandler)
+            ISettingsHandler settingsHandler,
+            IStreamProviderFactory streamProviderFactory)
         {
             if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
 
             this.fileHandler = fileHandler;
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
+            this.streamProviderFactory = streamProviderFactory;
         }
 
         public BindableCollection<LivestreamModel> Livestreams
@@ -100,31 +105,43 @@ namespace Livestream.Monitor.Model.Monitoring
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
             if (Livestreams.Any(x => Equals(x, livestreamModel))) return; // ignore duplicate requests
 
-            // TODO - move this type specific code to a "twitchtv livestream service provider" that would handle calls for twitch livestreams
-            var stream = await twitchTvClient.GetStreamDetails(livestreamModel.Id);
-            livestreamModel.PopulateWithStreamDetails(stream);
-            var channel = await twitchTvClient.GetChannelDetails(livestreamModel.Id);
-            livestreamModel.PopulateWithChannel(channel);
+            var streamProvider = livestreamModel.StreamProvider;
+            var offlineStreams = await streamProvider.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel });
+            if (offlineStreams.Any())
+                await streamProvider.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel });
+            
             livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
-            livestreamModel.StreamProvider = StreamProviders.TWITCH_STREAM_PROVIDER;
 
             Livestreams.Add(livestreamModel);
             SaveLivestreams();
+
+            SelectedLivestream = livestreamModel;
         }
 
         public async Task ImportFollows(string username)
         {
             if (username == null) throw new ArgumentNullException(nameof(username));
-            
+
             var userFollows = await twitchTvClient.GetUserFollows(username);
-            var userFollowedChannels = userFollows.Follows.Select(x => x.ToLivestreamModel(importedBy: username));
+            var userFollowedChannels = from follow in userFollows.Follows
+                                       select new LivestreamModel()
+                                       {
+                                           Id = follow.Channel?.Name,
+                                           StreamProvider = streamProviderFactory.Get<TwitchStreamProvider>(),
+                                           DisplayName = follow.Channel?.Name,
+                                           Description = follow.Channel?.Status,
+                                           Game = follow.Channel?.Game,
+                                           IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
+                                           ImportedBy = username,
+                                           BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
+                                       };
+
             var newChannels = userFollowedChannels.Except(Livestreams).ToList(); // ignore duplicate channels
             newChannels.ForEach(x => x.SetLivestreamNotifyState(settingsHandler.Settings));
 
             Livestreams.AddRange(newChannels);
             SaveLivestreams();
         }
-
         public async Task RefreshLivestreams()
         {
             if (!CanRefreshLivestreams) return;
@@ -132,28 +149,32 @@ namespace Livestream.Monitor.Model.Monitoring
             CanRefreshLivestreams = false;
             try
             {
-                var onlineStreams = await twitchTvClient.GetStreamsDetails(Livestreams.Select(x => x.Id).ToList());
+                var offlineStreamsProviders = new Dictionary<IStreamProvider, List<LivestreamModel>>();
 
-                foreach (var onlineStream in onlineStreams)
+                foreach (var livestreamProviderGroup in Livestreams.GroupBy(x => x.StreamProvider))
                 {
-                    var livestream = Livestreams.Single(x => x.Id.IsEqualTo(onlineStream.Channel.Name));
-
-                    livestream.PopulateWithChannel(onlineStream.Channel);
-                    livestream.PopulateWithStreamDetails(onlineStream);
+                    var streamProvider = livestreamProviderGroup.Key;
+                    var offlineStreams = await streamProvider.UpdateOnlineStreams(livestreamProviderGroup.ToList());
+                    offlineStreamsProviders[streamProvider] = offlineStreams;
                 }
 
-                // Notify that the most important livestreams have up to date information
+                // Notify that the most important livestreams (online streams) have up to date information
                 OnOnlineLivestreamsRefreshComplete();
 
-                var offlineStreams = Livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
-                offlineStreams.ForEach(x => x.Offline()); // mark all remaining streams as offline immediately
-
-                if (queryOfflineStreams)
+                if (offlineStreamsProviders.Any())
                 {
-                    await QueryOfflineStreams(offlineStreams);
-                    // We only need to query offline streams one time to get the channel info
-                    // It's a waste of resources to query for updates to offline streams 
-                    queryOfflineStreams = false;
+                    foreach (var offlineProviderStream in offlineStreamsProviders)
+                    {
+                        offlineProviderStream.Value.ForEach(x => x.Offline());
+
+                        if (queryOfflineStreams)
+                        {
+                            var streamProvider = offlineProviderStream.Key;
+                            await streamProvider.UpdateOfflineStreams(offlineProviderStream.Value);
+                        }
+                    }
+
+                    queryOfflineStreams = false; // only query offline streams 1 time per application run
                 }
             }
             catch (Exception)
@@ -175,24 +196,6 @@ namespace Livestream.Monitor.Model.Monitoring
         protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
             OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
-        }
-
-        private async Task QueryOfflineStreams(List<LivestreamModel> offlineStreams)
-        {
-            var offlineTasks = offlineStreams.Select(x => new
-            {
-                Livestream = x,
-                OfflineData = twitchTvClient.GetChannelDetails(x.Id)
-            }).ToList();
-
-            await Task.WhenAll(offlineTasks.Select(x => x.OfflineData));
-            foreach (var offlineTask in offlineTasks)
-            {
-                var offlineData = offlineTask.OfflineData.Result;
-                if (offlineData == null) continue;
-
-                offlineTask.Livestream.PopulateWithChannel(offlineData);
-            }
         }
 
         private void LoadLivestreams()

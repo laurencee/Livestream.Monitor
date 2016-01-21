@@ -1,13 +1,15 @@
 using System;
 using System.ComponentModel;
 using System.Linq;
-using System.Net.Http;
+using System.Net;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Caliburn.Micro;
+using HttpCommon;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Model.StreamProviders;
 using MahApps.Metro.Controls.Dialogs;
 using static System.String;
 
@@ -15,18 +17,19 @@ namespace Livestream.Monitor.ViewModels
 {
     public class HeaderViewModel : Screen
     {
-        private const string TIP_ERROR_ADD_STREAM = "Tip: Only input the streamers name and not the full twitch url.";
+        private const string TIP_ERROR_ADD_STREAM = "Tip: Make sure you have selected the right stream provider\nTip: Only input the streamers id and not the full url.";
 
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
-        private readonly INavigationService navigationService;
+        private readonly IStreamProviderFactory streamProviderFactory;
         private string streamName;
         private bool canRefreshLivestreams;
         private StreamQuality? selectedStreamQuality;
         private bool canOpenStream;
         private bool canOpenChat;
         private bool canAddStream;
+        private IStreamProvider selectedStreamProvider;
 
         public HeaderViewModel()
         {
@@ -39,19 +42,19 @@ namespace Livestream.Monitor.ViewModels
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel,
-            INavigationService navigationService)
+            IStreamProviderFactory streamProviderFactory)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
-            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
+            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
 
             FilterModel = filterModelModel;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
-            this.navigationService = navigationService;
+            this.streamProviderFactory = streamProviderFactory;
         }
 
         public FilterModel FilterModel { get; }
@@ -127,6 +130,19 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<StreamQuality> StreamQualities { get; set; } = new BindableCollection<StreamQuality>();
 
+        public BindableCollection<IStreamProvider> StreamProviders { get; set; } = new BindableCollection<IStreamProvider>();
+
+        public IStreamProvider SelectedStreamProvider
+        {
+            get { return selectedStreamProvider; }
+            set
+            {
+                if (Equals(value, selectedStreamProvider)) return;
+                selectedStreamProvider = value;
+                NotifyOfPropertyChange(() => SelectedStreamProvider);
+            }
+        }
+        
         public async Task AddStream()
         {
             if (IsNullOrWhiteSpace(StreamName) || !CanAddStream) return;
@@ -135,23 +151,26 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await monitorStreamsModel.AddLivestream(new LivestreamModel() { Id = StreamName });
+                await monitorStreamsModel.AddLivestream(new LivestreamModel()
+                {
+                    Id = StreamName,
+                    StreamProvider = SelectedStreamProvider
+                });
                 StreamName = null;
                 await dialogController.CloseAsync();
             }
-            catch (HttpRequestException httpException)
-                when (httpException.Message == "Response status code does not indicate success: 404 (Not Found).")
+            catch (HttpRequestWithStatusException httpException) when (httpException.StatusCode == HttpStatusCode.NotFound)
             {
                 CanAddStream = true;
                 await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}'{Environment.NewLine}" +
+                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}' for stream provider {SelectedStreamProvider.ProviderName}{Environment.NewLine}" +
                                                                     $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
             }
             catch (Exception ex)
             {
                 CanAddStream = true; // on failure streamname not cleared so the user can try adding again
                 await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error adding stream.", $"{TIP_ERROR_ADD_STREAM}{Environment.NewLine}{ex.Message}");
+                await this.ShowMessageAsync("Error adding stream.", $"{ex.Message}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
             }
         }
 
@@ -203,14 +222,11 @@ namespace Livestream.Monitor.ViewModels
                 await AddStream();
         }
 
-        public void ShowTopTwitchStreams()
+        protected override void OnInitialize()
         {
-            navigationService.NavigateTo<TopTwitchStreamsViewModel>();
-        }
-
-        public void ShowVodViewer()
-        {
-            navigationService.NavigateTo<VodListViewModel>();
+            StreamProviders.AddRange(streamProviderFactory.GetAll());
+            SelectedStreamProvider = streamProviderFactory.Get<TwitchStreamProvider>();
+            base.OnInitialize();
         }
 
         protected override void OnActivate()
@@ -235,12 +251,12 @@ namespace Livestream.Monitor.ViewModels
             {
                 var selectedLivestream = monitorStreamsModel.SelectedLivestream;
                 CanOpenStream = selectedLivestream != null && selectedLivestream.Live;
-                CanOpenChat = selectedLivestream != null;
+                CanOpenChat = selectedLivestream != null && selectedLivestream.StreamProvider.HasChatSupport;
                 StreamQualities.Clear();
                 selectedStreamQuality = null;
                 if (CanOpenStream)
                 {
-                    if (selectedLivestream.IsPartner)
+                    if (selectedLivestream.IsPartner) // twitch partner specific
                     {
                         StreamQualities.AddRange(Enum.GetValues(typeof(StreamQuality)).Cast<StreamQuality>());
                         // set field instead of property so we dont update user settings
@@ -248,9 +264,9 @@ namespace Livestream.Monitor.ViewModels
                     }
                     else
                     {
-                        StreamQualities.Add(StreamQuality.Source); //only source mode is available for non-twitch partners
+                        StreamQualities.AddRange(new[] { StreamQuality.Best, StreamQuality.Worst, });
                         // set field instead of property so we dont update user settings
-                        selectedStreamQuality = StreamQuality.Source;
+                        selectedStreamQuality = StreamQuality.Best;
                     }
                 }
                 NotifyOfPropertyChange(() => SelectedStreamQuality);

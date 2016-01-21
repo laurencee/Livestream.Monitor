@@ -207,7 +207,7 @@ namespace Livestream.Monitor.Model
                 {
                     Title = $"{livestreamModel.DisplayName} Online",
                     Message = livestreamModel.Description,
-                    ImageUrl = livestreamModel.PreviewImage?.Small,
+                    ImageUrl = livestreamModel.ThumbnailUrls?.Small,
                     LivestreamModel = livestreamModel,
                 };
 

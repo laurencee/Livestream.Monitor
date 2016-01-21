@@ -8,6 +8,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
 using TwitchTv;
 
@@ -35,6 +36,7 @@ namespace Livestream.Monitor
             container.Singleton<ITwitchTvReadonlyClient, TwitchTvReadonlyClient>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();
+            container.Singleton<IStreamProviderFactory, StreamProviderFactory>();
             container.Singleton<FilterModel>();
             container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
             container.Singleton<PopularLivestreamWatcher>();
