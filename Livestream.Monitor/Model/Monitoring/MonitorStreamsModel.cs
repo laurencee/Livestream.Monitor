@@ -163,14 +163,14 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 if (offlineStreamsProviders.Any())
                 {
-                    foreach (var offlineProviderStream in offlineStreamsProviders)
+                    foreach (var offlineStreamsProvider in offlineStreamsProviders)
                     {
-                        offlineProviderStream.Value.ForEach(x => x.Offline());
+                        offlineStreamsProvider.Value.ForEach(x => x.Offline());
 
                         if (queryOfflineStreams)
                         {
-                            var streamProvider = offlineProviderStream.Key;
-                            await streamProvider.UpdateOfflineStreams(offlineProviderStream.Value);
+                            var streamProvider = offlineStreamsProvider.Key;
+                            await streamProvider.UpdateOfflineStreams(offlineStreamsProvider.Value);
                         }
                     }
 
