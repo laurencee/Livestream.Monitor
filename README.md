@@ -18,11 +18,9 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 3. Add other channels manually
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
-## Features
-* Import and add your favourite livestreams to be monitored
-* Open twitch chat for the selected stream (requires chrome)
-* Search for top streams and filter top streams by game (add for monitoring with 1 click)
-* Search for VODS by streamer and launch vods through livestreamer (you can also just paste a twitch vod url and launch that)
+## General Features
+* Add your favourite livestreams to be monitored from twitch/youtube
+* Open twitch/youtube chat for the selected stream (requires chrome)
 * Ability to choose quality of stream (before opening the stream)
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
@@ -30,6 +28,11 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Change your colour theme using the theme button in the top right
 
 TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
+
+## Twitch features
+* Import your already followed streams from twitch for live monitoring
+* Search for top streams and filter top streams by game (add for monitoring with 1 click)
+* Search for VODS by streamer and launch vods through livestreamer (you can also just paste any valid vod url and launch that instead)
 
 ## Suggested livestreamer configuration
 1. Edit your livestreamer [configuration file](http://docs.livestreamer.io/cli.html#configuration-file) (%APPDATA%\livestreamer\livestreamerrc) and uncomment your preferred video player
