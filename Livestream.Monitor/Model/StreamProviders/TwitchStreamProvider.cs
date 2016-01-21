@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Model.StreamProviders
 
         public string BaseUrl => @"http://www.twitch.tv/";
 
-        public bool HasChatSupport => false;
+        public bool HasChatSupport => true;
 
         public bool HasVodViewerSupport => true;
 
