@@ -164,8 +164,10 @@ namespace Livestream.Monitor.ViewModels
                     HookLiveStreamEvents(livestream);
                 }
 
-                if (DateTimeOffset.Now - StreamsModel.LastRefreshTime > MonitorStreamsModel.RefreshPollingTime)
-                    await RefreshLivestreams();
+                if (DateTimeOffset.Now - StreamsModel.LastRefreshTime > MonitorStreamsModel.HalfRefreshPollingTime)
+                    await RefreshLivestreams(); // will start the refresh timer after refreshing the livestreams
+                else
+                    refreshTimer.Start(); // need to always make sure the refresh timer is running
 
                 // hook up followed livestreams after our initial call so we can refresh immediately as needed
                 StreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
