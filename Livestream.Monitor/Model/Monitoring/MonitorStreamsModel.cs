@@ -6,9 +6,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.StreamProviders;
-using TwitchTv;
 
 namespace Livestream.Monitor.Model.Monitoring
 {

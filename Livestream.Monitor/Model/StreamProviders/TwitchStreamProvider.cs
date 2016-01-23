@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
-using TwitchTv;
-using TwitchTv.Query;
 
 namespace Livestream.Monitor.Model.StreamProviders
 {

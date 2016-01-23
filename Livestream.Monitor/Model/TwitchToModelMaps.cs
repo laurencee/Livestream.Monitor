@@ -1,7 +1,7 @@
 ﻿using System;
+using ExternalAPIs.TwitchTv.Dto;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Model.StreamProviders;
-using TwitchTv.Dto;
 
 namespace Livestream.Monitor.Model
 {

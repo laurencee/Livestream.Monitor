@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Model.StreamProviders;
-using TwitchTv;
-using TwitchTv.Query;
 
 namespace Livestream.Monitor.ViewModels
 {

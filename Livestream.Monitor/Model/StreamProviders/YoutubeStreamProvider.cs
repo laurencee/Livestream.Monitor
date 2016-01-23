@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.API;
+using ExternalAPIs.Youtube;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.StreamProviders

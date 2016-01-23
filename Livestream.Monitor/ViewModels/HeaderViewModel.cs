@@ -5,7 +5,7 @@ using System.Net;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Caliburn.Micro;
-using HttpCommon;
+using ExternalAPIs;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;

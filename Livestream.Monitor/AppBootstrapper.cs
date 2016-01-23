@@ -4,13 +4,13 @@
 
 using System.IO;
 using System.Windows.Threading;
+using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
-using TwitchTv;
 
 namespace Livestream.Monitor
 {

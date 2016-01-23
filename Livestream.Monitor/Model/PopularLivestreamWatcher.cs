@@ -4,13 +4,13 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
+using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.Dto;
+using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
-using TwitchTv;
-using TwitchTv.Dto;
-using TwitchTv.Query;
 
 namespace Livestream.Monitor.Model
 {

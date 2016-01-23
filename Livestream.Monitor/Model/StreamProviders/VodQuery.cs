@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using TwitchTv.Query;
+using ExternalAPIs.TwitchTv.Query;
 
 namespace Livestream.Monitor.Model.StreamProviders
 {
