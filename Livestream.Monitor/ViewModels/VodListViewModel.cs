@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -9,27 +8,25 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
-using TwitchTv;
-using TwitchTv.Query;
+using Livestream.Monitor.Model.StreamProviders;
 
 namespace Livestream.Monitor.ViewModels
 {
     public class VodListViewModel : PagingConductor<VodDetails>
     {
         private const int VOD_TILES_PER_PAGE = 15;
-        private const string BroadcastStreamType = "Broadcasts";
-        private const string HighlightStreamType = "Highlights";
 
         private readonly StreamLauncher streamLauncher;
         private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly ITwitchTvReadonlyClient twitchTvClient;
+        private readonly IStreamProviderFactory streamProviderFactory;
 
-        private string streamName;
+        private string streamId;
         private string vodUrl;
         private VodDetails selectedItem;
-        private BindableCollection<string> knownStreamNames = new BindableCollection<string>();
+        private BindableCollection<LivestreamModel> knownStreams = new BindableCollection<LivestreamModel>();
         private bool loadingItems;
-        private string selectedStreamType = BroadcastStreamType;
+        private IStreamProvider selectedStreamProvider;
+        private string selectedVodType;
 
         #region Design time constructor
 
@@ -44,15 +41,15 @@ namespace Livestream.Monitor.ViewModels
         public VodListViewModel(
             StreamLauncher streamLauncher,
             IMonitorStreamsModel monitorStreamsModel,
-            ITwitchTvReadonlyClient twitchTvClient)
+            IStreamProviderFactory streamProviderFactory)
         {
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
+            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
 
             this.streamLauncher = streamLauncher;
             this.monitorStreamsModel = monitorStreamsModel;
-            this.twitchTvClient = twitchTvClient;
+            this.streamProviderFactory = streamProviderFactory;
 
             ItemsPerPage = VOD_TILES_PER_PAGE;
         }
@@ -61,43 +58,62 @@ namespace Livestream.Monitor.ViewModels
 
         public override bool CanNext => !LoadingItems && Items.Count == VOD_TILES_PER_PAGE;
 
-        public string StreamName
+        public string StreamId
         {
-            get { return streamName; }
+            get { return streamId; }
             set
             {
-                if (value == streamName) return;
-                streamName = value;
-                NotifyOfPropertyChange(() => StreamName);
+                if (value == streamId) return;
+                streamId = value;
+                NotifyOfPropertyChange(() => StreamId);
                 UpdateItems();
             }
         }
 
         /// <summary> Known stream names to use for auto-completion </summary>
-        public BindableCollection<string> KnownStreamNames
+        public BindableCollection<LivestreamModel> KnownStreams
         {
-            get { return knownStreamNames; }
+            get { return knownStreams; }
             set
             {
-                if (Equals(value, knownStreamNames)) return;
-                knownStreamNames = value;
-                NotifyOfPropertyChange(() => KnownStreamNames);
+                if (Equals(value, knownStreams)) return;
+                knownStreams = value;
+                NotifyOfPropertyChange(() => KnownStreams);
             }
         }
 
-        public List<string> StreamTypes { get; } = new List<string>(new []
-        {
-            BroadcastStreamType, HighlightStreamType
-        });
+        public BindableCollection<IStreamProvider> StreamProviders { get; set; } = new BindableCollection<IStreamProvider>();
 
-        public string SelectedStreamType
+        public IStreamProvider SelectedStreamProvider
         {
-            get { return selectedStreamType; }
+            get { return selectedStreamProvider; }
             set
             {
-                if (value == selectedStreamType) return;
-                selectedStreamType = value;
-                NotifyOfPropertyChange(() => SelectedStreamType);
+                if (Equals(value, selectedStreamProvider)) return;
+                selectedStreamProvider = value;
+                NotifyOfPropertyChange(() => SelectedStreamProvider);
+                NotifyOfPropertyChange(() => VodTypes);
+                SelectedVodType = VodTypes.FirstOrDefault();
+            }
+        }
+
+        public BindableCollection<string> VodTypes
+        {
+            get
+            {
+                var vodTypes = SelectedStreamProvider?.VodTypes;
+                return vodTypes == null ? new BindableCollection<string>() : new BindableCollection<string>(vodTypes);
+            }
+        }
+
+        public string SelectedVodType
+        {
+            get { return selectedVodType; }
+            set
+            {
+                if (value == selectedVodType) return;
+                selectedVodType = value;
+                NotifyOfPropertyChange(() => SelectedVodType);
                 UpdateItems();
             }
         }
@@ -160,6 +176,12 @@ namespace Livestream.Monitor.ViewModels
             streamLauncher.OpenVod(vodDetails);
         }
 
+        protected override void OnInitialize()
+        {
+            StreamProviders.AddRange(streamProviderFactory.GetAll().Where(x => x.HasVodViewerSupport));
+            base.OnInitialize();
+        }
+
         protected override async void OnViewLoaded(object view)
         {
             if (Execute.InDesignMode) return;
@@ -170,8 +192,10 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
-            var orderedStreamNames = monitorStreamsModel.Livestreams.Select(x => x.Id).OrderBy(x => x);
-            KnownStreamNames = new BindableCollection<string>(orderedStreamNames);
+            var orderedStream = monitorStreamsModel.Livestreams.OrderBy(x => x.Id);
+            KnownStreams = new BindableCollection<LivestreamModel>(orderedStream);
+            // set twitch as the default stream provider
+            SelectedStreamProvider = streamProviderFactory.Get<TwitchStreamProvider>();
 
             base.OnActivate();
         }
@@ -190,7 +214,7 @@ namespace Livestream.Monitor.ViewModels
 
         private async Task EnsureItems()
         {
-            if (string.IsNullOrWhiteSpace(StreamName)) return;
+            if (string.IsNullOrWhiteSpace(StreamId)) return;
 
             LoadingItems = true;
 
@@ -198,33 +222,21 @@ namespace Livestream.Monitor.ViewModels
             {
                 Items.Clear();
 
-                var channelVideosQuery = new ChannelVideosQuery()
+                var vodQuery = new VodQuery()
                 {
-                    ChannelName = StreamName,
-                    BroadcastsOnly = SelectedStreamType == BroadcastStreamType,
-                    HLSVodsOnly = true,
+                    StreamId = StreamId,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
-                var channelVideos = await twitchTvClient.GetChannelVideos(channelVideosQuery);
+                vodQuery.VodTypes.Add(SelectedVodType);
 
-                var vods = channelVideos.Select(channelVideo => new VodDetails
-                {
-                    Url = channelVideo.Url,
-                    Length = TimeSpan.FromSeconds(channelVideo.Length),
-                    RecordedAt = channelVideo.RecordedAt,
-                    Views = channelVideo.Views,
-                    Game = channelVideo.Game,
-                    Description = channelVideo.Description,
-                    Title = channelVideo.Title,
-                    PreviewImage = channelVideo.Preview
-                });
+                var vods = await selectedStreamProvider.GetVods(vodQuery);
 
                 Items.AddRange(vods);
             }
             catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                await this.ShowMessageAsync("Error", $"Unknown stream name '{StreamName}'.");
+                await this.ShowMessageAsync("Error", $"Unknown stream name '{StreamId}'.");
             }
             catch (Exception ex)
             {

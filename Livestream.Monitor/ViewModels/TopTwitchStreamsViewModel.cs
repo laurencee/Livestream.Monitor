@@ -177,7 +177,11 @@ namespace Livestream.Monitor.ViewModels
         {
             if (stream?.LivestreamModel == null) return;
 
-            navigationService.NavigateTo<VodListViewModel>(vm => vm.StreamName = stream.LivestreamModel.Id);
+            navigationService.NavigateTo<VodListViewModel>(vm =>
+            {
+                vm.StreamId = stream.LivestreamModel.Id;
+                vm.SelectedStreamProvider = stream.LivestreamModel.StreamProvider;
+            });
         }
 
         public void ToggleNotify(TwitchSearchStreamResult stream)

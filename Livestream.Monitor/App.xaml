@@ -22,7 +22,8 @@
             <ui:InvertedBoolenConverter x:Key="InvertedBoolenConverter" />
             <ui:TotalHoursTimespanConverter x:Key="TotalHoursTimespanConverter" />
             <ui:CountryIdToFlagImageSourceConverter x:Key="CountryIdToFlagImageSourceConverter" />
-            
+
+            <system:String x:Key="NextButtonText">&#9654;</system:String>
             <system:String x:Key="BackButtonText">&#9664;</system:String>
             <system:String x:Key="BackButtonTooltipText">Go back to livestream list</system:String>
 

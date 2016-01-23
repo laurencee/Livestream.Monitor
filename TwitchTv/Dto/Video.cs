@@ -12,7 +12,7 @@ namespace TwitchTv.Dto
         public string Description { get; set; }
 
         [JsonProperty("broadcast_id")]
-        public object BroadcastId { get; set; }
+        public string BroadcastId { get; set; }
 
         public string Status { get; set; }
 

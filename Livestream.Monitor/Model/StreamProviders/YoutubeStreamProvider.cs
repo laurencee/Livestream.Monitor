@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Google.API;
 using Livestream.Monitor.Model.Monitoring;
@@ -27,23 +28,25 @@ namespace Livestream.Monitor.Model.StreamProviders
 
         public bool HasVodViewerSupport => false;
 
-        public string GetStreamUrl(string streamId)
-        {
-            if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
+        public List<string> VodTypes { get; } = new List<string>();
 
-            return $"{BaseUrl}watch?v={streamId}";
+        public string GetStreamUrl(string channelId)
+        {
+            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
+
+            return $"{BaseUrl}watch?v={channelId}";
         }
 
-        public string GetChatUrl(string streamId)
+        public string GetChatUrl(string channelId)
         {
-            if (string.IsNullOrWhiteSpace(streamId)) throw new ArgumentNullException(nameof(streamId));
+            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
 
             // the '&from_gaming=1' prevents the annoying popup message appearing at the top of the chat window
             // not all youtube streams have chat support as chat can be disabled for a stream, need to see if there's an api call that provides that info
-            return $"{BaseUrl}live_chat?v={streamId}&dark_theme=1&is_popout=1&from_gaming=1";
+            return $"{BaseUrl}live_chat?v={channelId}&dark_theme=1&is_popout=1&from_gaming=1";
         }
 
-        public async Task<List<LivestreamModel>> UpdateOnlineStreams(List<LivestreamModel> livestreams)
+        public async Task<List<LivestreamModel>> UpdateOnlineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken)
         {
             var offlineStreams = new List<LivestreamModel>();
 
@@ -51,6 +54,8 @@ namespace Livestream.Monitor.Model.StreamProviders
             {
                 bool isOffline = true;
                 var videoRoot = await youtubeClient.GetLivestreamDetails(livestreamModel.Id);
+                if (cancellationToken.IsCancellationRequested) return offlineStreams;
+
                 var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
                 if (snippet != null)
                 {
@@ -84,10 +89,15 @@ namespace Livestream.Monitor.Model.StreamProviders
             return offlineStreams;
         }
 
-        public Task UpdateOfflineStreams(List<LivestreamModel> livestreams)
+        public Task UpdateOfflineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken)
         {
             livestreams.ForEach(x => x.Offline());
             return Task.CompletedTask;
+        }
+
+        public Task<List<VodDetails>> GetVods(VodQuery vodQuery)
+        {
+            return Task.FromResult(new List<VodDetails>());
         }
     }
 }

@@ -120,10 +120,10 @@
         <!-- Footer -->
         <TextBlock Grid.Row="2" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
-            <Button x:Name="Previous" Content="Previous" />
-            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
-            <Button x:Name="Next" Content="Next" />
+            <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />
+            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
+            <Button x:Name="Next" Content="{StaticResource NextButtonText}" Padding="10,0" />
         </StackPanel>
         <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
                                IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />

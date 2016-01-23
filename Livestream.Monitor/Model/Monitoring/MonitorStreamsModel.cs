@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -13,6 +14,9 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class MonitorStreamsModel : PropertyChangedBase, IMonitorStreamsModel
     {
+        public static readonly TimeSpan RefreshPollingTime = TimeSpan.FromSeconds(60);
+        public static readonly TimeSpan HalfRefreshPollingTime = TimeSpan.FromTicks(RefreshPollingTime.Ticks / 2);
+
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
@@ -23,6 +27,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private bool queryOfflineStreams = true;
         private bool canRefreshLivestreams = true;
         private LivestreamModel selectedLivestream;
+        private DateTimeOffset lastRefreshTime;
 
         #region Design Time Constructor
 
@@ -98,6 +103,17 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
+        public DateTimeOffset LastRefreshTime
+        {
+            get { return lastRefreshTime; }
+            private set
+            {
+                if (value.Equals(lastRefreshTime)) return;
+                lastRefreshTime = value;
+                NotifyOfPropertyChange(() => LastRefreshTime);
+            }
+        }
+
         public event EventHandler OnlineLivestreamsRefreshComplete;
 
         public async Task AddLivestream(LivestreamModel livestreamModel)
@@ -105,11 +121,15 @@ namespace Livestream.Monitor.Model.Monitoring
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
             if (Livestreams.Any(x => Equals(x, livestreamModel))) return; // ignore duplicate requests
 
+            var timeoutTokenSource = new CancellationTokenSource();
             var streamProvider = livestreamModel.StreamProvider;
-            var offlineStreams = await streamProvider.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel });
+            var offlineStreams = await streamProvider.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
             if (offlineStreams.Any())
-                await streamProvider.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel });
-            
+            {
+                timeoutTokenSource = new CancellationTokenSource();
+                await streamProvider.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
+            }
+
             livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
 
             Livestreams.Add(livestreamModel);
@@ -152,37 +172,40 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 var offlineStreamsProviders = new Dictionary<IStreamProvider, List<LivestreamModel>>();
 
-                foreach (var livestreamProviderGroup in Livestreams.GroupBy(x => x.StreamProvider))
-                {
-                    var streamProvider = livestreamProviderGroup.Key;
-                    var offlineStreams = await streamProvider.UpdateOnlineStreams(livestreamProviderGroup.ToList());
-                    offlineStreamsProviders[streamProvider] = offlineStreams;
-                }
+                // query different stream providers online streams in parallel
+                var timeoutTokenSource = new CancellationTokenSource();
+                var tasks = GetQueryOnlineStreamTasks(offlineStreamsProviders, timeoutTokenSource.Token);
+                await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(HalfRefreshPollingTime, timeoutTokenSource.Token));
 
                 // Notify that the most important livestreams (online streams) have up to date information
                 OnOnlineLivestreamsRefreshComplete();
 
-                if (offlineStreamsProviders.Any())
+                // reinitialize the cancellation token source for offline querying
+                timeoutTokenSource = new CancellationTokenSource();
+                var queryOfflineStreamsTasks = new List<Task>();
+                foreach (var offlineStreamsProvider in offlineStreamsProviders)
                 {
-                    foreach (var offlineStreamsProvider in offlineStreamsProviders)
+                    offlineStreamsProvider.Value.ForEach(x => x.Offline());
+
+                    if (queryOfflineStreams)
                     {
-                        offlineStreamsProvider.Value.ForEach(x => x.Offline());
-
-                        if (queryOfflineStreams)
-                        {
-                            var streamProvider = offlineStreamsProvider.Key;
-                            await streamProvider.UpdateOfflineStreams(offlineStreamsProvider.Value);
-                        }
+                        var streamProvider = offlineStreamsProvider.Key;
+                        var queryOfflineStreamsTask = streamProvider.UpdateOfflineStreams(offlineStreamsProvider.Value, timeoutTokenSource.Token)
+                                                                    .TimeoutAfter(HalfRefreshPollingTime);
+                        queryOfflineStreamsTasks.Add(queryOfflineStreamsTask);
                     }
-
-                    queryOfflineStreams = false; // only query offline streams 1 time per application run
                 }
+
+                // query different stream providers offline streams in parallel
+                await Task.WhenAll(queryOfflineStreamsTasks);
+                queryOfflineStreams = false; // only query offline streams 1 time per application run
             }
             catch (Exception)
             {
                 // TODO - do something with errors, log/report etc
             }
 
+            LastRefreshTime = DateTimeOffset.Now;
             CanRefreshLivestreams = true;
         }
 
@@ -199,16 +222,38 @@ namespace Livestream.Monitor.Model.Monitoring
             OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
         }
 
+        private List<Task> GetQueryOnlineStreamTasks(
+            Dictionary<IStreamProvider, List<LivestreamModel>> offlineStreamsProviders,
+            CancellationToken cancellationToken)
+        {
+            var tasks = new List<Task>();
+
+            foreach (var livestreamProviderGroup in Livestreams.GroupBy(x => x.StreamProvider))
+            {
+                var streamProvider = livestreamProviderGroup.Key;
+                var queryTask = streamProvider.UpdateOnlineStreams(livestreamProviderGroup.ToList(), cancellationToken)
+                                              .TimeoutAfter(HalfRefreshPollingTime);
+
+                queryTask.ContinueWith(task =>
+                {
+                    var offlineStreams = task.Result;
+                    offlineStreamsProviders[streamProvider] = offlineStreams;
+                }, cancellationToken);
+                tasks.Add(queryTask);
+            }
+            return tasks;
+        }
+
         private void LoadLivestreams()
         {
             if (initialised) return;
             var livestreams = fileHandler.LoadFromDisk();
-            
+
             foreach (var livestream in livestreams)
             {
                 livestream.DisplayName = livestream.Id; // give livestreams some initial displayname before they have been queried
                 livestream.SetLivestreamNotifyState(settingsHandler.Settings);
-            } 
+            }
 
             followedLivestreams.AddRange(livestreams);
             followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
@@ -217,7 +262,7 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
-            
+
             initialised = true;
         }
 

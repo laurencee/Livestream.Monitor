@@ -12,6 +12,8 @@ namespace Livestream.Monitor.Model.Monitoring
         LivestreamModel SelectedLivestream { get; set; }
 
         bool CanRefreshLivestreams { get; }
+
+        DateTimeOffset LastRefreshTime { get; }
         
         event EventHandler OnlineLivestreamsRefreshComplete;
 

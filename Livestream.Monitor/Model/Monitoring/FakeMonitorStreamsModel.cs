@@ -8,6 +8,7 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         private static readonly Random Random = new Random();
         private LivestreamModel selectedLivestream;
+        private DateTimeOffset lastRefreshTime;
 
         public FakeMonitorStreamsModel()
         {
@@ -77,6 +78,17 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public bool CanRefreshLivestreams => true;
 
+        public DateTimeOffset LastRefreshTime
+        {
+            get { return lastRefreshTime; }
+            private set
+            {
+                if (value.Equals(lastRefreshTime)) return;
+                lastRefreshTime = value;
+                NotifyOfPropertyChange(() => LastRefreshTime);
+            }
+        }
+
         public event EventHandler OnlineLivestreamsRefreshComplete;
 
         public Task AddLivestream(LivestreamModel livestreamModel)
@@ -95,6 +107,7 @@ namespace Livestream.Monitor.Model.Monitoring
         public Task RefreshLivestreams()
         {
             OnOnlineLivestreamsRefreshComplete();
+            LastRefreshTime = DateTimeOffset.Now;
             return Task.CompletedTask;
         }
 

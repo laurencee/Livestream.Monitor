@@ -14,10 +14,7 @@ namespace Livestream.Monitor.Core.UI
             DependencyProperty.Register("TextBoxRestrictInputBehavior", typeof (string),
                 typeof (RestrictTextBoxInputBehavior), null);
 
-        /// <summary>
-        /// Custom regular expression to restrict textbox entry <para />
-        /// <see cref="KeypadType"/> should be used most of the time instead of this.
-        /// </summary>
+        /// <summary>  Custom regular expression to restrict textbox entry <para /> </summary>
         public string RegularExpression
         {
             get { return (string) GetValue(RegularExpressionProperty); }

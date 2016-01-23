@@ -8,7 +8,6 @@
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
-             xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
              d:DataContext="{d:DesignInstance Type=viewModels:VodListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="700">
@@ -29,10 +28,11 @@
             </StackPanel.Resources>
             <Button x:Name="TryClose" Style="{StaticResource BackButton}" HorizontalAlignment="Right" />
             <TextBlock Text="Stream" />
-            <ComboBox x:Name="KnownStreamNames" Margin="3" Text="{Binding StreamName, Delay=500}" Width="140"
+            <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="Id" Text="{Binding StreamId, Delay=500}" Width="140"
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"  
-                      controls:TextBoxHelper.Watermark="stream name..." />
-            <ComboBox x:Name="StreamTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedStreamType}" />
+                      controls:TextBoxHelper.Watermark="streamid..." />
+            <ComboBox x:Name="StreamProviders" Margin="3" Width="80" DisplayMemberPath="ProviderName" />
+            <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
             <TextBlock Text="Vod URL" />
             <TextBox x:Name="VodUrl" MinWidth="225" ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
             <Button x:Name="OpenVod" Content="Open VOD" Margin="3"
@@ -79,10 +79,10 @@
         <!-- Footer -->
         <TextBlock Grid.Row="2" Text="Click on a tile to put the url in the vod url textbox" HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
-            <Button x:Name="Previous" Content="Previous" />
-            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
-            <Button x:Name="Next" Content="Next" />
+            <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />
+            <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
+            <Button x:Name="Next" Content="{StaticResource NextButtonText}" Padding="10,0" />
         </StackPanel>
         <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
                                IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />

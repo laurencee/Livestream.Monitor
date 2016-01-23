@@ -48,7 +48,7 @@ namespace Livestream.Monitor.ViewModels
             this.navigationService = navigationService;
             this.StreamsModel = monitorStreamsModel;
             FilterModel = filterModel;
-            refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+            refreshTimer = new DispatcherTimer { Interval = MonitorStreamsModel.RefreshPollingTime };
             refreshTimer.Tick += async (sender, args) => await RefreshLivestreams();
         }
 
@@ -106,7 +106,11 @@ namespace Livestream.Monitor.ViewModels
             var stream = StreamsModel.SelectedLivestream;
             if (stream == null || !stream.StreamProvider.HasVodViewerSupport) return;
 
-            navigationService.NavigateTo<VodListViewModel>(vm => vm.StreamName = stream.Id);
+            navigationService.NavigateTo<VodListViewModel>(vm =>
+            {
+                vm.StreamId = stream.Id;
+                vm.SelectedStreamProvider = stream.StreamProvider;
+            });
         }
 
         public async Task DataGridKeyDown(KeyEventArgs e)
@@ -160,7 +164,9 @@ namespace Livestream.Monitor.ViewModels
                     HookLiveStreamEvents(livestream);
                 }
 
-                await RefreshLivestreams();
+                if (DateTimeOffset.Now - StreamsModel.LastRefreshTime > MonitorStreamsModel.RefreshPollingTime)
+                    await RefreshLivestreams();
+
                 // hook up followed livestreams after our initial call so we can refresh immediately as needed
                 StreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
             }
@@ -176,6 +182,7 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnDeactivate(bool close)
         {
+            refreshTimer.Stop();
             StreamsModel.OnlineLivestreamsRefreshComplete -= OnOnlineLivestreamsRefreshComplete;
             FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
             ViewSource.Filter -= ViewSourceOnFilter;

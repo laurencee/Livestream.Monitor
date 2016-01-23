@@ -124,6 +124,7 @@
     <Compile Include="Model\StreamLauncher.cs" />
     <Compile Include="Model\StreamProviders\IStreamProvider.cs" />
     <Compile Include="Model\StreamProviders\TwitchStreamProvider.cs" />
+    <Compile Include="Model\StreamProviders\VodQuery.cs" />
     <Compile Include="Model\StreamProviders\YoutubeStreamProvider.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />

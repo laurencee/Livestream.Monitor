@@ -8,13 +8,15 @@ namespace HttpCommon
 {
     public static class HttpClientExtensions
     {
+        public static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
+
         /// <summary> Creates a new HttpClient with compression enabled </summary>
         public static HttpClient CreateCompressionHttpClient()
         {
             return new HttpClient(new HttpClientHandler()
             {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate
-            });
+                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            }) { Timeout = QueryTimeout };
         }
 
         public static async Task<T> ExecuteRequest<T>(string request)

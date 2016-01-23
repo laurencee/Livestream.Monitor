@@ -7,7 +7,7 @@ namespace TwitchTv.Dto.QueryRoot
     {
         public List<Follow> Follows { get; set; }
 
-        [JsonProperty(PropertyName = "_total")]
+        [JsonProperty(PropertyName = "_total", NullValueHandling = NullValueHandling.Ignore)]
         public int Total { get; set; }
     }
 }
