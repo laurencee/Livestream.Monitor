@@ -12,7 +12,8 @@
     <StackPanel Orientation="Horizontal">
         <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="livestream name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
+        <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100" 
+                 controls:TextBoxHelper.ClearTextButton="True" />
         <ComboBox x:Name="FilterModel_StreamProviderNames" Margin="2" />
 
         <!-- Open Chat & Set Stream Quality -->
@@ -27,18 +28,18 @@
 
         <!-- Importing & Adding new streams -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-        <Button x:Name="ImportFollows" Content="Import"  Margin="2" ToolTip="Import livestreams from the provided username" />
         <TextBox x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new livestream..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
         <ComboBox x:Name="StreamProviders" ItemsSource="{Binding StreamProviders}" SelectedItem="{Binding SelectedStreamProvider}"
                   DisplayMemberPath="ProviderName" Margin="2" />
-        <Button x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" ToolTip="Add new livestream">
+        <Button x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" Padding="5,0" ToolTip="Add new livestream">
             <Button.ContentTemplate>
                 <DataTemplate>
                     <TextBlock Text="{TemplateBinding Content}" Margin="0,-2,0,0"></TextBlock>
                 </DataTemplate>
             </Button.ContentTemplate>
         </Button>
+        <Button x:Name="ImportFollows" Content="Import"  Margin="2" ToolTip="Import livestreams from the provided username" />
 
         <!-- Importing & Adding new streams -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
