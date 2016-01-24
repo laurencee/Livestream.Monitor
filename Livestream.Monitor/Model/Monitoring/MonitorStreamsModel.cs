@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
-using Livestream.Monitor.Model.StreamProviders;
+using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -20,7 +20,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
 
         private bool initialised;
@@ -59,17 +59,17 @@ namespace Livestream.Monitor.Model.Monitoring
             IMonitoredStreamsFileHandler fileHandler,
             ITwitchTvReadonlyClient twitchTvClient,
             ISettingsHandler settingsHandler,
-            IStreamProviderFactory streamProviderFactory)
+            IApiClientFactory apiClientFactory)
         {
             if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.fileHandler = fileHandler;
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
-            this.streamProviderFactory = streamProviderFactory;
+            this.apiClientFactory = apiClientFactory;
         }
 
         public BindableCollection<LivestreamModel> Livestreams
@@ -122,12 +122,12 @@ namespace Livestream.Monitor.Model.Monitoring
             if (Livestreams.Any(x => Equals(x, livestreamModel))) return; // ignore duplicate requests
 
             var timeoutTokenSource = new CancellationTokenSource();
-            var streamProvider = livestreamModel.StreamProvider;
-            var offlineStreams = await streamProvider.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
+            var apiClient = livestreamModel.ApiClient;
+            var offlineStreams = await apiClient.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
             if (offlineStreams.Any())
             {
                 timeoutTokenSource = new CancellationTokenSource();
-                await streamProvider.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
+                await apiClient.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
             }
 
             livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
@@ -147,7 +147,7 @@ namespace Livestream.Monitor.Model.Monitoring
                                        select new LivestreamModel()
                                        {
                                            Id = follow.Channel?.Name,
-                                           StreamProvider = streamProviderFactory.Get<TwitchStreamProvider>(),
+                                           ApiClient = apiClientFactory.Get<TwitchApiClient>(),
                                            DisplayName = follow.Channel?.Name,
                                            Description = follow.Channel?.Status,
                                            Game = follow.Channel?.Game,
@@ -170,36 +170,36 @@ namespace Livestream.Monitor.Model.Monitoring
             CanRefreshLivestreams = false;
             try
             {
-                var offlineStreamsProviders = new Dictionary<IStreamProvider, List<LivestreamModel>>();
+                var offlineApiClientsStreams = new Dictionary<IApiClient, List<LivestreamModel>>();
 
                 // query different stream providers online streams in parallel
                 var timeoutTokenSource = new CancellationTokenSource();
-                var tasks = GetQueryOnlineStreamTasks(offlineStreamsProviders, timeoutTokenSource.Token);
+                var tasks = GetQueryOnlineStreamTasks(offlineApiClientsStreams, timeoutTokenSource.Token);
                 await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(HalfRefreshPollingTime, timeoutTokenSource.Token));
 
                 // Notify that the most important livestreams (online streams) have up to date information
                 OnOnlineLivestreamsRefreshComplete();
 
                 // mark streams belonging to any stream providers that faulted or timed out as offline
-                var faultedStreamsProviders = Livestreams.GroupBy(x => x.StreamProvider)
-                                                         .Where(y => !offlineStreamsProviders.ContainsKey(y.Key))
+                var faultedApiClientsStreams = Livestreams.GroupBy(x => x.ApiClient)
+                                                         .Where(y => !offlineApiClientsStreams.ContainsKey(y.Key))
                                                          .ToList();
-                foreach (var faultedStreamsProvider in faultedStreamsProviders)
+                foreach (var apiClientStreams in faultedApiClientsStreams)
                 {
-                    offlineStreamsProviders[faultedStreamsProvider.Key] = faultedStreamsProvider.ToList();
+                    offlineApiClientsStreams[apiClientStreams.Key] = apiClientStreams.ToList();
                 }
 
                 // reinitialize the cancellation token source for offline querying
                 timeoutTokenSource = new CancellationTokenSource();
                 var queryOfflineStreamsTasks = new List<Task>();
-                foreach (var offlineStreamsProvider in offlineStreamsProviders)
+                foreach (var offlineApiClientStreams in offlineApiClientsStreams)
                 {
-                    offlineStreamsProvider.Value.ForEach(x => x.Offline());
+                    offlineApiClientStreams.Value.ForEach(x => x.Offline());
 
                     if (queryOfflineStreams)
                     {
-                        var streamProvider = offlineStreamsProvider.Key;
-                        var queryOfflineStreamsTask = streamProvider.UpdateOfflineStreams(offlineStreamsProvider.Value, timeoutTokenSource.Token)
+                        var apiClient = offlineApiClientStreams.Key;
+                        var queryOfflineStreamsTask = apiClient.UpdateOfflineStreams(offlineApiClientStreams.Value, timeoutTokenSource.Token)
                                                                     .TimeoutAfter(HalfRefreshPollingTime);
                         queryOfflineStreamsTasks.Add(queryOfflineStreamsTask);
                     }
@@ -232,21 +232,21 @@ namespace Livestream.Monitor.Model.Monitoring
         }
 
         private List<Task> GetQueryOnlineStreamTasks(
-            Dictionary<IStreamProvider, List<LivestreamModel>> offlineStreamsProviders,
+            Dictionary<IApiClient, List<LivestreamModel>> offlineApiClientsStreams,
             CancellationToken cancellationToken)
         {
             var tasks = new List<Task>();
 
-            foreach (var livestreamProviderGroup in Livestreams.GroupBy(x => x.StreamProvider))
+            foreach (var livestreamApiClientGroup in Livestreams.GroupBy(x => x.ApiClient))
             {
-                var streamProvider = livestreamProviderGroup.Key;
-                var queryTask = streamProvider.UpdateOnlineStreams(livestreamProviderGroup.ToList(), cancellationToken)
+                var apiClient = livestreamApiClientGroup.Key;
+                var queryTask = apiClient.UpdateOnlineStreams(livestreamApiClientGroup.ToList(), cancellationToken)
                                               .TimeoutAfter(HalfRefreshPollingTime);
 
                 queryTask.ContinueWith(task =>
                 {
                     var offlineStreams = task.Result;
-                    offlineStreamsProviders[streamProvider] = offlineStreams;
+                    offlineApiClientsStreams[apiClient] = offlineStreams;
                 }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
                 queryTask.ContinueWith(task =>
                 {

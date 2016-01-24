@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using ExternalAPIs.TwitchTv.Query;
 
-namespace Livestream.Monitor.Model.StreamProviders
+namespace Livestream.Monitor.Model.ApiClients
 {
     public class VodQuery : PagedQuery
     {
@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Model.StreamProviders
         }
 
         /// <summary> 
-        /// Arbitrary filtering for vod types. The available types are defined in the <see cref="IStreamProvider.VodTypes"/> property 
+        /// Arbitrary filtering for vod types. The available types are defined in the <see cref="IApiClient.VodTypes"/> property 
         /// </summary>
         public List<string> VodTypes { get; } = new List<string>();
     }

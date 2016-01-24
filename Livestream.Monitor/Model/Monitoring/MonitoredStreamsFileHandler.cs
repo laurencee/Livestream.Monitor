@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Livestream.Monitor.Model.StreamProviders;
+using Livestream.Monitor.Model.ApiClients;
 using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model.Monitoring
@@ -10,12 +10,12 @@ namespace Livestream.Monitor.Model.Monitoring
     public class MonitoredStreamsFileHandler : IMonitoredStreamsFileHandler
     {
         private const string FileName = "livestreams.json";
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
 
-        public MonitoredStreamsFileHandler(IStreamProviderFactory streamProviderFactory)
+        public MonitoredStreamsFileHandler(IApiClientFactory apiClientFactory)
         {
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
-            this.streamProviderFactory = streamProviderFactory;
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
+            this.apiClientFactory = apiClientFactory;
         }
 
         public void SaveToDisk(IEnumerable<LivestreamModel> livestreams)
@@ -25,7 +25,7 @@ namespace Livestream.Monitor.Model.Monitoring
             var livestreamFileData = livestreams.Select(x => new LivestreamFileData()
             {
                 LivestreamId = x.Id,
-                StreamProvider = x.StreamProvider.ProviderName,
+                StreamProvider = x.ApiClient.ApiName,
                 ImportedBy = x.ImportedBy
             });
             SaveToDisk(livestreamFileData);
@@ -39,7 +39,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 return livestreamFileData.Select(fileData => new LivestreamModel()
                 {
                     Id = fileData.LivestreamId,
-                    StreamProvider = streamProviderFactory.GetStreamProviderByName(fileData.StreamProvider),
+                    ApiClient = apiClientFactory.GetByName(fileData.StreamProvider),
                     ImportedBy = fileData.ImportedBy
                 }).ToList();
             }

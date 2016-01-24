@@ -8,8 +8,8 @@ using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -21,7 +21,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
         private readonly INavigationService navigationService;
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private bool loadingItems;
@@ -81,21 +81,21 @@ namespace Livestream.Monitor.ViewModels
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
             INavigationService navigationService,
-            IStreamProviderFactory streamProviderFactory)
+            IApiClientFactory apiClientFactory)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.twitchTvClient = twitchTvClient;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
             this.navigationService = navigationService;
-            this.streamProviderFactory = streamProviderFactory;
+            this.apiClientFactory = apiClientFactory;
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
             PropertyChanged += (sender, args) =>
@@ -180,7 +180,7 @@ namespace Livestream.Monitor.ViewModels
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
                 vm.StreamId = stream.LivestreamModel.Id;
-                vm.SelectedStreamProvider = stream.LivestreamModel.StreamProvider;
+                vm.SelectedApiClient = stream.LivestreamModel.ApiClient;
             });
         }
 
@@ -284,7 +284,7 @@ namespace Livestream.Monitor.ViewModels
                 {
                     var twitchStream = new TwitchSearchStreamResult();
                     twitchStream.IsMonitored = monitoredStreams.Any(x => x.Id == topStream.Channel?.Name);
-                    twitchStream.LivestreamModel.PopulateWithStreamDetails(topStream, streamProviderFactory.Get<TwitchStreamProvider>());
+                    twitchStream.LivestreamModel.PopulateWithStreamDetails(topStream, apiClientFactory.Get<TwitchApiClient>());
                     twitchStream.LivestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
 
                     twitchStreams.Add(twitchStream);

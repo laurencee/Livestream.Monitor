@@ -8,8 +8,8 @@ using ExternalAPIs.TwitchTv;
 using ExternalAPIs.TwitchTv.Dto;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
 
 namespace Livestream.Monitor.Model
@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Model
         private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
         private readonly NotificationHandler notificationHandler;
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
 
@@ -36,19 +36,19 @@ namespace Livestream.Monitor.Model
             NotificationHandler notificationHandler,
             INavigationService navigationService,
             IMonitorStreamsModel monitorStreamsModel,
-            IStreamProviderFactory streamProviderFactory)
+            IApiClientFactory apiClientFactory)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
             this.notificationHandler = notificationHandler;
-            this.streamProviderFactory = streamProviderFactory;
+            this.apiClientFactory = apiClientFactory;
 
             clickAction = (model, notification) =>
             {
@@ -174,7 +174,7 @@ namespace Livestream.Monitor.Model
             }
 
 
-            return popularStreams.Select(x => new LivestreamModel().PopulateWithStreamDetails(x, streamProviderFactory.Get<TwitchStreamProvider>()))
+            return popularStreams.Select(x => new LivestreamModel().PopulateWithStreamDetails(x, apiClientFactory.Get<TwitchApiClient>()))
                                  .ToList();
         }
     }

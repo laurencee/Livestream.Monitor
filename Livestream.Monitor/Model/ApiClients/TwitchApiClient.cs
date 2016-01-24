@@ -8,23 +8,23 @@ using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 
-namespace Livestream.Monitor.Model.StreamProviders
+namespace Livestream.Monitor.Model.ApiClients
 {
-    public class TwitchStreamProvider : IStreamProvider
+    public class TwitchApiClient : IApiClient
     {
-        public const string PROVIDER_NAME = "twitchtv";
+        public const string API_NAME = "twitchtv";
         public const string BroadcastVodType = "Broadcasts";
         public const string HighlightVodType = "Highlights";
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
 
-        public TwitchStreamProvider(ITwitchTvReadonlyClient twitchTvClient)
+        public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             this.twitchTvClient = twitchTvClient;
         }
 
-        public string ProviderName => PROVIDER_NAME;
+        public string ApiName => API_NAME;
 
         public string BaseUrl => @"http://www.twitch.tv/";
 

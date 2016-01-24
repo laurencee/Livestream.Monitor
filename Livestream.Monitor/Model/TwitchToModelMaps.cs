@@ -1,7 +1,7 @@
 ﻿using System;
 using ExternalAPIs.TwitchTv.Dto;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 
 namespace Livestream.Monitor.Model
 {
@@ -10,12 +10,12 @@ namespace Livestream.Monitor.Model
         public static LivestreamModel PopulateWithStreamDetails(
             this LivestreamModel livestreamModel, 
             Stream streamDetails, 
-            IStreamProvider twitchStreamProvider)
+            IApiClient twitchApiClient)
         {
             if (streamDetails == null) return livestreamModel;
 
             livestreamModel.Id = streamDetails.Channel?.Name;
-            livestreamModel.StreamProvider = twitchStreamProvider;
+            livestreamModel.ApiClient = twitchApiClient;
             livestreamModel.Viewers = streamDetails.Viewers ?? 0;
             livestreamModel.ThumbnailUrls = new ThumbnailUrls()
             {

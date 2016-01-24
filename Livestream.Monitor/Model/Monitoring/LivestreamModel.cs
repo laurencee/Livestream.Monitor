@@ -1,6 +1,6 @@
 ﻿using System;
 using Caliburn.Micro;
-using Livestream.Monitor.Model.StreamProviders;
+using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> The unique identifier for the livestream </summary>
         public string Id { get; set; }
         
-        public IStreamProvider StreamProvider { get; set; }
+        public IApiClient ApiClient { get; set; }
 
         public bool Live
         {
@@ -141,9 +141,9 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public string StreamUrl => StreamProvider?.GetStreamUrl(Id);
+        public string StreamUrl => ApiClient?.GetStreamUrl(Id);
 
-        public string ChatUrl => StreamProvider?.GetChatUrl(Id);
+        public string ChatUrl => ApiClient?.GetChatUrl(Id);
 
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }

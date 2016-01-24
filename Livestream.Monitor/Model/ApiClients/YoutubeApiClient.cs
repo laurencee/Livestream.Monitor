@@ -6,21 +6,21 @@ using System.Threading.Tasks;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Model.Monitoring;
 
-namespace Livestream.Monitor.Model.StreamProviders
+namespace Livestream.Monitor.Model.ApiClients
 {
-    public class YoutubeStreamProvider : IStreamProvider
+    public class YoutubeApiClient : IApiClient
     {
-        public const string PROVIDER_NAME = "youtube";
+        public const string API_NAME = "youtube";
 
         private readonly IYoutubeReadonlyClient youtubeClient;
 
-        public YoutubeStreamProvider(IYoutubeReadonlyClient youtubeClient)
+        public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
         {
             if (youtubeClient == null) throw new ArgumentNullException(nameof(youtubeClient));
             this.youtubeClient = youtubeClient;
         }
 
-        public string ProviderName => PROVIDER_NAME;
+        public string ApiName => API_NAME;
 
         public string BaseUrl => @"https://www.youtube.com/";
 

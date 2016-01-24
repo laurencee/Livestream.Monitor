@@ -9,8 +9,8 @@ using Caliburn.Micro;
 using ExternalAPIs;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 using MahApps.Metro.Controls.Dialogs;
 using static System.String;
 
@@ -23,14 +23,14 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
         private string streamName;
         private bool canRefreshLivestreams;
         private StreamQuality? selectedStreamQuality;
         private bool canOpenStream;
         private bool canOpenChat;
         private bool canAddStream;
-        private IStreamProvider selectedStreamProvider;
+        private IApiClient selectedApiClient;
 
         public HeaderViewModel()
         {
@@ -43,19 +43,19 @@ namespace Livestream.Monitor.ViewModels
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel,
-            IStreamProviderFactory streamProviderFactory)
+            IApiClientFactory apiClientFactory)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             FilterModel = filterModelModel;
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
-            this.streamProviderFactory = streamProviderFactory;
+            this.apiClientFactory = apiClientFactory;
         }
 
         public FilterModel FilterModel { get; }
@@ -131,16 +131,16 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<StreamQuality> StreamQualities { get; set; } = new BindableCollection<StreamQuality>();
 
-        public BindableCollection<IStreamProvider> StreamProviders { get; set; } = new BindableCollection<IStreamProvider>();
+        public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
 
-        public IStreamProvider SelectedStreamProvider
+        public IApiClient SelectedApiClient
         {
-            get { return selectedStreamProvider; }
+            get { return selectedApiClient; }
             set
             {
-                if (Equals(value, selectedStreamProvider)) return;
-                selectedStreamProvider = value;
-                NotifyOfPropertyChange(() => SelectedStreamProvider);
+                if (Equals(value, selectedApiClient)) return;
+                selectedApiClient = value;
+                NotifyOfPropertyChange(() => SelectedApiClient);
             }
         }
         
@@ -155,7 +155,7 @@ namespace Livestream.Monitor.ViewModels
                 await monitorStreamsModel.AddLivestream(new LivestreamModel()
                 {
                     Id = StreamName,
-                    StreamProvider = SelectedStreamProvider
+                    ApiClient = SelectedApiClient
                 });
                 StreamName = null;
                 await dialogController.CloseAsync();
@@ -164,7 +164,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 CanAddStream = true;
                 await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}' for stream provider {SelectedStreamProvider.ProviderName}{Environment.NewLine}" +
+                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}' for stream provider {SelectedApiClient.ApiName}{Environment.NewLine}" +
                                                                     $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
             }
             catch (Exception ex)
@@ -225,14 +225,14 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnInitialize()
         {
-            StreamProviders.AddRange(streamProviderFactory.GetAll());
-            SelectedStreamProvider = streamProviderFactory.Get<TwitchStreamProvider>();
+            ApiClients.AddRange(apiClientFactory.GetAll());
+            SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
             base.OnInitialize();
         }
 
         protected override void OnActivate()
         {
-            SetFilterModelStreamProviders();
+            SetFilterModelApiClients();
             monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
             monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
             base.OnActivate();
@@ -255,7 +255,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 var selectedLivestream = monitorStreamsModel.SelectedLivestream;
                 CanOpenStream = selectedLivestream != null && selectedLivestream.Live;
-                CanOpenChat = selectedLivestream != null && selectedLivestream.StreamProvider.HasChatSupport;
+                CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;
                 StreamQualities.Clear();
                 selectedStreamQuality = null;
                 if (CanOpenStream)
@@ -280,18 +280,18 @@ namespace Livestream.Monitor.ViewModels
         private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null || e.OldItems != null)
-                SetFilterModelStreamProviders();
+                SetFilterModelApiClients();
         }
 
-        private void SetFilterModelStreamProviders()
+        private void SetFilterModelApiClients()
         {
-            var streamProviderNames = monitorStreamsModel.Livestreams.Select(x => x.StreamProvider.ProviderName).Distinct().ToList();
-            streamProviderNames.Insert(0, FilterModel.AllStreamProviderFilterName);
-            FilterModel.StreamProviderNames = new BindableCollection<string>(streamProviderNames);
+            var apiClientNames = monitorStreamsModel.Livestreams.Select(x => x.ApiClient.ApiName).Distinct().ToList();
+            apiClientNames.Insert(0, FilterModel.AllApiClientsFilterName);
+            FilterModel.ApiClientNames = new BindableCollection<string>(apiClientNames);
 
             // Set default selected stream provider to "all"
-            if (FilterModel.SelectedStreamProviderName == null || !streamProviderNames.Contains(FilterModel.SelectedStreamProviderName))
-                FilterModel.SelectedStreamProviderName = FilterModel.AllStreamProviderFilterName;
+            if (FilterModel.SelectedApiClientName == null || !apiClientNames.Contains(FilterModel.SelectedApiClientName))
+                FilterModel.SelectedApiClientName = FilterModel.AllApiClientsFilterName;
         }
     }
 }

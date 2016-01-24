@@ -7,8 +7,8 @@ using ExternalAPIs;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -18,14 +18,14 @@ namespace Livestream.Monitor.ViewModels
 
         private readonly StreamLauncher streamLauncher;
         private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly IStreamProviderFactory streamProviderFactory;
+        private readonly IApiClientFactory apiClientFactory;
 
         private string streamId;
         private string vodUrl;
         private VodDetails selectedItem;
         private BindableCollection<LivestreamModel> knownStreams = new BindableCollection<LivestreamModel>();
         private bool loadingItems;
-        private IStreamProvider selectedStreamProvider;
+        private IApiClient selectedApiClient;
         private string selectedVodType;
 
         #region Design time constructor
@@ -41,15 +41,15 @@ namespace Livestream.Monitor.ViewModels
         public VodListViewModel(
             StreamLauncher streamLauncher,
             IMonitorStreamsModel monitorStreamsModel,
-            IStreamProviderFactory streamProviderFactory)
+            IApiClientFactory apiClientFactory)
         {
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (streamProviderFactory == null) throw new ArgumentNullException(nameof(streamProviderFactory));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.streamLauncher = streamLauncher;
             this.monitorStreamsModel = monitorStreamsModel;
-            this.streamProviderFactory = streamProviderFactory;
+            this.apiClientFactory = apiClientFactory;
 
             ItemsPerPage = VOD_TILES_PER_PAGE;
         }
@@ -82,16 +82,16 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public BindableCollection<IStreamProvider> StreamProviders { get; set; } = new BindableCollection<IStreamProvider>();
+        public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
 
-        public IStreamProvider SelectedStreamProvider
+        public IApiClient SelectedApiClient
         {
-            get { return selectedStreamProvider; }
+            get { return selectedApiClient; }
             set
             {
-                if (Equals(value, selectedStreamProvider)) return;
-                selectedStreamProvider = value;
-                NotifyOfPropertyChange(() => SelectedStreamProvider);
+                if (Equals(value, selectedApiClient)) return;
+                selectedApiClient = value;
+                NotifyOfPropertyChange(() => SelectedApiClient);
                 NotifyOfPropertyChange(() => VodTypes);
                 SelectedVodType = VodTypes.FirstOrDefault();
             }
@@ -101,7 +101,7 @@ namespace Livestream.Monitor.ViewModels
         {
             get
             {
-                var vodTypes = SelectedStreamProvider?.VodTypes;
+                var vodTypes = SelectedApiClient?.VodTypes;
                 return vodTypes == null ? new BindableCollection<string>() : new BindableCollection<string>(vodTypes);
             }
         }
@@ -178,7 +178,7 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnInitialize()
         {
-            StreamProviders.AddRange(streamProviderFactory.GetAll().Where(x => x.HasVodViewerSupport));
+            ApiClients.AddRange(apiClientFactory.GetAll().Where(x => x.HasVodViewerSupport));
             base.OnInitialize();
         }
 
@@ -195,7 +195,7 @@ namespace Livestream.Monitor.ViewModels
             var orderedStream = monitorStreamsModel.Livestreams.OrderBy(x => x.Id);
             KnownStreams = new BindableCollection<LivestreamModel>(orderedStream);
             // set twitch as the default stream provider
-            SelectedStreamProvider = streamProviderFactory.Get<TwitchStreamProvider>();
+            SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
 
             base.OnActivate();
         }
@@ -230,7 +230,7 @@ namespace Livestream.Monitor.ViewModels
                 };
                 vodQuery.VodTypes.Add(SelectedVodType);
 
-                var vods = await selectedStreamProvider.GetVods(vodQuery);
+                var vods = await selectedApiClient.GetVods(vodQuery);
 
                 Items.AddRange(vods);
             }

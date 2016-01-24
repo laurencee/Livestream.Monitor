@@ -104,12 +104,12 @@ namespace Livestream.Monitor.ViewModels
         public void GotoVodViewer()
         {
             var stream = StreamsModel.SelectedLivestream;
-            if (stream == null || !stream.StreamProvider.HasVodViewerSupport) return;
+            if (stream == null || !stream.ApiClient.HasVodViewerSupport) return;
 
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
                 vm.StreamId = stream.Id;
-                vm.SelectedStreamProvider = stream.StreamProvider;
+                vm.SelectedApiClient = stream.ApiClient;
             });
         }
 
@@ -141,9 +141,8 @@ namespace Livestream.Monitor.ViewModels
 
         public void CopyLivestreamUrl()
         {
-            if (StreamsModel.SelectedLivestream?.StreamProvider == null) return;
+            if (StreamsModel.SelectedLivestream?.ApiClient == null) return;
 
-            // TODO - create a "GetStreamUrl" function in IStreamProvider when youtube streams are supported
             Clipboard.SetText(StreamsModel.SelectedLivestream.StreamUrl);
         }
 
@@ -245,7 +244,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void LivestreamOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (ViewSource.SortDescriptions.Any(x => x.PropertyName == e.PropertyName)) 
+            if (ViewSource.SortDescriptions.Any(x => x.PropertyName == e.PropertyName))
             {
                 // make sure streams going online/offline cause the view sort descriptions to be applied immediately
                 ViewSource.View.Refresh();
@@ -263,16 +262,16 @@ namespace Livestream.Monitor.ViewModels
             }
             else
             {
-                var streamProviderNameFilter = FilterModel.SelectedStreamProviderName;
+                var apiClientNameFilter = FilterModel.SelectedApiClientName;
                 var nameFilter = FilterModel.LivestreamNameFilter;
 
                 bool filterNameMatch = string.IsNullOrWhiteSpace(nameFilter) ||
                                        livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
 
-                bool streamProviderMatch = streamProviderNameFilter == FilterModel.AllStreamProviderFilterName ||
-                                           livestreamModel.StreamProvider.ProviderName == streamProviderNameFilter;
+                bool apiClientMatch = apiClientNameFilter == FilterModel.AllApiClientsFilterName ||
+                                      livestreamModel.ApiClient.ApiName == apiClientNameFilter;
 
-                e.Accepted = filterNameMatch && streamProviderMatch;
+                e.Accepted = filterNameMatch && apiClientMatch;
             }
         }
 

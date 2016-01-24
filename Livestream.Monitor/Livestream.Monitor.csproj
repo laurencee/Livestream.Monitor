@@ -111,8 +111,8 @@
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
     <Compile Include="Model\LivestreamsLayoutMode.cs" />
-    <Compile Include="Model\StreamProviders\IStreamProviderFactory.cs" />
-    <Compile Include="Model\StreamProviders\StreamProviderFactory.cs" />
+    <Compile Include="Model\ApiClients\IApiClientFactory.cs" />
+    <Compile Include="Model\ApiClients\StreamProviderFactory.cs" />
     <Compile Include="Model\ThumbnailUrls.cs" />
     <Compile Include="Model\PopularLivestreamWatcher.cs" />
     <Compile Include="Model\Monitoring\FakeMonitorStreamsModel.cs" />
@@ -122,10 +122,10 @@
     <Compile Include="Model\Monitoring\LivestreamNotification.cs" />
     <Compile Include="Model\NotificationHandler.cs" />
     <Compile Include="Model\StreamLauncher.cs" />
-    <Compile Include="Model\StreamProviders\IStreamProvider.cs" />
-    <Compile Include="Model\StreamProviders\TwitchStreamProvider.cs" />
-    <Compile Include="Model\StreamProviders\VodQuery.cs" />
-    <Compile Include="Model\StreamProviders\YoutubeStreamProvider.cs" />
+    <Compile Include="Model\ApiClients\IApiClient.cs" />
+    <Compile Include="Model\ApiClients\TwitchApiClient.cs" />
+    <Compile Include="Model\ApiClients\VodQuery.cs" />
+    <Compile Include="Model\ApiClients\YoutubeApiClient.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
     <Compile Include="Model\TwitchToModelMaps.cs" />
     <Compile Include="Model\VodDetails.cs" />

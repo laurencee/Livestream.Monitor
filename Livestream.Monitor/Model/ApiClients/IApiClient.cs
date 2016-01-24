@@ -3,11 +3,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using Livestream.Monitor.Model.Monitoring;
 
-namespace Livestream.Monitor.Model.StreamProviders
+namespace Livestream.Monitor.Model.ApiClients
 {
-    public interface IStreamProvider
+    public interface IApiClient
     {
-        string ProviderName { get; }
+        string ApiName { get; }
 
         /// <summary> The base url for the provider (always ending with a forward slash '/')  </summary>
         string BaseUrl { get; }

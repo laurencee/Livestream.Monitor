@@ -61,10 +61,10 @@ namespace Livestream.Monitor.Model
                 return;
             }
             // guard against stream provider not having chat support
-            if (!livestreamModel.StreamProvider.HasChatSupport)
+            if (!livestreamModel.ApiClient.HasChatSupport)
             {
                 await fromScreen.ShowMessageAsync("Chat not supported",
-                    $"No external chat support for stream provider '{livestreamModel.StreamProvider.ProviderName}'");
+                    $"No external chat support for stream provider '{livestreamModel.ApiClient.ApiName}'");
                 return;
             }
             
@@ -96,9 +96,9 @@ namespace Livestream.Monitor.Model
 
         public void OpenStream(LivestreamModel livestreamModel)
         {
-            if (livestreamModel?.StreamProvider == null || !livestreamModel.Live) return;
+            if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
-            // TODO - move the stream quality into the IStreamProvider
+            // TODO - move the stream quality into the IApiClient
             // Fall back to source stream quality for non-partnered Livestreams
             var streamQuality = (!livestreamModel.IsPartner &&
                                  settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Best)

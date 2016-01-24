@@ -14,7 +14,7 @@
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
         <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100" 
                  controls:TextBoxHelper.ClearTextButton="True" />
-        <ComboBox x:Name="FilterModel_StreamProviderNames" Margin="2" />
+        <ComboBox x:Name="FilterModel_ApiClientNames" Margin="2" />
 
         <!-- Open Chat & Set Stream Quality -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
@@ -30,8 +30,7 @@
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <TextBox x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new livestream..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
-        <ComboBox x:Name="StreamProviders" ItemsSource="{Binding StreamProviders}" SelectedItem="{Binding SelectedStreamProvider}"
-                  DisplayMemberPath="ProviderName" Margin="2" />
+        <ComboBox x:Name="ApiClients" DisplayMemberPath="ApiName" Margin="2" />
         <Button x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" Padding="5,0" ToolTip="Add new livestream">
             <Button.ContentTemplate>
                 <DataTemplate>

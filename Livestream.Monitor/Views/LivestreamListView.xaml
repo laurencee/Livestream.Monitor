@@ -20,11 +20,11 @@
                         <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                             <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
-                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding StreamProvider.HasVodViewerSupport}" 
-                              cal:Message.Attach="[Click] = [GotoVodViewer]" />
+                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}" 
+                                      cal:Message.Attach="[Click] = [GotoVodViewer]" />
                             <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]" 
-                              IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
-                              ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
+                                      IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
+                                      ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
                         </ContextMenu>
                     </DataGrid.Resources>
                     <DataGrid.RowStyle >

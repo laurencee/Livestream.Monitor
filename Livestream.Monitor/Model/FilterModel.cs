@@ -5,11 +5,11 @@ namespace Livestream.Monitor.Model
     public class FilterModel : PropertyChangedBase
     {
         /// <summary> A provider name to allow just filtering on the livestream name regardless of stream provider</summary>
-        public const string AllStreamProviderFilterName = "All";
+        public const string AllApiClientsFilterName = "All";
 
         private string livestreamNameFilter;
-        private string selectedStreamProviderName;
-        private BindableCollection<string> streamProviderNames;
+        private string selectedApiClientName;
+        private BindableCollection<string> apiClientNames;
 
         public string LivestreamNameFilter
         {
@@ -22,25 +22,25 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public string SelectedStreamProviderName
+        public string SelectedApiClientName
         {
-            get { return selectedStreamProviderName; }
+            get { return selectedApiClientName; }
             set
             {
-                if (Equals(value, selectedStreamProviderName)) return;
-                selectedStreamProviderName = value;
-                NotifyOfPropertyChange(() => SelectedStreamProviderName);
+                if (Equals(value, selectedApiClientName)) return;
+                selectedApiClientName = value;
+                NotifyOfPropertyChange(() => SelectedApiClientName);
             }
         }
 
-        public BindableCollection<string> StreamProviderNames
+        public BindableCollection<string> ApiClientNames
         {
-            get { return streamProviderNames; }
+            get { return apiClientNames; }
             set
             {
-                if (Equals(value, streamProviderNames)) return;
-                streamProviderNames = value;
-                NotifyOfPropertyChange(() => StreamProviderNames);
+                if (Equals(value, apiClientNames)) return;
+                apiClientNames = value;
+                NotifyOfPropertyChange(() => ApiClientNames);
             }
         }
     }

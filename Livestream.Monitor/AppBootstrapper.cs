@@ -8,8 +8,8 @@ using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Model.StreamProviders;
 using Livestream.Monitor.ViewModels;
 
 namespace Livestream.Monitor
@@ -36,7 +36,7 @@ namespace Livestream.Monitor
             container.Singleton<ITwitchTvReadonlyClient, TwitchTvReadonlyClient>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();
-            container.Singleton<IStreamProviderFactory, StreamProviderFactory>();
+            container.Singleton<IApiClientFactory, ApiClientFactory>();
             container.Singleton<FilterModel>();
             container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
             container.Singleton<PopularLivestreamWatcher>();

@@ -18,26 +18,37 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <!-- Header panel -->
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="5,0,0,0">
-            <StackPanel.Resources>
+        <!-- Using a grid to contain the header to allow more flexible automatic sizing of the vodurl textbox -->
+        <Grid Grid.Row="0" Margin="5,0,5,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Grid.Resources>
                 <Style TargetType="TextBlock" BasedOn="{StaticResource HeaderTextblock}" />
                 <Style TargetType="TextBox" BasedOn="{StaticResource MetroTextBox}">
-                    <Setter Property="MinWidth" Value="80" />
                     <Setter Property="Margin" Value="3" />
                 </Style>
-            </StackPanel.Resources>
-            <Button x:Name="TryClose" Style="{StaticResource BackButton}" HorizontalAlignment="Right" />
-            <TextBlock Text="Stream" />
-            <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="Id" Text="{Binding StreamId, Delay=500}" Width="140"
+            </Grid.Resources>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Button x:Name="TryClose" Style="{StaticResource BackButton}" HorizontalAlignment="Right" />
+                <TextBlock Text="Stream" />
+                <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="Id" Text="{Binding StreamId, Delay=500}" Width="140"
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"  
                       controls:TextBoxHelper.Watermark="streamid..." />
-            <ComboBox x:Name="StreamProviders" Margin="3" Width="80" DisplayMemberPath="ProviderName" />
-            <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
-            <TextBlock Text="Vod URL" />
-            <TextBox x:Name="VodUrl" MinWidth="225" ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
-            <Button x:Name="OpenVod" Content="Open VOD" Margin="3"
+                <ComboBox x:Name="ApiClients" Margin="3" Width="80" DisplayMemberPath="ApiName" />
+                <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
+                <TextBlock Text="Vod URL" />
+            </StackPanel>
+            <TextBox Grid.Column="1" x:Name="VodUrl"
+                     ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
+            <Button Grid.Column="2" x:Name="OpenVod" Content="Open VOD" Margin="3"
                     ToolTip="Opens up the VOD through livestreamer (with HLS passthrough to allow seeking)"/>
-        </StackPanel>
+        </Grid>
+        
+        
         
         <!-- Vod list -->
         <ItemsControl Grid.Row="1" x:Name="Items">
