@@ -214,7 +214,7 @@ namespace Livestream.Monitor.ViewModels
 
         private async Task EnsureItems()
         {
-            if (string.IsNullOrWhiteSpace(StreamId)) return;
+            if (!IsActive || string.IsNullOrWhiteSpace(StreamId)) return;
 
             LoadingItems = true;
 
