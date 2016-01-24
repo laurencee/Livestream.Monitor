@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Net;
@@ -231,16 +232,19 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
+            SetFilterModelStreamProviders();
             monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
+            monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
             base.OnActivate();
         }
 
         protected override void OnDeactivate(bool close)
         {
             monitorStreamsModel.PropertyChanged -= MonitorStreamsModelOnPropertyChanged;
+            monitorStreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
             base.OnDeactivate(close);
         }
-
+        
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshLivestreams))
@@ -271,6 +275,23 @@ namespace Livestream.Monitor.ViewModels
                 }
                 NotifyOfPropertyChange(() => SelectedStreamQuality);
             }
+        }
+
+        private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (e.NewItems != null || e.OldItems != null)
+                SetFilterModelStreamProviders();
+        }
+
+        private void SetFilterModelStreamProviders()
+        {
+            var streamProviderNames = monitorStreamsModel.Livestreams.Select(x => x.StreamProvider.ProviderName).Distinct().ToList();
+            streamProviderNames.Insert(0, FilterModel.AllStreamProviderFilterName);
+            FilterModel.StreamProviderNames = new BindableCollection<string>(streamProviderNames);
+
+            // Set default selected stream provider to "all"
+            if (FilterModel.SelectedStreamProviderName == null || !streamProviderNames.Contains(FilterModel.SelectedStreamProviderName))
+                FilterModel.SelectedStreamProviderName = FilterModel.AllStreamProviderFilterName;
         }
     }
 }

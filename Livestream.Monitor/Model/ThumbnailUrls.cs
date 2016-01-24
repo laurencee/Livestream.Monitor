@@ -1,4 +1,4 @@
-﻿namespace Livestream.Monitor.Model.Monitoring
+﻿namespace Livestream.Monitor.Model
 {
     public class ThumbnailUrls
     {

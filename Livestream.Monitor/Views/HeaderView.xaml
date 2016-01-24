@@ -13,6 +13,7 @@
         <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
         <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="livestream name..." Margin="2" Width="125" controls:TextBoxHelper.ClearTextButton="True" />
+        <ComboBox x:Name="FilterModel_StreamProviderNames" Margin="2" />
 
         <!-- Open Chat & Set Stream Quality -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />

@@ -256,21 +256,24 @@ namespace Livestream.Monitor.ViewModels
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {
-            var filter = FilterModel.LivestreamNameFilter;
-            if (string.IsNullOrWhiteSpace(filter))
+            var livestreamModel = e.Item as LivestreamModel;
+            if (livestreamModel == null)
             {
-                e.Accepted = true;
-                return;
+                e.Accepted = false;
             }
-
-            var item = e.Item as LivestreamModel;
-            if (item != null && item.DisplayName.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            else
             {
-                e.Accepted = true;
-                return;
-            }
+                var streamProviderNameFilter = FilterModel.SelectedStreamProviderName;
+                var nameFilter = FilterModel.LivestreamNameFilter;
 
-            e.Accepted = false;
+                bool filterNameMatch = string.IsNullOrWhiteSpace(nameFilter) ||
+                                       livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
+
+                bool streamProviderMatch = streamProviderNameFilter == FilterModel.AllStreamProviderFilterName ||
+                                           livestreamModel.StreamProvider.ProviderName == streamProviderNameFilter;
+
+                e.Accepted = filterNameMatch && streamProviderMatch;
+            }
         }
 
         private void OnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)

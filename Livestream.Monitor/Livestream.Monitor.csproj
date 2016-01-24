@@ -113,7 +113,7 @@
     <Compile Include="Model\LivestreamsLayoutMode.cs" />
     <Compile Include="Model\StreamProviders\IStreamProviderFactory.cs" />
     <Compile Include="Model\StreamProviders\StreamProviderFactory.cs" />
-    <Compile Include="Model\Monitoring\ThumbnailUrls.cs" />
+    <Compile Include="Model\ThumbnailUrls.cs" />
     <Compile Include="Model\PopularLivestreamWatcher.cs" />
     <Compile Include="Model\Monitoring\FakeMonitorStreamsModel.cs" />
     <Compile Include="Model\Monitoring\LivestreamFileData.cs" />
