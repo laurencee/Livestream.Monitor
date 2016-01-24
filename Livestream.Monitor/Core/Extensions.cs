@@ -113,7 +113,10 @@ namespace Livestream.Monitor.Core
 
             var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
             if (completedTask == task)
+            {
                 timeoutCancellationTokenSource.Cancel();
+                await task; // allow any original task exception to bubble up
+            }
             else
                 throw new TimeoutException("The operation has timed out.");
         }
