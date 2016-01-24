@@ -70,7 +70,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="GoogleApiClientShould.cs" />
+    <Compile Include="YoutubeClientShould.cs" />
+    <Compile Include="HitboxClientShould.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TwitchTvClientShould.cs" />
   </ItemGroup>

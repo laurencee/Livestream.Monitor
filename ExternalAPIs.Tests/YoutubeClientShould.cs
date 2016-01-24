@@ -5,7 +5,7 @@ using Xunit;
 
 namespace ExternalAPIs.Tests
 {
-    public class GoogleApiClientShould
+    public class YoutubeClientShould
     {
         private const string SKY_NEWS_VIDEO_ID = "y60wDzZt8yg";
         private readonly YoutubeReadonlyClient sut = new YoutubeReadonlyClient();

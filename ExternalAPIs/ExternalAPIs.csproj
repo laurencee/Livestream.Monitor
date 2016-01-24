@@ -47,6 +47,21 @@
     <Compile Include="..\GlobalAssemblyInfo.cs">
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Hitbox\Dto\Channel.cs" />
+    <Compile Include="Hitbox\Dto\Following.cs" />
+    <Compile Include="Hitbox\Dto\Livestream.cs" />
+    <Compile Include="Hitbox\Dto\Mediainfo.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\ChannelRoot.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\ChannelVideosRoot.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\StreamRoot.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\UserFollowsRoot.cs" />
+    <Compile Include="Hitbox\Dto\Video.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\StreamsRoot.cs" />
+    <Compile Include="Hitbox\HitboxReadonlyClient.cs" />
+    <Compile Include="Hitbox\IHitboxReadonlyClient.cs" />
+    <Compile Include="Hitbox\Query\ChannelVideosQuery.cs" />
+    <Compile Include="Hitbox\Query\TopStreamsQuery.cs" />
+    <Compile Include="Hitbox\RequestConstants.cs" />
     <Compile Include="HttpClientExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleHttpResponseException.cs" />
@@ -90,6 +105,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
