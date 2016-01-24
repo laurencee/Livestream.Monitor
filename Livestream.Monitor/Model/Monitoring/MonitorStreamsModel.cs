@@ -180,6 +180,15 @@ namespace Livestream.Monitor.Model.Monitoring
                 // Notify that the most important livestreams (online streams) have up to date information
                 OnOnlineLivestreamsRefreshComplete();
 
+                // mark streams belonging to any stream providers that faulted or timed out as offline
+                var faultedStreamsProviders = Livestreams.GroupBy(x => x.StreamProvider)
+                                                         .Where(y => !offlineStreamsProviders.ContainsKey(y.Key))
+                                                         .ToList();
+                foreach (var faultedStreamsProvider in faultedStreamsProviders)
+                {
+                    offlineStreamsProviders[faultedStreamsProvider.Key] = faultedStreamsProvider.ToList();
+                }
+
                 // reinitialize the cancellation token source for offline querying
                 timeoutTokenSource = new CancellationTokenSource();
                 var queryOfflineStreamsTasks = new List<Task>();
@@ -238,7 +247,12 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     var offlineStreams = task.Result;
                     offlineStreamsProviders[streamProvider] = offlineStreams;
-                }, cancellationToken);
+                }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
+                queryTask.ContinueWith(task =>
+                {
+                    // do something with the task exception, this maybe a cancellation/timeout or a regular exception
+                }, cancellationToken, TaskContinuationOptions.NotOnRanToCompletion, TaskScheduler.Current);
+
                 tasks.Add(queryTask);
             }
             return tasks;
