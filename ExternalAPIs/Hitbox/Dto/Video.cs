@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using ExternalAPIs.Hitbox.Converters;
 using Newtonsoft.Json;
 
 namespace ExternalAPIs.Hitbox.Dto
@@ -24,31 +27,36 @@ namespace ExternalAPIs.Hitbox.Dto
         public string MediaTypeId { get; set; }
 
         [JsonProperty("media_is_live")]
-        public string MediaIsLive { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaIsLive { get; set; }
 
         [JsonProperty("media_live_delay")]
         public string MediaLiveDelay { get; set; }
 
         [JsonProperty("media_date_added")]
-        public string MediaDateAdded { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? MediaDateAdded { get; set; }
 
         [JsonProperty("media_live_since")]
-        public object MediaLiveSince { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? MediaLiveSince { get; set; }
 
         [JsonProperty("media_transcoding")]
         public object MediaTranscoding { get; set; }
 
         [JsonProperty("media_chat_enabled")]
-        public string MediaChatEnabled { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaChatEnabled { get; set; }
 
         [JsonProperty("media_countries")]
         public string MediaCountries { get; set; }
 
         [JsonProperty("media_hosted_id")]
-        public object MediaHostedId { get; set; }
+        public string MediaHostedId { get; set; }
 
         [JsonProperty("media_mature")]
-        public object MediaMature { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaMature { get; set; }
 
         [JsonProperty("media_hidden")]
         public object MediaHidden { get; set; }
@@ -84,10 +92,10 @@ namespace ExternalAPIs.Hitbox.Dto
         public string MediaDuration { get; set; }
 
         [JsonProperty("media_bg_image")]
-        public object MediaBgImage { get; set; }
+        public string MediaBgImage { get; set; }
 
         [JsonProperty("media_views")]
-        public string MediaViews { get; set; }
+        public int MediaViews { get; set; }
 
         [JsonProperty("media_views_daily")]
         public string MediaViewsDaily { get; set; }
@@ -114,13 +122,13 @@ namespace ExternalAPIs.Hitbox.Dto
         public string CategoryViewers { get; set; }
 
         [JsonProperty("category_media_count")]
-        public string CategoryMediaCount { get; set; }
+        public int CategoryMediaCount { get; set; }
 
         [JsonProperty("category_channels")]
-        public object CategoryChannels { get; set; }
+        public List<string> CategoryChannels { get; set; }
 
         [JsonProperty("category_logo_small")]
-        public object CategoryLogoSmall { get; set; }
+        public string CategoryLogoSmall { get; set; }
 
         [JsonProperty("category_logo_large")]
         public string CategoryLogoLarge { get; set; }
@@ -129,7 +137,7 @@ namespace ExternalAPIs.Hitbox.Dto
         public string CategoryUpdated { get; set; }
 
         [JsonProperty("team_name")]
-        public object TeamName { get; set; }
+        public string TeamName { get; set; }
 
         [JsonProperty("media_start_in_sec")]
         public string MediaStartInSec { get; set; }

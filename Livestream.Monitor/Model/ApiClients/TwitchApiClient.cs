@@ -54,7 +54,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamModel>> UpdateOnlineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken)
         {
-            var onlineStreams = await twitchTvClient.GetStreamsDetails(livestreams.Select(x => x.Id).ToList());
+            var onlineStreams = await twitchTvClient.GetStreamsDetails(livestreams.Select(x => x.Id));
 
             foreach (var onlineStream in onlineStreams)
             {
@@ -107,7 +107,7 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 Url = channelVideo.Url,
                 Length = TimeSpan.FromSeconds(channelVideo.Length),
-                RecordedAt = channelVideo.RecordedAt,
+                RecordedAt = channelVideo.RecordedAt ?? DateTimeOffset.MinValue,
                 Views = channelVideo.Views,
                 Game = channelVideo.Game,
                 Description = channelVideo.Description,

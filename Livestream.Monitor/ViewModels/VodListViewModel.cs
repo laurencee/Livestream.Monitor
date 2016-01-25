@@ -66,7 +66,12 @@ namespace Livestream.Monitor.ViewModels
                 if (value == streamId) return;
                 streamId = value;
                 NotifyOfPropertyChange(() => StreamId);
-                UpdateItems();
+                // automatically set the correct api client for known streams
+                var knownStream = KnownStreams.FirstOrDefault(x => x.Id == streamId);
+                if (knownStream != null && SelectedApiClient != knownStream.ApiClient)
+                    SelectedApiClient = knownStream.ApiClient; // changing the selected api client will cause a refresh of vods
+                else
+                    UpdateItems();
             }
         }
 
@@ -195,7 +200,8 @@ namespace Livestream.Monitor.ViewModels
             var orderedStream = monitorStreamsModel.Livestreams.OrderBy(x => x.Id);
             KnownStreams = new BindableCollection<LivestreamModel>(orderedStream);
             // set twitch as the default stream provider
-            SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
+            if (SelectedApiClient == null)
+                SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
 
             base.OnActivate();
         }
@@ -241,7 +247,8 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 await this.ShowMessageAsync("Error",
-                    $"An error occured attempting to get top twitch streams.{Environment.NewLine}{Environment.NewLine}{ex}");
+                    $"An error occured attempting to get vods from api '{SelectedApiClient.ApiName}' for channel '{StreamId}'." +
+                    $"{Environment.NewLine}{Environment.NewLine}{ex}");
             }
 
             LoadingItems = false;

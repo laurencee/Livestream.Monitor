@@ -3,7 +3,7 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
-    /// <summary> Composite class for searched twitch stream data </summary>
+    /// <summary> Composite class for searched top stream data </summary>
     public class TwitchSearchStreamResult : PropertyChangedBase
     {
         private bool isMonitored;

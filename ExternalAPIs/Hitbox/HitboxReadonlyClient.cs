@@ -48,6 +48,8 @@ namespace ExternalAPIs.Hitbox
             if (IsNullOrWhiteSpace(channelVideosQuery.ChannelName)) throw new ArgumentNullException(nameof(channelVideosQuery.ChannelName));
 
             var request = RequestConstants.ChannelVideos.Replace("{0}", channelVideosQuery.ChannelName);
+            // hitbox doesn't actually have any offset/start value specified in their documentation 
+            // so maybe they dont have any paging available through the api: http://developers.hitbox.tv/#list-videos
             request += $"?offset={channelVideosQuery.Skip}&limit={channelVideosQuery.Take}";
 
             var channelVideosRoot = await HttpClientExtensions.ExecuteRequest<ChannelVideosRoot>(request);

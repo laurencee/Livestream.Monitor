@@ -5,7 +5,7 @@ namespace ExternalAPIs.Hitbox.Dto
     public class Following
     {
         [JsonProperty("followers")]
-        public string Followers { get; set; }
+        public int Followers { get; set; }
 
         [JsonProperty("user_name")]
         public string UserName { get; set; }

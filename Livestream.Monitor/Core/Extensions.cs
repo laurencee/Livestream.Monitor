@@ -120,5 +120,65 @@ namespace Livestream.Monitor.Core
             else
                 throw new TimeoutException("The operation has timed out.");
         }
+
+        /// <summary>
+        /// Executes the queries in parallel on the <param name="enumerable" /> values and perform a post query action on the result of the query
+        /// within the <see cref="MonitorStreamsModel.HalfRefreshPollingTime"/> timeout.
+        /// </summary>
+        /// <typeparam name="T">Type of the enumerable values</typeparam>
+        /// <typeparam name="TResult">Return type of the query</typeparam>
+        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
+        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
+        /// <param name="postQueryAction">An action to perform on the result of the queyr</param>
+        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static async Task ExecuteInParallel<T, TResult>(
+            this IEnumerable<T> enumerable,
+            Func<T, Task<TResult>> query,
+            Action<T, TResult> postQueryAction,
+            TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var tasks = new List<Task>();
+#pragma warning disable CS4014 // warning is invalid since we await tasks later in this method
+            foreach (var value in enumerable)
+            {
+                var task = query(value);
+                var completedTask = task.ContinueWith(t => postQueryAction(value, t.Result), cancellationToken);
+                tasks.Add(completedTask);
+            }
+#pragma warning restore CS4014
+
+            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(timeout, cancellationToken));
+        }
+
+        /// <summary>
+        /// Execute the queries in parallel on the <param name="enumerable"/> values 
+        /// within the <see cref="MonitorStreamsModel.HalfRefreshPollingTime"/> timeout.
+        /// </summary>
+        /// <typeparam name="T">Type of the enumerable values</typeparam>
+        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
+        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
+        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public static async Task ExecuteInParallel<T>(
+            this IEnumerable<T> enumerable,
+            Func<T, Task> query,
+            TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var tasks = new List<Task>();
+#pragma warning disable CS4014 // warning is invalid since we await tasks later in this method
+            foreach (var value in enumerable)
+            {
+                var task = query(value);
+                tasks.Add(task);
+            }
+#pragma warning restore CS4014
+
+            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(timeout, cancellationToken));
+        }
     }
 }

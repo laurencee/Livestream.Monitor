@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExternalAPIs.Hitbox;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.Youtube;
 
@@ -10,11 +11,13 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         private static readonly TwitchApiClient TwitchApiClient = new TwitchApiClient(new TwitchTvReadonlyClient());
         private static readonly YoutubeApiClient YoutubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
+        private static readonly HitboxApiClient HitboxApiClient = new HitboxApiClient(new HitboxReadonlyClient());
 
         private readonly List<IApiClient> apiClients = new List<IApiClient>()
         {
             TwitchApiClient,
-            YoutubeApiClient
+            YoutubeApiClient,
+            HitboxApiClient
         }; 
 
         public T Get<T>() where T : IApiClient
@@ -41,6 +44,8 @@ namespace Livestream.Monitor.Model.ApiClients
                     return YoutubeApiClient;
                 case TwitchApiClient.API_NAME:
                     return TwitchApiClient;
+                case HitboxApiClient.API_NAME:
+                    return HitboxApiClient;
                 default:
                     return null;
             }

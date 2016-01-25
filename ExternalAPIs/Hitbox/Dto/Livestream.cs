@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using ExternalAPIs.Hitbox.Converters;
 using Newtonsoft.Json;
 
 namespace ExternalAPIs.Hitbox.Dto
@@ -23,25 +26,29 @@ namespace ExternalAPIs.Hitbox.Dto
         public string MediaTypeId { get; set; }
 
         [JsonProperty("media_is_live")]
-        public string MediaIsLive { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaIsLive { get; set; }
 
         [JsonProperty("media_live_delay")]
-        public string MediaLiveDelay { get; set; }
+        public int MediaLiveDelay { get; set; }
 
         [JsonProperty("media_date_added")]
-        public string MediaDateAdded { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? MediaDateAdded { get; set; }
 
         [JsonProperty("media_live_since")]
-        public string MediaLiveSince { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? MediaLiveSince { get; set; }
 
         [JsonProperty("media_transcoding")]
         public string MediaTranscoding { get; set; }
 
         [JsonProperty("media_chat_enabled")]
-        public string MediaChatEnabled { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaChatEnabled { get; set; }
 
         [JsonProperty("media_countries")]
-        public object MediaCountries { get; set; }
+        public List<string> MediaCountries { get; set; }
 
         [JsonProperty("media_hosted_id")]
         public object MediaHostedId { get; set; }
@@ -80,7 +87,7 @@ namespace ExternalAPIs.Hitbox.Dto
         public string MediaBgImage { get; set; }
 
         [JsonProperty("media_views")]
-        public string MediaViews { get; set; }
+        public int MediaViews { get; set; }
 
         [JsonProperty("media_views_daily")]
         public string MediaViewsDaily { get; set; }
@@ -98,34 +105,35 @@ namespace ExternalAPIs.Hitbox.Dto
         public string CategoryName { get; set; }
 
         [JsonProperty("category_name_short")]
-        public object CategoryNameShort { get; set; }
+        public string CategoryNameShort { get; set; }
 
         [JsonProperty("category_seo_key")]
         public string CategorySeoKey { get; set; }
 
         [JsonProperty("category_viewers")]
-        public string CategoryViewers { get; set; }
+        public int CategoryViewers { get; set; }
 
         [JsonProperty("category_media_count")]
-        public string CategoryMediaCount { get; set; }
+        public int CategoryMediaCount { get; set; }
 
         [JsonProperty("category_channels")]
-        public object CategoryChannels { get; set; }
+        public string CategoryChannels { get; set; }
 
         [JsonProperty("category_logo_small")]
-        public object CategoryLogoSmall { get; set; }
+        public string CategoryLogoSmall { get; set; }
 
         [JsonProperty("category_logo_large")]
         public string CategoryLogoLarge { get; set; }
 
         [JsonProperty("category_updated")]
-        public string CategoryUpdated { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? CategoryUpdated { get; set; }
 
         [JsonProperty("team_name")]
         public string TeamName { get; set; }
 
         [JsonProperty("media_start_in_sec")]
-        public string MediaStartInSec { get; set; }
+        public int MediaStartInSec { get; set; }
 
         [JsonProperty("media_duration_format")]
         public string MediaDurationFormat { get; set; }

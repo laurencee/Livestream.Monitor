@@ -1,3 +1,5 @@
+using System;
+using ExternalAPIs.Hitbox.Converters;
 using Newtonsoft.Json;
 
 namespace ExternalAPIs.Hitbox.Dto
@@ -5,7 +7,7 @@ namespace ExternalAPIs.Hitbox.Dto
     public class Channel
     {
         [JsonProperty("followers")]
-        public string Followers { get; set; }
+        public int Followers { get; set; }
 
         [JsonProperty("user_id")]
         public string UserId { get; set; }
@@ -35,10 +37,12 @@ namespace ExternalAPIs.Hitbox.Dto
         public string UserBetaProfile { get; set; }
 
         [JsonProperty("media_is_live")]
-        public string MediaIsLive { get; set; }
+        [JsonConverter(typeof(BoolConverter))]
+        public bool MediaIsLive { get; set; }
 
         [JsonProperty("media_live_since")]
-        public string MediaLiveSince { get; set; }
+        [JsonConverter(typeof(HoribadHitboxDateTimeOffsetConverter))]
+        public DateTimeOffset? MediaLiveSince { get; set; }
 
         [JsonProperty("user_media_id")]
         public string UserMediaId { get; set; }

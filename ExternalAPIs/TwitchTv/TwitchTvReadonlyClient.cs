@@ -61,7 +61,7 @@ namespace ExternalAPIs.TwitchTv
             return streamRoot.Stream;
         }
 
-        public async Task<List<Stream>> GetStreamsDetails(List<string> streamNames)
+        public async Task<List<Stream>> GetStreamsDetails(IEnumerable<string> streamNames)
         {
             if (streamNames == null) throw new ArgumentNullException(nameof(streamNames));
             

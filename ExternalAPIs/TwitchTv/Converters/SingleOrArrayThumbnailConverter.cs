@@ -4,7 +4,7 @@ using ExternalAPIs.TwitchTv.Dto;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace ExternalAPIs.TwitchTv.Helpers
+namespace ExternalAPIs.TwitchTv.Converters
 {
     /// <summary>
     /// Special case converter since sometimes thumbnails are returned as just the string url of the thumbnail

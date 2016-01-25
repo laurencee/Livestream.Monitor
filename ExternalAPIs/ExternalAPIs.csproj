@@ -47,6 +47,8 @@
     <Compile Include="..\GlobalAssemblyInfo.cs">
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="BooleanConverter.cs" />
+    <Compile Include="Hitbox\Converters\HoribadHitboxDateTimeOffsetConverter.cs" />
     <Compile Include="Hitbox\Dto\Channel.cs" />
     <Compile Include="Hitbox\Dto\Following.cs" />
     <Compile Include="Hitbox\Dto\Livestream.cs" />
@@ -82,8 +84,8 @@
     <Compile Include="TwitchTv\Dto\Thumbnail.cs" />
     <Compile Include="TwitchTv\Dto\TopGame.cs" />
     <Compile Include="TwitchTv\Dto\Video.cs" />
-    <Compile Include="TwitchTv\Helpers\SingleOrArrayConverter.cs" />
-    <Compile Include="TwitchTv\Helpers\SingleOrArrayThumbnailConverter.cs" />
+    <Compile Include="TwitchTv\Converters\SingleOrArrayConverter.cs" />
+    <Compile Include="TwitchTv\Converters\SingleOrArrayThumbnailConverter.cs" />
     <Compile Include="TwitchTv\ITwitchTvReadonlyClient.cs" />
     <Compile Include="TwitchTv\Query\ChannelVideosQuery.cs" />
     <Compile Include="TwitchTv\Query\PagedQuery.cs" />

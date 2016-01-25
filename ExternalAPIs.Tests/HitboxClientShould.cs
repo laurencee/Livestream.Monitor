@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using ExternalAPIs.Hitbox;
 using ExternalAPIs.Hitbox.Query;
 using Xunit;
@@ -12,6 +8,11 @@ namespace ExternalAPIs.Tests
     public class HitboxClientShould
     {
         private const string KnownChannelName = "rewardsgg";
+        private const int KnownChannelId = 859185;
+
+        //private const string KnownChannelName = "Heroesofcards";
+        //private const int KnownChannelId = 217859;
+
         private readonly HitboxReadonlyClient sut = new HitboxReadonlyClient();
 
         [Fact]
@@ -26,7 +27,7 @@ namespace ExternalAPIs.Tests
         [Fact]
         public async Task GetLivestreamDetails()
         {
-            var mediainfo = await sut.GetStreamDetails(859185.ToString());
+            var mediainfo = await sut.GetStreamDetails(KnownChannelId.ToString());
             Assert.NotNull(mediainfo);
         }
 

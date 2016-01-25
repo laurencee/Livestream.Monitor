@@ -33,12 +33,12 @@
             </Grid.Resources>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
-                <Button x:Name="TryClose" Style="{StaticResource BackButton}" HorizontalAlignment="Right" />
+                <Button x:Name="TryClose" Style="{StaticResource BackButton}" />
+                <ComboBox x:Name="ApiClients" Margin="3" Width="80" DisplayMemberPath="ApiName" />
                 <TextBlock Text="Stream" />
                 <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="Id" Text="{Binding StreamId, Delay=500}" Width="140"
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"  
                       controls:TextBoxHelper.Watermark="streamid..." />
-                <ComboBox x:Name="ApiClients" Margin="3" Width="80" DisplayMemberPath="ApiName" />
                 <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
                 <TextBlock Text="Vod URL" />
             </StackPanel>

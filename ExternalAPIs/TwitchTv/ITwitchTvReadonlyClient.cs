@@ -14,7 +14,7 @@ namespace ExternalAPIs.TwitchTv
 
         Task<Stream> GetStreamDetails(string streamName);
 
-        Task<List<Stream>> GetStreamsDetails(List<string> streamNames);
+        Task<List<Stream>> GetStreamsDetails(IEnumerable<string> streamNames);
 
         Task<List<Game>> GetTopGames();
 

@@ -174,8 +174,12 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 // query different stream providers online streams in parallel
                 var timeoutTokenSource = new CancellationTokenSource();
-                var tasks = GetQueryOnlineStreamTasks(offlineApiClientsStreams, timeoutTokenSource.Token);
-                await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(HalfRefreshPollingTime, timeoutTokenSource.Token));
+
+                await Livestreams.GroupBy(x => x.ApiClient).ExecuteInParallel(
+                    query: apiClientStreams => apiClientStreams.Key.UpdateOnlineStreams(apiClientStreams.ToList(), timeoutTokenSource.Token),
+                    postQueryAction: (apiClientStreams, offlineStreams) => offlineApiClientsStreams[apiClientStreams.Key] = offlineStreams,
+                    timeout: HalfRefreshPollingTime,
+                    cancellationToken: timeoutTokenSource.Token);
 
                 // Notify that the most important livestreams (online streams) have up to date information
                 OnOnlineLivestreamsRefreshComplete();
@@ -191,22 +195,18 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 // reinitialize the cancellation token source for offline querying
                 timeoutTokenSource = new CancellationTokenSource();
-                var queryOfflineStreamsTasks = new List<Task>();
-                foreach (var offlineApiClientStreams in offlineApiClientsStreams)
-                {
-                    offlineApiClientStreams.Value.ForEach(x => x.Offline());
-
-                    if (queryOfflineStreams)
+                await offlineApiClientsStreams.ExecuteInParallel(
+                    query: offlineApiClientStreams =>
                     {
-                        var apiClient = offlineApiClientStreams.Key;
-                        var queryOfflineStreamsTask = apiClient.UpdateOfflineStreams(offlineApiClientStreams.Value, timeoutTokenSource.Token)
-                                                                    .TimeoutAfter(HalfRefreshPollingTime);
-                        queryOfflineStreamsTasks.Add(queryOfflineStreamsTask);
-                    }
-                }
+                        offlineApiClientStreams.Value.ForEach(x => x.Offline());
+                        if (!queryOfflineStreams) return Task.CompletedTask;
 
-                // query different stream providers offline streams in parallel
-                await Task.WhenAll(queryOfflineStreamsTasks);
+                        var apiClient = offlineApiClientStreams.Key;
+                        return apiClient.UpdateOfflineStreams(offlineApiClientStreams.Value, timeoutTokenSource.Token);
+                    },
+                    timeout: HalfRefreshPollingTime,
+                    cancellationToken: timeoutTokenSource.Token);
+
                 queryOfflineStreams = false; // only query offline streams 1 time per application run
             }
             catch (Exception)
@@ -229,33 +229,6 @@ namespace Livestream.Monitor.Model.Monitoring
         protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
             OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
-        }
-
-        private List<Task> GetQueryOnlineStreamTasks(
-            Dictionary<IApiClient, List<LivestreamModel>> offlineApiClientsStreams,
-            CancellationToken cancellationToken)
-        {
-            var tasks = new List<Task>();
-
-            foreach (var livestreamApiClientGroup in Livestreams.GroupBy(x => x.ApiClient))
-            {
-                var apiClient = livestreamApiClientGroup.Key;
-                var queryTask = apiClient.UpdateOnlineStreams(livestreamApiClientGroup.ToList(), cancellationToken)
-                                              .TimeoutAfter(HalfRefreshPollingTime);
-
-                queryTask.ContinueWith(task =>
-                {
-                    var offlineStreams = task.Result;
-                    offlineApiClientsStreams[apiClient] = offlineStreams;
-                }, cancellationToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Current);
-                queryTask.ContinueWith(task =>
-                {
-                    // do something with the task exception, this maybe a cancellation/timeout or a regular exception
-                }, cancellationToken, TaskContinuationOptions.NotOnRanToCompletion, TaskScheduler.Current);
-
-                tasks.Add(queryTask);
-            }
-            return tasks;
         }
 
         private void LoadLivestreams()

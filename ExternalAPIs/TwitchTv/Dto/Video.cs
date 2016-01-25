@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using ExternalAPIs.TwitchTv.Helpers;
+using ExternalAPIs.TwitchTv.Converters;
 using Newtonsoft.Json;
 
 namespace ExternalAPIs.TwitchTv.Dto
@@ -23,7 +23,7 @@ namespace ExternalAPIs.TwitchTv.Dto
         public string Id { get; set; }
 
         [JsonProperty("recorded_at")]
-        public DateTime RecordedAt { get; set; }
+        public DateTimeOffset? RecordedAt { get; set; }
 
         public string Game { get; set; }
 
