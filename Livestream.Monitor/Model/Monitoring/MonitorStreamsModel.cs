@@ -282,10 +282,11 @@ namespace Livestream.Monitor.Model.Monitoring
             var livestream = (LivestreamModel)sender;
             if (e.PropertyName == nameof(LivestreamModel.DontNotify))
             {
+                var excludeNotify = livestream.ToExcludeNotify();
                 if (livestream.DontNotify)
-                    settingsHandler.Settings.ExcludeFromNotifying.Add(livestream.Id);
+                    settingsHandler.Settings.ExcludeFromNotifying.Add(excludeNotify);
                 else
-                    settingsHandler.Settings.ExcludeFromNotifying.Remove(livestream.Id);
+                    settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
             }
         }
     }

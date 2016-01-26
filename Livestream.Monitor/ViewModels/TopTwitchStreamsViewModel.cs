@@ -189,13 +189,14 @@ namespace Livestream.Monitor.ViewModels
             if (stream == null) return;
 
             stream.LivestreamModel.DontNotify = !stream.LivestreamModel.DontNotify;
-            if (settingsHandler.Settings.ExcludeFromNotifying.Any(x => x.IsEqualTo(stream.LivestreamModel.Id)))
+            var excludeNotify = stream.LivestreamModel.ToExcludeNotify();
+            if (settingsHandler.Settings.ExcludeFromNotifying.Any(x => Equals(x, excludeNotify)))
             {
-                settingsHandler.Settings.ExcludeFromNotifying.Remove(stream.LivestreamModel.Id);
+                settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
             }
             else
             {
-                settingsHandler.Settings.ExcludeFromNotifying.Add(stream.LivestreamModel.Id);
+                settingsHandler.Settings.ExcludeFromNotifying.Add(excludeNotify);
             }
         }
 

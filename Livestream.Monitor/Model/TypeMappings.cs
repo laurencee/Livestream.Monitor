@@ -1,11 +1,11 @@
 ﻿using System;
 using ExternalAPIs.TwitchTv.Dto;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
-using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
-    public static class TwitchToModelMaps
+    public static class TypeMappings
     {
         public static LivestreamModel PopulateWithStreamDetails(
             this LivestreamModel livestreamModel, 
@@ -48,6 +48,11 @@ namespace Livestream.Monitor.Model
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
             livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
             livestreamModel.Language = channel.Language;
+        }
+
+        public static ExcludeNotify ToExcludeNotify(this LivestreamModel livestreamModel)
+        {
+            return new ExcludeNotify(livestreamModel.ApiClient.ApiName, livestreamModel.Id);
         }
     }
 }

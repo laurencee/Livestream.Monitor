@@ -34,7 +34,10 @@ namespace Livestream.Monitor.Core
                     saveSettings = true;
                 }
                 else
+                {
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
+                    saveSettings = ExcludeNotifyConverter.SaveRequired;
+                }
 
                 // guards against the paths being set to null/empty values
                 if (settings.ChromeFullPath == null)

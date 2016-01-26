@@ -1,8 +1,11 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
+using Livestream.Monitor.Model.ApiClients;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Livestream.Monitor.Core
 {
@@ -106,12 +109,104 @@ namespace Livestream.Monitor.Core
                 NotifyOfPropertyChange(() => DisableNotifications);
             }
         }
-
+        
         /// <summary>
         /// Channel names in this collection should not raise notifications. <para/>
         /// We store these in settings so it can apply to both monitored and popular streams.
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public ObservableCollection<string> ExcludeFromNotifying { get; } = new ObservableCollection<string>();
+        [JsonConverter(typeof(ExcludeNotifyConverter))]
+        public ObservableCollection<ExcludeNotify> ExcludeFromNotifying { get; } = new ObservableCollection<ExcludeNotify>();
+    }
+
+    /// <summary>
+    /// Migrates from the old array of streamids format to the new format using <see cref="ExcludeNotify"/> type
+    /// </summary>
+    public class ExcludeNotifyConverter : JsonConverter
+    {
+        public static bool SaveRequired;
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            var jsonObj = JArray.FromObject(value);
+            jsonObj.WriteTo(writer);
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            if (reader.TokenType == JsonToken.Null) return null;
+            
+            var exclusions = (ObservableCollection<ExcludeNotify>) existingValue;
+            
+            while (reader.Read())
+            {
+                switch (reader.TokenType)
+                {
+                    case JsonToken.EndArray:
+                        return exclusions;
+                    case JsonToken.StartObject:
+                        var excludeNotify = serializer.Deserialize<ExcludeNotify>(reader);
+                        exclusions.Add(excludeNotify);
+                        break;
+                    default: // convert old array of stream ids
+                        var streamId = reader.Value.ToString();
+                        SaveRequired = true; // if we ran conversions then we should save the new output file
+                        exclusions.Add(new ExcludeNotify(TwitchApiClient.API_NAME, streamId));
+                        break;
+                }
+            }
+
+            return exclusions;
+        }
+
+        public override bool CanConvert(Type objectType)
+        {
+            return true;
+        }
+    }
+
+    public class ExcludeNotify
+    {
+        public ExcludeNotify(string apiClientName, string streamId)
+        {
+            if (String.IsNullOrWhiteSpace(apiClientName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(apiClientName));
+            if (String.IsNullOrWhiteSpace(streamId))
+                throw new ArgumentException("Argument is null or whitespace", nameof(streamId));
+
+            ApiClientName = apiClientName;
+            StreamId = streamId;
+        }
+
+        public string ApiClientName { get; set; }
+
+        public string StreamId { get; set; }
+
+        public override string ToString() => $"{ApiClientName}:{StreamId}";
+
+        #region equality members
+
+        protected bool Equals(ExcludeNotify other)
+        {
+            return string.Equals(ApiClientName, other.ApiClientName) && string.Equals(StreamId, other.StreamId);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((ExcludeNotify) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^ (StreamId?.GetHashCode() ?? 0);
+            }
+        }
+
+        #endregion
     }
 }

@@ -128,7 +128,7 @@
     <Compile Include="Model\ApiClients\VodQuery.cs" />
     <Compile Include="Model\ApiClients\YoutubeApiClient.cs" />
     <Compile Include="Model\TwitchSearchStreamResult.cs" />
-    <Compile Include="Model\TwitchToModelMaps.cs" />
+    <Compile Include="Model\TypeMappings.cs" />
     <Compile Include="Model\VodDetails.cs" />
     <Compile Include="ViewModels\EmulatorViewModel.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />

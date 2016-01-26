@@ -90,7 +90,7 @@ namespace Livestream.Monitor.Core
         public static void SetLivestreamNotifyState(this LivestreamModel livestreamModel, Settings settings)
         {
             if (livestreamModel == null) return;
-            livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => x.IsEqualTo(livestreamModel.Id));
+            livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => Equals(x, livestreamModel.ToExcludeNotify()));
         }
 
         // sourced from http://stackoverflow.com/a/22078975/2631967
