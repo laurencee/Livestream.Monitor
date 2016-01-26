@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ExternalAPIs.TwitchTv.Query;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Model.Monitoring;
 
@@ -27,6 +28,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasChatSupport => true;
 
         public bool HasVodViewerSupport => false;
+
+        public bool HasTopStreamsSupport => false;
 
         public List<string> VodTypes { get; } = new List<string>();
 
@@ -98,6 +101,16 @@ namespace Livestream.Monitor.Model.ApiClients
         public Task<List<VodDetails>> GetVods(VodQuery vodQuery)
         {
             return Task.FromResult(new List<VodDetails>());
+        }
+
+        public Task<List<LivestreamModel>> GetTopStreams(TopStreamQuery topStreamQuery)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
+        {
+            throw new NotImplementedException();
         }
     }
 }

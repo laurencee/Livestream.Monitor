@@ -17,7 +17,7 @@ namespace ExternalAPIs.Hitbox.Dto
         public string Height { get; set; }
 
         [JsonProperty("vbitrate")]
-        public object Vbitrate { get; set; }
+        public string Vbitrate { get; set; }
 
         [JsonProperty("abitrate")]
         public string Abitrate { get; set; }

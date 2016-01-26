@@ -29,7 +29,7 @@ namespace ExternalAPIs.Hitbox.Dto
         [JsonConverter(typeof(BoolConverter))]
         public bool MediaIsLive { get; set; }
 
-        [JsonProperty("media_live_delay")]
+        [JsonProperty("media_live_delay", NullValueHandling = NullValueHandling.Ignore)]
         public int MediaLiveDelay { get; set; }
 
         [JsonProperty("media_date_added")]
@@ -86,7 +86,7 @@ namespace ExternalAPIs.Hitbox.Dto
         [JsonProperty("media_bg_image")]
         public string MediaBgImage { get; set; }
 
-        [JsonProperty("media_views")]
+        [JsonProperty("media_views", NullValueHandling = NullValueHandling.Ignore)]
         public int MediaViews { get; set; }
 
         [JsonProperty("media_views_daily")]
@@ -110,10 +110,10 @@ namespace ExternalAPIs.Hitbox.Dto
         [JsonProperty("category_seo_key")]
         public string CategorySeoKey { get; set; }
 
-        [JsonProperty("category_viewers")]
+        [JsonProperty("category_viewers", NullValueHandling = NullValueHandling.Ignore)]
         public int CategoryViewers { get; set; }
 
-        [JsonProperty("category_media_count")]
+        [JsonProperty("category_media_count", NullValueHandling = NullValueHandling.Ignore)]
         public int CategoryMediaCount { get; set; }
 
         [JsonProperty("category_channels")]
@@ -132,7 +132,7 @@ namespace ExternalAPIs.Hitbox.Dto
         [JsonProperty("team_name")]
         public string TeamName { get; set; }
 
-        [JsonProperty("media_start_in_sec")]
+        [JsonProperty("media_start_in_sec", NullValueHandling = NullValueHandling.Ignore)]
         public int MediaStartInSec { get; set; }
 
         [JsonProperty("media_duration_format")]

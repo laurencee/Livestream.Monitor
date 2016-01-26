@@ -49,6 +49,7 @@
     </Compile>
     <Compile Include="BooleanConverter.cs" />
     <Compile Include="Hitbox\Converters\HoribadHitboxDateTimeOffsetConverter.cs" />
+    <Compile Include="Hitbox\Dto\Category.cs" />
     <Compile Include="Hitbox\Dto\Channel.cs" />
     <Compile Include="Hitbox\Dto\Following.cs" />
     <Compile Include="Hitbox\Dto\Livestream.cs" />
@@ -56,6 +57,7 @@
     <Compile Include="Hitbox\Dto\QueryRoot\ChannelRoot.cs" />
     <Compile Include="Hitbox\Dto\QueryRoot\ChannelVideosRoot.cs" />
     <Compile Include="Hitbox\Dto\QueryRoot\StreamRoot.cs" />
+    <Compile Include="Hitbox\Dto\QueryRoot\TopGamesRoot.cs" />
     <Compile Include="Hitbox\Dto\QueryRoot\UserFollowsRoot.cs" />
     <Compile Include="Hitbox\Dto\Video.cs" />
     <Compile Include="Hitbox\Dto\QueryRoot\StreamsRoot.cs" />

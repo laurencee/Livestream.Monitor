@@ -111,6 +111,7 @@
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
     <Compile Include="Model\ApiClients\HitboxApiClient.cs" />
+    <Compile Include="Model\ApiClients\KnownGame.cs" />
     <Compile Include="Model\LivestreamsLayoutMode.cs" />
     <Compile Include="Model\ApiClients\IApiClientFactory.cs" />
     <Compile Include="Model\ApiClients\ApiClientFactory.cs" />
@@ -127,8 +128,9 @@
     <Compile Include="Model\ApiClients\TwitchApiClient.cs" />
     <Compile Include="Model\ApiClients\VodQuery.cs" />
     <Compile Include="Model\ApiClients\YoutubeApiClient.cs" />
-    <Compile Include="Model\TwitchSearchStreamResult.cs" />
+    <Compile Include="Model\TopStreamResult.cs" />
     <Compile Include="Model\TypeMappings.cs" />
+    <Compile Include="Model\UniqueStreamKey.cs" />
     <Compile Include="Model\VodDetails.cs" />
     <Compile Include="ViewModels\EmulatorViewModel.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />
@@ -145,7 +147,7 @@
     <Compile Include="Model\Monitoring\MonitorStreamsModel.cs" />
     <Compile Include="ViewModels\NotificationViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
-    <Compile Include="ViewModels\TopTwitchStreamsViewModel.cs" />
+    <Compile Include="ViewModels\TopStreamsViewModel.cs" />
     <Compile Include="ViewModels\VodListViewModel.cs" />
     <Compile Include="Views\EmulatorView.xaml.cs">
       <DependentUpon>EmulatorView.xaml</DependentUpon>
@@ -211,7 +213,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Views\TopTwitchStreamsView.xaml">
+    <Page Include="Views\TopStreamsView.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

@@ -1,0 +1,50 @@
+using System;
+
+namespace Livestream.Monitor.Model
+{
+    /// <summary> A unique definition of a stream specific to an api client. ToString and equality members are implemented. </summary>
+    public class UniqueStreamKey
+    {
+        public UniqueStreamKey(string apiClientName, string streamId)
+        {
+            if (String.IsNullOrWhiteSpace(apiClientName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(apiClientName));
+            if (String.IsNullOrWhiteSpace(streamId))
+                throw new ArgumentException("Argument is null or whitespace", nameof(streamId));
+
+            ApiClientName = apiClientName;
+            StreamId = streamId;
+        }
+
+        public string ApiClientName { get; set; }
+
+        public string StreamId { get; set; }
+
+        public override string ToString() => $"{ApiClientName}:{StreamId}";
+
+        #region equality members
+
+        protected bool Equals(UniqueStreamKey other)
+        {
+            return string.Equals(ApiClientName, other.ApiClientName) && string.Equals(StreamId, other.StreamId);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            if (obj.GetType() != this.GetType()) return false;
+            return Equals((UniqueStreamKey) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^ (StreamId?.GetHashCode() ?? 0);
+            }
+        }
+
+        #endregion
+    }
+}

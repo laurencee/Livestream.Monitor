@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
-using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -31,6 +30,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasChatSupport => true;
 
         public bool HasVodViewerSupport => true;
+
+        public bool HasTopStreamsSupport => true;
 
         public List<string> VodTypes { get; } = new List<string>()
         {
@@ -116,6 +117,35 @@ namespace Livestream.Monitor.Model.ApiClients
             }).ToList();
 
             return vods;
+        }
+
+        public async Task<List<LivestreamModel>> GetTopStreams(TopStreamQuery topStreamQuery)
+        {
+            if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
+            var topStreams = await twitchTvClient.GetTopStreams(topStreamQuery);
+
+            return topStreams.Select(x =>
+            {
+                var livestreamModel = new LivestreamModel();
+                livestreamModel.PopulateWithStreamDetails(x, this);
+                livestreamModel.PopulateWithChannel(x.Channel);
+                return livestreamModel;
+            }).ToList();
+        }
+
+        public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
+        {
+            var twitchGames = await twitchTvClient.SearchGames(filterGameName);
+            return twitchGames.Select(x => new KnownGame()
+            {
+                GameName = x.Name,
+                ThumbnailUrls = new ThumbnailUrls()
+                {
+                    Medium = x.Logo?.Medium,
+                    Small = x.Logo?.Small,
+                    Large = x.Logo?.Large
+                }
+            }).ToList();
         }
     }
 }

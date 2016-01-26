@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
@@ -15,6 +16,8 @@ namespace Livestream.Monitor.Model.ApiClients
         bool HasChatSupport { get; }
 
         bool HasVodViewerSupport { get; }
+
+        bool HasTopStreamsSupport { get; }
 
         List<string> VodTypes { get; }
 
@@ -35,5 +38,12 @@ namespace Livestream.Monitor.Model.ApiClients
         Task UpdateOfflineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken);
 
         Task<List<VodDetails>> GetVods(VodQuery vodQuery);
+
+        Task<List<LivestreamModel>> GetTopStreams(TopStreamQuery topStreamQuery);
+
+        /// <summary> Gets a list of known game names from the api with an optional game name filter</summary>
+        /// <param name="filterGameName">Optional game name filter</param>
+        /// <returns>Collection of known games from the api</returns>
+        Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
     }
 }

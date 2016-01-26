@@ -4,8 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv;
-using ExternalAPIs.TwitchTv.Dto;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
@@ -18,8 +16,7 @@ namespace Livestream.Monitor.Model
     public class PopularLivestreamWatcher
     {
         private const int PollMs = 30000;
-
-        private readonly ITwitchTvReadonlyClient twitchTvClient;
+        
         private readonly ISettingsHandler settingsHandler;
         private readonly NotificationHandler notificationHandler;
         private readonly IApiClientFactory apiClientFactory;
@@ -31,21 +28,18 @@ namespace Livestream.Monitor.Model
         private int minimumEventViewers;
         
         public PopularLivestreamWatcher(
-            ITwitchTvReadonlyClient twitchTvClient,
             ISettingsHandler settingsHandler,
             NotificationHandler notificationHandler,
             INavigationService navigationService,
             IMonitorStreamsModel monitorStreamsModel,
             IApiClientFactory apiClientFactory)
         {
-            if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-
-            this.twitchTvClient = twitchTvClient;
+            
             this.settingsHandler = settingsHandler;
             this.notificationHandler = notificationHandler;
             this.apiClientFactory = apiClientFactory;
@@ -56,7 +50,7 @@ namespace Livestream.Monitor.Model
                 if (livestream != null)
                     model.SelectedLivestream = livestream;
                 else
-                    navigationService.NavigateTo<TopTwitchStreamsViewModel>();
+                    navigationService.NavigateTo<TopStreamsViewModel>(viewModel => viewModel.SelectedApiClient = notification.LivestreamModel.ApiClient);
             };
 
             settingsHandler.Settings.PropertyChanged += (sender, args) =>
@@ -112,10 +106,10 @@ namespace Livestream.Monitor.Model
                     foreach (var stream in livestreamModels)
                     {
                         // don't notify about the same event again within the next hour
-                        if (notifiedEvents.Get(stream.Id) != null)
+                        if (notifiedEvents.Get(stream.UniqueStreamKey.ToString()) != null)
                             continue;
 
-                        notifiedEvents.Set(stream.Id, stream, DateTimeOffset.Now.AddHours(1));
+                        notifiedEvents.Set(stream.UniqueStreamKey.ToString(), stream, DateTimeOffset.Now.AddHours(1));
 
                         stream.SetLivestreamNotifyState(settingsHandler.Settings);
                         notificationHandler.AddNotification(new LivestreamNotification()
@@ -145,15 +139,21 @@ namespace Livestream.Monitor.Model
         {
             const int maxReturnCount = 5;
 
-            List<Stream> popularStreams = new List<Stream>();
+            var popularStreams = new List<LivestreamModel>();
             int requeries = 0;
             try
             {
+                var supportApiClients = apiClientFactory.GetAll().Where(x => x.HasTopStreamsSupport).ToList();
                 while (popularStreams.Count < maxReturnCount && requeries < 3)
                 {
                     var topStreamsQuery = new TopStreamQuery() { Skip = requeries * maxReturnCount, Take = maxReturnCount};
-                    var possibleStreams = await twitchTvClient.GetTopStreams(topStreamsQuery);
 
+                    var possibleStreams = new List<LivestreamModel>();
+                    foreach (var apiClient in supportApiClients)
+                    {
+                        possibleStreams.AddRange(await apiClient.GetTopStreams(topStreamsQuery));
+                    }
+                    
                     // perform this check before further filtering since this is the most important check
                     if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break;
 
@@ -161,8 +161,7 @@ namespace Livestream.Monitor.Model
                         possibleStreams.Where(x =>
                                               x.Viewers >= MinimumEventViewers &&
                                               !ExcludedGames.Contains(x.Game) &&
-                                              x.Channel?.Name != null && // prevent adding streams we've already shown recently
-                                              !notifiedEvents.Contains(x.Channel?.Name)
+                                              !notifiedEvents.Contains(x.UniqueStreamKey.ToString()) 
                             ));
 
                     requeries++;
@@ -174,8 +173,7 @@ namespace Livestream.Monitor.Model
             }
 
 
-            return popularStreams.Select(x => new LivestreamModel().PopulateWithStreamDetails(x, apiClientFactory.Get<TwitchApiClient>()))
-                                 .ToList();
+            return popularStreams;
         }
     }
 }

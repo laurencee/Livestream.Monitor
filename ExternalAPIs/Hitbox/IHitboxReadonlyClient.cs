@@ -16,5 +16,9 @@ namespace ExternalAPIs.Hitbox
         Task<List<Video>> GetChannelVideos(ChannelVideosQuery channelVideosQuery);
 
         Task<List<Following>> GetUserFollows(string username);
+
+        /// <summary> Gets top games current on hitbox with an optional game name filter </summary>
+        /// <param name="gameName">Optional value to filter games by</param>
+        Task<List<Category>> GetTopGames(string gameName = null);
     }
 }

@@ -56,5 +56,15 @@ namespace ExternalAPIs.Tests
             Assert.NotNull(followings);
             Assert.NotEmpty(followings);
         }
+
+        [InlineData(null)]
+        [InlineData("Minecraft")]
+        [Theory]
+        public async Task GetTopGames(string gameName)
+        {
+            var topGames = await sut.GetTopGames(gameName);
+            Assert.NotNull(topGames);
+            Assert.NotEmpty(topGames);
+        }
     }
 }

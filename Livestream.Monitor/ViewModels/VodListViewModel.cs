@@ -66,12 +66,7 @@ namespace Livestream.Monitor.ViewModels
                 if (value == streamId) return;
                 streamId = value;
                 NotifyOfPropertyChange(() => StreamId);
-                // automatically set the correct api client for known streams
-                var knownStream = KnownStreams.FirstOrDefault(x => x.Id == streamId);
-                if (knownStream != null && SelectedApiClient != knownStream.ApiClient)
-                    SelectedApiClient = knownStream.ApiClient; // changing the selected api client will cause a refresh of vods
-                else
-                    UpdateItems();
+                if (!string.IsNullOrWhiteSpace(streamId)) MovePage();
             }
         }
 
@@ -98,6 +93,14 @@ namespace Livestream.Monitor.ViewModels
                 selectedApiClient = value;
                 NotifyOfPropertyChange(() => SelectedApiClient);
                 NotifyOfPropertyChange(() => VodTypes);
+
+                var orderedApiClientStream = monitorStreamsModel.Livestreams
+                                                                .Where(x => x.ApiClient == selectedApiClient)
+                                                                .OrderBy(x => x.Id);
+
+                // we have to clear the streamid if we're changing the underlying collection the combobox is bound to AND the streamid doesn't exist in the new collection
+                if (StreamId != null && orderedApiClientStream.All(x => x.Id != StreamId)) StreamId = null;
+                KnownStreams = new BindableCollection<LivestreamModel>(orderedApiClientStream);
                 SelectedVodType = VodTypes.FirstOrDefault();
             }
         }
@@ -119,7 +122,7 @@ namespace Livestream.Monitor.ViewModels
                 if (value == selectedVodType) return;
                 selectedVodType = value;
                 NotifyOfPropertyChange(() => SelectedVodType);
-                UpdateItems();
+                MovePage();
             }
         }
 
@@ -160,7 +163,7 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public bool CanOpenVod => !string.IsNullOrWhiteSpace(VodUrl) && 
+        public bool CanOpenVod => !string.IsNullOrWhiteSpace(VodUrl) &&
                                   Uri.IsWellFormedUriString(VodUrl, UriKind.Absolute);
 
         public void VodClicked(VodDetails vodDetails)
@@ -197,8 +200,6 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
-            var orderedStream = monitorStreamsModel.Livestreams.OrderBy(x => x.Id);
-            KnownStreams = new BindableCollection<LivestreamModel>(orderedStream);
             // set twitch as the default stream provider
             if (SelectedApiClient == null)
                 SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
@@ -212,15 +213,10 @@ namespace Livestream.Monitor.ViewModels
             base.MovePage();
         }
 
-        // Just a hack to allow the property to call EnsureItems since properties can't do async calls inside getters/setters natively
-        private async void UpdateItems()
-        {
-            await EnsureItems();
-        }
-
         private async Task EnsureItems()
         {
-            if (!IsActive || string.IsNullOrWhiteSpace(StreamId)) return;
+            var newStreamId = StreamId; // avoid possible case of the stream id changes mid query
+            if (!IsActive || string.IsNullOrWhiteSpace(newStreamId)) return;
 
             LoadingItems = true;
 
@@ -230,7 +226,7 @@ namespace Livestream.Monitor.ViewModels
 
                 var vodQuery = new VodQuery()
                 {
-                    StreamId = StreamId,
+                    StreamId = newStreamId,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
@@ -242,12 +238,12 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                await this.ShowMessageAsync("Error", $"Unknown stream name '{StreamId}'.");
+                await this.ShowMessageAsync("Error", $"Unknown stream name '{newStreamId}'.");
             }
             catch (Exception ex)
             {
                 await this.ShowMessageAsync("Error",
-                    $"An error occured attempting to get vods from api '{SelectedApiClient.ApiName}' for channel '{StreamId}'." +
+                    $"An error occured attempting to get vods from api '{SelectedApiClient.ApiName}' for channel '{newStreamId}'." +
                     $"{Environment.NewLine}{Environment.NewLine}{ex}");
             }
 

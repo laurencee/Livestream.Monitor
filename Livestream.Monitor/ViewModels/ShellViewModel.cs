@@ -104,7 +104,7 @@ namespace Livestream.Monitor.ViewModels
 
         public void GotoTopStreams()
         {
-            navigationService.NavigateTo<TopTwitchStreamsViewModel>();
+            navigationService.NavigateTo<TopStreamsViewModel>();
         }
 
         public void GotoVodViewer()

@@ -94,7 +94,7 @@ namespace ExternalAPIs.Hitbox.Dto
         [JsonProperty("media_bg_image")]
         public string MediaBgImage { get; set; }
 
-        [JsonProperty("media_views")]
+        [JsonProperty("media_views", NullValueHandling = NullValueHandling.Ignore)]
         public int MediaViews { get; set; }
 
         [JsonProperty("media_views_daily")]
@@ -113,15 +113,15 @@ namespace ExternalAPIs.Hitbox.Dto
         public string CategoryName { get; set; }
 
         [JsonProperty("category_name_short")]
-        public object CategoryNameShort { get; set; }
+        public string CategoryNameShort { get; set; }
 
         [JsonProperty("category_seo_key")]
         public string CategorySeoKey { get; set; }
 
-        [JsonProperty("category_viewers")]
-        public string CategoryViewers { get; set; }
+        [JsonProperty("category_viewers", NullValueHandling = NullValueHandling.Ignore)]
+        public int CategoryViewers { get; set; }
 
-        [JsonProperty("category_media_count")]
+        [JsonProperty("category_media_count", NullValueHandling = NullValueHandling.Ignore)]
         public int CategoryMediaCount { get; set; }
 
         [JsonProperty("category_channels")]

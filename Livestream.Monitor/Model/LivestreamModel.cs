@@ -24,6 +24,9 @@ namespace Livestream.Monitor.Model
         
         public IApiClient ApiClient { get; set; }
 
+        /// <summary> This key is unique between all api client, it has a string representation and equality members. </summary>
+        public UniqueStreamKey UniqueStreamKey => new UniqueStreamKey(ApiClient.ApiName, Id);
+
         public bool Live
         {
             get { return live; }

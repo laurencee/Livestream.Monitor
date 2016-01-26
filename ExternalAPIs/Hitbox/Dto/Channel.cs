@@ -6,7 +6,7 @@ namespace ExternalAPIs.Hitbox.Dto
 {
     public class Channel
     {
-        [JsonProperty("followers")]
+        [JsonProperty("followers", NullValueHandling = NullValueHandling.Ignore)]
         public int Followers { get; set; }
 
         [JsonProperty("user_id")]

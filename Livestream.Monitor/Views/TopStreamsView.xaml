@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="Livestream.Monitor.Views.TopTwitchStreamsView"
+﻿<UserControl x:Class="Livestream.Monitor.Views.TopStreamsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -8,11 +8,11 @@
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
-             d:DataContext="{d:DesignInstance Type=viewModels:TopTwitchStreamsViewModel, IsDesignTimeCreatable=True}"
+             d:DataContext="{d:DesignInstance Type=viewModels:TopStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="600" d:DesignWidth="500">
     <UserControl.Resources>
-        <Style x:Key="StreamTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}" d:DataContext="{d:DesignInstance model:TwitchSearchStreamResult}">
+        <Style x:Key="StreamTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}" d:DataContext="{d:DesignInstance model:TopStreamResult}">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush3}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsMonitored}" Value="True">
@@ -37,8 +37,9 @@
                 <Style TargetType="TextBlock" BasedOn="{StaticResource HeaderTextblock}" />
             </StackPanel.Resources>
             <Button x:Name="TryClose" Style="{StaticResource BackButton}" />
+            <ComboBox x:Name="ApiClients" Margin="3" DisplayMemberPath="ApiName" />
             <TextBlock Text="Game Filter" />
-            <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ShowPossibleGames}"
+            <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ExpandPossibleGames}"
                       Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. This must be an EXACT match e.g. League of Legends rather than just league, so use the auto-completion drop down option."
                      controls:TextBoxHelper.Watermark="Partial game name..."
                      IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False" />
@@ -53,7 +54,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="model:TwitchSearchStreamResult">
+                    <DataTemplate DataType="model:TopStreamResult">
                         <Grid>
                             <controls:Tile x:Name="StreamTile" Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120" Width="155">
                                 <controls:Tile.ContextMenu>

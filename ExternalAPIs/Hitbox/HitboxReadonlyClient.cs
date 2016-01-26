@@ -72,5 +72,16 @@ namespace ExternalAPIs.Hitbox
 
             return userFollows.Following;
         }
+
+        public async Task<List<Category>> GetTopGames(string gameName)
+        {
+            var request = $"{RequestConstants.Games}?liveonly=true";
+            if (gameName != null)
+                request += $"&q={gameName}";
+
+            var topGamesRoot = await HttpClientExtensions.ExecuteRequest<TopGamesRoot>(request);
+
+            return topGamesRoot.Categories;
+        }
     }
 }

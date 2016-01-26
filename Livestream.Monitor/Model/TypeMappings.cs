@@ -1,6 +1,5 @@
 ﻿using System;
 using ExternalAPIs.TwitchTv.Dto;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
@@ -50,9 +49,9 @@ namespace Livestream.Monitor.Model
             livestreamModel.Language = channel.Language;
         }
 
-        public static ExcludeNotify ToExcludeNotify(this LivestreamModel livestreamModel)
+        public static UniqueStreamKey ToExcludeNotify(this LivestreamModel livestreamModel)
         {
-            return new ExcludeNotify(livestreamModel.ApiClient.ApiName, livestreamModel.Id);
+            return new UniqueStreamKey(livestreamModel.ApiClient.ApiName, livestreamModel.Id);
         }
     }
 }

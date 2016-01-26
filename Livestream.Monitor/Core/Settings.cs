@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -116,11 +117,11 @@ namespace Livestream.Monitor.Core
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [JsonConverter(typeof(ExcludeNotifyConverter))]
-        public ObservableCollection<ExcludeNotify> ExcludeFromNotifying { get; } = new ObservableCollection<ExcludeNotify>();
+        public ObservableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new ObservableCollection<UniqueStreamKey>();
     }
 
     /// <summary>
-    /// Migrates from the old array of streamids format to the new format using <see cref="ExcludeNotify"/> type
+    /// Migrates from the old array of streamids format to the new format using <see cref="UniqueStreamKey"/> type
     /// </summary>
     public class ExcludeNotifyConverter : JsonConverter
     {
@@ -136,7 +137,7 @@ namespace Livestream.Monitor.Core
         {
             if (reader.TokenType == JsonToken.Null) return null;
             
-            var exclusions = (ObservableCollection<ExcludeNotify>) existingValue;
+            var exclusions = (ObservableCollection<UniqueStreamKey>) existingValue;
             
             while (reader.Read())
             {
@@ -145,13 +146,13 @@ namespace Livestream.Monitor.Core
                     case JsonToken.EndArray:
                         return exclusions;
                     case JsonToken.StartObject:
-                        var excludeNotify = serializer.Deserialize<ExcludeNotify>(reader);
+                        var excludeNotify = serializer.Deserialize<UniqueStreamKey>(reader);
                         exclusions.Add(excludeNotify);
                         break;
                     default: // convert old array of stream ids
                         var streamId = reader.Value.ToString();
                         SaveRequired = true; // if we ran conversions then we should save the new output file
-                        exclusions.Add(new ExcludeNotify(TwitchApiClient.API_NAME, streamId));
+                        exclusions.Add(new UniqueStreamKey(TwitchApiClient.API_NAME, streamId));
                         break;
                 }
             }
@@ -163,50 +164,5 @@ namespace Livestream.Monitor.Core
         {
             return true;
         }
-    }
-
-    public class ExcludeNotify
-    {
-        public ExcludeNotify(string apiClientName, string streamId)
-        {
-            if (String.IsNullOrWhiteSpace(apiClientName))
-                throw new ArgumentException("Argument is null or whitespace", nameof(apiClientName));
-            if (String.IsNullOrWhiteSpace(streamId))
-                throw new ArgumentException("Argument is null or whitespace", nameof(streamId));
-
-            ApiClientName = apiClientName;
-            StreamId = streamId;
-        }
-
-        public string ApiClientName { get; set; }
-
-        public string StreamId { get; set; }
-
-        public override string ToString() => $"{ApiClientName}:{StreamId}";
-
-        #region equality members
-
-        protected bool Equals(ExcludeNotify other)
-        {
-            return string.Equals(ApiClientName, other.ApiClientName) && string.Equals(StreamId, other.StreamId);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((ExcludeNotify) obj);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^ (StreamId?.GetHashCode() ?? 0);
-            }
-        }
-
-        #endregion
     }
 }

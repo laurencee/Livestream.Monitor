@@ -48,7 +48,7 @@ namespace Livestream.Monitor
             container.PerRequest<MainViewModel>();
             container.PerRequest<SettingsViewModel>();
             container.PerRequest<LivestreamListViewModel>();
-            container.PerRequest<TopTwitchStreamsViewModel>();
+            container.PerRequest<TopStreamsViewModel>();
             container.PerRequest<VodListViewModel>();
 
             // singleton instance of the navigation service - this relies on using the container so it needs special registration

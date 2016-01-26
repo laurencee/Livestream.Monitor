@@ -1,13 +1,19 @@
+using System;
 using Caliburn.Micro;
-using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
     /// <summary> Composite class for searched top stream data </summary>
-    public class TwitchSearchStreamResult : PropertyChangedBase
+    public class TopStreamResult : PropertyChangedBase
     {
         private bool isMonitored;
         private bool isBusy;
+
+        public TopStreamResult(LivestreamModel livestreamModel)
+        {
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
+            LivestreamModel = livestreamModel;
+        }
 
         public bool IsMonitored
         {
@@ -31,6 +37,6 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public LivestreamModel LivestreamModel { get; set; } = new LivestreamModel();
+        public LivestreamModel LivestreamModel { get; }
     }
 }
