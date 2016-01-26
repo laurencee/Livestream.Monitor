@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using Caliburn.Micro;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.ViewModels

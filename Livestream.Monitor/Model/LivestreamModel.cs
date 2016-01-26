@@ -2,7 +2,7 @@
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
 
-namespace Livestream.Monitor.Model.Monitoring
+namespace Livestream.Monitor.Model
 {
     public class LivestreamModel : PropertyChangedBase
     {
@@ -188,7 +188,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         protected bool Equals(LivestreamModel other)
         {
-            return string.Equals(Id, other.Id);
+            return string.Equals(Id, other.Id) && Equals(ApiClient, other.ApiClient);
         }
 
         public override bool Equals(object obj)
@@ -201,7 +201,10 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public override int GetHashCode()
         {
-            return Id?.GetHashCode() ?? 0;
+            unchecked
+            {
+                return ((Id?.GetHashCode() ?? 0) * 397) ^ (ApiClient?.GetHashCode() ?? 0);
+            }
         }
 
         #endregion

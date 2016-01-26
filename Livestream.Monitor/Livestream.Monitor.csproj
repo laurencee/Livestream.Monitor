@@ -132,7 +132,7 @@
     <Compile Include="Model\VodDetails.cs" />
     <Compile Include="ViewModels\EmulatorViewModel.cs" />
     <Compile Include="ViewModels\LivestreamListViewModel.cs" />
-    <Compile Include="Model\Monitoring\LivestreamModel.cs" />
+    <Compile Include="Model\LivestreamModel.cs" />
     <Compile Include="Core\UI\MetroThemeBaseColour.cs" />
     <Compile Include="Core\UI\MetroThemeColours.cs" />
     <Compile Include="Core\UI\MetroWindowManager.cs" />

@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
