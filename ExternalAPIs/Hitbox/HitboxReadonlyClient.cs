@@ -73,7 +73,7 @@ namespace ExternalAPIs.Hitbox
             return userFollows.Following;
         }
 
-        public async Task<List<Category>> GetTopGames(string gameName)
+        public async Task<List<Category>> GetTopGames(string gameName = null)
         {
             var request = $"{RequestConstants.Games}?liveonly=true";
             if (gameName != null)
