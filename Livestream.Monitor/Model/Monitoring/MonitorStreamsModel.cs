@@ -6,7 +6,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
-using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
@@ -18,9 +17,7 @@ namespace Livestream.Monitor.Model.Monitoring
         public static readonly TimeSpan HalfRefreshPollingTime = TimeSpan.FromTicks(RefreshPollingTime.Ticks / 2);
 
         private readonly IMonitoredStreamsFileHandler fileHandler;
-        private readonly ITwitchTvReadonlyClient twitchTvClient;
         private readonly ISettingsHandler settingsHandler;
-        private readonly IApiClientFactory apiClientFactory;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
 
         private bool initialised;
@@ -57,19 +54,13 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public MonitorStreamsModel(
             IMonitoredStreamsFileHandler fileHandler,
-            ITwitchTvReadonlyClient twitchTvClient,
-            ISettingsHandler settingsHandler,
-            IApiClientFactory apiClientFactory)
+            ISettingsHandler settingsHandler)
         {
             if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
-            if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.fileHandler = fileHandler;
-            this.twitchTvClient = twitchTvClient;
             this.settingsHandler = settingsHandler;
-            this.apiClientFactory = apiClientFactory;
         }
 
         public BindableCollection<LivestreamModel> Livestreams
@@ -138,29 +129,20 @@ namespace Livestream.Monitor.Model.Monitoring
             SelectedLivestream = livestreamModel;
         }
 
-        public async Task ImportFollows(string username)
+        public async Task ImportFollows(string username, IApiClient apiClient)
         {
             if (username == null) throw new ArgumentNullException(nameof(username));
+            if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
+            if (!apiClient.HasUserFollowQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
 
-            var userFollows = await twitchTvClient.GetUserFollows(username);
-            var userFollowedChannels = from follow in userFollows.Follows
-                                       select new LivestreamModel()
-                                       {
-                                           Id = follow.Channel?.Name,
-                                           ApiClient = apiClientFactory.Get<TwitchApiClient>(),
-                                           DisplayName = follow.Channel?.Name,
-                                           Description = follow.Channel?.Status,
-                                           Game = follow.Channel?.Game,
-                                           IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
-                                           ImportedBy = username,
-                                           BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
-                                       };
-
-            var newChannels = userFollowedChannels.Except(Livestreams).ToList(); // ignore duplicate channels
+            var followedChannels = await apiClient.GetUserFollows(username);
+            var newChannels = followedChannels.Except(Livestreams).ToList(); // ignore duplicate channels
             newChannels.ForEach(x => x.SetLivestreamNotifyState(settingsHandler.Settings));
 
             Livestreams.AddRange(newChannels);
             SaveLivestreams();
+
+            await apiClient.UpdateOnlineStreams(newChannels, CancellationToken.None);
         }
 
         public async Task RefreshLivestreams()

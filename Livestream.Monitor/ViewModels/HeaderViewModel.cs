@@ -177,16 +177,25 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task ImportFollows()
         {
+            if (!SelectedApiClient.HasUserFollowQuerySupport)
+            {
+                await this.ShowMessageAsync("No import support",
+                    $"{SelectedApiClient.ApiName} does not have support for importing followed streams");
+                return;
+            }
+
             var dialogSettings = new MetroDialogSettings() { AffirmativeButtonText = "Import" };
-            var username = await this.ShowDialogAsync("Import Streams", "Enter username for importing followed streams", dialogSettings);
+            var username = await this.ShowDialogAsync("Import Streams",
+                $"Enter username for importing followed streams from '{SelectedApiClient.ApiName}'",
+                dialogSettings);
 
             if (!IsNullOrWhiteSpace(username))
             {
                 username = username.Trim();
-                var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from user '{username}'");
+                var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from '{SelectedApiClient.ApiName}' for username '{username}'");
                 try
                 {
-                    await monitorStreamsModel.ImportFollows(username);
+                    await monitorStreamsModel.ImportFollows(username, SelectedApiClient);
                 }
                 catch (Exception ex)
                 {
@@ -279,8 +288,13 @@ namespace Livestream.Monitor.ViewModels
 
         private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
-            if (e.NewItems != null || e.OldItems != null)
+            if (e.Action == NotifyCollectionChangedAction.Reset ||
+                e.Action == NotifyCollectionChangedAction.Replace ||
+                e.NewItems != null ||
+                e.OldItems != null)
+            {
                 SetFilterModelApiClients();
+            }
         }
 
         private void SetFilterModelApiClients()

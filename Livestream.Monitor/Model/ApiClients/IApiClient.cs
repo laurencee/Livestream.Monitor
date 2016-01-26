@@ -2,7 +2,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.Query;
-using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -18,6 +17,8 @@ namespace Livestream.Monitor.Model.ApiClients
         bool HasVodViewerSupport { get; }
 
         bool HasTopStreamsSupport { get; }
+
+        bool HasUserFollowQuerySupport { get; }
 
         List<string> VodTypes { get; }
 
@@ -45,5 +46,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <param name="filterGameName">Optional game name filter</param>
         /// <returns>Collection of known games from the api</returns>
         Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
+
+        Task<List<LivestreamModel>> GetUserFollows(string userName);
     }
 }

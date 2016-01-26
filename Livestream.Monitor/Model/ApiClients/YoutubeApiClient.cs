@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.Query;
 using ExternalAPIs.Youtube;
-using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -30,6 +29,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasVodViewerSupport => false;
 
         public bool HasTopStreamsSupport => false;
+
+        public bool HasUserFollowQuerySupport => false;
 
         public List<string> VodTypes { get; } = new List<string>();
 
@@ -109,6 +110,11 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         public Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<LivestreamModel>> GetUserFollows(string userName)
         {
             throw new NotImplementedException();
         }

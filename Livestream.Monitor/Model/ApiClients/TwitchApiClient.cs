@@ -33,6 +33,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasTopStreamsSupport => true;
 
+        public bool HasUserFollowQuerySupport => true;
+
         public List<string> VodTypes { get; } = new List<string>()
         {
             BroadcastVodType,
@@ -66,7 +68,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 livestream.PopulateWithChannel(onlineStream.Channel);
                 livestream.PopulateWithStreamDetails(onlineStream, this);
             }
-            
+
             return livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
         }
 
@@ -88,16 +90,16 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 offlineTask.Livestream.PopulateWithChannel(offlineData);
             }
-        } 
+        }
 
         public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
         {
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
             if (string.IsNullOrWhiteSpace(vodQuery.StreamId)) throw new ArgumentNullException(nameof(vodQuery.StreamId));
-            
+
             var channelVideosQuery = new ChannelVideosQuery()
             {
-                ChannelName =vodQuery.StreamId,
+                ChannelName = vodQuery.StreamId,
                 Take = vodQuery.Take,
                 Skip = vodQuery.Skip,
                 HLSVodsOnly = true,
@@ -146,6 +148,23 @@ namespace Livestream.Monitor.Model.ApiClients
                     Large = x.Logo?.Large
                 }
             }).ToList();
+        }
+
+        public async Task<List<LivestreamModel>> GetUserFollows(string userName)
+        {
+            var userFollows = await twitchTvClient.GetUserFollows(userName);
+            return (from follow in userFollows.Follows
+                    select new LivestreamModel()
+                    {
+                        Id = follow.Channel?.Name,
+                        ApiClient = this,
+                        DisplayName = follow.Channel?.Name,
+                        Description = follow.Channel?.Status,
+                        Game = follow.Channel?.Game,
+                        IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
+                        ImportedBy = userName,
+                        BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
+                    }).ToList();
         }
     }
 }

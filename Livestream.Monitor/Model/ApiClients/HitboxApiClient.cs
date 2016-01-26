@@ -38,6 +38,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasTopStreamsSupport => true;
 
+        public bool HasUserFollowQuerySupport => true;
+
         public List<string> VodTypes { get; } = new List<string>();
 
         public string GetStreamUrl(string channelId)
@@ -133,6 +135,16 @@ namespace Livestream.Monitor.Model.ApiClients
                     Medium = x.CategoryLogoSmall,
                     Small = x.CategoryLogoSmall
                 }
+            }).ToList();
+        }
+
+        public async Task<List<LivestreamModel>> GetUserFollows(string userName)
+        {
+            var userFollows = await hitboxClient.GetUserFollows(userName);
+            return userFollows.Select(x => new LivestreamModel()
+            {
+                Id = x.UserName,
+                ApiClient = this,
             }).ToList();
         }
 

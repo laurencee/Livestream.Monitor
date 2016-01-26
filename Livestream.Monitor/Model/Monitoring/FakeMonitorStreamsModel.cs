@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -99,7 +100,7 @@ namespace Livestream.Monitor.Model.Monitoring
             return Task.CompletedTask;
         }
 
-        public Task ImportFollows(string username)
+        public Task ImportFollows(string username, IApiClient apiClient)
         {
             return Task.CompletedTask;
         }

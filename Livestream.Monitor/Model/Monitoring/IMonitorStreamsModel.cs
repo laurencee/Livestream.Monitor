@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -19,7 +20,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         Task AddLivestream(LivestreamModel livestreamModel);
 
-        Task ImportFollows(string username);
+        Task ImportFollows(string username, IApiClient apiClient);
 
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();
