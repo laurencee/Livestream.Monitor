@@ -30,7 +30,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
 
-*Youtube currently linked to individual videos instead of the channels, this will be fixed in the future: #9
+*Youtube currently linked to individual videos instead of the channels, this will be fixed in the future: [#9](https://github.com/laurencee/Livestream.Monitor/issues/9)
 
 
 ## Twitch/hitbox features
