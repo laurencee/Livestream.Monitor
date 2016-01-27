@@ -19,18 +19,22 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## General Features
-* Add your favourite livestreams to be monitored from twitch/youtube
-* Open twitch/youtube chat for the selected stream (requires chrome)
+* Add your favourite livestreams to be monitored from twitch/youtube*/hitbox
+* Open twitch/youtube/hitbox chat for the selected stream (requires chrome)
 * Ability to choose quality of stream (before opening the stream)
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
-* Filter your channel list to find streams quickly
-* Change your colour theme using the theme button in the top right
+* Filter your channel list to find and manage streams quickly
+* Change your colour theme using the theme button in settings
 
 TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
-## Twitch features
-* Import your already followed streams from twitch for live monitoring
+
+*Youtube currently linked to individual videos instead of the channels, this will be fixed in the future: #9
+
+
+## Twitch/hitbox features
+* Import your already followed streams for live monitoring
 * Search for top streams and filter top streams by game (add for monitoring with 1 click)
 * Search for VODS by streamer and launch vods through livestreamer (you can also just paste any valid vod url and launch that instead)
 
