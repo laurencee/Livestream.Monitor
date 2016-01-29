@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ExternalAPIs.Youtube.Dto
+namespace ExternalAPIs.Youtube.Dto.QueryRoot
 {
     public class VideoRoot
     {
