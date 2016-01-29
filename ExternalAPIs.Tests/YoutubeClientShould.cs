@@ -30,8 +30,29 @@ namespace ExternalAPIs.Tests
             }
             catch (HttpRequestWithStatusException exception)
             {
-                Assert.Equal(HttpStatusCode.NotFound, exception.StatusCode);
+                Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
             }
+        }
+
+        [Fact, Trait("Category", "LocalOnly")]
+        public async Task GetChannelIdFromChannelName()
+        {
+            const string channelName = "LoLChampSeries";
+            var channelId = await sut.GetChannelIdFromChannelName(channelName);
+            
+            Assert.NotNull(channelId);
+        }
+
+        [Fact, Trait("Category", "LocalOnly")]
+        public async Task GetLiveVideos()
+        {
+            // channelId of the value returned by the test "GetChannelIdFromChannelName"
+            const string channelId = "UCvqRdlKsE5Q8mf8YXbdIJLw";
+            var onlineVideos = await sut.GetLivestreamVideos(channelId);
+
+            Assert.NotNull(onlineVideos);
+            Assert.NotNull(onlineVideos.Items);
+            Assert.NotEmpty(onlineVideos.Items);
         }
     }
 }
