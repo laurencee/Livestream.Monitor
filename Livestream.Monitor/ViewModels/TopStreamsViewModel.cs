@@ -35,38 +35,6 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            var designTimeItems = new List<TopStreamResult>(new[]
-            {
-                new TopStreamResult(new LivestreamModel
-                    {
-                        DisplayName = "Bob Ross",
-                        Game = "Creative",
-                        Description = "Beat the devil out of it",
-                        Live = true,
-                        StartTime = DateTimeOffset.Now.AddHours(-3),
-                        Viewers = 50000
-                    })
-                {
-                    IsMonitored = false,
-                }
-            });
-
-            for (var i = 0; i < 9; i++)
-            {
-                var stream = new TopStreamResult(new LivestreamModel
-                {
-                    Description = "Design time item " + i,
-                    DisplayName = "Display Name " + i,
-                    Game = "Random Game " + i,
-                    Live = true,
-                    StartTime = DateTimeOffset.Now.AddMinutes(-29 - i),
-                    Viewers = 30000 - i * 200
-                });
-                stream.IsMonitored = i % 3 == 0;
-                designTimeItems.Add(stream);
-            }
-
-            Items.AddRange(designTimeItems);
             ItemsPerPage = STREAM_TILES_PER_PAGE;
         }
 
@@ -263,7 +231,7 @@ namespace Livestream.Monitor.ViewModels
         {
             try
             {
-                await monitorStreamsModel.AddLivestream(topStreamResult.LivestreamModel);
+                await monitorStreamsModel.AddLivestream(topStreamResult.ChannelIdentifier);
                 topStreamResult.IsMonitored = true;
             }
             catch (Exception ex)
@@ -303,8 +271,8 @@ namespace Livestream.Monitor.ViewModels
                 var topStreamResults = new List<TopStreamResult>();
                 foreach (var topLivestream in topStreams)
                 {
-                    var topStreamResult = new TopStreamResult(topLivestream);
-                    topStreamResult.IsMonitored = monitoredStreams.Any(x => Equals(x, topLivestream));
+                    var topStreamResult = new TopStreamResult(topLivestream.LivestreamModel, topLivestream.ChannelIdentifier);
+                    topStreamResult.IsMonitored = monitoredStreams.Any(x => Equals(x, topLivestream.LivestreamModel));
                     topStreamResult.LivestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
 
                     topStreamResults.Add(topStreamResult);

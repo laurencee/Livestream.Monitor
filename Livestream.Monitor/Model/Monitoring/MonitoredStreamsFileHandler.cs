@@ -18,33 +18,32 @@ namespace Livestream.Monitor.Model.Monitoring
             this.apiClientFactory = apiClientFactory;
         }
 
-        public void SaveToDisk(IEnumerable<LivestreamModel> livestreams)
+        public void SaveToDisk(IEnumerable<ChannelIdentifier> livestreams)
         {
             if (livestreams == null) return;
 
             var livestreamFileData = livestreams.Select(x => new LivestreamFileData()
             {
-                LivestreamId = x.Id,
+                ChannelId = x.ChannelId,
                 StreamProvider = x.ApiClient.ApiName,
                 ImportedBy = x.ImportedBy
             });
             SaveToDisk(livestreamFileData);
         }
 
-        public List<LivestreamModel> LoadFromDisk()
+        public List<ChannelIdentifier> LoadFromDisk()
         {
             if (File.Exists(FileName))
             {
                 var livestreamFileData = JsonConvert.DeserializeObject<List<LivestreamFileData>>(File.ReadAllText(FileName));
-                return livestreamFileData.Select(fileData => new LivestreamModel()
+                return livestreamFileData.Select(fileData =>
                 {
-                    Id = fileData.LivestreamId,
-                    ApiClient = apiClientFactory.GetByName(fileData.StreamProvider),
-                    ImportedBy = fileData.ImportedBy
+                    var apiClient = apiClientFactory.GetByName(fileData.StreamProvider);
+                    return new ChannelIdentifier(apiClient, fileData.ChannelId) { ImportedBy = fileData.ImportedBy };
                 }).ToList();
             }
 
-            return new List<LivestreamModel>();
+            return new List<ChannelIdentifier>();
         }
 
         private void SaveToDisk(IEnumerable<LivestreamFileData> livestreamFileData)

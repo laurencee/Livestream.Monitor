@@ -10,15 +10,12 @@ namespace Livestream.Monitor.Core.UI
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var timespan = (TimeSpan) value;
+            var timespan = (TimeSpan)value;
 
-            if (timespan.TotalMinutes < 1)
-                return $"{timespan.Seconds}s";
+            if (timespan == TimeSpan.Zero)
+                return "0";
 
-            if (timespan.TotalHours < 1)
-                return $"{timespan.Minutes}m {timespan.Seconds}s";
-
-            return $"{Math.Floor(timespan.TotalHours)}h {timespan.Minutes}m {timespan.Seconds}s";
+            return $"{Math.Floor(timespan.TotalHours):00}h {timespan.Minutes:00}m {timespan.Seconds:00}s";
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

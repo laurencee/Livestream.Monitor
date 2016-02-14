@@ -50,7 +50,7 @@ namespace Livestream.Monitor.Model
             {
                 HookLivestreamChangeEvents(livestream);
             }
-            monitorStreamsModel.OnlineLivestreamsRefreshComplete += MonitorStreamsModelOnOnlineLivestreamsRefreshComplete;
+            monitorStreamsModel.LivestreamsRefreshComplete += MonitorStreamsModelOnLivestreamsRefreshComplete;
             monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
         }
 
@@ -160,7 +160,7 @@ namespace Livestream.Monitor.Model
             newLivestream.PropertyChanged += LivestreamOnPropertyChanged;
         }
 
-        private void MonitorStreamsModelOnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
+        private void MonitorStreamsModelOnLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
             if (!hasRefreshed) // only listen to stream change events after the first refresh has occurred
             {
@@ -169,7 +169,7 @@ namespace Livestream.Monitor.Model
             }
 
             // Only hook up livestream change events 1 time
-            monitorStreamsModel.OnlineLivestreamsRefreshComplete -= MonitorStreamsModelOnOnlineLivestreamsRefreshComplete;
+            monitorStreamsModel.LivestreamsRefreshComplete -= MonitorStreamsModelOnLivestreamsRefreshComplete;
         }
 
         private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)

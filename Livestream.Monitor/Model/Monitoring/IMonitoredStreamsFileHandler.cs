@@ -4,8 +4,8 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public interface IMonitoredStreamsFileHandler
     {
-        void SaveToDisk(IEnumerable<LivestreamModel> livestreams);
+        void SaveToDisk(IEnumerable<ChannelIdentifier> livestreams);
 
-        List<LivestreamModel> LoadFromDisk();
+        List<ChannelIdentifier> LoadFromDisk();
     }
 }

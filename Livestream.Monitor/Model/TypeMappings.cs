@@ -1,6 +1,5 @@
 ﻿using System;
 using ExternalAPIs.TwitchTv.Dto;
-using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
 {
@@ -8,13 +7,10 @@ namespace Livestream.Monitor.Model
     {
         public static LivestreamModel PopulateWithStreamDetails(
             this LivestreamModel livestreamModel, 
-            Stream streamDetails, 
-            IApiClient twitchApiClient)
+            Stream streamDetails)
         {
             if (streamDetails == null) return livestreamModel;
-
-            livestreamModel.Id = streamDetails.Channel?.Name;
-            livestreamModel.ApiClient = twitchApiClient;
+            
             livestreamModel.Viewers = streamDetails.Viewers ?? 0;
             livestreamModel.ThumbnailUrls = new ThumbnailUrls()
             {
@@ -47,6 +43,21 @@ namespace Livestream.Monitor.Model
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
             livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
             livestreamModel.Language = channel.Language;
+        }
+
+        public static void PopulateSelf(this LivestreamModel livestreamModel, LivestreamModel consume)
+        {
+            livestreamModel.BroadcasterLanguage = consume.BroadcasterLanguage;
+            livestreamModel.Description = consume.Description;
+            livestreamModel.DisplayName = consume.DisplayName;
+            livestreamModel.Game = consume.Game;
+            livestreamModel.IsPartner = consume.IsPartner;
+            livestreamModel.Language = consume.Language;
+            livestreamModel.ThumbnailUrls = consume.ThumbnailUrls;
+
+            livestreamModel.Viewers = consume.Viewers;
+            livestreamModel.StartTime = consume.StartTime;
+            livestreamModel.Live = consume.Live;
         }
 
         public static UniqueStreamKey ToExcludeNotify(this LivestreamModel livestreamModel)

@@ -1,5 +1,6 @@
 using System;
 using Caliburn.Micro;
+using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
@@ -9,10 +10,12 @@ namespace Livestream.Monitor.Model
         private bool isMonitored;
         private bool isBusy;
 
-        public TopStreamResult(LivestreamModel livestreamModel)
+        public TopStreamResult(LivestreamModel livestreamModel, ChannelIdentifier channelIdentifier)
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             LivestreamModel = livestreamModel;
+            ChannelIdentifier = channelIdentifier;
         }
 
         public bool IsMonitored
@@ -38,5 +41,7 @@ namespace Livestream.Monitor.Model
         }
 
         public LivestreamModel LivestreamModel { get; }
+
+        public ChannelIdentifier ChannelIdentifier { get; }
     }
 }

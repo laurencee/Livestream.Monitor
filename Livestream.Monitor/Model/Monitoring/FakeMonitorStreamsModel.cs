@@ -17,11 +17,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
             for (int i = 0; i < 10; i++)
             {
-                var livestream = new LivestreamModel()
-                {
-                    Id = "Livestream " + i,
-                    DisplayName = "Livestream " + i,
-                };
+                var livestream = new LivestreamModel("Livestream " + i, null);
+                livestream.DisplayName = "Livestream " + i;
 
                 if (i < 3)
                     SetStreamOnline(livestream);
@@ -90,12 +87,12 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public event EventHandler OnlineLivestreamsRefreshComplete;
+        public event EventHandler LivestreamsRefreshComplete;
 
-        public Task AddLivestream(LivestreamModel livestreamModel)
+        public Task AddLivestream(ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
-            Livestreams.Add(livestreamModel);
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+            Livestreams.Add(new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier));
 
             return Task.CompletedTask;
         }
@@ -120,7 +117,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
-            OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+            LivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
         }
     }
 }

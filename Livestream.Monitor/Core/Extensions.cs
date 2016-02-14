@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
@@ -90,6 +91,9 @@ namespace Livestream.Monitor.Core
         public static void SetLivestreamNotifyState(this LivestreamModel livestreamModel, Settings settings)
         {
             if (livestreamModel == null) return;
+            if (string.IsNullOrWhiteSpace(livestreamModel.Id)) throw new ArgumentNullException(nameof(LivestreamModel.Id));
+            if (livestreamModel.ApiClient == null) throw new ArgumentNullException(nameof(LivestreamModel.ApiClient));
+
             livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => Equals(x, livestreamModel.ToExcludeNotify()));
         }
 
@@ -123,40 +127,8 @@ namespace Livestream.Monitor.Core
         }
 
         /// <summary>
-        /// Executes the queries in parallel on the <param name="enumerable" /> values and perform a post query action on the result of the query
-        /// within the <see cref="MonitorStreamsModel.HalfRefreshPollingTime"/> timeout.
-        /// </summary>
-        /// <typeparam name="T">Type of the enumerable values</typeparam>
-        /// <typeparam name="TResult">Return type of the query</typeparam>
-        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
-        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
-        /// <param name="postQueryAction">An action to perform on the result of the queyr</param>
-        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public static async Task ExecuteInParallel<T, TResult>(
-            this IEnumerable<T> enumerable,
-            Func<T, Task<TResult>> query,
-            Action<T, TResult> postQueryAction,
-            TimeSpan timeout,
-            CancellationToken cancellationToken)
-        {
-            var tasks = new List<Task>();
-#pragma warning disable CS4014 // warning is invalid since we await tasks later in this method
-            foreach (var value in enumerable)
-            {
-                var task = query(value);
-                var completedTask = task.ContinueWith(t => postQueryAction(value, t.Result), cancellationToken);
-                tasks.Add(completedTask);
-            }
-#pragma warning restore CS4014
-
-            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(timeout, cancellationToken));
-        }
-
-        /// <summary>
-        /// Execute the queries in parallel on the <param name="enumerable"/> values 
-        /// within the <see cref="MonitorStreamsModel.HalfRefreshPollingTime"/> timeout.
+        /// For each <param name="enumerable"/> value execute the query in parallel
+        /// within the <see cref="Constants.HalfRefreshPollingTime"/> timeout.
         /// </summary>
         /// <typeparam name="T">Type of the enumerable values</typeparam>
         /// <param name="enumerable">Collection of <typeparam name="T" /></param>
@@ -170,16 +142,40 @@ namespace Livestream.Monitor.Core
             TimeSpan timeout,
             CancellationToken cancellationToken)
         {
-            var tasks = new List<Task>();
-#pragma warning disable CS4014 // warning is invalid since we await tasks later in this method
-            foreach (var value in enumerable)
-            {
-                var task = query(value);
-                tasks.Add(task);
-            }
-#pragma warning restore CS4014
+            var queryTasks = enumerable.Select(query);
+            await Task.WhenAny(Task.WhenAll(queryTasks), Task.Delay(timeout, cancellationToken));
+        }
 
-            await Task.WhenAny(Task.WhenAll(tasks), Task.Delay(timeout, cancellationToken));
+        /// <summary>
+        /// For each <param name="enumerable"/> value execute the query in parallel
+        /// within the <see cref="Constants.HalfRefreshPollingTime"/> timeout.
+        /// </summary>
+        /// <typeparam name="T">Type of the enumerable values</typeparam>
+        /// <typeparam name="TResult">Type of the returned collection objects</typeparam>
+        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
+        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
+        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
+        /// <param name="cancellationToken"></param>
+        /// <returns>A collection of TResult produced from the <param name="query" /></returns>
+        public static async Task<List<TResult>> ExecuteInParallel<T, TResult>(
+            this IEnumerable<T> enumerable,
+            Func<T, Task<TResult>> query,
+            TimeSpan timeout,
+            CancellationToken cancellationToken)
+        {
+            var queryTasks = enumerable.Select(query);
+            var resultsTask = Task.WhenAll(queryTasks);
+            var timeoutTask = Task.Delay(timeout, cancellationToken);
+            var completedTask = await Task.WhenAny(resultsTask, timeoutTask);
+            return completedTask == timeoutTask ? new List<TResult>() : resultsTask.Result.ToList();
+        }
+
+        /// <summary> Rethrows any failed query exceptions or does nothing if no failed queries exist </summary>
+        public static void EnsureAllQuerySuccess(this IEnumerable<LivestreamQueryResult> livestreamQueryResults)
+        {
+            var failedQuery = livestreamQueryResults.FirstOrDefault(x => !x.IsSuccess);
+            if (failedQuery != null)
+                throw failedQuery.FailedQueryException;
         }
     }
 }

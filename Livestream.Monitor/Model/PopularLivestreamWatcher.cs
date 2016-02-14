@@ -151,7 +151,8 @@ namespace Livestream.Monitor.Model
                     var possibleStreams = new List<LivestreamModel>();
                     foreach (var apiClient in supportApiClients)
                     {
-                        possibleStreams.AddRange(await apiClient.GetTopStreams(topStreamsQuery));
+                        var queryResults = await apiClient.GetTopStreams(topStreamsQuery);
+                        possibleStreams.AddRange(queryResults.Where(x => x.IsSuccess).Select(x => x.LivestreamModel));
                     }
                     
                     // perform this check before further filtering since this is the most important check

@@ -152,11 +152,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await monitorStreamsModel.AddLivestream(new LivestreamModel()
-                {
-                    Id = StreamName,
-                    ApiClient = SelectedApiClient
-                });
+                await monitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName));
                 StreamName = null;
                 await dialogController.CloseAsync();
             }
@@ -210,7 +206,14 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task RefreshLivestreams()
         {
-            await monitorStreamsModel.RefreshLivestreams();
+            try
+            {
+                await monitorStreamsModel.RefreshLivestreams();
+            }
+            catch (Exception ex)
+            {
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.Message);
+            }
         }
 
         public void OpenStream()
