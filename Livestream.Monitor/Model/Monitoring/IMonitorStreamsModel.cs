@@ -20,7 +20,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         Task AddLivestream(ChannelIdentifier channelIdentifier);
 
-        void RemoveLivestream(ChannelIdentifier channelIdentifier);
+        Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 
         Task ImportFollows(string username, IApiClient apiClient);
 

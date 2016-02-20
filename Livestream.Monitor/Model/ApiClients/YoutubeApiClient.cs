@@ -69,17 +69,25 @@ namespace Livestream.Monitor.Model.ApiClients
             moniteredChannels.Add(newChannel);
         }
 
-        public async void RemoveChannel(ChannelIdentifier channelIdentifier)
+        public async Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
             ChannelIdentifier actualChannel = null;
             foreach (var moniteredChannel in moniteredChannels)
             {
                 // map back to the originally added channel (by channel name)
-                var actualChannelId = await GetChannelIdByChannelName(moniteredChannel.ChannelId);
-                if (Equals(new ChannelIdentifier(this, actualChannelId), channelIdentifier))
+                try
+                {
+                    var actualChannelId = await GetChannelIdByChannelName(moniteredChannel.ChannelId);
+                    if (Equals(new ChannelIdentifier(this, actualChannelId), channelIdentifier))
+                    {
+                        actualChannel = moniteredChannel;
+                        break;
+                    }
+                }
+                // we're being careful to just address this specific error to avoid removing the wrong channel due some network/api error
+                catch (Exception e) when(e.Message.StartsWith("Channel name not found"))
                 {
                     actualChannel = moniteredChannel;
-                    break;
                 }
             }
             

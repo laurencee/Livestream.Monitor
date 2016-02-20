@@ -110,11 +110,12 @@ namespace Livestream.Monitor.Model.Monitoring
             return Task.CompletedTask;
         }
 
-        public void RemoveLivestream(ChannelIdentifier channelIdentifier)
+        public Task RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
             Livestreams.RemoveRange(matchingLivestreams);
+            return Task.CompletedTask;
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()

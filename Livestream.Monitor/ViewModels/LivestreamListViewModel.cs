@@ -147,12 +147,14 @@ namespace Livestream.Monitor.ViewModels
             {
                 try
                 {
-                    StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier);
+                    await StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier);
                 }
                 catch (Exception ex)
                 {
                     await this.ShowMessageAsync("Error Removing Stream",
-                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}");
+                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}" + 
+                        Environment.NewLine + Environment.NewLine +
+                        $"TIP: You may have to remove the livestream directly from the livestreams.json file... :(");
                 }
             }
 

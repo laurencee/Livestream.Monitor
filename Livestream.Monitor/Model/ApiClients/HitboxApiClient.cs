@@ -73,9 +73,10 @@ namespace Livestream.Monitor.Model.ApiClients
             moniteredChannels.Add(newChannel);
         }
 
-        public void RemoveChannel(ChannelIdentifier channelIdentifier)
+        public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
-            throw new NotImplementedException();
+            moniteredChannels.Remove(channelIdentifier);
+            return Task.CompletedTask;
         }
 
         public Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)

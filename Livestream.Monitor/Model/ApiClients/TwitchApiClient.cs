@@ -100,7 +100,7 @@ namespace Livestream.Monitor.Model.ApiClients
             moniteredChannels.Add(newChannel);
         }
 
-        public void RemoveChannel(ChannelIdentifier channelIdentifier)
+        public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
             // we keep our offline query results cached so we don't need to re-query them again this application run
             // as such, we must cleanup any previous query result that has the channel identifier being removed
@@ -108,6 +108,7 @@ namespace Livestream.Monitor.Model.ApiClients
             if (queryResult != null) offlineQueryResultsCache.Remove(queryResult);
 
             moniteredChannels.Remove(channelIdentifier);
+            return Task.CompletedTask;
         }
 
         public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)

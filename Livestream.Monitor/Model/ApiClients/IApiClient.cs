@@ -37,7 +37,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <param name="newChannel"></param>
         void AddChannelWithoutQuerying(ChannelIdentifier newChannel);
 
-        void RemoveChannel(ChannelIdentifier channelIdentifier);
+        Task RemoveChannel(ChannelIdentifier channelIdentifier);
 
         /// <summary> Query the api for all followed channels livestreams. Channels to be queried are to be added through <see cref="AddChannel"/> </summary>
         /// <param name="cancellationToken"></param>

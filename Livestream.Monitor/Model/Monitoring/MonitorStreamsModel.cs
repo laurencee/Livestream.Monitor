@@ -165,11 +165,11 @@ namespace Livestream.Monitor.Model.Monitoring
             livestreamQueryResults.EnsureAllQuerySuccess();
         }
 
-        public void RemoveLivestream(ChannelIdentifier channelIdentifier)
+        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
             if (channelIdentifier == null) return;
 
-            channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
+            await channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
             channelIdentifiers.Remove(channelIdentifier);
             // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
