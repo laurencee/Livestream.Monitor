@@ -147,7 +147,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 try
                 {
-                    StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream);
+                    StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier);
                 }
                 catch (Exception ex)
                 {
@@ -274,7 +274,8 @@ namespace Livestream.Monitor.ViewModels
                 var nameFilter = FilterModel.LivestreamNameFilter;
 
                 bool filterNameMatch = string.IsNullOrWhiteSpace(nameFilter) ||
-                                       livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
+                                       livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase) ||
+                                       livestreamModel.ChannelIdentifier.ChannelId.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
 
                 bool apiClientMatch = apiClientNameFilter == FilterModel.AllApiClientsFilterName ||
                                       livestreamModel.ApiClient.ApiName == apiClientNameFilter;

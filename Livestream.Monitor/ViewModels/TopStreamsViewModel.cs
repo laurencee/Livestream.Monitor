@@ -217,7 +217,7 @@ namespace Livestream.Monitor.ViewModels
 
                 if (livestreamModel != null)
                 {
-                    monitorStreamsModel.RemoveLivestream(livestreamModel);
+                    monitorStreamsModel.RemoveLivestream(livestreamModel.ChannelIdentifier);
                 }
                 topStreamResult.IsMonitored = false;
             }

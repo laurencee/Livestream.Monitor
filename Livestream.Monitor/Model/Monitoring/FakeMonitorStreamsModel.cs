@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
@@ -109,10 +110,11 @@ namespace Livestream.Monitor.Model.Monitoring
             return Task.CompletedTask;
         }
 
-        public void RemoveLivestream(LivestreamModel livestreamModel)
+        public void RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
-            Livestreams.Remove(livestreamModel);
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+            var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
+            Livestreams.RemoveRange(matchingLivestreams);
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()

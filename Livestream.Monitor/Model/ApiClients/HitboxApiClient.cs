@@ -20,6 +20,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private const string StaticContentPrefixUrl = "http://edge.sf.hitbox.tv";
 
         private readonly IHitboxReadonlyClient hitboxClient;
+        private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
 
         public HitboxApiClient(IHitboxReadonlyClient hitboxClient)
         {
@@ -55,27 +56,31 @@ namespace Livestream.Monitor.Model.ApiClients
             return $"{BaseUrl}embedchat/{channelId}?autoconnect=true";
         }
 
-        public async Task<List<LivestreamQueryResult>> GetLivestreams(List<ChannelIdentifier> channelIdentifiers, CancellationToken cancellationToken)
+        public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)
         {
-            var queryResults = await channelIdentifiers.ExecuteInParallel(
-                query: async channelIdentifier =>
-                {
-                    var queryResult = new LivestreamQueryResult(channelIdentifier);
-                    try
-                    {
-                        var livestream = await hitboxClient.GetChannelDetails(channelIdentifier.ChannelId);
-                        queryResult.LivestreamModel = ConvertToLivestreamModel(livestream);
-                    }
-                    catch (Exception ex)
-                    {
-                        queryResult.FailedQueryException = new FailedQueryException(channelIdentifier, ex);
-                    }
-                    return queryResult;
-                },
-                timeout: Constants.HalfRefreshPollingTime,
-                cancellationToken: cancellationToken);
+            if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
+
+            var queryResults = await QueryChannels(new[] { newChannel }, CancellationToken.None);
+            if (queryResults.Any(x => x.IsSuccess))
+                moniteredChannels.Add(newChannel);
 
             return queryResults;
+        }
+
+        public void AddChannelWithoutQuerying(ChannelIdentifier newChannel)
+        {
+            if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
+            moniteredChannels.Add(newChannel);
+        }
+
+        public void RemoveChannel(ChannelIdentifier channelIdentifier)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
+        {
+            return QueryChannels(moniteredChannels, cancellationToken);
         }
 
         public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
@@ -157,10 +162,33 @@ namespace Livestream.Monitor.Model.ApiClients
             }).ToList();
         }
 
+        private Task<List<LivestreamQueryResult>> QueryChannels(
+            IReadOnlyCollection<ChannelIdentifier> identifiers,
+            CancellationToken cancellationToken)
+        {
+            return identifiers.ExecuteInParallel(
+                query: async channelIdentifier =>
+                {
+                    var queryResult = new LivestreamQueryResult(channelIdentifier);
+                    try
+                    {
+                        var livestream = await hitboxClient.GetChannelDetails(channelIdentifier.ChannelId);
+                        queryResult.LivestreamModel = ConvertToLivestreamModel(livestream);
+                    }
+                    catch (Exception ex)
+                    {
+                        queryResult.FailedQueryException = new FailedQueryException(channelIdentifier, ex);
+                    }
+                    return queryResult;
+                },
+                timeout: Constants.HalfRefreshPollingTime,
+                cancellationToken: cancellationToken);
+        }
+
         private LivestreamModel ConvertToLivestreamModel(ExternalAPIs.Hitbox.Dto.Livestream livestream)
         {
             var livestreamModel = new LivestreamModel(livestream.Channel?.UserName, new ChannelIdentifier(this, livestream.Channel?.UserName));
-            
+
             livestreamModel.DisplayName = livestream.MediaDisplayName;
             livestreamModel.Description = livestream.MediaStatus;
             livestreamModel.Game = livestream.CategoryName;
@@ -178,6 +206,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 livestreamModel.StartTime = livestream.MediaLiveSince ?? DateTimeOffset.Now;
                 livestreamModel.Live = true;
             }
+            else
+                livestreamModel.Offline();
 
             return livestreamModel;
         }

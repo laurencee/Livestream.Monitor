@@ -16,7 +16,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
-        private readonly List<ChannelIdentifier> channelIdentifiers = new List<ChannelIdentifier>();
+        private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
 
         private bool initialised;
         private bool canRefreshLivestreams = true;
@@ -107,19 +107,13 @@ namespace Livestream.Monitor.Model.Monitoring
         public async Task AddLivestream(ChannelIdentifier channelIdentifier)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
-            if (channelIdentifiers.Any(x => Equals(x, channelIdentifier))) return; // ignore duplicate requests
+            if (channelIdentifiers.Contains(channelIdentifier)) return; // ignore duplicate requests
 
-            var timeoutTokenSource = new CancellationTokenSource();
-            var livestreamQueryResults = await channelIdentifier.ApiClient.GetLivestreams(
-                new List<ChannelIdentifier>() { channelIdentifier },
-                timeoutTokenSource.Token);
+            var livestreamQueryResults = await channelIdentifier.ApiClient.AddChannel(channelIdentifier);
             livestreamQueryResults.EnsureAllQuerySuccess();
 
-            channelIdentifiers.Add(channelIdentifier);
+            AddChannels(channelIdentifier);
             Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
-            SaveLivestreams();
-
-            SelectedLivestream = Livestreams.First();
         }
 
         public async Task ImportFollows(string username, IApiClient apiClient)
@@ -128,17 +122,11 @@ namespace Livestream.Monitor.Model.Monitoring
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
             if (!apiClient.HasUserFollowQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
 
-            var followedChannels = await apiClient.GetUserFollows(username);
-            // ignore duplicate channels
-            var newChannels = followedChannels.Select(x=> x.ChannelIdentifier)
-                .Except(channelIdentifiers)
-                .ToList();
+            var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
+            followedChannelsQueryResults.EnsureAllQuerySuccess();
 
-            var newLivestreams = await apiClient.GetLivestreams(newChannels, CancellationToken.None);
-            newLivestreams.EnsureAllQuerySuccess();
-
-            Livestreams.AddRange(newLivestreams.Select(x => x.LivestreamModel));
-            SaveLivestreams();
+            AddChannels(followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToArray());
+            Livestreams.AddRange(followedChannelsQueryResults.Select(x => x.LivestreamModel));
         }
 
         public async Task RefreshLivestreams()
@@ -150,9 +138,8 @@ namespace Livestream.Monitor.Model.Monitoring
             // query different apis in parallel
             var timeoutTokenSource = new CancellationTokenSource();
             var livestreamQueryResults = (await channelIdentifiers.GroupBy(x => x.ApiClient).ExecuteInParallel(
-                query: apiClientChannels => apiClientChannels.Key.GetLivestreams(apiClientChannels.ToList(), timeoutTokenSource.Token),
-                //timeout: Constants.HalfRefreshPollingTime,
-                timeout: TimeSpan.FromMilliseconds(int.MaxValue), 
+                query: apiClientChannels => apiClientChannels.Key.QueryChannels(timeoutTokenSource.Token),
+                timeout: Constants.HalfRefreshPollingTime,
                 cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
 
             var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
@@ -178,12 +165,15 @@ namespace Livestream.Monitor.Model.Monitoring
             livestreamQueryResults.EnsureAllQuerySuccess();
         }
 
-        public void RemoveLivestream(LivestreamModel livestreamModel)
+        public void RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) return;
+            if (channelIdentifier == null) return;
 
-            channelIdentifiers.Remove(livestreamModel.ChannelIdentifier);
-            Livestreams.Remove(livestreamModel);
+            channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
+            channelIdentifiers.Remove(channelIdentifier);
+            // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
+            var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
+            Livestreams.RemoveRange(matchingLivestreams);
             SaveLivestreams();
         }
 
@@ -207,10 +197,30 @@ namespace Livestream.Monitor.Model.Monitoring
             Livestreams.RemoveRange(removedStreams);
         }
 
+        private void AddChannels(params ChannelIdentifier[] newChannels)
+        {
+            bool channelAdded = false;
+            foreach (var newChannel in newChannels)
+            {
+                if (channelIdentifiers.Add(newChannel))
+                    channelAdded = true;
+            }
+
+            if (channelAdded)
+            {
+                SaveLivestreams();
+                SelectedLivestream = Livestreams.First();
+            }
+        }
+
         private void LoadLivestreams()
         {
             if (initialised) return;
-            channelIdentifiers.AddRange(fileHandler.LoadFromDisk());
+            foreach (var channelIdentifier in fileHandler.LoadFromDisk())
+            {
+                channelIdentifiers.Add(channelIdentifier);
+                channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
+            }
 
             foreach (var channelIdentifier in channelIdentifiers)
             {

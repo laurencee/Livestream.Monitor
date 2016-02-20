@@ -28,11 +28,21 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Returns null if <see cref="HasChatSupport"/> is false </summary>
         string GetChatUrl(string channelId);
 
-        /// <summary> Query the api for livestreams </summary>
-        /// <param name="channelIdentifiers">A collection of identifiers for livestream channels</param>
+        // TODO - consider isolating the add/remove/query logic into some other "monitoring api client" class
+        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called  and immediately queries the channel. </summary>
+        /// <param name="newChannel">A <see cref="ChannelIdentifier"/> of the new channel to be added</param>
+        Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel);
+
+        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called but does not immediately query the channel. </summary>
+        /// <param name="newChannel"></param>
+        void AddChannelWithoutQuerying(ChannelIdentifier newChannel);
+
+        void RemoveChannel(ChannelIdentifier channelIdentifier);
+
+        /// <summary> Query the api for all followed channels livestreams. Channels to be queried are to be added through <see cref="AddChannel"/> </summary>
         /// <param name="cancellationToken"></param>
         /// <returns>Livestream query results from the channels. Errors from querying will be captured to be examined later. </returns>
-        Task<List<LivestreamQueryResult>> GetLivestreams(List<ChannelIdentifier> channelIdentifiers, CancellationToken cancellationToken);
+        Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken);
 
         Task<List<VodDetails>> GetVods(VodQuery vodQuery);
 

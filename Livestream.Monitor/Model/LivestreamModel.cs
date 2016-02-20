@@ -30,6 +30,7 @@ namespace Livestream.Monitor.Model
 
             Id = id;
             ChannelIdentifier = channelIdentifier;
+            UniqueStreamKey = new UniqueStreamKey(ApiClient.ApiName, Id);
         }
 
         /// <summary> The unique identifier for the livestream </summary>
@@ -40,7 +41,7 @@ namespace Livestream.Monitor.Model
         public IApiClient ApiClient => ChannelIdentifier.ApiClient;
 
         /// <summary> This key is unique between all api client, it has a string representation and equality members. </summary>
-        public UniqueStreamKey UniqueStreamKey => new UniqueStreamKey(ApiClient.ApiName, Id);
+        public UniqueStreamKey UniqueStreamKey { get; }
 
         public bool Live
         {
@@ -206,7 +207,7 @@ namespace Livestream.Monitor.Model
 
         protected bool Equals(LivestreamModel other)
         {
-            return string.Equals(Id, other.Id) && Equals(ApiClient, other.ApiClient);
+            return Equals(UniqueStreamKey, other.UniqueStreamKey);
         }
 
         public override bool Equals(object obj)
@@ -219,10 +220,7 @@ namespace Livestream.Monitor.Model
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return ((Id?.GetHashCode() ?? 0) * 397) ^ (ApiClient?.GetHashCode() ?? 0);
-            }
+            return UniqueStreamKey?.GetHashCode() ?? 0;
         }
 
         #endregion
