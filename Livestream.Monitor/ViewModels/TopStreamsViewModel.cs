@@ -217,13 +217,13 @@ namespace Livestream.Monitor.ViewModels
 
                 if (livestreamModel != null)
                 {
-                    monitorStreamsModel.RemoveLivestream(livestreamModel.ChannelIdentifier);
+                    await monitorStreamsModel.RemoveLivestream(livestreamModel.ChannelIdentifier);
                 }
                 topStreamResult.IsMonitored = false;
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error", "An error occured removing the stream from monitoring:" + ex.Message);
+                await this.ShowMessageAsync("Error Removing Livestream", ex.Message);
             }
         }
 
@@ -236,7 +236,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error", "An error occured adding the stream for monitoring: " + ex.Message);
+                await this.ShowMessageAsync("Error Adding Livestream", ex.Message);
             }
         }
 
@@ -283,7 +283,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 await this.ShowMessageAsync("Error",
-                    $"An error occured attempting to get top streams from '{SelectedApiClient.ApiName}'.{Environment.NewLine}{Environment.NewLine}{ex}");
+                    $"Error getting top streams from '{SelectedApiClient.ApiName}'.{Environment.NewLine}{Environment.NewLine}{ex}");
             }
 
             LoadingItems = false;

@@ -242,8 +242,8 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error",
-                    $"An error occured attempting to get vods from api '{SelectedApiClient.ApiName}' for channel '{newStreamId}'." +
+                await this.ShowMessageAsync("Error Getting Vods",
+                    $"Error occured getting vods from api '{SelectedApiClient.ApiName}' for channel '{newStreamId}'." +
                     $"{Environment.NewLine}{Environment.NewLine}{ex}");
             }
 
