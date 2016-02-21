@@ -2,6 +2,7 @@ using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
@@ -16,7 +17,7 @@ using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class LivestreamListViewModel : Screen
+    public class LivestreamListViewModel : Screen, IHandleWithTask<ExceptionDispatchInfo>
     {
         private readonly StreamLauncher streamLauncher;
         private readonly INavigationService navigationService;
@@ -48,7 +49,7 @@ namespace Livestream.Monitor.ViewModels
             this.navigationService = navigationService;
             this.StreamsModel = monitorStreamsModel;
             FilterModel = filterModel;
-            refreshTimer = new DispatcherTimer { Interval = MonitorStreamsModel.RefreshPollingTime };
+            refreshTimer = new DispatcherTimer { Interval = Constants.RefreshPollingTime };
             refreshTimer.Tick += async (sender, args) => await RefreshLivestreams();
         }
 
@@ -81,7 +82,19 @@ namespace Livestream.Monitor.ViewModels
         public async Task RefreshLivestreams()
         {
             refreshTimer.Stop();
-            await StreamsModel.RefreshLivestreams();
+            try
+            {
+                await StreamsModel.RefreshLivestreams();
+            }
+            catch (AggregateException ex)
+            {
+                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().Message));
+            }
+            catch (Exception ex)
+            {
+                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Message));
+            }
+            
             refreshTimer.Start();
         }
 
@@ -132,7 +145,17 @@ namespace Livestream.Monitor.ViewModels
 
             if (dialogResult == MessageDialogResult.Affirmative)
             {
-                StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream);
+                try
+                {
+                    await StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier);
+                }
+                catch (Exception ex)
+                {
+                    await this.ShowMessageAsync("Error Removing Stream",
+                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}" + 
+                        Environment.NewLine + Environment.NewLine +
+                        $"TIP: You may have to remove the livestream directly from the livestreams.json file... :(");
+                }
             }
 
             // return focus to the datagrid after showing the remove livestream dialog
@@ -151,7 +174,7 @@ namespace Livestream.Monitor.ViewModels
             Loading = true;
             try
             {
-                StreamsModel.OnlineLivestreamsRefreshComplete += OnOnlineLivestreamsRefreshComplete;
+                StreamsModel.LivestreamsRefreshComplete += OnLivestreamsRefreshComplete;
                 FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
                 ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
@@ -163,7 +186,7 @@ namespace Livestream.Monitor.ViewModels
                     HookLiveStreamEvents(livestream);
                 }
 
-                if (DateTimeOffset.Now - StreamsModel.LastRefreshTime > MonitorStreamsModel.HalfRefreshPollingTime)
+                if (DateTimeOffset.Now - StreamsModel.LastRefreshTime > Constants.HalfRefreshPollingTime)
                     await RefreshLivestreams(); // will start the refresh timer after refreshing the livestreams
                 else
                     refreshTimer.Start(); // need to always make sure the refresh timer is running
@@ -184,7 +207,7 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnDeactivate(bool close)
         {
             refreshTimer.Stop();
-            StreamsModel.OnlineLivestreamsRefreshComplete -= OnOnlineLivestreamsRefreshComplete;
+            StreamsModel.LivestreamsRefreshComplete -= OnLivestreamsRefreshComplete;
             FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
             ViewSource.Filter -= ViewSourceOnFilter;
             ViewSource.SortDescriptions.Clear();
@@ -198,7 +221,7 @@ namespace Livestream.Monitor.ViewModels
             base.OnDeactivate(close);
         }
 
-        private async void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
         {
             if (e.NewItems != null)
             {
@@ -216,20 +239,7 @@ namespace Livestream.Monitor.ViewModels
                 }
             }
 
-            switch (e.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    ViewSource.View.Refresh();
-                    break;
-                case NotifyCollectionChangedAction.Remove:
-                case NotifyCollectionChangedAction.Replace:
-                case NotifyCollectionChangedAction.Reset:
-                    await RefreshLivestreams();
-                    break;
-                case NotifyCollectionChangedAction.Move:
-                    await RefreshLivestreams();
-                    break;
-            }
+            ViewSource.View.Refresh();
         }
 
         private void HookLiveStreamEvents(LivestreamModel livestream)
@@ -266,7 +276,8 @@ namespace Livestream.Monitor.ViewModels
                 var nameFilter = FilterModel.LivestreamNameFilter;
 
                 bool filterNameMatch = string.IsNullOrWhiteSpace(nameFilter) ||
-                                       livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
+                                       livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase) ||
+                                       livestreamModel.ChannelIdentifier.ChannelId.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
 
                 bool apiClientMatch = apiClientNameFilter == FilterModel.AllApiClientsFilterName ||
                                       livestreamModel.ApiClient.ApiName == apiClientNameFilter;
@@ -275,7 +286,7 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        private void OnOnlineLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
+        private void OnLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
             // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately 
             ViewSource.View.Refresh();
@@ -284,6 +295,13 @@ namespace Livestream.Monitor.ViewModels
         private void OnFilterModelOnPropertyChanged(object sender, PropertyChangedEventArgs args)
         {
             ViewSource.View.Refresh();
+        }
+
+        public async Task Handle(ExceptionDispatchInfo message)
+        {
+            await this.ShowMessageAsync(
+                "Error", $"{message.SourceException.Message}{Environment.NewLine}{Environment.NewLine}" +
+                         "(TIP: Remove the stream causing the error if it will never resolve itself, e.g. banned channels)");
         }
     }
 }

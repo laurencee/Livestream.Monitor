@@ -4,8 +4,13 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamFileData
     {
+        /// <summary> 
+        /// This value needs to represent the channel rather than the stream to support youtube
+        /// which allows multiple livestreams concurrently from the 1 channel.
+        /// </summary>
         [JsonRequired]
-        public string LivestreamId { get; set; }
+        [JsonProperty("LivestreamId")]
+        public string ChannelId { get; set; }
 
         /// <summary> The username this livestream was imported from </summary>
         public string ImportedBy { get; set; }

@@ -152,26 +152,26 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await monitorStreamsModel.AddLivestream(new LivestreamModel()
-                {
-                    Id = StreamName,
-                    ApiClient = SelectedApiClient
-                });
+                await monitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName));
                 StreamName = null;
                 await dialogController.CloseAsync();
-            }
-            catch (HttpRequestWithStatusException httpException) when (httpException.StatusCode == HttpStatusCode.NotFound)
-            {
-                CanAddStream = true;
-                await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error adding stream.", $"No channel found named '{StreamName}' for stream provider {SelectedApiClient.ApiName}{Environment.NewLine}" +
-                                                                    $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
             }
             catch (Exception ex)
             {
                 CanAddStream = true; // on failure streamname not cleared so the user can try adding again
                 await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error adding stream.", $"{ex.Message}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+
+                var httpException = ex.InnerException as HttpRequestWithStatusException;
+                if (httpException != null && httpException.StatusCode == HttpStatusCode.NotFound)
+                {
+                    await this.ShowMessageAsync("Error adding stream.",
+                        $"No channel found named '{StreamName}' for stream provider {SelectedApiClient.ApiName}{Environment.NewLine}" +
+                        $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+                }
+                else
+                {
+                    await this.ShowMessageAsync("Error adding stream.", $"{ex.Message}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+                }
             }
         }
 
@@ -210,7 +210,18 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task RefreshLivestreams()
         {
-            await monitorStreamsModel.RefreshLivestreams();
+            try
+            {
+                await monitorStreamsModel.RefreshLivestreams();
+            }
+            catch (AggregateException ex)
+            {
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().Message);
+            }
+            catch (Exception ex)
+            {
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.Message);
+            }
         }
 
         public void OpenStream()

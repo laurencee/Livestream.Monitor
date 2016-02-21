@@ -1,6 +1,7 @@
 ﻿using System;
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
+using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
@@ -18,14 +19,29 @@ namespace Livestream.Monitor.Model
         private DateTimeOffset? lastLiveTime;
         private string broadcasterLanguage;
         private string language;
+        
+        /// <summary> A livestream object from an Api/Channel </summary>
+        /// <param name="id">A unique id for this livestream for its <see cref="ApiClient"/></param>
+        /// <param name="channelIdentifier">The <see cref="ApiClient"/> and unique channel identifier for that api client where this stream came from</param>
+        public LivestreamModel(string id, ChannelIdentifier channelIdentifier)
+        {
+            if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Argument is null or whitespace", nameof(id));
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+
+            Id = id;
+            ChannelIdentifier = channelIdentifier;
+            UniqueStreamKey = new UniqueStreamKey(ApiClient.ApiName, Id);
+        }
 
         /// <summary> The unique identifier for the livestream </summary>
-        public string Id { get; set; }
-        
-        public IApiClient ApiClient { get; set; }
+        public string Id { get; }
+
+        public ChannelIdentifier ChannelIdentifier { get; }
+
+        public IApiClient ApiClient => ChannelIdentifier.ApiClient;
 
         /// <summary> This key is unique between all api client, it has a string representation and equality members. </summary>
-        public UniqueStreamKey UniqueStreamKey => new UniqueStreamKey(ApiClient.ApiName, Id);
+        public UniqueStreamKey UniqueStreamKey { get; }
 
         public bool Live
         {
@@ -156,7 +172,7 @@ namespace Livestream.Monitor.Model
         public DateTimeOffset? LastLiveTime
         {
             get { return lastLiveTime; }
-            set
+            private set
             {
                 if (value.Equals(lastLiveTime)) return;
                 lastLiveTime = value;
@@ -191,7 +207,7 @@ namespace Livestream.Monitor.Model
 
         protected bool Equals(LivestreamModel other)
         {
-            return string.Equals(Id, other.Id) && Equals(ApiClient, other.ApiClient);
+            return Equals(UniqueStreamKey, other.UniqueStreamKey);
         }
 
         public override bool Equals(object obj)
@@ -204,10 +220,7 @@ namespace Livestream.Monitor.Model
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return ((Id?.GetHashCode() ?? 0) * 397) ^ (ApiClient?.GetHashCode() ?? 0);
-            }
+            return UniqueStreamKey?.GetHashCode() ?? 0;
         }
 
         #endregion

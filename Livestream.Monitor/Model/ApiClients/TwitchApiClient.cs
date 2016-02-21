@@ -6,16 +6,22 @@ using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
     public class TwitchApiClient : IApiClient
     {
         public const string API_NAME = "twitchtv";
-        public const string BroadcastVodType = "Broadcasts";
-        public const string HighlightVodType = "Highlights";
+        private const string BroadcastVodType = "Broadcasts";
+        private const string HighlightVodType = "Highlights";
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
+        private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
+        private readonly List<LivestreamQueryResult> offlineQueryResultsCache = new List<LivestreamQueryResult>();
+
+        // 1 time per application run
+        private bool queryOfflineStreams = true;
 
         public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient)
         {
@@ -55,41 +61,98 @@ namespace Livestream.Monitor.Model.ApiClients
             return $"{BaseUrl}{channelId}/chat?popout=true";
         }
 
-        public async Task<List<LivestreamModel>> UpdateOnlineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken)
+        public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)
         {
-            var onlineStreams = await twitchTvClient.GetStreamsDetails(livestreams.Select(x => x.Id));
+            if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
 
-            foreach (var onlineStream in onlineStreams)
+            // shorter implementation of QueryChannels
+            var queryResults = new List<LivestreamQueryResult>();
+            var onlineStreams = await twitchTvClient.GetStreamsDetails(new[] { newChannel.ChannelId });
+            var onlineStream = onlineStreams.FirstOrDefault();
+            if (onlineStream != null)
             {
-                if (cancellationToken.IsCancellationRequested) return new List<LivestreamModel>();
-
-                var livestream = livestreams.Single(x => x.Id.IsEqualTo(onlineStream.Channel.Name));
-
+                var channelIdentifier = new ChannelIdentifier(this, onlineStream.Channel?.Name);
+                var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
                 livestream.PopulateWithChannel(onlineStream.Channel);
-                livestream.PopulateWithStreamDetails(onlineStream, this);
+                livestream.PopulateWithStreamDetails(onlineStream);
+                queryResults.Add(new LivestreamQueryResult(channelIdentifier)
+                {
+                    LivestreamModel = livestream
+                });
             }
 
-            return livestreams.Where(x => !onlineStreams.Any(y => y.Channel.Name.IsEqualTo(x.Id))).ToList();
+            // we always need to check for offline channels when attempting to add a channel for the first time
+            // this is the only way to detect non-existant/banned channels
+            var offlineStreams = await GetOfflineStreamQueryResults(new[] { newChannel }, CancellationToken.None);
+            queryResults.AddRange(offlineStreams);
+            
+            if (queryResults.All(x => x.IsSuccess))
+            {
+                moniteredChannels.Add(newChannel);
+                offlineQueryResultsCache.AddRange(offlineStreams.Where(x => x.IsSuccess));
+            }
+            return queryResults;
         }
 
-        public async Task UpdateOfflineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken)
+        public void AddChannelWithoutQuerying(ChannelIdentifier newChannel)
         {
-            var offlineTasks = livestreams.Select(x => new
+            if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
+            moniteredChannels.Add(newChannel);
+        }
+
+        public Task RemoveChannel(ChannelIdentifier channelIdentifier)
+        {
+            // we keep our offline query results cached so we don't need to re-query them again this application run
+            // as such, we must cleanup any previous query result that has the channel identifier being removed
+            var queryResult = offlineQueryResultsCache.FirstOrDefault(x => Equals(channelIdentifier, x.ChannelIdentifier));
+            if (queryResult != null) offlineQueryResultsCache.Remove(queryResult);
+
+            moniteredChannels.Remove(channelIdentifier);
+            return Task.CompletedTask;
+        }
+
+        public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
+        {
+            var queryResults = new List<LivestreamQueryResult>();
+
+            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists
+            // we must specifically ask for channel details, there is no bulk api available for getting channel details.
+            var onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId));
+            foreach (var onlineStream in onlineStreams)
             {
-                Livestream = x,
-                OfflineData = twitchTvClient.GetChannelDetails(x.Id)
-            }).ToList();
+                if (cancellationToken.IsCancellationRequested) return queryResults;
 
-            await Task.WhenAll(offlineTasks.Select(x => x.OfflineData));
-            foreach (var offlineTask in offlineTasks)
-            {
-                if (cancellationToken.IsCancellationRequested) return;
-
-                var offlineData = offlineTask.OfflineData.Result;
-                if (offlineData == null) continue;
-
-                offlineTask.Livestream.PopulateWithChannel(offlineData);
+                var channelIdentifier = new ChannelIdentifier(this, onlineStream.Channel?.Name);
+                var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
+                livestream.PopulateWithChannel(onlineStream.Channel);
+                livestream.PopulateWithStreamDetails(onlineStream);
+                queryResults.Add(new LivestreamQueryResult(channelIdentifier)
+                {
+                    LivestreamModel = livestream
+                });
             }
+
+            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => y.Channel.Name != x.ChannelId)).ToList();
+
+            // As offline stream querying is expensive due to no bulk call, we only do it once per application run.
+            if (queryOfflineStreams)
+            {
+                var offlineStreams = await GetOfflineStreamQueryResults(offlineChannels, cancellationToken);
+                // only treat offline streams as being queried if no cancel occurred
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    offlineQueryResultsCache.AddRange(offlineStreams);
+                    queryOfflineStreams = false;
+                }
+            }
+            
+            foreach (var offlineQueryResult in offlineQueryResultsCache.Except(queryResults).Where(x => x.IsSuccess))
+            {
+                offlineQueryResult.LivestreamModel.Offline();
+            }
+
+            queryResults.AddRange(offlineQueryResultsCache);
+            return queryResults;
         }
 
         public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
@@ -121,17 +184,21 @@ namespace Livestream.Monitor.Model.ApiClients
             return vods;
         }
 
-        public async Task<List<LivestreamModel>> GetTopStreams(TopStreamQuery topStreamQuery)
+        public async Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
             var topStreams = await twitchTvClient.GetTopStreams(topStreamQuery);
 
             return topStreams.Select(x =>
             {
-                var livestreamModel = new LivestreamModel();
-                livestreamModel.PopulateWithStreamDetails(x, this);
+                var channelIdentifier = new ChannelIdentifier(this, x.Channel.Name);
+                var queryResult = new LivestreamQueryResult(channelIdentifier);
+                var livestreamModel = new LivestreamModel(x.Channel?.Name, channelIdentifier);
+                livestreamModel.PopulateWithStreamDetails(x);
                 livestreamModel.PopulateWithChannel(x.Channel);
-                return livestreamModel;
+
+                queryResult.LivestreamModel = livestreamModel;
+                return queryResult;
             }).ToList();
         }
 
@@ -150,21 +217,45 @@ namespace Livestream.Monitor.Model.ApiClients
             }).ToList();
         }
 
-        public async Task<List<LivestreamModel>> GetUserFollows(string userName)
+        public async Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
         {
             var userFollows = await twitchTvClient.GetUserFollows(userName);
             return (from follow in userFollows.Follows
-                    select new LivestreamModel()
+                    let channelIdentifier = new ChannelIdentifier(this, follow.Channel.Name)
+                    select new LivestreamQueryResult(channelIdentifier)
                     {
-                        Id = follow.Channel?.Name,
-                        ApiClient = this,
-                        DisplayName = follow.Channel?.Name,
-                        Description = follow.Channel?.Status,
-                        Game = follow.Channel?.Game,
-                        IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
-                        ImportedBy = userName,
-                        BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
+                        LivestreamModel = new LivestreamModel(follow.Channel?.Name, channelIdentifier)
+                        {
+                            DisplayName = follow.Channel?.Name,
+                            Description = follow.Channel?.Status,
+                            Game = follow.Channel?.Game,
+                            IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
+                            ImportedBy = userName,
+                            BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
+                        }
                     }).ToList();
+        }
+
+        private async Task<List<LivestreamQueryResult>> GetOfflineStreamQueryResults(
+            IEnumerable<ChannelIdentifier> offlineChannels, CancellationToken cancellationToken)
+        {
+            return await offlineChannels.ExecuteInParallel(async channelIdentifier =>
+            {
+                var queryResult = new LivestreamQueryResult(channelIdentifier);
+                try
+                {
+                    var channel = await twitchTvClient.GetChannelDetails(channelIdentifier.ChannelId);
+                    queryResult.LivestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
+                    queryResult.LivestreamModel.PopulateWithChannel(channel);
+                    queryResult.LivestreamModel.Offline();
+                }
+                catch (Exception ex)
+                {
+                    queryResult.FailedQueryException = new FailedQueryException(channelIdentifier, ex);
+                }
+
+                return queryResult;
+            }, Constants.HalfRefreshPollingTime, cancellationToken);
         }
     }
 }

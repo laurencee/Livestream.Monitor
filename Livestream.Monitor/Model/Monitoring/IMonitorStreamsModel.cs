@@ -16,15 +16,15 @@ namespace Livestream.Monitor.Model.Monitoring
 
         DateTimeOffset LastRefreshTime { get; }
         
-        event EventHandler OnlineLivestreamsRefreshComplete;
+        event EventHandler LivestreamsRefreshComplete;
 
-        Task AddLivestream(LivestreamModel livestreamModel);
+        Task AddLivestream(ChannelIdentifier channelIdentifier);
+
+        Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 
         Task ImportFollows(string username, IApiClient apiClient);
 
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();
-
-        void RemoveLivestream(LivestreamModel livestreamModel);
     }
 }

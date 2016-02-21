@@ -13,15 +13,12 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class MonitorStreamsModel : PropertyChangedBase, IMonitorStreamsModel
     {
-        public static readonly TimeSpan RefreshPollingTime = TimeSpan.FromSeconds(60);
-        public static readonly TimeSpan HalfRefreshPollingTime = TimeSpan.FromTicks(RefreshPollingTime.Ticks / 2);
-
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
+        private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
 
         private bool initialised;
-        private bool queryOfflineStreams = true;
         private bool canRefreshLivestreams = true;
         private LivestreamModel selectedLivestream;
         private DateTimeOffset lastRefreshTime;
@@ -38,7 +35,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
             for (int i = 0; i < 100; i++)
             {
-                followedLivestreams.Add(new LivestreamModel()
+                followedLivestreams.Add(new LivestreamModel("Livestream " + i, null)
                 {
                     Live = i < 14,
                     DisplayName = $"Channel Name {i + 1}",
@@ -105,28 +102,18 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public event EventHandler OnlineLivestreamsRefreshComplete;
+        public event EventHandler LivestreamsRefreshComplete;
 
-        public async Task AddLivestream(LivestreamModel livestreamModel)
+        public async Task AddLivestream(ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
-            if (Livestreams.Any(x => Equals(x, livestreamModel))) return; // ignore duplicate requests
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+            if (channelIdentifiers.Contains(channelIdentifier)) return; // ignore duplicate requests
 
-            var timeoutTokenSource = new CancellationTokenSource();
-            var apiClient = livestreamModel.ApiClient;
-            var offlineStreams = await apiClient.UpdateOnlineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
-            if (offlineStreams.Any())
-            {
-                timeoutTokenSource = new CancellationTokenSource();
-                await apiClient.UpdateOfflineStreams(new List<LivestreamModel>() { livestreamModel }, timeoutTokenSource.Token);
-            }
+            var livestreamQueryResults = await channelIdentifier.ApiClient.AddChannel(channelIdentifier);
+            livestreamQueryResults.EnsureAllQuerySuccess();
 
-            livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
-
-            Livestreams.Add(livestreamModel);
-            SaveLivestreams();
-
-            SelectedLivestream = livestreamModel;
+            AddChannels(channelIdentifier);
+            Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
         }
 
         public async Task ImportFollows(string username, IApiClient apiClient)
@@ -135,14 +122,11 @@ namespace Livestream.Monitor.Model.Monitoring
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
             if (!apiClient.HasUserFollowQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
 
-            var followedChannels = await apiClient.GetUserFollows(username);
-            var newChannels = followedChannels.Except(Livestreams).ToList(); // ignore duplicate channels
-            newChannels.ForEach(x => x.SetLivestreamNotifyState(settingsHandler.Settings));
+            var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
+            followedChannelsQueryResults.EnsureAllQuerySuccess();
 
-            Livestreams.AddRange(newChannels);
-            SaveLivestreams();
-
-            await apiClient.UpdateOnlineStreams(newChannels, CancellationToken.None);
+            AddChannels(followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToArray());
+            Livestreams.AddRange(followedChannelsQueryResults.Select(x => x.LivestreamModel));
         }
 
         public async Task RefreshLivestreams()
@@ -150,81 +134,118 @@ namespace Livestream.Monitor.Model.Monitoring
             if (!CanRefreshLivestreams) return;
 
             CanRefreshLivestreams = false;
+
             try
             {
-                var offlineApiClientsStreams = new Dictionary<IApiClient, List<LivestreamModel>>();
-
-                // query different stream providers online streams in parallel
+                // query different apis in parallel
                 var timeoutTokenSource = new CancellationTokenSource();
+                var livestreamQueryResults = (await channelIdentifiers.GroupBy(x => x.ApiClient).ExecuteInParallel(
+                    query: apiClientChannels => apiClientChannels.Key.QueryChannels(timeoutTokenSource.Token),
+                    timeout: Constants.HalfRefreshPollingTime,
+                    cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
 
-                await Livestreams.GroupBy(x => x.ApiClient).ExecuteInParallel(
-                    query: apiClientStreams => apiClientStreams.Key.UpdateOnlineStreams(apiClientStreams.ToList(), timeoutTokenSource.Token),
-                    postQueryAction: (apiClientStreams, offlineStreams) => offlineApiClientsStreams[apiClientStreams.Key] = offlineStreams,
-                    timeout: HalfRefreshPollingTime,
-                    cancellationToken: timeoutTokenSource.Token);
+                var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
+                var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
 
-                // Notify that the most important livestreams (online streams) have up to date information
-                OnOnlineLivestreamsRefreshComplete();
-
-                // mark streams belonging to any stream providers that faulted or timed out as offline
-                var faultedApiClientsStreams = Livestreams.GroupBy(x => x.ApiClient)
-                                                         .Where(y => !offlineApiClientsStreams.ContainsKey(y.Key))
-                                                         .ToList();
-                foreach (var apiClientStreams in faultedApiClientsStreams)
+                // special identification for failed livestream queries
+                var failedLivestreams = failedQueries.Select(x =>
                 {
-                    offlineApiClientsStreams[apiClientStreams.Key] = apiClientStreams.ToList();
-                }
+                    x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
+                    x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
+                    x.LivestreamModel.Description = x.FailedQueryException.Message;
+                    return x.LivestreamModel;
+                });
 
-                // reinitialize the cancellation token source for offline querying
-                timeoutTokenSource = new CancellationTokenSource();
-                await offlineApiClientsStreams.ExecuteInParallel(
-                    query: offlineApiClientStreams =>
-                    {
-                        offlineApiClientStreams.Value.ForEach(x => x.Offline());
-                        if (!queryOfflineStreams) return Task.CompletedTask;
+                var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
 
-                        var apiClient = offlineApiClientStreams.Key;
-                        return apiClient.UpdateOfflineStreams(offlineApiClientStreams.Value, timeoutTokenSource.Token);
-                    },
-                    timeout: HalfRefreshPollingTime,
-                    cancellationToken: timeoutTokenSource.Token);
+                PopulateLivestreams(livestreams);
 
-                queryOfflineStreams = false; // only query offline streams 1 time per application run
+                OnOnlineLivestreamsRefreshComplete();
+                livestreamQueryResults.EnsureAllQuerySuccess();
             }
-            catch (Exception)
+            finally
             {
-                // TODO - do something with errors, log/report etc
+                // make sure we always update the attempted refresh time and allow refreshing in the future
+                LastRefreshTime = DateTimeOffset.Now;
+                CanRefreshLivestreams = true;
             }
-
-            LastRefreshTime = DateTimeOffset.Now;
-            CanRefreshLivestreams = true;
         }
 
-        public void RemoveLivestream(LivestreamModel livestreamModel)
+        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) return;
+            if (channelIdentifier == null) return;
 
-            Livestreams.Remove(livestreamModel);
+            await channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
+            channelIdentifiers.Remove(channelIdentifier);
+            // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
+            var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
+            Livestreams.RemoveRange(matchingLivestreams);
             SaveLivestreams();
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()
         {
-            OnlineLivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+            LivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void PopulateLivestreams(List<LivestreamModel> livestreamModels)
+        {
+            foreach (var livestream in livestreamModels)
+            {
+                var livestreamModel = Livestreams.FirstOrDefault(x => Equals(livestream, x));
+                livestreamModel?.PopulateSelf(livestream);
+            }
+
+            var newStreams = livestreamModels.Except(Livestreams).ToList();
+            var removedStreams = Livestreams.Except(livestreamModels).ToList();
+
+            Livestreams.AddRange(newStreams);
+            Livestreams.RemoveRange(removedStreams);
+        }
+
+        private void AddChannels(params ChannelIdentifier[] newChannels)
+        {
+            bool channelAdded = false;
+            foreach (var newChannel in newChannels)
+            {
+                if (channelIdentifiers.Add(newChannel))
+                    channelAdded = true;
+            }
+
+            if (channelAdded)
+            {
+                SaveLivestreams();
+                SelectedLivestream = Livestreams.First();
+            }
         }
 
         private void LoadLivestreams()
         {
             if (initialised) return;
-            var livestreams = fileHandler.LoadFromDisk();
-
-            foreach (var livestream in livestreams)
+            foreach (var channelIdentifier in fileHandler.LoadFromDisk())
             {
-                livestream.DisplayName = livestream.Id; // give livestreams some initial displayname before they have been queried
-                livestream.SetLivestreamNotifyState(settingsHandler.Settings);
+                channelIdentifiers.Add(channelIdentifier);
+                channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
             }
 
-            followedLivestreams.AddRange(livestreams);
+            foreach (var channelIdentifier in channelIdentifiers)
+            {
+                // the channel id will have to be replaced when the livestream is queried the first time
+                var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
+                // give livestreams some initial displayname before they have been queried
+                if (livestreamModel.ApiClient.ApiName == YoutubeApiClient.API_NAME)
+                {
+                    livestreamModel.DisplayName = "Youtube Channel: " + channelIdentifier.ChannelId;
+                }
+                else
+                {
+                    livestreamModel.DisplayName = channelIdentifier.ChannelId;
+                }
+
+                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
+                followedLivestreams.Add(livestreamModel);
+            }
+
             followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
 
             foreach (var livestreamModel in followedLivestreams)
@@ -237,7 +258,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         private void SaveLivestreams()
         {
-            fileHandler.SaveToDisk(Livestreams.ToArray());
+            fileHandler.SaveToDisk(channelIdentifiers);
         }
 
         private void FollowedLivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)

@@ -59,7 +59,7 @@
                         <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="5*"/>
                         <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="2*" />
                         <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" SortDirection="Descending"/>
-                        <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, StringFormat={}{0:hh}h {0:mm}m {0:ss}s}" MinWidth="75" />
+                        <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, Converter={StaticResource TotalHoursTimespanConverter}}" MinWidth="75" />
                     </DataGrid.Columns>
                 </DataGrid>
             </DataTemplate>

@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.Query;
+using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -27,26 +28,31 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Returns null if <see cref="HasChatSupport"/> is false </summary>
         string GetChatUrl(string channelId);
 
-        /// <summary> Updates online streams and returns streams that were <b>not update</b> (offline streams) </summary>
-        /// <param name="livestreams">A collection of potentially online streams</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>Offline livestreams</returns>
-        Task<List<LivestreamModel>> UpdateOnlineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken);
+        // TODO - consider isolating the add/remove/query logic into some other "monitoring api client" class
+        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called  and immediately queries the channel. </summary>
+        /// <param name="newChannel">A <see cref="ChannelIdentifier"/> of the new channel to be added</param>
+        Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel);
 
-        /// <summary> 
-        /// Some stream providers such as twitch do not provide stream details for offline streams the same way as online streams. 
-        /// </summary>
-        Task UpdateOfflineStreams(List<LivestreamModel> livestreams, CancellationToken cancellationToken);
+        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called but does not immediately query the channel. </summary>
+        /// <param name="newChannel"></param>
+        void AddChannelWithoutQuerying(ChannelIdentifier newChannel);
+
+        Task RemoveChannel(ChannelIdentifier channelIdentifier);
+
+        /// <summary> Query the api for all followed channels livestreams. Channels to be queried are to be added through <see cref="AddChannel"/> </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns>Livestream query results from the channels. Errors from querying will be captured to be examined later. </returns>
+        Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken);
 
         Task<List<VodDetails>> GetVods(VodQuery vodQuery);
 
-        Task<List<LivestreamModel>> GetTopStreams(TopStreamQuery topStreamQuery);
+        Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery);
 
         /// <summary> Gets a list of known game names from the api with an optional game name filter</summary>
         /// <param name="filterGameName">Optional game name filter</param>
         /// <returns>Collection of known games from the api</returns>
         Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
 
-        Task<List<LivestreamModel>> GetUserFollows(string userName);
+        Task<List<LivestreamQueryResult>> GetUserFollows(string userName);
     }
 }
