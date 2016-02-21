@@ -135,34 +135,40 @@ namespace Livestream.Monitor.Model.Monitoring
 
             CanRefreshLivestreams = false;
 
-            // query different apis in parallel
-            var timeoutTokenSource = new CancellationTokenSource();
-            var livestreamQueryResults = (await channelIdentifiers.GroupBy(x => x.ApiClient).ExecuteInParallel(
-                query: apiClientChannels => apiClientChannels.Key.QueryChannels(timeoutTokenSource.Token),
-                timeout: Constants.HalfRefreshPollingTime,
-                cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
-
-            var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
-            var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
-
-            // special identification for failed livestream queries
-            var failedLivestreams = failedQueries.Select(x =>
+            try
             {
-                x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
-                x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
-                x.LivestreamModel.Description = x.FailedQueryException.Message;
-                return x.LivestreamModel;
-            });
+                // query different apis in parallel
+                var timeoutTokenSource = new CancellationTokenSource();
+                var livestreamQueryResults = (await channelIdentifiers.GroupBy(x => x.ApiClient).ExecuteInParallel(
+                    query: apiClientChannels => apiClientChannels.Key.QueryChannels(timeoutTokenSource.Token),
+                    timeout: Constants.HalfRefreshPollingTime,
+                    cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
 
-            var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
+                var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
+                var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
 
-            PopulateLivestreams(livestreams);
+                // special identification for failed livestream queries
+                var failedLivestreams = failedQueries.Select(x =>
+                {
+                    x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
+                    x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
+                    x.LivestreamModel.Description = x.FailedQueryException.Message;
+                    return x.LivestreamModel;
+                });
 
-            OnOnlineLivestreamsRefreshComplete();
-            LastRefreshTime = DateTimeOffset.Now;
-            CanRefreshLivestreams = true;
+                var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
 
-            livestreamQueryResults.EnsureAllQuerySuccess();
+                PopulateLivestreams(livestreams);
+
+                OnOnlineLivestreamsRefreshComplete();
+                livestreamQueryResults.EnsureAllQuerySuccess();
+            }
+            finally
+            {
+                // make sure we always update the attempted refresh time and allow refreshing in the future
+                LastRefreshTime = DateTimeOffset.Now;
+                CanRefreshLivestreams = true;
+            }
         }
 
         public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)

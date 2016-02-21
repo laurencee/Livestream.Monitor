@@ -138,8 +138,12 @@ namespace Livestream.Monitor.Model.ApiClients
             if (queryOfflineStreams)
             {
                 var offlineStreams = await GetOfflineStreamQueryResults(offlineChannels, cancellationToken);
-                offlineQueryResultsCache.AddRange(offlineStreams);
-                queryOfflineStreams = false;
+                // only treat offline streams as being queried if no cancel occurred
+                if (!cancellationToken.IsCancellationRequested)
+                {
+                    offlineQueryResultsCache.AddRange(offlineStreams);
+                    queryOfflineStreams = false;
+                }
             }
             
             foreach (var offlineQueryResult in offlineQueryResultsCache.Except(queryResults).Where(x => x.IsSuccess))
