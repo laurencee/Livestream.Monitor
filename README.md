@@ -19,7 +19,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## General Features
-* Add your favourite livestreams to be monitored from twitch/youtube*/hitbox
+* Add your favourite livestreams to be monitored from twitch/youtube/hitbox
 * Open twitch/youtube/hitbox chat for the selected stream (requires chrome)
 * Ability to choose quality of stream (before opening the stream)
 * Toast notifications for streams coming online
@@ -28,10 +28,6 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Change your colour theme using the theme button in settings
 
 TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
-
-
-*Youtube currently linked to individual videos instead of the channels, this will be fixed in the future: [#9](https://github.com/laurencee/Livestream.Monitor/issues/9)
-
 
 ## Twitch/hitbox features
 * Import your already followed streams for live monitoring
@@ -54,8 +50,8 @@ I didn't like the large amount of memory used by java/web based GUIs for livestr
 
 ### FAQ
 **Q. How do I add YouTube streams?** <br />
-A. You need to copy the video id from the url <br />
-(the characters after '**watch?v=**' in: https://www.youtube.com/watch?v=knUZi4NkduA)
+A. You need to provide the username/channel name. You can find this by clicking on a users channel link to get to their profile page. <br />
+(The URL looks like this: https://www.youtube.com/user/{username})
 
 **Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?** <br />
-A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser). Currently I don't know how to find out if chat is disabled/enabled through the YouTube API
+A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser). Currently I don't know how to find out if chat is disabled/enabled through the YouTube API, I don't believe there is a built in way through the API right now... hopefully it's something google can add in the future.
