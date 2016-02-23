@@ -48,7 +48,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         private void SaveToDisk(IEnumerable<LivestreamFileData> livestreamFileData)
         {
-            File.WriteAllText(FileName, JsonConvert.SerializeObject(livestreamFileData));
+            File.WriteAllText(FileName, JsonConvert.SerializeObject(livestreamFileData, Formatting.Indented));
         }
     }
 }

@@ -96,7 +96,7 @@ namespace Livestream.Monitor.Core
         {
             try
             {
-                File.WriteAllText(SettingsFileName, JsonConvert.SerializeObject(settings));
+                File.WriteAllText(SettingsFileName, JsonConvert.SerializeObject(settings, Formatting.Indented));
             }
             catch (Exception)
             {
