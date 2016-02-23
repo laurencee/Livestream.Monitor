@@ -216,7 +216,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (AggregateException ex)
             {
-                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().Message);
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().InnerException?.Message);
             }
             catch (Exception ex)
             {

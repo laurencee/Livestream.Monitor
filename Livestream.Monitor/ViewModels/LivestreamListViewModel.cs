@@ -88,7 +88,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (AggregateException ex)
             {
-                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().Message));
+                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().InnerException?.Message));
             }
             catch (Exception ex)
             {

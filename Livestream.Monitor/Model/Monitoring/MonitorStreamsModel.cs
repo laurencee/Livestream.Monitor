@@ -15,6 +15,7 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
+        private readonly IApiClientFactory apiClientFactory;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
         private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
 
@@ -51,13 +52,16 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public MonitorStreamsModel(
             IMonitoredStreamsFileHandler fileHandler,
-            ISettingsHandler settingsHandler)
+            ISettingsHandler settingsHandler,
+            IApiClientFactory apiClientFactory)
         {
             if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             this.fileHandler = fileHandler;
             this.settingsHandler = settingsHandler;
+            this.apiClientFactory = apiClientFactory;
         }
 
         public BindableCollection<LivestreamModel> Livestreams
@@ -139,8 +143,8 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 // query different apis in parallel
                 var timeoutTokenSource = new CancellationTokenSource();
-                var livestreamQueryResults = (await channelIdentifiers.GroupBy(x => x.ApiClient).ExecuteInParallel(
-                    query: apiClientChannels => apiClientChannels.Key.QueryChannels(timeoutTokenSource.Token),
+                var livestreamQueryResults = (await apiClientFactory.GetAll().ExecuteInParallel(
+                    query: apiClient => apiClient.QueryChannels(timeoutTokenSource.Token),
                     timeout: Constants.HalfRefreshPollingTime,
                     cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
 
