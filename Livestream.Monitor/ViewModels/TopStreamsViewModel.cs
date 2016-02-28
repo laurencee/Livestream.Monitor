@@ -73,6 +73,8 @@ namespace Livestream.Monitor.ViewModels
 
         public override bool CanNext => !LoadingItems && Items.Count == STREAM_TILES_PER_PAGE;
 
+        public bool CanRefreshItems => !LoadingItems;
+
         public bool LoadingItems
         {
             get { return loadingItems; }
@@ -83,6 +85,7 @@ namespace Livestream.Monitor.ViewModels
                 NotifyOfPropertyChange(() => LoadingItems);
                 NotifyOfPropertyChange(() => CanPrevious);
                 NotifyOfPropertyChange(() => CanNext);
+                NotifyOfPropertyChange(() => CanRefreshItems);
             }
         }
 
@@ -133,6 +136,11 @@ namespace Livestream.Monitor.ViewModels
                 NotifyOfPropertyChange(() => SelectedApiClient);
                 MovePage();
             }
+        }
+
+        public async Task RefreshItems()
+        {
+            await EnsureItems();
         }
 
         public void OpenStream(TopStreamResult stream)

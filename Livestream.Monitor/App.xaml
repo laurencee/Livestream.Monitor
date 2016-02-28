@@ -25,6 +25,7 @@
 
             <system:String x:Key="NextButtonText">&#9654;</system:String>
             <system:String x:Key="BackButtonText">&#9664;</system:String>
+            <system:String x:Key="RefreshButtonText">&#x21BB;</system:String>
             <system:String x:Key="BackButtonTooltipText">Go back to livestream list</system:String>
 
             <ui:Behaviors x:Key="NumericRestriction" x:Shared="False">

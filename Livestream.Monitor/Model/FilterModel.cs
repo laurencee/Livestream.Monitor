@@ -11,6 +11,9 @@ namespace Livestream.Monitor.Model
         private string selectedApiClientName;
         private BindableCollection<string> apiClientNames;
 
+        /// <summary> Simple check to know if the model is doing any filtering </summary>
+        public bool IsFiltering => LivestreamNameFilter != null || SelectedApiClientName != AllApiClientsFilterName;
+
         public string LivestreamNameFilter
         {
             get { return livestreamNameFilter; }

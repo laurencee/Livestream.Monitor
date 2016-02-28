@@ -265,10 +265,10 @@ namespace Livestream.Monitor.ViewModels
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {
-            var livestreamModel = e.Item as LivestreamModel;
-            if (livestreamModel == null)
+            var livestreamModel = (LivestreamModel) e.Item;
+            if (!FilterModel.IsFiltering)
             {
-                e.Accepted = false;
+                e.Accepted = true;
             }
             else
             {
