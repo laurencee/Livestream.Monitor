@@ -177,5 +177,42 @@ namespace Livestream.Monitor.Core
             if (failedQuery != null)
                 throw failedQuery.FailedQueryException;
         }
+
+        /// <summary>
+        /// Extracts the base error message and all inner messages from an <see cref="Exception"/> object. <para/>
+        /// Returns a concatenated string with each exception message on a new line.
+        /// </summary>
+        /// <param name="exception"><see cref="Exception"/> object</param>
+        /// <param name="skipExceptionLevels">Optional argument to ignore the message from n top level exceptions</param>
+        /// <returns>Concatenated string with each exception message on a new line</returns>
+        public static string ExtractErrorMessage(this Exception exception, int skipExceptionLevels = 0)
+        {
+            if (exception == null) return null;
+
+            // Avoiding large recursion... just in case
+            int count = 0;
+
+            var errorMessage = String.Empty;
+            if (skipExceptionLevels == 0 && !String.IsNullOrEmpty(exception.Message) && !(exception is AggregateException))
+            {
+                errorMessage = exception.Message;
+                count++;
+            }
+
+            while (exception.InnerException != null && count <= 10)
+            {
+                count++;
+                exception = exception.InnerException;
+
+                if (count <= skipExceptionLevels) continue;
+
+                if (!String.IsNullOrEmpty(exception.Message) && !errorMessage.Contains(exception.Message))
+                    errorMessage = count == 1
+                                       ? exception.Message
+                                       : errorMessage + Environment.NewLine + exception.Message;
+            }
+
+            return errorMessage;
+        }
     }
 }

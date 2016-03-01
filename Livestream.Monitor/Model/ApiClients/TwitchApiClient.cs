@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using ExternalAPIs;
 using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.Dto;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
@@ -111,13 +114,31 @@ namespace Livestream.Monitor.Model.ApiClients
             return Task.CompletedTask;
         }
 
+        
+
         public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
         {
             var queryResults = new List<LivestreamQueryResult>();
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists
             // we must specifically ask for channel details, there is no bulk api available for getting channel details.
-            var onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId));
+            List<Stream> onlineStreams = new List<Stream>();
+            
+            int retryCount = 0;
+            while (moniteredChannels.Count > 0 && onlineStreams.Count == 0 && retryCount < 3)
+            {
+                try
+                {
+                    onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId));
+                }
+                catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
+                {
+                    await Task.Delay(2000, cancellationToken);
+                }
+
+                retryCount++;
+            }
+            
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;

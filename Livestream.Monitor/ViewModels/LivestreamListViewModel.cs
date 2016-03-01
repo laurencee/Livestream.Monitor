@@ -88,11 +88,11 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (AggregateException ex)
             {
-                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().InnerException?.Message));
+                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage()));
             }
             catch (Exception ex)
             {
-                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Message));
+                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage()));
             }
             
             refreshTimer.Start();
