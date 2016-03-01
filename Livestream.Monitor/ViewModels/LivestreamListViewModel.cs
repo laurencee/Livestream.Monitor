@@ -23,7 +23,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly INavigationService navigationService;
         private readonly DispatcherTimer refreshTimer;
 
-        private bool loading;
+        private bool loading, displayingException;
         private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
@@ -88,13 +88,29 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (AggregateException ex)
             {
-                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage()));
+                if (!displayingException)
+                {
+                    Execute.OnUIThread(async () =>
+                    {
+                        displayingException = true;
+                        await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage());
+                        displayingException = false;
+                    });
+                }
             }
             catch (Exception ex)
             {
-                Execute.OnUIThread(async () => await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage()));
+                if (!displayingException)
+                {
+                    Execute.OnUIThread(async () =>
+                    {
+                        displayingException = true;
+                        await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
+                        displayingException = false;
+                    });
+                }
             }
-            
+
             refreshTimer.Start();
         }
 
@@ -152,7 +168,7 @@ namespace Livestream.Monitor.ViewModels
                 catch (Exception ex)
                 {
                     await this.ShowMessageAsync("Error Removing Stream",
-                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}" + 
+                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}" +
                         Environment.NewLine + Environment.NewLine +
                         $"TIP: You may have to remove the livestream directly from the livestreams.json file... :(");
                 }
@@ -265,7 +281,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {
-            var livestreamModel = (LivestreamModel) e.Item;
+            var livestreamModel = (LivestreamModel)e.Item;
             if (!FilterModel.IsFiltering)
             {
                 e.Accepted = true;

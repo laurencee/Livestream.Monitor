@@ -216,11 +216,11 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (AggregateException ex)
             {
-                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().InnerException?.Message);
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage());
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error refreshing livestreams", ex.Message);
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
             }
         }
 
