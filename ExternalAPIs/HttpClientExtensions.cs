@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 
@@ -19,18 +20,18 @@ namespace ExternalAPIs
             }) { Timeout = QueryTimeout };
         }
 
-        public static async Task<T> ExecuteRequest<T>(string request)
+        public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await ExecuteRequest<T>(CreateCompressionHttpClient(), request);
+            return await ExecuteRequest<T>(CreateCompressionHttpClient(), request, cancellationToken);
         }
 
-        public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request)
+        public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (string.IsNullOrWhiteSpace(request)) throw new ArgumentNullException(nameof(request));
             
             using (httpClient)
             {
-                var httpResponseMessage = await httpClient.GetAsync(request);
+                var httpResponseMessage = await httpClient.GetAsync(request, cancellationToken);
                 await httpResponseMessage.EnsureSuccessStatusCodeAsync();
                 var response = await httpResponseMessage.Content.ReadAsStringAsync();
                 return JsonConvert.DeserializeObject<T>(response);

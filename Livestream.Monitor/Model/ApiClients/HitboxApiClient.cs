@@ -173,7 +173,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     var queryResult = new LivestreamQueryResult(channelIdentifier);
                     try
                     {
-                        var livestream = await hitboxClient.GetChannelDetails(channelIdentifier.ChannelId);
+                        var livestream = await hitboxClient.GetChannelDetails(channelIdentifier.ChannelId, cancellationToken);
                         queryResult.LivestreamModel = ConvertToLivestreamModel(livestream);
                     }
                     catch (Exception ex)

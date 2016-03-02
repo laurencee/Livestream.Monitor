@@ -114,8 +114,6 @@ namespace Livestream.Monitor.Model.ApiClients
             return Task.CompletedTask;
         }
 
-        
-
         public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
         {
             var queryResults = new List<LivestreamQueryResult>();
@@ -129,7 +127,7 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 try
                 {
-                    onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId));
+                    onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId), cancellationToken);
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
                 {
@@ -258,14 +256,15 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         private async Task<List<LivestreamQueryResult>> GetOfflineStreamQueryResults(
-            IEnumerable<ChannelIdentifier> offlineChannels, CancellationToken cancellationToken)
+            IEnumerable<ChannelIdentifier> offlineChannels, 
+            CancellationToken cancellationToken)
         {
             return await offlineChannels.ExecuteInParallel(async channelIdentifier =>
             {
                 var queryResult = new LivestreamQueryResult(channelIdentifier);
                 try
                 {
-                    var channel = await twitchTvClient.GetChannelDetails(channelIdentifier.ChannelId);
+                    var channel = await twitchTvClient.GetChannelDetails(channelIdentifier.ChannelId, cancellationToken);
                     queryResult.LivestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
                     queryResult.LivestreamModel.PopulateWithChannel(channel);
                     queryResult.LivestreamModel.Offline();
