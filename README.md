@@ -14,7 +14,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 
 ## Usage
 1. Run Livestream.Monitor.exe
-2. Import Channels you have already followed using your twitch username (no authentication required)
+2. Import Channels you have already followed using your twitch/hitbox username (no authentication required)
 3. Add other channels manually
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
