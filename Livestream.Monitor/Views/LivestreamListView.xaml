@@ -15,7 +15,7 @@
         <Grid.Resources>
             <DataTemplate x:Key="GridLayout">
                 <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
-                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single">
+                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" VirtualizingStackPanel.IsVirtualizing="True" >
                     <DataGrid.Resources>
                         <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />

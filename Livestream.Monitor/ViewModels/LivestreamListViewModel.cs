@@ -213,7 +213,6 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 await this.ShowMessageAsync("Error loading livestream list", ex.Message);
-                // TODO - log the error
             }
 
             Loading = false;

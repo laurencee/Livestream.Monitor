@@ -148,27 +148,30 @@ namespace Livestream.Monitor.Model.Monitoring
                     timeout: Constants.HalfRefreshPollingTime,
                     cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
 
-                var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
-                var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
-
-                // special identification for failed livestream queries
-                var failedLivestreams = failedQueries.Select(x =>
+                // don't clear out existing results if we get no query results back, that tends to indicate a full query timeout
+                if (livestreamQueryResults.Any())
                 {
-                    x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
-                    x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
-                    x.LivestreamModel.Description = x.FailedQueryException.Message;
-                    return x.LivestreamModel;
-                });
+                    var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
+                    var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
 
-                var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
+                    // special identification for failed livestream queries
+                    var failedLivestreams = failedQueries.Select(x =>
+                    {
+                        x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
+                        x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
+                        x.LivestreamModel.Description = x.FailedQueryException.Message;
+                        return x.LivestreamModel;
+                    });
 
-                PopulateLivestreams(livestreams);
+                    var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
 
-                OnOnlineLivestreamsRefreshComplete();
-                livestreamQueryResults.EnsureAllQuerySuccess();
+                    PopulateLivestreams(livestreams);
+                    livestreamQueryResults.EnsureAllQuerySuccess();
+                }
             }
             finally
             {
+                OnOnlineLivestreamsRefreshComplete();
                 // make sure we always update the attempted refresh time and allow refreshing in the future
                 LastRefreshTime = DateTimeOffset.Now;
                 CanRefreshLivestreams = true;
