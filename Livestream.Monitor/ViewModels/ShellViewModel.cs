@@ -170,7 +170,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Update Check", "Checking for newer version...");
             try
             {
-                var releases = await githubClient.Release.GetAll(githubUsername, githubRepository);
+                var releases = await githubClient.Repository.Release.GetAll(githubUsername, githubRepository);
                 var latestRelease = releases.FirstOrDefault();
                 if (latestRelease != null)
                 {
