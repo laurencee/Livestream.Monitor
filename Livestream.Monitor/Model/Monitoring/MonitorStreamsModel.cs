@@ -183,8 +183,7 @@ namespace Livestream.Monitor.Model.Monitoring
             if (channelIdentifier == null) return;
 
             await channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
-            var matchingChannelIdentifier = channelIdentifiers.FirstOrDefault(x => Equals(channelIdentifier, x));
-            channelIdentifiers.Remove(matchingChannelIdentifier);
+            channelIdentifiers.Remove(channelIdentifier);
             // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
             Livestreams.RemoveRange(matchingLivestreams);

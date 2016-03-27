@@ -188,7 +188,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private LivestreamModel ConvertToLivestreamModel(ExternalAPIs.Hitbox.Dto.Livestream livestream)
         {
-            var livestreamModel = new LivestreamModel(livestream.Channel?.UserName, new ChannelIdentifier(this, livestream.Channel?.UserName));
+            var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(livestream.Channel?.UserName));
+            var livestreamModel = new LivestreamModel(livestream.Channel?.UserName, channelIdentifier);
 
             livestreamModel.DisplayName = livestream.MediaDisplayName;
             livestreamModel.Description = livestream.MediaStatus;

@@ -74,11 +74,10 @@ namespace Livestream.Monitor.Model.ApiClients
             var onlineStream = onlineStreams.FirstOrDefault();
             if (onlineStream != null)
             {
-                var channelIdentifier = new ChannelIdentifier(this, onlineStream.Channel?.Name);
-                var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
+                var livestream = new LivestreamModel(onlineStream.Channel?.Name, newChannel);
                 livestream.PopulateWithChannel(onlineStream.Channel);
                 livestream.PopulateWithStreamDetails(onlineStream);
-                queryResults.Add(new LivestreamQueryResult(channelIdentifier)
+                queryResults.Add(new LivestreamQueryResult(newChannel)
                 {
                     LivestreamModel = livestream
                 });
@@ -141,7 +140,7 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
 
-                var channelIdentifier = new ChannelIdentifier(this, onlineStream.Channel?.Name);
+                var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.Channel?.Name));
                 var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
                 livestream.PopulateWithChannel(onlineStream.Channel);
                 livestream.PopulateWithStreamDetails(onlineStream);

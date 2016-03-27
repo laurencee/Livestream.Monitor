@@ -43,7 +43,8 @@ namespace Livestream.Monitor.Model.Monitoring
         {
             unchecked
             {
-                return ((ChannelId?.GetHashCode() ?? 0) * 397) ^ (ApiClient?.GetHashCode() ?? 0);
+                return (ChannelId == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(ChannelId) * 397) ^
+                       (ApiClient?.GetHashCode() ?? 0);
             }
         }
 

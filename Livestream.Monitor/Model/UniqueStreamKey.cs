@@ -17,9 +17,9 @@ namespace Livestream.Monitor.Model
             StreamId = streamId;
         }
 
-        public string ApiClientName { get; set; }
+        public string ApiClientName { get; }
 
-        public string StreamId { get; set; }
+        public string StreamId { get; }
 
         public override string ToString() => $"{ApiClientName}:{StreamId}";
 
@@ -42,7 +42,8 @@ namespace Livestream.Monitor.Model
         {
             unchecked
             {
-                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^ (StreamId?.GetHashCode() ?? 0);
+                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^
+                       (StreamId == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(StreamId) * 397);
             }
         }
 

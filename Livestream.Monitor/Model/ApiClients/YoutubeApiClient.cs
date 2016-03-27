@@ -82,7 +82,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 try
                 {
                     var actualChannelId = await GetChannelIdByChannelName(moniteredChannel.ChannelId, CancellationToken.None);
-                    if (Equals(new ChannelIdentifier(this, actualChannelId), channelIdentifier))
+                    var existingChannelIdentifier = moniteredChannels.FirstOrDefault(x => x.ChannelId.IsEqualTo(actualChannelId));
+                    if (existingChannelIdentifier != null && Equals(existingChannelIdentifier, channelIdentifier))
                     {
                         actualChannel = moniteredChannel;
                         break;
@@ -225,7 +226,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
                 if (snippet == null) continue;
 
-                var livestreamModel = new LivestreamModel(videoId, new ChannelIdentifier(this, snippet.ChannelId)) { Live = snippet.LiveBroadcastContent != "none" };
+                var matchingChannelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(snippet.ChannelId));
+                var livestreamModel = new LivestreamModel(videoId, matchingChannelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
                 if (!livestreamModel.Live) continue;
 
                 livestreamModel.DisplayName = snippet.ChannelTitle;
