@@ -233,10 +233,7 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 channelIdentifiers.Add(channelIdentifier);
                 channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
-            }
 
-            foreach (var channelIdentifier in channelIdentifiers)
-            {
                 // the channel id will have to be replaced when the livestream is queried the first time
                 var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
                 // give livestreams some initial displayname before they have been queried
@@ -248,18 +245,13 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     livestreamModel.DisplayName = channelIdentifier.ChannelId;
                 }
-
+                
                 livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
                 followedLivestreams.Add(livestreamModel);
-            }
-
-            followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
-
-            foreach (var livestreamModel in followedLivestreams)
-            {
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
 
+            followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
             initialised = true;
         }
 

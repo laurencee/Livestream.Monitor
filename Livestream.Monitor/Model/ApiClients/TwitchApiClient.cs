@@ -151,7 +151,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 });
             }
 
-            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => y.Channel.Name != x.ChannelId)).ToList();
+            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
 
             // As offline stream querying is expensive due to no bulk call, we only do it once per application run.
             if (queryOfflineStreams)

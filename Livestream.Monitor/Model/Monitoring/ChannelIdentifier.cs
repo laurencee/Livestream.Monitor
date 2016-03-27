@@ -1,4 +1,5 @@
 using System;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
@@ -27,7 +28,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         protected bool Equals(ChannelIdentifier other)
         {
-            return string.Equals(ChannelId, other.ChannelId) && Equals(ApiClient, other.ApiClient);
+            return ChannelId.IsEqualTo(other.ChannelId) && Equals(ApiClient, other.ApiClient);
         }
 
         public override bool Equals(object obj)

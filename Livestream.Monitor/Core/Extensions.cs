@@ -46,7 +46,7 @@ namespace Livestream.Monitor.Core
 
         public static bool IsEqualTo(this string original, string value, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
         {
-            return String.Compare(original, value, stringComparison) == 0;
+            return string.Compare(original, value, stringComparison) == 0;
         }
 
         /// <summary> Save implementation to show messages from viewmodels </summary>

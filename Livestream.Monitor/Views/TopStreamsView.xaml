@@ -30,7 +30,7 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        
+
         <!-- Header -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,0,0,0">
             <StackPanel.Resources>
@@ -45,7 +45,7 @@
                      IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False" />
             <Button x:Name="RefreshItems" Content="{StaticResource RefreshButtonText}" FontWeight="ExtraBold" Margin="2" ToolTip="Refresh Top Streams" />
         </StackPanel>
-        
+
         <!-- Content -->
         <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="Items">
@@ -73,7 +73,8 @@
                                     <Grid Width="130">
                                         <StackPanel>
                                             <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
-                                            <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding LivestreamModel.Description}" />
                                             <TextBlock Text="{Binding LivestreamModel.Game}" />
                                             <!-- Blank spacer -->
                                             <TextBlock />
@@ -118,7 +119,7 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
         </ScrollViewer>
-        
+
         <!-- Footer -->
         <TextBlock Grid.Row="2" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">

@@ -1,4 +1,5 @@
 using System;
+using Livestream.Monitor.Core;
 
 namespace Livestream.Monitor.Model
 {
@@ -26,7 +27,7 @@ namespace Livestream.Monitor.Model
 
         protected bool Equals(UniqueStreamKey other)
         {
-            return string.Equals(ApiClientName, other.ApiClientName) && string.Equals(StreamId, other.StreamId);
+            return ApiClientName.IsEqualTo(other.ApiClientName) && StreamId.IsEqualTo(other.StreamId);
         }
 
         public override bool Equals(object obj)

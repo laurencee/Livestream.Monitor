@@ -34,10 +34,9 @@ namespace Livestream.Monitor.ViewModels
                 {
                     Name = themeBaseColour.ToString().ToFriendlyString()
                 };
-                menuItem.IsChecked = string.Equals(
-                    settingsHandler.Settings.MetroThemeBaseColour.ToString(),
-                    menuItem.Name.Replace(" ", string.Empty)
-                    );
+
+                var savedBaseColour = settingsHandler.Settings.MetroThemeBaseColour.ToString();
+                menuItem.IsChecked = savedBaseColour.IsEqualTo(menuItem.Name.Replace(" ", string.Empty));
                 BaseThemes.Add(menuItem);
             }
 
@@ -47,10 +46,9 @@ namespace Livestream.Monitor.ViewModels
                 {
                     Name = themeAccentColour.ToString().ToFriendlyString(),
                 };
-                menuItem.IsChecked = string.Equals(
-                    settingsHandler.Settings.MetroThemeAccentColour.ToString(),
-                    menuItem.Name
-                    );
+
+                var savedAccecentColour = settingsHandler.Settings.MetroThemeAccentColour.ToString();
+                menuItem.IsChecked = savedAccecentColour.IsEqualTo(menuItem.Name);
                 AccentColours.Add(menuItem);
             }
         }
@@ -70,14 +68,16 @@ namespace Livestream.Monitor.ViewModels
             if (e.PropertyName == nameof(settingsHandler.Settings.MetroThemeAccentColour))
             {
                 AccentColours.ForEach(x => x.IsChecked = false);
-                var menuItem = AccentColours.FirstOrDefault(x => string.Equals(x.Name.ReverseFriendlyString(), settingsHandler.Settings.MetroThemeAccentColour.ToString()));
+                var savedAccentColour = settingsHandler.Settings.MetroThemeAccentColour.ToString();
+                var menuItem = AccentColours.FirstOrDefault(x => x.Name.ReverseFriendlyString().IsEqualTo(savedAccentColour));
                 if (menuItem != null)
                     menuItem.IsChecked = true;
             }
             else if (e.PropertyName == nameof(settingsHandler.Settings.MetroThemeBaseColour))
             {
                 BaseThemes.ForEach(x => x.IsChecked = false);
-                var menuItem = BaseThemes.FirstOrDefault(x => string.Equals(x.Name.ReverseFriendlyString(), settingsHandler.Settings.MetroThemeBaseColour.ToString()));
+                var savedBaseColour = settingsHandler.Settings.MetroThemeBaseColour.ToString();
+                var menuItem = BaseThemes.FirstOrDefault(x => x.Name.ReverseFriendlyString().IsEqualTo(savedBaseColour));
                 if (menuItem != null)
                     menuItem.IsChecked = true;
             }
