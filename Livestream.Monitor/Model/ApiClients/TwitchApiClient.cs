@@ -86,8 +86,11 @@ namespace Livestream.Monitor.Model.ApiClients
             // we always need to check for offline channels when attempting to add a channel for the first time
             // this is the only way to detect non-existant/banned channels
             var offlineStreams = await GetOfflineStreamQueryResults(new[] { newChannel }, CancellationToken.None);
-            queryResults.AddRange(offlineStreams);
-            
+            if (onlineStream == null || offlineStreams.Any(x => !x.IsSuccess))
+                queryResults.AddRange(offlineStreams);
+            else
+                offlineStreams.Clear();
+
             if (queryResults.All(x => x.IsSuccess))
             {
                 moniteredChannels.Add(newChannel);

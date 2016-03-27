@@ -226,7 +226,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
                 if (snippet == null) continue;
 
-                var matchingChannelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(snippet.ChannelId));
+                var matchingChannelIdentifier = moniteredChannels.FirstOrDefault(x => x.ChannelId.IsEqualTo(snippet.ChannelId));
+                if (matchingChannelIdentifier == null) throw new InvalidOperationException("Could not finding matching youtube channel id for " + snippet.ChannelId);
+
                 var livestreamModel = new LivestreamModel(videoId, matchingChannelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
                 if (!livestreamModel.Live) continue;
 
