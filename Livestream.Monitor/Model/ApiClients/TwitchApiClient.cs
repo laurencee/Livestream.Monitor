@@ -34,7 +34,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public string ApiName => API_NAME;
 
-        public string BaseUrl => @"http://www.twitch.tv/";
+        public string BaseUrl => @"https://www.twitch.tv/";
 
         public bool HasChatSupport => true;
 
