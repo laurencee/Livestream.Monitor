@@ -30,7 +30,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public string ApiName => API_NAME;
 
-        public string BaseUrl => "http://www.hitbox.tv/";
+        public string BaseUrl => "https://www.hitbox.tv/";
 
         public bool HasChatSupport => true;
 
