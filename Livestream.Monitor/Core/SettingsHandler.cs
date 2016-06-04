@@ -27,15 +27,19 @@ namespace Livestream.Monitor.Core
             if (settingsLoaded) return;
             try
             {
-                bool saveSettings = false;
-                if (!File.Exists(SettingsFileName))
+                bool saveSettings;
+                if (File.Exists(SettingsFileName))
+                {
+                    settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
+                }
+
+                if (settings == null)
                 {
                     settings = new Settings();
                     saveSettings = true;
                 }
                 else
                 {
-                    settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
                     saveSettings = ExcludeNotifyConverter.SaveRequired;
                 }
 
