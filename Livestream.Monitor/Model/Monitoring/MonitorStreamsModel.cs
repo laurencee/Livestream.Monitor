@@ -129,8 +129,11 @@ namespace Livestream.Monitor.Model.Monitoring
             var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
             followedChannelsQueryResults.EnsureAllQuerySuccess();
 
-            AddChannels(followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToArray());
+            var newChannels = followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToList();
+            AddChannels(channelIdentifiers.ToArray());
+            newChannels.ForEach(x => x.ApiClient.AddChannelWithoutQuerying(x));
             Livestreams.AddRange(followedChannelsQueryResults.Select(x => x.LivestreamModel));
+            await RefreshLivestreams();
         }
 
         public async Task RefreshLivestreams()
@@ -222,7 +225,7 @@ namespace Livestream.Monitor.Model.Monitoring
             if (channelAdded)
             {
                 SaveLivestreams();
-                SelectedLivestream = Livestreams.First();
+                SelectedLivestream = Livestreams.FirstOrDefault();
             }
         }
 

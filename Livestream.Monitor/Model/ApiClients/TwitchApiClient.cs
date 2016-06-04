@@ -119,10 +119,11 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
         {
             var queryResults = new List<LivestreamQueryResult>();
+            if (moniteredChannels.Count == 0) return queryResults;
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists
             // we must specifically ask for channel details, there is no bulk api available for getting channel details.
-            List<Stream> onlineStreams = new List<Stream>();
+            List <Stream> onlineStreams = new List<Stream>();
             
             int retryCount = 0;
             while (moniteredChannels.Count > 0 && onlineStreams.Count == 0 && retryCount < 3)
