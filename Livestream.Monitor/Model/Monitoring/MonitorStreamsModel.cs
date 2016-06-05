@@ -130,9 +130,9 @@ namespace Livestream.Monitor.Model.Monitoring
             followedChannelsQueryResults.EnsureAllQuerySuccess();
 
             var newChannels = followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToList();
-            AddChannels(channelIdentifiers.ToArray());
-            newChannels.ForEach(x => x.ApiClient.AddChannelWithoutQuerying(x));
             Livestreams.AddRange(followedChannelsQueryResults.Select(x => x.LivestreamModel));
+            newChannels.ForEach(x => x.ApiClient.AddChannelWithoutQuerying(x));
+            AddChannels(newChannels.ToArray());
             await RefreshLivestreams();
         }
 
