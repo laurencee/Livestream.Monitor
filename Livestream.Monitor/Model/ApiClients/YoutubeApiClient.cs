@@ -148,7 +148,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     var channelId = await GetChannelIdByChannelName(channelIdentifier.ChannelId, cancellationToken);
                     var videoIds = await GetVideoIdsByChannelId(channelId, cancellationToken);
-                    var livestreamModels = await GetLivestreamModels(videoIds, cancellationToken);
+                    var livestreamModels = await GetLivestreamModels(channelIdentifier, videoIds, cancellationToken);
                     queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
                     {
                         LivestreamModel = x,
@@ -194,7 +194,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return videoIds;
         }
 
-        private async Task<List<LivestreamModel>> GetLivestreamModels(List<string> videoIds, CancellationToken cancellationToken)
+        private async Task<List<LivestreamModel>> GetLivestreamModels(ChannelIdentifier channelIdentifier, List<string> videoIds, CancellationToken cancellationToken)
         {
             var livestreamModels = new List<LivestreamModel>();
 
@@ -204,7 +204,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 VideoRoot videoRoot = null;
 
                 int retryCount = 0;
-                while (retryCount < 3)
+                while (retryCount < 3 && livestreamDetails == null)
                 {
                     if (cancellationToken.IsCancellationRequested) return livestreamModels;
 
@@ -222,14 +222,10 @@ namespace Livestream.Monitor.Model.ApiClients
                 
                 if (livestreamDetails == null) continue;
 
-
                 var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
                 if (snippet == null) continue;
-
-                var matchingChannelIdentifier = moniteredChannels.FirstOrDefault(x => x.ChannelId.IsEqualTo(snippet.ChannelId));
-                if (matchingChannelIdentifier == null) throw new InvalidOperationException("Could not finding matching youtube channel id for " + snippet.ChannelId);
-
-                var livestreamModel = new LivestreamModel(videoId, matchingChannelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
+                
+                var livestreamModel = new LivestreamModel(videoId, channelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
                 if (!livestreamModel.Live) continue;
 
                 livestreamModel.DisplayName = snippet.ChannelTitle;
