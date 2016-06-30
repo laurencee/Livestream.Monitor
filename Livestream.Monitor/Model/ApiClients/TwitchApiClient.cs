@@ -123,8 +123,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists
             // we must specifically ask for channel details, there is no bulk api available for getting channel details.
-            List <Stream> onlineStreams = new List<Stream>();
-            
+            List<Stream> onlineStreams = new List<Stream>();
+
             int retryCount = 0;
             while (moniteredChannels.Count > 0 && onlineStreams.Count == 0 && retryCount < 3)
             {
@@ -139,7 +139,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 retryCount++;
             }
-            
+
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
@@ -167,7 +167,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     queryOfflineStreams = false;
                 }
             }
-            
+
             foreach (var offlineQueryResult in offlineQueryResultsCache.Except(queryResults).Where(x => x.IsSuccess))
             {
                 offlineQueryResult.LivestreamModel.Offline();
@@ -226,6 +226,20 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
         {
+            if (string.IsNullOrEmpty(filterGameName))
+            {
+                return (await twitchTvClient.GetTopGames()).Select(x => new KnownGame()
+                {
+                    GameName = x.Game.Name,
+                    ThumbnailUrls = new ThumbnailUrls()
+                    {
+                        Medium = x.Game.Logo?.Medium,
+                        Small = x.Game.Logo?.Small,
+                        Large = x.Game.Logo?.Large
+                    }
+                }).ToList();
+            }
+
             var twitchGames = await twitchTvClient.SearchGames(filterGameName);
             return twitchGames.Select(x => new KnownGame()
             {
@@ -259,7 +273,7 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         private async Task<List<LivestreamQueryResult>> GetOfflineStreamQueryResults(
-            IEnumerable<ChannelIdentifier> offlineChannels, 
+            IEnumerable<ChannelIdentifier> offlineChannels,
             CancellationToken cancellationToken)
         {
             return await offlineChannels.ExecuteInParallel(async channelIdentifier =>

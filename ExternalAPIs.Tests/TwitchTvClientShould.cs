@@ -55,6 +55,12 @@ namespace ExternalAPIs.Tests
             var topGames = await sut.GetTopGames();
             Assert.NotNull(topGames);
             Assert.NotEmpty(topGames);
+
+            topGames.ForEach(x =>
+            {
+                Assert.NotNull(x.Game);
+                Assert.NotNull(x.Game.Name);
+            });
         }
 
         [Fact, Trait("Category", "LocalOnly")]

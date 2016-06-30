@@ -40,7 +40,7 @@
             <ComboBox x:Name="ApiClients" Margin="3" DisplayMemberPath="ApiName" MinWidth="80" />
             <TextBlock Text="Game Filter" />
             <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ExpandPossibleGames}"
-                      Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. This must be an EXACT match e.g. League of Legends rather than just league, so use the auto-completion drop down option."
+                      Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. You can type a partial game name to search for any matching game names from twitch."
                      controls:TextBoxHelper.Watermark="Partial game name..."
                      IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False" />
             <Button x:Name="RefreshItems" Content="{StaticResource RefreshButtonText}" FontWeight="ExtraBold" Margin="2" ToolTip="Refresh Top Streams" />

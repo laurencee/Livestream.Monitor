@@ -18,6 +18,7 @@ namespace Livestream.Monitor.ViewModels
         private string livestreamerFullPath;
         private int minimumEventViewers;
         private bool disableNotifications;
+        private bool hideStreamOutputOnLoad;
 
         public SettingsViewModel()
         {
@@ -109,6 +110,18 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool HideStreamOutputOnLoad
+        {
+            get { return hideStreamOutputOnLoad; }
+            set
+            {
+                if (value == hideStreamOutputOnLoad) return;
+                hideStreamOutputOnLoad = value;
+                NotifyOfPropertyChange(() => HideStreamOutputOnLoad);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         public bool CanSave
         {
             get
@@ -121,7 +134,8 @@ namespace Livestream.Monitor.ViewModels
                 return ChromeFullPath != settingsHandler.Settings.ChromeFullPath ||
                        LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath ||
                        MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
-                       DisableNotifications != settingsHandler.Settings.DisableNotifications;
+                       DisableNotifications != settingsHandler.Settings.DisableNotifications ||
+                       HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
             }
         }
 
@@ -148,6 +162,7 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.LivestreamerFullPath = LivestreamerFullPath;
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
+            settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
             settingsHandler.SaveSettings();
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
@@ -207,6 +222,7 @@ namespace Livestream.Monitor.ViewModels
             ChromeFullPath = settingsHandler.Settings.ChromeFullPath;
             MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
+            HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();

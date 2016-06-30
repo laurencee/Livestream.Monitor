@@ -8,6 +8,7 @@ namespace ExternalAPIs.TwitchTv.Dto.QueryRoot
         [JsonProperty(PropertyName = "_total", NullValueHandling = NullValueHandling.Ignore)]
         public int Total { get; set; }
 
-        public List<Game> Top { get; set; }
+        [JsonProperty(PropertyName = "top")]
+        public List<TopGame> TopGames { get; set; }
     }
 }

@@ -214,6 +214,14 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
 
             await EnsureItems();
+            try
+            {
+                var games = await apiClientFactory.Get<TwitchApiClient>().GetKnownGameNames(null);
+                PossibleGameNames.Clear();
+                PossibleGameNames.AddRange(games.Select(x => x.GameName));
+            }
+            catch { }
+            
             base.OnViewLoaded(view);
         }
 

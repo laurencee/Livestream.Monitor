@@ -17,7 +17,7 @@ namespace ExternalAPIs.TwitchTv
 
         Task<List<Stream>> GetStreamsDetails(IEnumerable<string> streamNames, CancellationToken cancellationToken = default(CancellationToken));
 
-        Task<List<Game>> GetTopGames(CancellationToken cancellationToken = default(CancellationToken));
+        Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default(CancellationToken));
 
         Task<List<Stream>> SearchStreams(string streamName, CancellationToken cancellationToken = default(CancellationToken));
 

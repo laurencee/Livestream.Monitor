@@ -23,6 +23,7 @@ namespace Livestream.Monitor.Core
         private string chromeFullPath;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
         private bool disableNotifications;
+        private bool hideStreamOutputMessageBoxOnLoad;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -110,7 +111,19 @@ namespace Livestream.Monitor.Core
                 NotifyOfPropertyChange(() => DisableNotifications);
             }
         }
-        
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool HideStreamOutputMessageBoxOnLoad
+        {
+            get { return hideStreamOutputMessageBoxOnLoad; }
+            set
+            {
+                if (value == hideStreamOutputMessageBoxOnLoad) return;
+                hideStreamOutputMessageBoxOnLoad = value;
+                NotifyOfPropertyChange(() => HideStreamOutputMessageBoxOnLoad);
+            }
+        }
+
         /// <summary>
         /// Channel names in this collection should not raise notifications. <para/>
         /// We store these in settings so it can apply to both monitored and popular streams.

@@ -152,16 +152,6 @@ namespace Livestream.Monitor.Model
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
             {
-                // work around an issue where focus isn't returned to the main window on the messagebox window closing (even though the owner is set correctly)
-                messageBoxViewModel.Deactivated += (sender, args) =>
-                {
-                    var mainWindow = Application.Current.MainWindow;
-                    if (mainWindow != null && mainWindow.IsVisible)
-                    {
-                        mainWindow.Activate();
-                    }
-                };
-
                 var proc = new Process
                 {
                     StartInfo =
@@ -182,16 +172,22 @@ namespace Livestream.Monitor.Model
                 proc.ErrorDataReceived +=
                     (sender, args) =>
                     {
-                        if (args.Data != null)
-                        {
-                            preventClose = true;
-                            messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
-                        }
+                        if (args.Data == null) return;
+
+                        preventClose = true;
+                        messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
                     };
                 proc.OutputDataReceived +=
                     (sender, args) =>
                     {
-                        if (args.Data != null) messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
+                        if (args.Data == null) return;
+                        if (args.Data.StartsWith("[cli][info] Starting player") && settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad)
+                        {
+                            messageBoxViewModel.TryClose();
+                            // can continue adding messages, the view model still exists so it doesn't really matter
+                        }
+
+                        messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
                     };
 
                 try
@@ -202,7 +198,12 @@ namespace Livestream.Monitor.Model
                     proc.BeginOutputReadLine();
 
                     proc.WaitForExit();
-                    if (proc.ExitCode != 0) preventClose = true;
+                    if (proc.ExitCode != 0)
+                    {
+                        preventClose = true;
+                        // open the message box if it was somehow closed prior to the error being displayed
+                        if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
+                    }
 
                     onClose?.Invoke();
                 }
@@ -226,8 +227,9 @@ namespace Livestream.Monitor.Model
             var messageBoxViewModel = new MessageBoxViewModel
             {
                 DisplayName = title,
-                MessageText = messageText
+                MessageText = messageText,
             };
+            messageBoxViewModel.ShowHideOnLoadCheckbox(settingsHandler);
 
             var settings = new WindowSettingsBuilder().SizeToContent()
                                                       .NoResizeBorderless()

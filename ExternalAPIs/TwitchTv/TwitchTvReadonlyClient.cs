@@ -80,11 +80,11 @@ namespace ExternalAPIs.TwitchTv
             return streamRoot.Streams;
         }
 
-        public async Task<List<Game>> GetTopGames(CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default(CancellationToken))
         {
             var request = RequestConstants.TopGames;
             var gamesRoot = await ExecuteRequest<TopGamesRoot>(request, cancellationToken);
-            return gamesRoot.Top;
+            return gamesRoot.TopGames;
         }
 
         public async Task<List<Stream>> SearchStreams(string streamName, CancellationToken cancellationToken = default(CancellationToken))

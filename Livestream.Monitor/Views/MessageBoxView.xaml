@@ -5,8 +5,15 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d">
     <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
         <ScrollViewer MaxWidth="700" MaxHeight="500" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-            <TextBox x:Name="MessageText" Margin="10,10,10,20" TextWrapping="Wrap" IsReadOnly="True" />
+            <TextBox x:Name="MessageText" Margin="10,10,10,10" TextWrapping="Wrap" IsReadOnly="True" />
         </ScrollViewer>
+        <CheckBox Grid.Row="1" x:Name="HideOnLoad" Content="Hide on load" Visibility="{Binding ShowHideOnLoadCheckbox, Converter={StaticResource BooleanToVisibilityConverter}}"
+                  ToolTip="Hides this message box automatically once a stream has loaded successfully"
+                  Margin="10,0,10,10" />
     </Grid>
 </UserControl>
