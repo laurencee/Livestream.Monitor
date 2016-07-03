@@ -129,10 +129,13 @@ namespace Livestream.Monitor.Model.Monitoring
             var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
             followedChannelsQueryResults.EnsureAllQuerySuccess();
 
-            var newChannels = followedChannelsQueryResults.Select(x => x.ChannelIdentifier).ToList();
-            Livestreams.AddRange(followedChannelsQueryResults.Select(x => x.LivestreamModel));
-            newChannels.ForEach(x => x.ApiClient.AddChannelWithoutQuerying(x));
-            AddChannels(newChannels.ToArray());
+            // Ignore duplicate channels
+            var newChannels = followedChannelsQueryResults.Where(x => !channelIdentifiers.Contains(x.ChannelIdentifier)).ToList();
+            if (newChannels.Count == 0) return;
+            
+            Livestreams.AddRange(newChannels.Select(x => x.LivestreamModel));
+            newChannels.ForEach(x => x.ChannelIdentifier.ApiClient.AddChannelWithoutQuerying(x.ChannelIdentifier));
+            AddChannels(newChannels.Select(x => x.ChannelIdentifier).ToArray());
             await RefreshLivestreams();
         }
 
