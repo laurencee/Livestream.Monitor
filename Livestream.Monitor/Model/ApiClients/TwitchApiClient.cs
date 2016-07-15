@@ -126,7 +126,7 @@ namespace Livestream.Monitor.Model.ApiClients
             List<Stream> onlineStreams = new List<Stream>();
 
             int retryCount = 0;
-            while (moniteredChannels.Count > 0 && onlineStreams.Count == 0 && retryCount < 3)
+            while (onlineStreams.Count == 0 && !cancellationToken.IsCancellationRequested && retryCount < 3)
             {
                 try
                 {
@@ -154,11 +154,10 @@ namespace Livestream.Monitor.Model.ApiClients
                 });
             }
 
-            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
-
             // As offline stream querying is expensive due to no bulk call, we only do it once per application run.
             if (queryOfflineStreams)
             {
+                var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
                 var offlineStreams = await GetOfflineStreamQueryResults(offlineChannels, cancellationToken);
                 // only treat offline streams as being queried if no cancel occurred
                 if (!cancellationToken.IsCancellationRequested)
@@ -210,7 +209,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
             var topStreams = await twitchTvClient.GetTopStreams(topStreamQuery);
-
+            
             return topStreams.Select(x =>
             {
                 var channelIdentifier = new ChannelIdentifier(this, x.Channel.Name);

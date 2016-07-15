@@ -201,21 +201,23 @@ namespace Livestream.Monitor.Model
                     if (proc.ExitCode != 0)
                     {
                         preventClose = true;
-                        // open the message box if it was somehow closed prior to the error being displayed
-                        if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                     }
 
                     onClose?.Invoke();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-                    // TODO log errors opening stream
+                    preventClose = true;
+                    messageBoxViewModel.MessageText += ex.ToString();
                 }
 
                 if (preventClose)
-                {
+                {                    
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
                                                        "ERROR occured in Livestreamer: Manually close this window when you've finished reading the livestreamer output.";
+
+                    // open the message box if it was somehow closed prior to the error being displayed
+                    if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                 }
                 else
                     messageBoxViewModel.TryClose();
