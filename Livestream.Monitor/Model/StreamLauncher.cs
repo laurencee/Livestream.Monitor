@@ -208,7 +208,7 @@ namespace Livestream.Monitor.Model
                 catch (Exception ex)
                 {
                     preventClose = true;
-                    messageBoxViewModel.MessageText += ex.ToString();
+                    messageBoxViewModel.MessageText += Environment.NewLine + ex.ToString();
                 }
 
                 if (preventClose)
