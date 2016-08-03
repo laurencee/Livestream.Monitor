@@ -8,7 +8,6 @@ using System.Windows;
 using Caliburn.Micro;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
-using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 
@@ -188,6 +187,12 @@ namespace Livestream.Monitor.Core
         public static string ExtractErrorMessage(this Exception exception, int skipExceptionLevels = 0)
         {
             if (exception == null) return null;
+
+            var aggregateException = exception as AggregateException;
+            if (aggregateException != null)
+            {
+                exception = aggregateException.Flatten();
+            }
 
             // Avoiding large recursion... just in case
             int count = 0;

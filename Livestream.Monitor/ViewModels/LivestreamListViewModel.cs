@@ -23,7 +23,8 @@ namespace Livestream.Monitor.ViewModels
         private readonly INavigationService navigationService;
         private readonly DispatcherTimer refreshTimer;
 
-        private bool loading, displayingException;
+        private bool loading;
+        private int refreshErrorCount = 0;
         private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
@@ -50,7 +51,6 @@ namespace Livestream.Monitor.ViewModels
             this.StreamsModel = monitorStreamsModel;
             FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = Constants.RefreshPollingTime };
-            refreshTimer.Tick += async (sender, args) => await RefreshLivestreams();
         }
 
         public bool Loading
@@ -85,33 +85,30 @@ namespace Livestream.Monitor.ViewModels
             try
             {
                 await StreamsModel.RefreshLivestreams();
-            }
-            catch (AggregateException ex)
-            {
-                if (!displayingException)
-                {
-                    Execute.OnUIThread(async () =>
-                    {
-                        displayingException = true;
-                        await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage());
-                        displayingException = false;
-                    });
-                }
+                refreshErrorCount = 0;
+
+                // only reactive the timer if we're still on this screen
+                if (IsActive) refreshTimer.Start();
             }
             catch (Exception ex)
             {
-                if (!displayingException)
+                if (!IsActive) return;
+                refreshErrorCount++;
+
+                // keep trying to refresh until we hit too many consecutive errors
+                if (refreshErrorCount >= 3)
                 {
                     Execute.OnUIThread(async () =>
                     {
-                        displayingException = true;
                         await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
-                        displayingException = false;
+                        refreshTimer.Start();
                     });
                 }
+                else
+                {
+                    refreshTimer.Start();
+                }
             }
-
-            refreshTimer.Start();
         }
 
         /// <summary> Loads the selected stream through livestreamer and displays a messagebox with the loading process details </summary>
@@ -190,6 +187,8 @@ namespace Livestream.Monitor.ViewModels
             Loading = true;
             try
             {
+                refreshErrorCount = 0;
+                refreshTimer.Tick += RefreshTimerOnTick;
                 StreamsModel.LivestreamsRefreshComplete += OnLivestreamsRefreshComplete;
                 FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
@@ -221,6 +220,7 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnDeactivate(bool close)
         {
+            refreshTimer.Tick -= RefreshTimerOnTick;
             refreshTimer.Stop();
             StreamsModel.LivestreamsRefreshComplete -= OnLivestreamsRefreshComplete;
             FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
@@ -234,6 +234,11 @@ namespace Livestream.Monitor.ViewModels
             }
 
             base.OnDeactivate(close);
+        }
+
+        private async void RefreshTimerOnTick(object sender, EventArgs args)
+        {
+            await RefreshLivestreams();
         }
 
         private void LivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
