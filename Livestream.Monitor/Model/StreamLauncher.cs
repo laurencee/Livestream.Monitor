@@ -156,7 +156,7 @@ namespace Livestream.Monitor.Model
                     EnableRaisingEvents = true
                 };
 
-                bool preventClose = string.IsNullOrEmpty(streamQuality);
+                bool preventClose = false;
 
                 // see below for output handler
                 proc.ErrorDataReceived +=
@@ -207,6 +207,13 @@ namespace Livestream.Monitor.Model
                                                        "ERROR occured in Livestreamer: Manually close this window when you've finished reading the livestreamer output.";
 
                     // open the message box if it was somehow closed prior to the error being displayed
+                    if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
+                }
+                else if (string.IsNullOrEmpty(streamQuality))
+                {
+                    messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
+                                                       "No stream quality provided: Manually close this window when you've finished reading the livestreamer output.";
+
                     if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                 }
                 else
