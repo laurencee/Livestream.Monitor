@@ -111,7 +111,7 @@ namespace Livestream.Monitor.Model
                 watchingStreams.Add(livestreamModel);
             }
 
-            StartLivestreamer(livestreamerArgs, messageBoxViewModel, onClose: () =>
+            StartLivestreamer(livestreamerArgs, streamQuality, messageBoxViewModel, onClose: () =>
             {
                 lock (watchingStreamsLock)
                 {
@@ -132,10 +132,10 @@ namespace Livestream.Monitor.Model
                 title: title,
                 messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
 
-            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
+            StartLivestreamer(livestreamerArgs, "best", messageBoxViewModel);
         }
 
-        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
+        private void StartLivestreamer(string livestreamerArgs, string streamQuality, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
         {
             if (!CheckLivestreamerExists()) return;
 
@@ -156,7 +156,7 @@ namespace Livestream.Monitor.Model
                     EnableRaisingEvents = true
                 };
 
-                bool preventClose = false;
+                bool preventClose = string.IsNullOrEmpty(streamQuality);
 
                 // see below for output handler
                 proc.ErrorDataReceived +=
