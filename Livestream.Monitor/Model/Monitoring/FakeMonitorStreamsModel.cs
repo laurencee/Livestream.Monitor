@@ -88,6 +88,10 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
+        public string SelectedStreamQuality { get; set; }
+
+        public bool CanOpenStream { get; }
+
         public event EventHandler LivestreamsRefreshComplete;
 
         public Task AddLivestream(ChannelIdentifier channelIdentifier)

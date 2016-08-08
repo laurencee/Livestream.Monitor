@@ -21,10 +21,9 @@
         <Button x:Name="OpenChat" Content="CHAT"  Margin="2" Width="50" />
         <Button x:Name="RefreshLivestreams" Content="{StaticResource RefreshButtonText}" FontWeight="ExtraBold"  Margin="2" ToolTip="Refresh Livestreams" />
         <TextBlock Text="Quality:" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
-        <controls:SplitButton Margin="2" MinWidth="75"
-                              ItemsSource="{Binding StreamQualities}" SelectedItem="{Binding SelectedStreamQuality}" IsEnabled="{Binding CanOpenStream}"
-                              cal:Message.Attach="[Click] = [OpenStream]"
-                              ToolTip="Clicking the quality text (not the dropdown arrow) launches the highlighted stream in the selected quality"/>
+        <ComboBox Margin="2" MinWidth="75" IsEditable="True"
+                  ItemsSource="{Binding StreamQualities}" IsEnabled="{Binding MonitorStreamsModel.CanOpenStream}" Text="{Binding MonitorStreamsModel.SelectedStreamQuality}"
+                  ToolTip="Clicking the quality text (not the dropdown arrow) launches the highlighted stream in the selected quality"/>
 
         <!-- Importing & Adding new streams -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />

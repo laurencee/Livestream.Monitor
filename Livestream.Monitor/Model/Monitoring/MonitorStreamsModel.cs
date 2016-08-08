@@ -23,6 +23,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private bool canRefreshLivestreams = true;
         private LivestreamModel selectedLivestream;
         private DateTimeOffset lastRefreshTime;
+        private string selectedStreamQuality;
 
         #region Design Time Constructor
 
@@ -81,6 +82,43 @@ namespace Livestream.Monitor.Model.Monitoring
                 if (Equals(value, selectedLivestream)) return;
                 selectedLivestream = value;
                 NotifyOfPropertyChange();
+                NotifyOfPropertyChange(() => CanOpenStream);
+                
+                if (CanOpenStream)
+                {
+                    // update the field value to prevent saving the new quality value to disk
+                    if (selectedLivestream.IsPartner) // twitch partner specific
+                    {
+                        selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
+                    }
+                    else
+                    {
+                        selectedStreamQuality = StreamQuality.Best.ToString();
+                    }
+
+                    NotifyOfPropertyChange(() => SelectedStreamQuality);
+                }
+            }
+        }
+
+        public bool CanOpenStream => selectedLivestream != null && selectedLivestream.Live;
+
+        public string SelectedStreamQuality
+        {
+            get { return selectedStreamQuality; }
+            set
+            {
+                if (value == selectedStreamQuality) return;
+                selectedStreamQuality = value;
+                NotifyOfPropertyChange();
+
+                // we have to do a string contains check because tryparse succeeds on string integer comparisons e.g. "1"
+                if (selectedStreamQuality != null && Enum.GetNames(typeof(StreamQuality)).Contains(selectedStreamQuality))
+                {
+                    StreamQuality streamQuality;
+                    if (StreamQuality.TryParse(selectedStreamQuality, true, out streamQuality))
+                        settingsHandler.Settings.DefaultStreamQuality = streamQuality;
+                }
             }
         }
 

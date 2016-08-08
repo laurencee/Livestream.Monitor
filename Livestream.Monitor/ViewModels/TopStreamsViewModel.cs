@@ -147,7 +147,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (stream == null) return;
 
-            streamLauncher.OpenStream(stream.LivestreamModel);
+            streamLauncher.OpenStream(stream.LivestreamModel, monitorStreamsModel.SelectedStreamQuality);
         }
 
         public async Task OpenChat(TopStreamResult stream)

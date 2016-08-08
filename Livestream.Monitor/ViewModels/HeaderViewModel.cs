@@ -20,16 +20,10 @@ namespace Livestream.Monitor.ViewModels
     {
         private const string TIP_ERROR_ADD_STREAM = "Tip: Make sure you have selected the right stream provider\nTip: Only input the streamers id and not the full url.";
 
-        private readonly IMonitorStreamsModel monitorStreamsModel;
-        private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
         private readonly IApiClientFactory apiClientFactory;
         private string streamName;
-        private bool canRefreshLivestreams;
-        private StreamQuality? selectedStreamQuality;
-        private bool canOpenStream;
-        private bool canOpenChat;
-        private bool canAddStream;
+        private bool canRefreshLivestreams, canOpenChat, canAddStream;
         private IApiClient selectedApiClient;
 
         public HeaderViewModel()
@@ -40,20 +34,17 @@ namespace Livestream.Monitor.ViewModels
 
         public HeaderViewModel(
             IMonitorStreamsModel monitorStreamsModel,
-            ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel,
             IApiClientFactory apiClientFactory)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
             if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
 
             FilterModel = filterModelModel;
-            this.monitorStreamsModel = monitorStreamsModel;
-            this.settingsHandler = settingsHandler;
+            MonitorStreamsModel = monitorStreamsModel;
             this.streamLauncher = streamLauncher;
             this.apiClientFactory = apiClientFactory;
         }
@@ -94,17 +85,6 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public bool CanOpenStream
-        {
-            get { return canOpenStream; }
-            set
-            {
-                if (value == canOpenStream) return;
-                canOpenStream = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
         public bool CanOpenChat
         {
             get { return canOpenChat; }
@@ -116,20 +96,9 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public StreamQuality? SelectedStreamQuality
-        {
-            get { return selectedStreamQuality; }
-            set
-            {
-                if (value == selectedStreamQuality) return;
-                selectedStreamQuality = value;
-                NotifyOfPropertyChange();
-                if (selectedStreamQuality.HasValue)
-                    settingsHandler.Settings.DefaultStreamQuality = selectedStreamQuality.Value;
-            }
-        }
+        public IMonitorStreamsModel MonitorStreamsModel { get; }
 
-        public BindableCollection<StreamQuality> StreamQualities { get; set; } = new BindableCollection<StreamQuality>();
+        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
 
         public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
 
@@ -152,7 +121,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await monitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName));
+                await MonitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName));
                 StreamName = null;
                 await dialogController.CloseAsync();
             }
@@ -195,7 +164,7 @@ namespace Livestream.Monitor.ViewModels
                 var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from '{SelectedApiClient.ApiName}' for username '{username}'");
                 try
                 {
-                    await monitorStreamsModel.ImportFollows(username, SelectedApiClient);
+                    await MonitorStreamsModel.ImportFollows(username, SelectedApiClient);
                 }
                 catch (Exception ex)
                 {
@@ -212,7 +181,7 @@ namespace Livestream.Monitor.ViewModels
         {
             try
             {
-                await monitorStreamsModel.RefreshLivestreams();
+                await MonitorStreamsModel.RefreshLivestreams();
             }
             catch (AggregateException ex)
             {
@@ -224,14 +193,9 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public void OpenStream()
-        {
-            streamLauncher.OpenStream(monitorStreamsModel.SelectedLivestream);
-        }
-
         public async Task OpenChat()
         {
-            var selectedLivestream = monitorStreamsModel.SelectedLivestream;
+            var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
             if (selectedLivestream == null) return;
 
             await streamLauncher.OpenChat(selectedLivestream, this);
@@ -253,47 +217,40 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnActivate()
         {
             SetFilterModelApiClients();
-            monitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
-            monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
+            MonitorStreamsModel.PropertyChanged += MonitorStreamsModelOnPropertyChanged;
+            MonitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
             base.OnActivate();
         }
 
         protected override void OnDeactivate(bool close)
         {
-            monitorStreamsModel.PropertyChanged -= MonitorStreamsModelOnPropertyChanged;
-            monitorStreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
+            MonitorStreamsModel.PropertyChanged -= MonitorStreamsModelOnPropertyChanged;
+            MonitorStreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
             base.OnDeactivate(close);
         }
         
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(monitorStreamsModel.CanRefreshLivestreams))
+            if (e.PropertyName == nameof(MonitorStreamsModel.CanRefreshLivestreams))
             {
-                CanRefreshLivestreams = monitorStreamsModel.CanRefreshLivestreams;
+                CanRefreshLivestreams = MonitorStreamsModel.CanRefreshLivestreams;
             }
-            else if (e.PropertyName == nameof(monitorStreamsModel.SelectedLivestream))
+            else if (e.PropertyName == nameof(MonitorStreamsModel.SelectedLivestream))
             {
-                var selectedLivestream = monitorStreamsModel.SelectedLivestream;
-                CanOpenStream = selectedLivestream != null && selectedLivestream.Live;
+                var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
                 CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;
                 StreamQualities.Clear();
-                selectedStreamQuality = null;
-                if (CanOpenStream)
+                if (MonitorStreamsModel.CanOpenStream)
                 {
                     if (selectedLivestream.IsPartner) // twitch partner specific
                     {
-                        StreamQualities.AddRange(Enum.GetValues(typeof(StreamQuality)).Cast<StreamQuality>());
-                        // set field instead of property so we dont update user settings
-                        selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality;
+                        StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
                     }
                     else
                     {
-                        StreamQualities.AddRange(new[] { StreamQuality.Best, StreamQuality.Worst, });
-                        // set field instead of property so we dont update user settings
-                        selectedStreamQuality = StreamQuality.Best;
+                        StreamQualities.AddRange(new[] { StreamQuality.Best.ToString(), StreamQuality.Worst.ToString(), });
                     }
                 }
-                NotifyOfPropertyChange(() => SelectedStreamQuality);
             }
         }
 
@@ -310,7 +267,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void SetFilterModelApiClients()
         {
-            var apiClientNames = monitorStreamsModel.Livestreams.Select(x => x.ApiClient.ApiName).Distinct().ToList();
+            var apiClientNames = MonitorStreamsModel.Livestreams.Select(x => x.ApiClient.ApiName).Distinct().ToList();
             apiClientNames.Insert(0, FilterModel.AllApiClientsFilterName);
             FilterModel.ApiClientNames = new BindableCollection<string>(apiClientNames);
 

@@ -15,7 +15,11 @@ namespace Livestream.Monitor.Model.Monitoring
         bool CanRefreshLivestreams { get; }
 
         DateTimeOffset LastRefreshTime { get; }
-        
+
+        string SelectedStreamQuality { get; set; }
+
+        bool CanOpenStream { get; }
+
         event EventHandler LivestreamsRefreshComplete;
 
         Task AddLivestream(ChannelIdentifier channelIdentifier);

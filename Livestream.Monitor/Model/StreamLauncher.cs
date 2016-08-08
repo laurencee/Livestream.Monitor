@@ -4,11 +4,9 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using System.Windows;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
-using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.ViewModels;
 using Action = System.Action;
 
@@ -16,7 +14,6 @@ namespace Livestream.Monitor.Model
 {
     public class StreamLauncher
     {
-        // used for 
         private static readonly object watchingStreamsLock = new object();
 
         private readonly ISettingsHandler settingsHandler;
@@ -94,26 +91,19 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        public void OpenStream(LivestreamModel livestreamModel)
+        public void OpenStream(LivestreamModel livestreamModel, string streamQuality)
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
-
-            // TODO - move the stream quality into the IApiClient
-            // Fall back to source stream quality for non-partnered Livestreams
-            var streamQuality = (!livestreamModel.IsPartner &&
-                                 settingsHandler.Settings.DefaultStreamQuality != StreamQuality.Best)
-                                    ? StreamQuality.Best
-                                    : settingsHandler.Settings.DefaultStreamQuality;
-
+            
             string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
 
             // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
-            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best)
+            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best.ToString())
             {
-                messageBoxViewModel.MessageText += Environment.NewLine + "[NOTE] Channel is not a twitch partner so falling back to Source quality";
+                messageBoxViewModel.MessageText += Environment.NewLine + $"[NOTE] Channel is not a twitch partner so falling back to {StreamQuality.Best} quality";
             }
 
             lock (watchingStreamsLock)
