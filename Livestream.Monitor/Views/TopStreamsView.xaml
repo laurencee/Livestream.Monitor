@@ -43,6 +43,10 @@
                       Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. You can type a partial game name to search for any matching game names from twitch."
                      controls:TextBoxHelper.Watermark="Partial game name..."
                      IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False" />
+            <TextBlock Text="Quality:" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
+            <ComboBox Margin="2" MinWidth="75" IsEditable="True"
+                      ItemsSource="{Binding StreamQualities}" Text="{Binding SelectedStreamQuality}"
+                      ToolTip="You can freely type in any quality option you want" />
             <Button x:Name="RefreshItems" Content="{StaticResource RefreshButtonText}" FontWeight="ExtraBold" Margin="2" ToolTip="Refresh Top Streams" />
         </StackPanel>
 

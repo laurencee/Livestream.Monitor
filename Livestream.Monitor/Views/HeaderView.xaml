@@ -23,7 +23,7 @@
         <TextBlock Text="Quality:" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
         <ComboBox Margin="2" MinWidth="75" IsEditable="True"
                   ItemsSource="{Binding StreamQualities}" IsEnabled="{Binding MonitorStreamsModel.CanOpenStream}" Text="{Binding MonitorStreamsModel.SelectedStreamQuality}"
-                  ToolTip="Clicking the quality text (not the dropdown arrow) launches the highlighted stream in the selected quality"/>
+                  ToolTip="You can freely type in any quality option you want" />
 
         <!-- Importing & Adding new streams -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />

@@ -27,6 +27,7 @@ namespace Livestream.Monitor.ViewModels
         private BindableCollection<string> possibleGameNames = new BindableCollection<string>();
         private bool expandPossibleGames;
         private IApiClient selectedApiClient;
+        private string selectedStreamQuality;
 
         #region Design time constructor
 
@@ -60,6 +61,8 @@ namespace Livestream.Monitor.ViewModels
             this.apiClientFactory = apiClientFactory;
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
+            StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
+
             PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(Page))
@@ -126,6 +129,19 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<IApiClient> ApiClients { get; set; }
 
+        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
+
+        public string SelectedStreamQuality
+        {
+            get { return selectedStreamQuality; }
+            set
+            {
+                if (value == selectedStreamQuality) return;
+                selectedStreamQuality = value;
+                NotifyOfPropertyChange(() => SelectedStreamQuality);
+            }
+        }
+
         public IApiClient SelectedApiClient
         {
             get { return selectedApiClient; }
@@ -147,7 +163,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (stream == null) return;
 
-            streamLauncher.OpenStream(stream.LivestreamModel, monitorStreamsModel.SelectedStreamQuality);
+            streamLauncher.OpenStream(stream.LivestreamModel, SelectedStreamQuality);
         }
 
         public async Task OpenChat(TopStreamResult stream)
@@ -204,6 +220,8 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnInitialize()
         {
             ApiClients = new BindableCollection<IApiClient>(apiClientFactory.GetAll().Where(x => x.HasTopStreamsSupport));
+            SelectedStreamQuality = StreamQuality.Best.ToString();
+
             if (SelectedApiClient == null)
                 SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
             base.OnInitialize();
