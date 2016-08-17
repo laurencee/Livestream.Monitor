@@ -127,6 +127,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 GameName = topStreamQuery.GameName
             };
             var topStreams = await hitboxClient.GetTopStreams(hitboxTopStreamQuery);
+            if (topStreams == null) return new List<LivestreamQueryResult>();
+
             return topStreams.ConvertAll(ConvertToLivestreamModel)
                              .Select(x => new LivestreamQueryResult(new ChannelIdentifier(this, x.Id))
                              {

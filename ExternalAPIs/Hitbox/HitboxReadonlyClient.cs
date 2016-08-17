@@ -21,7 +21,7 @@ namespace ExternalAPIs.Hitbox
                 request += $"&game={topStreamsQuery.GameName}";
 
             var streamRoot = await HttpClientExtensions.ExecuteRequest<StreamsRoot>(request, cancellationToken);
-            return streamRoot.Livestreams;
+            return streamRoot?.Livestreams;
         }
 
         public async Task<Mediainfo> GetStreamDetails(string streamId, CancellationToken cancellationToken = default(CancellationToken))
@@ -30,7 +30,7 @@ namespace ExternalAPIs.Hitbox
 
             var request = $"{RequestConstants.Streams}/{streamId}";
             var streamRoot = await HttpClientExtensions.ExecuteRequest<StreamRoot>(request, cancellationToken);
-            return streamRoot.Mediainfo;
+            return streamRoot?.Mediainfo;
         }
 
         public async Task<Livestream> GetChannelDetails(string channelName, CancellationToken cancellationToken = default(CancellationToken))
@@ -39,7 +39,7 @@ namespace ExternalAPIs.Hitbox
 
             var request = RequestConstants.LiveChannel.Replace("{0}", channelName);
             var channelDetails = await HttpClientExtensions.ExecuteRequest<ChannelRoot>(request, cancellationToken);
-            return channelDetails.Livestreams.FirstOrDefault();
+            return channelDetails?.Livestreams.FirstOrDefault();
         }
 
         public async Task<List<Video>> GetChannelVideos(ChannelVideosQuery channelVideosQuery, CancellationToken cancellationToken = default(CancellationToken))
@@ -53,7 +53,7 @@ namespace ExternalAPIs.Hitbox
             request += $"?offset={channelVideosQuery.Skip}&limit={channelVideosQuery.Take}";
 
             var channelVideosRoot = await HttpClientExtensions.ExecuteRequest<ChannelVideosRoot>(request, cancellationToken);
-            return channelVideosRoot.Videos;
+            return channelVideosRoot?.Videos;
         }
 
         public async Task<List<Following>> GetUserFollows(string username, CancellationToken cancellationToken = default(CancellationToken))
@@ -81,7 +81,7 @@ namespace ExternalAPIs.Hitbox
 
             var topGamesRoot = await HttpClientExtensions.ExecuteRequest<TopGamesRoot>(request, cancellationToken);
 
-            return topGamesRoot.Categories;
+            return topGamesRoot?.Categories;
         }
     }
 }

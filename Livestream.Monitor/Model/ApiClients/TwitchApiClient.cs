@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly List<LivestreamQueryResult> offlineQueryResultsCache = new List<LivestreamQueryResult>();
 
         // 1 time per application run
-        private bool queryOfflineStreams = true;
+        private bool queryAllStreams = true;
 
         public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient)
         {
@@ -121,8 +121,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var queryResults = new List<LivestreamQueryResult>();
             if (moniteredChannels.Count == 0) return queryResults;
 
-            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists
-            // we must specifically ask for channel details, there is no bulk api available for getting channel details.
+            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details. 
             List<Stream> onlineStreams = new List<Stream>();
 
             int retryCount = 0;
@@ -143,7 +142,7 @@ namespace Livestream.Monitor.Model.ApiClients
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
-
+                
                 var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.Channel?.Name));
                 var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
                 livestream.PopulateWithChannel(onlineStream.Channel);
@@ -152,18 +151,34 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     LivestreamModel = livestream
                 });
+
+                // remove cached offline query result if it exists
+                var cachedOfflineResult = offlineQueryResultsCache.FirstOrDefault(x => x.ChannelIdentifier.Equals(livestream.ChannelIdentifier));
+                if (cachedOfflineResult != null) offlineQueryResultsCache.Remove(cachedOfflineResult);
             }
 
-            // As offline stream querying is expensive due to no bulk call, we only do it once per application run.
-            if (queryOfflineStreams)
+            // As offline stream querying is expensive due to no bulk call, we only do it once for the majority of streams per application run.
+            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
+            if (queryAllStreams)
             {
-                var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
                 var offlineStreams = await GetOfflineStreamQueryResults(offlineChannels, cancellationToken);
                 // only treat offline streams as being queried if no cancel occurred
                 if (!cancellationToken.IsCancellationRequested)
                 {
                     offlineQueryResultsCache.AddRange(offlineStreams);
-                    queryOfflineStreams = false;
+                    queryAllStreams = false;
+                }
+            }
+            else // we also need to query stream information for streams which have gone offline since our last query
+            {
+                var newlyOfflineStreams = offlineChannels.Except(offlineQueryResultsCache.Select(x => x.ChannelIdentifier)).ToList();
+                if (newlyOfflineStreams.Any())
+                {
+                    var offlineStreams = await GetOfflineStreamQueryResults(newlyOfflineStreams, cancellationToken);
+                    if (!cancellationToken.IsCancellationRequested)
+                    {
+                        offlineQueryResultsCache.AddRange(offlineStreams);
+                    }
                 }
             }
 
