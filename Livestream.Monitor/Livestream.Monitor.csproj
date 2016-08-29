@@ -115,6 +115,7 @@
     <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Model\ApiClients\BeamProApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />
     <Compile Include="Model\ApiClients\HitboxApiClient.cs" />
     <Compile Include="Model\ApiClients\KnownGame.cs" />

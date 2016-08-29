@@ -1,5 +1,4 @@
 using System;
-using ExternalAPIs.TwitchTv.Query;
 
 namespace ExternalAPIs.Hitbox.Query
 {

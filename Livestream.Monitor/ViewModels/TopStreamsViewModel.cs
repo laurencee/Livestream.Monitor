@@ -151,6 +151,7 @@ namespace Livestream.Monitor.ViewModels
                 selectedApiClient = value;
                 NotifyOfPropertyChange(() => SelectedApiClient);
                 MovePage();
+                InitializeKnownGames();
             }
         }
 
@@ -232,15 +233,24 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
 
             await EnsureItems();
-            try
-            {
-                var games = await apiClientFactory.Get<TwitchApiClient>().GetKnownGameNames(null);
-                PossibleGameNames.Clear();
-                PossibleGameNames.AddRange(games.Select(x => x.GameName));
-            }
-            catch { }
+            InitializeKnownGames();
             
             base.OnViewLoaded(view);
+        }
+
+        private async void InitializeKnownGames()
+        {
+            PossibleGameNames.Clear();
+            if (!SelectedApiClient.HasTopStreamGameFilterSupport) return;
+
+            try
+            {
+                var games = await SelectedApiClient.GetKnownGameNames(null);
+                PossibleGameNames.AddRange(games.Select(x => x.GameName));
+            }
+            catch
+            {
+            }
         }
 
         private async Task UnmonitorStream(TopStreamResult topStreamResult)
@@ -326,7 +336,7 @@ namespace Livestream.Monitor.ViewModels
         private async void UpdatePossibleGameNames()
         {
             var game = GameName; // store local variable in case GameName changes while this is running
-            if (string.IsNullOrWhiteSpace(game)) return;
+            if (!SelectedApiClient.HasTopStreamGameFilterSupport || string.IsNullOrWhiteSpace(game)) return;
 
             try
             {

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs;
 
 namespace Livestream.Monitor.Model.ApiClients
 {

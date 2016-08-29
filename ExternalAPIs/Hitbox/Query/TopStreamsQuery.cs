@@ -1,6 +1,4 @@
-﻿using ExternalAPIs.TwitchTv.Query;
-
-namespace ExternalAPIs.Hitbox.Query
+﻿namespace ExternalAPIs.Hitbox.Query
 {
     public class TopStreamsQuery : PagedQuery
     {

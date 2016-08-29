@@ -2,9 +2,6 @@
 
 namespace ExternalAPIs.TwitchTv.Query
 {
-    /// <summary>
-    /// Default Take size
-    /// </summary>
     public class ChannelVideosQuery : PagedQuery
     {
         private string channelName;

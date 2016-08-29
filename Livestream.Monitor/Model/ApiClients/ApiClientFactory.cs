@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExternalAPIs.Beam.Pro;
 using ExternalAPIs.Hitbox;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.Youtube;
@@ -12,12 +13,14 @@ namespace Livestream.Monitor.Model.ApiClients
         private static readonly TwitchApiClient TwitchApiClient = new TwitchApiClient(new TwitchTvReadonlyClient());
         private static readonly YoutubeApiClient YoutubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
         private static readonly HitboxApiClient HitboxApiClient = new HitboxApiClient(new HitboxReadonlyClient());
+        private static readonly BeamProApiClient BeamProClient = new BeamProApiClient(new BeamProReadonlyClient());
 
         private readonly List<IApiClient> apiClients = new List<IApiClient>()
         {
             TwitchApiClient,
             YoutubeApiClient,
-            HitboxApiClient
+            HitboxApiClient,
+            BeamProClient
         }; 
 
         public T Get<T>() where T : IApiClient
@@ -46,6 +49,8 @@ namespace Livestream.Monitor.Model.ApiClients
                     return TwitchApiClient;
                 case HitboxApiClient.API_NAME:
                     return HitboxApiClient;
+                case BeamProApiClient.API_NAME:
+                    return BeamProClient;
                 default:
                     return null;
             }

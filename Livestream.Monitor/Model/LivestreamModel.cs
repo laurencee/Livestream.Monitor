@@ -7,7 +7,7 @@ namespace Livestream.Monitor.Model
 {
     public class LivestreamModel : PropertyChangedBase
     {
-        private DateTimeOffset startTime;
+        private DateTimeOffset? startTime;
         private long viewers;
         private string game;
         private string description;
@@ -104,7 +104,7 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public DateTimeOffset StartTime
+        public DateTimeOffset? StartTime
         {
             get { return startTime; }
             set
@@ -167,7 +167,7 @@ namespace Livestream.Monitor.Model
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }
 
-        public TimeSpan Uptime => Live ? DateTimeOffset.Now - StartTime : TimeSpan.Zero;
+        public TimeSpan Uptime => Live && StartTime.HasValue ? DateTimeOffset.Now - StartTime.Value : TimeSpan.Zero;
 
         public DateTimeOffset? LastLiveTime
         {

@@ -70,6 +70,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="BeamProClientShould.cs" />
     <Compile Include="YoutubeClientShould.cs" />
     <Compile Include="HitboxClientShould.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

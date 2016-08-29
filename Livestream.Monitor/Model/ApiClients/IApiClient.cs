@@ -19,6 +19,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         bool HasTopStreamsSupport { get; }
 
+        bool HasTopStreamGameFilterSupport { get; }
+
         bool HasUserFollowQuerySupport { get; }
 
         List<string> VodTypes { get; }
