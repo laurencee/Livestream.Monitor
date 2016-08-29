@@ -89,6 +89,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     var channel = await beamProClient.GetStreamDetails(vodQuery.StreamId, CancellationToken.None);
                     channelNameIdMap[channel.token] = channel.id;
+                    streamid = channel.id;
                 }
             }
 
@@ -119,6 +120,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return topStreams.ConvertAll(input =>
             {
                 var channelIdentifier = new ChannelIdentifier(this, input.token);
+                channelNameIdMap[input.token] = input.id;
                 return new LivestreamQueryResult(channelIdentifier)
                 {
                     LivestreamModel = ConvertToLivestreamModel(input)
