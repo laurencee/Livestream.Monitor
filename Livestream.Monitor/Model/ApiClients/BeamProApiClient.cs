@@ -172,10 +172,8 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             return new LivestreamModel(channel.token, new ChannelIdentifier(this, channel.token))
             {
-                DisplayName = channel.name,
-                // Beam.Pro doesn't seem to have a short description field like twitch/youtube etc.
-                // the "description" field from the channel is the full html output from the channels description, not the current live stream
-                //Description = channel.user?.bio,
+                DisplayName = channel.user?.username,
+                Description = channel.name,
                 Viewers = channel.viewersCurrent,
                 Live = channel.online,
                 Game = channel.type?.name,
