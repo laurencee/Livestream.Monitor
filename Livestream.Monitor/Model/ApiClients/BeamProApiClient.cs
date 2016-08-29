@@ -180,9 +180,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 // unable to find an uptime/starttime value from the api
                 ThumbnailUrls = new ThumbnailUrls()
                 {
-                    Large = channel.thumbnail.url,
-                    Medium = channel.thumbnail.url,
-                    Small = channel.thumbnail.url
+                    Large = channel.thumbnail?.url,
+                    Medium = channel.thumbnail?.url,
+                    Small = channel.thumbnail?.url
                 }
             };
         }
