@@ -3,6 +3,9 @@ namespace ExternalAPIs.TwitchTv
     public static class RequestConstants
     {
         public const string AcceptHeader = "application/vnd.twitchtv.v3+json";
+        public const string ClientIdHeaderKey = "Client-ID";
+        public const string ClientIdHeaderValue = "lf8xspujnqfqcdlj11zq77dfen2tqjo";
+
         public const string TwitchTvApiRoot = "https://api.twitch.tv/kraken";
         public const string UserFollows = TwitchTvApiRoot + "/users/{0}/follows/channels";
         public const string Streams = TwitchTvApiRoot + "/streams";

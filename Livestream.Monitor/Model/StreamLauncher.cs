@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.ViewModels;
 using Action = System.Action;
 
@@ -96,6 +97,13 @@ namespace Livestream.Monitor.Model
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
             
             string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
+
+            // hack to pass through the client id to livestreamer 
+            if (settingsHandler.Settings.PassthroughClientId && livestreamModel.ApiClient is TwitchApiClient)
+            {
+                livestreamerArgs = $"--http-header {ExternalAPIs.TwitchTv.RequestConstants.ClientIdHeaderKey}={ExternalAPIs.TwitchTv.RequestConstants.ClientIdHeaderValue} {livestreamerArgs}";
+            }
+
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
@@ -105,7 +113,7 @@ namespace Livestream.Monitor.Model
             {
                 messageBoxViewModel.MessageText += Environment.NewLine + $"[NOTE] Channel is not a twitch partner so falling back to {StreamQuality.Best} quality";
             }
-
+            
             lock (watchingStreamsLock)
             {
                 watchingStreams.Add(livestreamModel);

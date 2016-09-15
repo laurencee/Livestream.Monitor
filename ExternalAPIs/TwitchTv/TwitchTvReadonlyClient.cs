@@ -125,6 +125,7 @@ namespace ExternalAPIs.TwitchTv
         {
             HttpClient httpClient = HttpClientExtensions.CreateCompressionHttpClient();
             httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue(RequestConstants.AcceptHeader));
+            httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
             return httpClient.ExecuteRequest<T>(request, cancellationToken);
         }
     }

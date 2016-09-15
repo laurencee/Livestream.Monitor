@@ -17,8 +17,7 @@ namespace Livestream.Monitor.ViewModels
         private string chromeFullPath;
         private string livestreamerFullPath;
         private int minimumEventViewers;
-        private bool disableNotifications;
-        private bool hideStreamOutputOnLoad;
+        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId;
 
         public SettingsViewModel()
         {
@@ -122,6 +121,18 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool PassthroughClientId
+        {
+            get { return passthroughClientId; }
+            set
+            {
+                if (value == passthroughClientId) return;
+                passthroughClientId = value;
+                NotifyOfPropertyChange(() => PassthroughClientId);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         public bool CanSave
         {
             get
@@ -135,7 +146,8 @@ namespace Livestream.Monitor.ViewModels
                        LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath ||
                        MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
-                       HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
+                       HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
+                       PassthroughClientId != settingsHandler.Settings.PassthroughClientId;
             }
         }
 
@@ -163,6 +175,7 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
+            settingsHandler.Settings.PassthroughClientId = PassthroughClientId;
             settingsHandler.SaveSettings();
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
@@ -223,6 +236,7 @@ namespace Livestream.Monitor.ViewModels
             MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
+            PassthroughClientId = settingsHandler.Settings.PassthroughClientId;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();

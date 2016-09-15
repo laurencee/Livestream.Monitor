@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Core
         private string livestreamerFullPath;
         private string chromeFullPath;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
-        private bool disableNotifications;
+        private bool disableNotifications, passthroughClientId;
         private bool hideStreamOutputMessageBoxOnLoad;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -121,6 +121,18 @@ namespace Livestream.Monitor.Core
                 if (value == hideStreamOutputMessageBoxOnLoad) return;
                 hideStreamOutputMessageBoxOnLoad = value;
                 NotifyOfPropertyChange(() => HideStreamOutputMessageBoxOnLoad);
+            }
+        }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool PassthroughClientId
+        {
+            get { return passthroughClientId; }
+            set
+            {
+                if (value == passthroughClientId) return;
+                passthroughClientId = value;
+                NotifyOfPropertyChange(() => PassthroughClientId);
             }
         }
 
