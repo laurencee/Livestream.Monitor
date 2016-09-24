@@ -18,6 +18,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public const string API_NAME = "hitbox";
         // this doesn't appear anywhere in the returned api values but it is where the static data comes from...
         private const string StaticContentPrefixUrl = "http://edge.sf.hitbox.tv";
+        private const string VideoPrefix = "http://www.hitbox.tv/video/";
 
         private readonly IHitboxReadonlyClient hitboxClient;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
@@ -103,7 +104,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     {
                         Length = length,
                         Game = x.CategoryName,
-                        Url = x.MediaFile,
+                        Url = VideoPrefix + x.MediaId,
                         Title = x.MediaTitle,
                         Description = x.MediaStatus,
                         RecordedAt = x.MediaDateAdded ?? DateTimeOffset.MinValue,
