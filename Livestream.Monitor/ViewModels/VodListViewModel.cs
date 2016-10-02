@@ -66,7 +66,10 @@ namespace Livestream.Monitor.ViewModels
                 if (value == streamId) return;
                 streamId = value;
                 NotifyOfPropertyChange(() => StreamId);
-                if (!string.IsNullOrWhiteSpace(streamId)) MovePage();
+                if (!string.IsNullOrWhiteSpace(streamId))                
+                    MovePage();                
+                else                
+                    Items.Clear();                
             }
         }
 
@@ -84,6 +87,7 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
 
+        /// <summary> Should be set before setting the StreamId since the stream id is unique to each api </summary>
         public IApiClient SelectedApiClient
         {
             get { return selectedApiClient; }
@@ -91,16 +95,21 @@ namespace Livestream.Monitor.ViewModels
             {
                 if (Equals(value, selectedApiClient)) return;
                 selectedApiClient = value;
-                NotifyOfPropertyChange(() => SelectedApiClient);
-                NotifyOfPropertyChange(() => VodTypes);
+                NotifyOfPropertyChange(() => SelectedApiClient);                
 
-                var orderedApiClientStream = monitorStreamsModel.Livestreams
-                                                                .Where(x => x.ApiClient == selectedApiClient)
-                                                                .OrderBy(x => x.Id);
+                // filter livestreams for the newly selected api client to populate known streams
+                var orderedLiveStreams = monitorStreamsModel.Livestreams
+                                                            .Where(x => x.ApiClient == selectedApiClient)
+                                                            .OrderBy(x => x.Id).ToList();
 
-                // we have to clear the streamid if we're changing the underlying collection the combobox is bound to AND the streamid doesn't exist in the new collection
-                if (StreamId != null && orderedApiClientStream.All(x => x.Id != StreamId)) StreamId = null;
-                KnownStreams = new BindableCollection<LivestreamModel>(orderedApiClientStream);
+                // as streamids are unique to each api client, we should clear the stream id when changing api's 
+                // unless we know it exists in the newly selected api client to avoid immediate query failures
+                if (IsActive && StreamId != null && !orderedLiveStreams.Any(x => x.Id == StreamId))
+                {
+                    StreamId = null;
+                }
+
+                KnownStreams = new BindableCollection<LivestreamModel>(orderedLiveStreams);
                 SelectedVodType = VodTypes.FirstOrDefault();
             }
         }

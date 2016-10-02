@@ -134,8 +134,8 @@ namespace Livestream.Monitor.ViewModels
 
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
-                vm.StreamId = stream.Id;
                 vm.SelectedApiClient = stream.ApiClient;
+                vm.StreamId = stream.Id;                
             });
         }
 
