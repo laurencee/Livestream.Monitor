@@ -112,11 +112,11 @@ namespace Livestream.Monitor.ViewModels
         }
 
         /// <summary> Loads the selected stream through livestreamer and displays a messagebox with the loading process details </summary>
-        public void OpenStream()
+        public async Task OpenStream()
         {
             if (Loading) return;
-
-            streamLauncher.OpenStream(StreamsModel.SelectedLivestream, StreamsModel.SelectedStreamQuality);
+            
+            await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, StreamsModel.SelectedStreamQuality, this);
         }
 
         public void ToggleNotify()

@@ -48,7 +48,7 @@ namespace Livestream.Monitor.Core
             return string.Compare(original, value, stringComparison) == 0;
         }
 
-        /// <summary> Save implementation to show messages from viewmodels </summary>
+        /// <summary> Safe implementation to show messages from viewmodels </summary>
         public static async Task<MessageDialogResult> ShowMessageAsync(this IViewAware screen, string title, string message,
             MessageDialogStyle messageDialogStyle = MessageDialogStyle.Affirmative,
             MetroDialogSettings dialogSettings = null)

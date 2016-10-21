@@ -5,6 +5,7 @@ using System.Net;
 using System.Runtime.Caching;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.TwitchTv.Query;
 using ExternalAPIs.Youtube;
@@ -43,7 +44,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasUserFollowQuerySupport => false;
 
+        public bool IsAuthorized => true;
+
         public List<string> VodTypes { get; } = new List<string>();
+
+        public string LivestreamerAuthorizationArg => null;
+
+        public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
         public string GetStreamUrl(string channelId)
         {

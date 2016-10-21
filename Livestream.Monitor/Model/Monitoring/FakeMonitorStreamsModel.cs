@@ -94,7 +94,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
-        public Task AddLivestream(ChannelIdentifier channelIdentifier)
+        public Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             Livestreams.Add(new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier));

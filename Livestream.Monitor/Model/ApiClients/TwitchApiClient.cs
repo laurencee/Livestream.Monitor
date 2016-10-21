@@ -2,14 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.TwitchTv.Dto;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -18,18 +21,23 @@ namespace Livestream.Monitor.Model.ApiClients
         public const string API_NAME = "twitchtv";
         private const string BroadcastVodType = "Broadcasts";
         private const string HighlightVodType = "Highlights";
+        private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
 
         private readonly ITwitchTvReadonlyClient twitchTvClient;
+        private readonly ISettingsHandler settingsHandler;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
         private readonly List<LivestreamQueryResult> offlineQueryResultsCache = new List<LivestreamQueryResult>();
 
         // 1 time per application run
         private bool queryAllStreams = true;
 
-        public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient)
+        public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient, ISettingsHandler settingsHandler)
         {
             if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+
             this.twitchTvClient = twitchTvClient;
+            this.settingsHandler = settingsHandler;
         }
 
         public string ApiName => API_NAME;
@@ -46,11 +54,85 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasUserFollowQuerySupport => true;
 
+        public bool IsAuthorized => settingsHandler.Settings.TwitchAuthTokenSet || settingsHandler.Settings.PassthroughClientId;
+
         public List<string> VodTypes { get; } = new List<string>()
         {
             BroadcastVodType,
             HighlightVodType
         };
+
+        public string LivestreamerAuthorizationArg
+        {
+            get
+            {
+                if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
+                {
+                    return "--twitch-oauth-token " + settingsHandler.Settings.TwitchAuthToken;
+                }
+
+                return null;
+            }
+        }
+
+        public async Task Authorize(IViewAware screen)
+        {
+            var messageDialogResult = await screen.ShowMessageAsync(title: "Authorization",
+                message: "Twitch now requires authorization to connect to their services, have you already set your oauth token in your livestreamer configuration file?",
+                messageDialogStyle: MessageDialogStyle.AffirmativeAndNegative,
+                dialogSettings: new MetroDialogSettings()
+                {
+                    AffirmativeButtonText = "Yes",
+                    NegativeButtonText = "No"
+                });
+
+            if (messageDialogResult == MessageDialogResult.Affirmative)
+            {
+                settingsHandler.Settings.TwitchAuthTokenInLivestreamerConfig = true;
+                settingsHandler.SaveSettings();
+                return;
+            }
+
+            messageDialogResult = await screen.ShowMessageAsync(title: "Authorization",
+                message: "Would you like to authorize this application now?",
+                messageDialogStyle: MessageDialogStyle.AffirmativeAndNegative,
+                dialogSettings: new MetroDialogSettings()
+                {
+                    AffirmativeButtonText = "Yes",
+                    NegativeButtonText = "No"
+                });
+
+            if (messageDialogResult == MessageDialogResult.Negative) return;
+
+            RequestAuthorization();
+
+            var input = await screen.ShowDialogAsync(title: "Authorization Token",
+                message:
+                "Once you've approved me, please copy the full redirect url to here so we can save your access token for future use." +
+                Environment.NewLine +
+                Environment.NewLine +
+                $"*Note* The url should start with '{RedirectUri}'");
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                await screen.ShowMessageAsync("Authorization cancelled", "Authorization process was cancelled.");
+                return;
+            }
+
+            if (input.StartsWith(RedirectUri))
+            {
+                var match = Regex.Match(input, "#access_token=(?<token>.*)&");
+                if (match.Groups["token"].Success)
+                {
+                    settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
+                    settingsHandler.SaveSettings();
+                    return;
+                }
+            }
+
+            await screen.ShowMessageAsync("Bad url provided",
+                $"Please make sure you copy the full url, it should start with '{RedirectUri}'");
+        }
 
         public string GetStreamUrl(string channelId)
         {
@@ -144,7 +226,7 @@ namespace Livestream.Monitor.Model.ApiClients
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
-                
+
                 var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.Channel?.Name));
                 var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
                 livestream.PopulateWithChannel(onlineStream.Channel);
@@ -216,7 +298,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 Game = channelVideo.Game,
                 Description = channelVideo.Description,
                 Title = channelVideo.Title,
-                PreviewImage = channelVideo.Preview
+                PreviewImage = channelVideo.Preview,
+                ApiClient = this,
             }).ToList();
 
             return vods;
@@ -226,7 +309,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
             var topStreams = await twitchTvClient.GetTopStreams(topStreamQuery);
-            
+
             return topStreams.Select(x =>
             {
                 var channelIdentifier = new ChannelIdentifier(this, x.Channel.Name);
@@ -309,6 +392,20 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 return queryResult;
             }, Constants.HalfRefreshPollingTime, cancellationToken);
+        }
+
+        /// <summary> Launches browser for user to authorize us </summary>
+        private void RequestAuthorization()
+        {
+            const string scopes = "user_read+channel_read";
+
+            var request =
+                "https://api.twitch.tv/kraken/oauth2/authorize?response_type=token" +
+                $"&client_id={RequestConstants.ClientIdHeaderValue}" +
+                $"&redirect_uri={RedirectUri}" +
+                $"&scope={scopes}";
+
+            System.Diagnostics.Process.Start(request);
         }
     }
 }

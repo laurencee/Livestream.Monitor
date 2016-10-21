@@ -24,6 +24,8 @@ namespace Livestream.Monitor.Core
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
         private bool disableNotifications, passthroughClientId;
         private bool hideStreamOutputMessageBoxOnLoad;
+        private string twitchAuthToken;
+        private bool twitchAuthTokenInLivestreamerConfig;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
@@ -143,6 +145,33 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [JsonConverter(typeof(ExcludeNotifyConverter))]
         public ObservableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new ObservableCollection<UniqueStreamKey>();
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool TwitchAuthTokenInLivestreamerConfig
+        {
+            get { return twitchAuthTokenInLivestreamerConfig; }
+            set
+            {
+                if (value == twitchAuthTokenInLivestreamerConfig) return;
+                twitchAuthTokenInLivestreamerConfig = value;
+                NotifyOfPropertyChange(() => TwitchAuthTokenInLivestreamerConfig);
+            }
+        }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string TwitchAuthToken
+        {
+            get { return twitchAuthToken; }
+            set
+            {
+                if (value == twitchAuthToken) return;
+                twitchAuthToken = value;
+                NotifyOfPropertyChange(() => TwitchAuthToken);
+            }
+        }
+
+        public bool TwitchAuthTokenSet => TwitchAuthTokenInLivestreamerConfig ||
+                                          !string.IsNullOrWhiteSpace(TwitchAuthToken);
     }
 
     /// <summary>

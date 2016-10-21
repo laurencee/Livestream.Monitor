@@ -180,7 +180,7 @@ namespace Livestream.Monitor.ViewModels
             SelectedItem = vodDetails;
         }
 
-        public void OpenVod()
+        public async Task OpenVod()
         {
             if (!CanOpenVod) return;
 
@@ -188,9 +188,9 @@ namespace Livestream.Monitor.ViewModels
             if (SelectedItem != null && selectedItem.Url == VodUrl)
                 vodDetails = SelectedItem;
             else
-                vodDetails = new VodDetails() { Url = vodUrl };
+                vodDetails = new VodDetails() {Url = vodUrl, ApiClient = SelectedApiClient };
 
-            streamLauncher.OpenVod(vodDetails);
+            await streamLauncher.OpenVod(vodDetails, this);
         }
 
         protected override void OnInitialize()

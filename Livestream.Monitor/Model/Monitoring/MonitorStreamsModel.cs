@@ -84,23 +84,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 NotifyOfPropertyChange();
                 NotifyOfPropertyChange(() => CanOpenStream);
                 
-                if (CanOpenStream)
-                {
-                    // update the field value to prevent saving the new quality value to disk
-                    if (selectedLivestream.IsPartner) // twitch partner specific
-                    {
-                        selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
-                    }
-                    else
-                    {
-                        selectedStreamQuality = StreamQuality.Best.ToString();
-                    }
-
-                    NotifyOfPropertyChange(() => SelectedStreamQuality);
-                }
+                InitSelectedStreamQuality();
             }
         }
-
+        
         public bool CanOpenStream => selectedLivestream != null && selectedLivestream.Live;
 
         public string SelectedStreamQuality
@@ -117,7 +104,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     StreamQuality streamQuality;
                     if (StreamQuality.TryParse(selectedStreamQuality, true, out streamQuality))
+                    {
                         settingsHandler.Settings.DefaultStreamQuality = streamQuality;
+                        settingsHandler.SaveSettings();
+                    }
                 }
             }
         }
@@ -146,7 +136,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
-        public async Task AddLivestream(ChannelIdentifier channelIdentifier)
+        public async Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             if (channelIdentifiers.Contains(channelIdentifier)) return; // ignore duplicate requests
@@ -216,6 +206,12 @@ namespace Livestream.Monitor.Model.Monitoring
 
                     PopulateLivestreams(livestreams);
                     livestreamQueryResults.EnsureAllQuerySuccess();
+
+                    // before the first refresh (or after some network error) all the channels are offline 
+                    // but we would already have a channel selected
+                    // if the selected channel is now online we have to try and update the selected stream quality/allow the user to open the stream
+                    InitSelectedStreamQuality();
+                    NotifyOfPropertyChange(() => CanOpenStream);
                 }
             }
             finally
@@ -339,6 +335,23 @@ namespace Livestream.Monitor.Model.Monitoring
                 else
                     settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
             }
+        }
+
+        private void InitSelectedStreamQuality()
+        {
+            if (!string.IsNullOrWhiteSpace(selectedStreamQuality) || !CanOpenStream) return;
+
+            // update the field value to prevent saving the new quality value to disk
+            if (selectedLivestream.IsPartner) // twitch partner specific
+            {
+                selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
+            }
+            else
+            {
+                selectedStreamQuality = StreamQuality.Best.ToString();
+            }
+
+            NotifyOfPropertyChange(() => SelectedStreamQuality);
         }
     }
 }

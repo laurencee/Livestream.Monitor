@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using ExternalAPIs.TwitchTv;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.ApiClients;
@@ -15,7 +16,7 @@ namespace Livestream.Monitor.Model
 {
     public class StreamLauncher
     {
-        private static readonly object watchingStreamsLock = new object();
+        private static readonly object WatchingStreamsLock = new object();
 
         private readonly ISettingsHandler settingsHandler;
         private readonly IWindowManager windowManager;
@@ -34,7 +35,7 @@ namespace Livestream.Monitor.Model
         {
             get
             {
-                lock (watchingStreamsLock)
+                lock (WatchingStreamsLock)
                 {
                     // return a copy of the streams to prevent modification issues
                     return watchingStreams.ToList();
@@ -65,14 +66,14 @@ namespace Livestream.Monitor.Model
                     $"No external chat support for stream provider '{livestreamModel.ApiClient.ApiName}'");
                 return;
             }
-            
+
             string chromeArgs = $"--app={livestreamModel.ChatUrl} --window-size=350,758";
 
             await Task.Run(async () =>
             {
                 try
                 {
-                    var proc = new Process()
+                    var proc = new Process
                     {
                         StartInfo =
                         {
@@ -92,16 +93,32 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        public void OpenStream(LivestreamModel livestreamModel, string streamQuality)
+        public async Task OpenStream(LivestreamModel livestreamModel, string streamQuality, IViewAware viewAware)
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
-            
+
             string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
+            var apiClient = livestreamModel.ApiClient;
 
             // hack to pass through the client id to livestreamer 
-            if (settingsHandler.Settings.PassthroughClientId && livestreamModel.ApiClient is TwitchApiClient)
+            if (settingsHandler.Settings.PassthroughClientId)
             {
-                livestreamerArgs = $"--http-header {ExternalAPIs.TwitchTv.RequestConstants.ClientIdHeaderKey}={ExternalAPIs.TwitchTv.RequestConstants.ClientIdHeaderValue} {livestreamerArgs}";
+                if (apiClient is TwitchApiClient)
+                {
+                    livestreamerArgs = $"--http-header {RequestConstants.ClientIdHeaderKey}={RequestConstants.ClientIdHeaderValue} {livestreamerArgs}";
+                }
+            }
+            else
+            {
+                if (!apiClient.IsAuthorized)
+                {
+                    await apiClient.Authorize(viewAware);
+                }
+
+                if (apiClient.IsAuthorized && !string.IsNullOrWhiteSpace(apiClient.LivestreamerAuthorizationArg))
+                {
+                    livestreamerArgs += " " + apiClient.LivestreamerAuthorizationArg;
+                }
             }
 
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
@@ -111,28 +128,62 @@ namespace Livestream.Monitor.Model
             // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
             if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best.ToString())
             {
-                messageBoxViewModel.MessageText += Environment.NewLine + $"[NOTE] Channel is not a twitch partner so falling back to {StreamQuality.Best} quality";
+                messageBoxViewModel.MessageText += Environment.NewLine +
+                                                   $"[NOTE] Channel is not a twitch partner so falling back to {StreamQuality.Best} quality";
             }
-            
-            lock (watchingStreamsLock)
+
+            lock (WatchingStreamsLock)
             {
                 watchingStreams.Add(livestreamModel);
             }
 
             StartLivestreamer(livestreamerArgs, streamQuality, messageBoxViewModel, onClose: () =>
             {
-                lock (watchingStreamsLock)
+                lock (WatchingStreamsLock)
                 {
                     watchingStreams.Remove(livestreamModel);
                 }
             });
         }
 
-        public void OpenVod(VodDetails vodDetails)
+        public async Task OpenVod(VodDetails vodDetails, IViewAware viewAware)
         {
-            if (string.IsNullOrWhiteSpace(vodDetails.Url) || !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute)) return;
+            if (string.IsNullOrWhiteSpace(vodDetails.Url) ||
+                !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute)) return;
 
             string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} best";
+
+            // hack to pass through the client id to livestreamer 
+            if (settingsHandler.Settings.PassthroughClientId)
+            {
+                // check domain name of url to see if this is a twitch.tv vod link
+                bool isTwitchStream = false;
+                try
+                {
+                    var uri = new Uri(vodDetails.Url);
+                    isTwitchStream = uri.Host.Contains("twitch.tv");
+                }
+                catch { }
+
+                if (isTwitchStream)
+                {
+                    livestreamerArgs += $" --http-header {RequestConstants.ClientIdHeaderKey}={RequestConstants.ClientIdHeaderValue}";
+                }
+            }
+            else
+            {
+                var apiClient = vodDetails.ApiClient;
+                if (!apiClient.IsAuthorized)
+                {
+                    await apiClient.Authorize(viewAware);
+                }
+
+                if (apiClient.IsAuthorized && !string.IsNullOrWhiteSpace(apiClient.LivestreamerAuthorizationArg))
+                {
+                    livestreamerArgs += " " + apiClient.LivestreamerAuthorizationArg;
+                }
+            }
+
             const int maxTitleLength = 70;
             var title = vodDetails.Title?.Length > maxTitleLength ? vodDetails.Title.Substring(0, maxTitleLength) + "..." : vodDetails.Title;
 
@@ -206,11 +257,11 @@ namespace Livestream.Monitor.Model
                 catch (Exception ex)
                 {
                     preventClose = true;
-                    messageBoxViewModel.MessageText += Environment.NewLine + ex.ToString();
+                    messageBoxViewModel.MessageText += Environment.NewLine + ex;
                 }
 
                 if (preventClose)
-                {                    
+                {
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
                                                        "ERROR occured in Livestreamer: Manually close this window when you've finished reading the livestreamer output.";
 
@@ -234,7 +285,7 @@ namespace Livestream.Monitor.Model
             var messageBoxViewModel = new MessageBoxViewModel
             {
                 DisplayName = title,
-                MessageText = messageText,
+                MessageText = messageText
             };
             messageBoxViewModel.ShowHideOnLoadCheckbox(settingsHandler);
 
@@ -250,7 +301,7 @@ namespace Livestream.Monitor.Model
         {
             if (File.Exists(settingsHandler.Settings.LivestreamerFullPath)) return true;
 
-            var msgBox = new MessageBoxViewModel()
+            var msgBox = new MessageBoxViewModel
             {
                 DisplayName = "Livestreamer not found",
                 MessageText =

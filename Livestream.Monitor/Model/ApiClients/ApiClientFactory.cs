@@ -5,23 +5,33 @@ using ExternalAPIs.Beam.Pro;
 using ExternalAPIs.Hitbox;
 using ExternalAPIs.TwitchTv;
 using ExternalAPIs.Youtube;
+using Livestream.Monitor.Core;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
     public class ApiClientFactory : IApiClientFactory
     {
-        private static readonly TwitchApiClient TwitchApiClient = new TwitchApiClient(new TwitchTvReadonlyClient());
-        private static readonly YoutubeApiClient YoutubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
-        private static readonly HitboxApiClient HitboxApiClient = new HitboxApiClient(new HitboxReadonlyClient());
-        private static readonly BeamProApiClient BeamProClient = new BeamProApiClient(new BeamProReadonlyClient());
+        private readonly TwitchApiClient twitchApiClient;
+        private readonly YoutubeApiClient youtubeApiClient;
+        private readonly HitboxApiClient hitboxApiClient;
+        private readonly BeamProApiClient beamProClient;
 
-        private readonly List<IApiClient> apiClients = new List<IApiClient>()
+        private readonly List<IApiClient> apiClients = new List<IApiClient>();
+
+        public ApiClientFactory(ISettingsHandler settingsHandler)
         {
-            TwitchApiClient,
-            YoutubeApiClient,
-            HitboxApiClient,
-            BeamProClient
-        }; 
+            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
+
+            twitchApiClient = new TwitchApiClient(new TwitchTvReadonlyClient(), settingsHandler);
+            youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
+            hitboxApiClient = new HitboxApiClient(new HitboxReadonlyClient());
+            beamProClient = new BeamProApiClient(new BeamProReadonlyClient());
+
+            apiClients.Add(twitchApiClient);
+            apiClients.Add(youtubeApiClient);
+            apiClients.Add(hitboxApiClient);
+            apiClients.Add(beamProClient);
+        }
 
         public T Get<T>() where T : IApiClient
         {
@@ -44,13 +54,13 @@ namespace Livestream.Monitor.Model.ApiClients
             switch (name)
             {
                 case YoutubeApiClient.API_NAME:
-                    return YoutubeApiClient;
+                    return youtubeApiClient;
                 case TwitchApiClient.API_NAME:
-                    return TwitchApiClient;
+                    return twitchApiClient;
                 case HitboxApiClient.API_NAME:
-                    return HitboxApiClient;
+                    return hitboxApiClient;
                 case BeamProApiClient.API_NAME:
-                    return BeamProClient;
+                    return beamProClient;
                 default:
                     return null;
             }

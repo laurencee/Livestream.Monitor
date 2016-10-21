@@ -121,7 +121,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
             try
             {
-                await MonitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName));
+                await MonitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName), this);
                 StreamName = null;
                 await dialogController.CloseAsync();
             }
@@ -235,7 +235,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 CanRefreshLivestreams = MonitorStreamsModel.CanRefreshLivestreams;
             }
-            else if (e.PropertyName == nameof(MonitorStreamsModel.SelectedLivestream))
+            else if (e.PropertyName == nameof(MonitorStreamsModel.SelectedLivestream) || e.PropertyName == nameof(MonitorStreamsModel.CanOpenStream))
             {
                 var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
                 CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;

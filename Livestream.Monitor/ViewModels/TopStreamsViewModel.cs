@@ -160,11 +160,11 @@ namespace Livestream.Monitor.ViewModels
             await EnsureItems();
         }
 
-        public void OpenStream(TopStreamResult stream)
+        public async Task OpenStream(TopStreamResult stream)
         {
             if (stream == null) return;
 
-            streamLauncher.OpenStream(stream.LivestreamModel, SelectedStreamQuality);
+            await streamLauncher.OpenStream(stream.LivestreamModel, SelectedStreamQuality, this);
         }
 
         public async Task OpenChat(TopStreamResult stream)
@@ -275,7 +275,7 @@ namespace Livestream.Monitor.ViewModels
         {
             try
             {
-                await monitorStreamsModel.AddLivestream(topStreamResult.ChannelIdentifier);
+                await monitorStreamsModel.AddLivestream(topStreamResult.ChannelIdentifier, this);
                 topStreamResult.IsMonitored = true;
             }
             catch (Exception ex)

@@ -1,5 +1,6 @@
 ﻿using System;
 using Caliburn.Micro;
+using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
 {
@@ -13,6 +14,7 @@ namespace Livestream.Monitor.Model
         private string description;
         private string title;
         private string previewImage;
+        private IApiClient apiClient;
 
         public string Url
         {
@@ -99,6 +101,17 @@ namespace Livestream.Monitor.Model
                 if (value == previewImage) return;
                 previewImage = value;
                 NotifyOfPropertyChange(() => PreviewImage);
+            }
+        }
+
+        public IApiClient ApiClient
+        {
+            get { return apiClient; }
+            set
+            {
+                if (Equals(value, apiClient)) return;
+                apiClient = value;
+                NotifyOfPropertyChange(() => ApiClient);
             }
         }
     }

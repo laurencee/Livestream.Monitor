@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.Hitbox;
 using ExternalAPIs.TwitchTv.Query;
@@ -43,7 +44,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasUserFollowQuerySupport => true;
 
+        public bool IsAuthorized => true;
+
         public List<string> VodTypes { get; } = new List<string>();
+
+        public string LivestreamerAuthorizationArg => null;
+
+        public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
         public string GetStreamUrl(string channelId)
         {
@@ -109,7 +116,8 @@ namespace Livestream.Monitor.Model.ApiClients
                         Description = x.MediaStatus,
                         RecordedAt = x.MediaDateAdded ?? DateTimeOffset.MinValue,
                         Views = x.MediaViews,
-                        PreviewImage = StaticContentPrefixUrl + x.MediaThumbnail
+                        PreviewImage = StaticContentPrefixUrl + x.MediaThumbnail,
+                        ApiClient = this,
                     };
                 }).ToList();
             }

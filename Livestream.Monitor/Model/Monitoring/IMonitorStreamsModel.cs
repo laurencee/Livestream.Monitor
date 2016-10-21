@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         event EventHandler LivestreamsRefreshComplete;
 
-        Task AddLivestream(ChannelIdentifier channelIdentifier);
+        Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware);
 
         Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 

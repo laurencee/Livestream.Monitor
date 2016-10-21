@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
 using ExternalAPIs.Beam.Pro;
 using ExternalAPIs.Beam.Pro.Dto;
 using ExternalAPIs.Beam.Pro.Query;
@@ -39,7 +40,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasUserFollowQuerySupport => false;
 
+        public bool IsAuthorized => true;
+
         public List<string> VodTypes { get; }
+
+        public string LivestreamerAuthorizationArg => null;
+
+        public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
         public string GetStreamUrl(string channelId)
         {
@@ -103,6 +110,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 Title = input.name,
                 RecordedAt = input.createdAt.GetValueOrDefault(),
                 Url = input.vods?[0]?.baseUrl,
+                ApiClient = this,
             });
 
             return vodDetails;

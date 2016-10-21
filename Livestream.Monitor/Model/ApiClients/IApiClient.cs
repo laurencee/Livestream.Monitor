@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Caliburn.Micro;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Model.Monitoring;
 
@@ -23,7 +24,17 @@ namespace Livestream.Monitor.Model.ApiClients
 
         bool HasUserFollowQuerySupport { get; }
 
+        /// <summary> Check if the user is authorized to interact with this api </summary>
+        bool IsAuthorized { get; }
+
         List<string> VodTypes { get; }
+
+        string LivestreamerAuthorizationArg { get; }
+
+        /// <summary> Execute authorization process for api </summary>
+        /// <param name="screen">Screen to activate any prompts/input required during authorization</param>
+        /// <returns>True if the user was authorized successfully</returns>
+        Task Authorize(IViewAware screen);
 
         string GetStreamUrl(string channelId);
 
