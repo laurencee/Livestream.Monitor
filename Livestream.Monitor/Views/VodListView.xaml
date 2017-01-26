@@ -45,7 +45,7 @@
             <TextBox Grid.Column="1" x:Name="VodUrl"
                      ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
             <Button Grid.Column="2" x:Name="OpenVod" Content="Open VOD" Margin="3"
-                    ToolTip="Opens up the VOD through livestreamer (with HLS passthrough to allow seeking)"/>
+                    ToolTip="Opens up the VOD through livestreamer/streamlink (with HLS passthrough to allow seeking)"/>
         </Grid>
         
         

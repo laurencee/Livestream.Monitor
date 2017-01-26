@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.IO;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
@@ -170,8 +171,17 @@ namespace Livestream.Monitor.Core
             }
         }
 
+        /// <summary>
+        /// Flag to indicate if the twitch oauth token has been defined either in livestream monitor settings
+        /// or in the livestreamer/streamlink configuration file
+        /// </summary>
         public bool TwitchAuthTokenSet => TwitchAuthTokenInLivestreamerConfig ||
                                           !string.IsNullOrWhiteSpace(TwitchAuthToken);
+
+        /// <summary>
+        /// Name of the livestreamer/streamlink exe without the file extension
+        /// </summary>
+        public string LivestreamExeDisplayName => Path.GetFileNameWithoutExtension(LivestreamerFullPath);
     }
 
     /// <summary>

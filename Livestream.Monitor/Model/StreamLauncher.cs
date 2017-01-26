@@ -121,9 +121,11 @@ namespace Livestream.Monitor.Model
                 }
             }
 
+            var launcher = Path.GetFileName(settingsHandler.Settings.LivestreamerFullPath);
+
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
-                messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
+                messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
 
             // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
             if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best.ToString())
@@ -187,9 +189,11 @@ namespace Livestream.Monitor.Model
             const int maxTitleLength = 70;
             var title = vodDetails.Title?.Length > maxTitleLength ? vodDetails.Title.Substring(0, maxTitleLength) + "..." : vodDetails.Title;
 
+            var launcher = Path.GetFileName(settingsHandler.Settings.LivestreamerFullPath);
+
             var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
                 title: title,
-                messageText: $"Launching livestreamer....{Environment.NewLine}'livestreamer.exe {livestreamerArgs}'");
+                messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
 
             StartLivestreamer(livestreamerArgs, "best", messageBoxViewModel);
         }
@@ -263,17 +267,20 @@ namespace Livestream.Monitor.Model
                 if (preventClose)
                 {
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       "ERROR occured in Livestreamer: Manually close this window when you've finished reading the livestreamer output.";
+                                                       $"ERROR occured in {settingsHandler.Settings.LivestreamExeDisplayName}: " +
+                                                       $"Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
 
                     // open the message box if it was somehow closed prior to the error being displayed
-                    if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
+                    if (!messageBoxViewModel.IsActive)
+                        windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                 }
                 else if (string.IsNullOrEmpty(streamQuality))
                 {
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       "No stream quality provided: Manually close this window when you've finished reading the livestreamer output.";
+                                                       $"No stream quality provided: Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
 
-                    if (!messageBoxViewModel.IsActive) windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
+                    if (!messageBoxViewModel.IsActive)
+                        windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                 }
                 else
                     messageBoxViewModel.TryClose();
@@ -303,9 +310,11 @@ namespace Livestream.Monitor.Model
 
             var msgBox = new MessageBoxViewModel
             {
-                DisplayName = "Livestreamer not found",
+                DisplayName = "Livestreamer/Streamlink not found",
                 MessageText =
-                    $"Could not find livestreamer @ {settingsHandler.Settings.LivestreamerFullPath}.{Environment.NewLine} Please download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
+                    $"Could not find livestreamer/streamlink @ '{settingsHandler.Settings.LivestreamerFullPath}'" + Environment.NewLine +
+                    "Please download and install streamlink from 'https://streamlink.github.io/install.html#windows-binaries'" + Environment.NewLine +
+                    "OR download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"                    
             };
 
             var settings = new WindowSettingsBuilder().SizeToContent()

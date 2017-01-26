@@ -153,7 +153,7 @@ namespace Livestream.Monitor.Model.ApiClients
                             LivestreamModel = new LivestreamModel("offline", channelIdentifier)
                             {
                                 DisplayName = channelIdentifier.ChannelId,
-                                Description = "[Livestream Monitor - offline youtube stream]",
+                                Description = "[Offline youtube stream]",
                             }
                         });
                     }

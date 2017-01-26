@@ -83,8 +83,6 @@ namespace Livestream.Monitor.Model.Monitoring
                 selectedLivestream = value;
                 NotifyOfPropertyChange();
                 NotifyOfPropertyChange(() => CanOpenStream);
-                
-                InitSelectedStreamQuality();
             }
         }
         
@@ -99,8 +97,11 @@ namespace Livestream.Monitor.Model.Monitoring
                 selectedStreamQuality = value;
                 NotifyOfPropertyChange();
 
-                // we have to do a string contains check because tryparse succeeds on string integer comparisons e.g. "1"
-                if (selectedStreamQuality != null && Enum.GetNames(typeof(StreamQuality)).Contains(selectedStreamQuality))
+                // update the saved default stream quality if necessary
+                if (!string.IsNullOrWhiteSpace(selectedStreamQuality) && 
+                    selectedStreamQuality != settingsHandler.Settings.DefaultStreamQuality.ToString() &&
+                    // we have to do a string contains check because tryparse succeeds on string integer comparisons e.g. "1"
+                    Enum.GetNames(typeof(StreamQuality)).Contains(selectedStreamQuality))
                 {
                     StreamQuality streamQuality;
                     if (StreamQuality.TryParse(selectedStreamQuality, true, out streamQuality))
@@ -210,7 +211,7 @@ namespace Livestream.Monitor.Model.Monitoring
                     // before the first refresh (or after some network error) all the channels are offline 
                     // but we would already have a channel selected
                     // if the selected channel is now online we have to try and update the selected stream quality/allow the user to open the stream
-                    InitSelectedStreamQuality();
+                    SetDefaultSelectedStreamQuality();
                     NotifyOfPropertyChange(() => CanOpenStream);
                 }
             }
@@ -233,6 +234,21 @@ namespace Livestream.Monitor.Model.Monitoring
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
             Livestreams.RemoveRange(matchingLivestreams);
             SaveLivestreams();
+        }
+
+        public void SetDefaultSelectedStreamQuality()
+        {
+            if (!string.IsNullOrWhiteSpace(SelectedStreamQuality) || !CanOpenStream) return;
+
+            // update the field value to prevent saving the new quality value to disk
+            if (selectedLivestream.IsPartner) // twitch partner specific
+            {
+                SelectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
+            }
+            else
+            {
+                SelectedStreamQuality = StreamQuality.Best.ToString();
+            }
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()
@@ -335,23 +351,6 @@ namespace Livestream.Monitor.Model.Monitoring
                 else
                     settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
             }
-        }
-
-        private void InitSelectedStreamQuality()
-        {
-            if (!string.IsNullOrWhiteSpace(selectedStreamQuality) || !CanOpenStream) return;
-
-            // update the field value to prevent saving the new quality value to disk
-            if (selectedLivestream.IsPartner) // twitch partner specific
-            {
-                selectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
-            }
-            else
-            {
-                selectedStreamQuality = StreamQuality.Best.ToString();
-            }
-
-            NotifyOfPropertyChange(() => SelectedStreamQuality);
         }
     }
 }

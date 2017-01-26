@@ -239,6 +239,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
                 CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;
+                // would like a nicer way of resetting the stream qualities when changing selected streams or the currently selected stream changes between offline/online
                 StreamQualities.Clear();
                 if (MonitorStreamsModel.CanOpenStream)
                 {
@@ -250,6 +251,7 @@ namespace Livestream.Monitor.ViewModels
                     {
                         StreamQualities.AddRange(new[] { StreamQuality.Best.ToString(), StreamQuality.Worst.ToString(), });
                     }
+                    MonitorStreamsModel.SetDefaultSelectedStreamQuality();
                 }
             }
         }

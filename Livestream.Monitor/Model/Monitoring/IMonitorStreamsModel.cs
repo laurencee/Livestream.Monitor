@@ -30,5 +30,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();
+
+        void SetDefaultSelectedStreamQuality();
     }
 }

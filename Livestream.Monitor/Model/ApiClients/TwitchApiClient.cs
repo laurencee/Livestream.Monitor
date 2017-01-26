@@ -78,7 +78,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task Authorize(IViewAware screen)
         {
             var messageDialogResult = await screen.ShowMessageAsync(title: "Authorization",
-                message: "Twitch now requires authorization to connect to their services, have you already set your oauth token in your livestreamer configuration file?",
+                message: $"Twitch requires authorization to connect to their services, have you set your oauth token in your {settingsHandler.Settings.LivestreamExeDisplayName} configuration file?",
                 messageDialogStyle: MessageDialogStyle.AffirmativeAndNegative,
                 dialogSettings: new MetroDialogSettings()
                 {

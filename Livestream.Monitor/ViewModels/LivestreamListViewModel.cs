@@ -111,7 +111,10 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        /// <summary> Loads the selected stream through livestreamer and displays a messagebox with the loading process details </summary>
+        /// <summary> 
+        /// Loads the selected stream through livestreamer/streamlink
+        /// and displays a messagebox with the loading process details 
+        /// </summary>
         public async Task OpenStream()
         {
             if (Loading) return;

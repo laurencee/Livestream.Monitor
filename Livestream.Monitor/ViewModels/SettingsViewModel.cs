@@ -24,7 +24,7 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            LivestreamerFullPath = "Livestreamer path - design time";
+            LivestreamerFullPath = "Livestreamer/Streamlink path - design time";
             ChromeFullPath = "Chrome path - design time";
             MinimumEventViewers = 30000;
         }
@@ -52,7 +52,7 @@ namespace Livestream.Monitor.ViewModels
                 if (value == livestreamerFullPath) return;
 
                 if (string.IsNullOrWhiteSpace(value))
-                    AddError(nameof(LivestreamerFullPath), "Livestreamer path must not be empty");
+                    AddError(nameof(LivestreamerFullPath), "Livestreamer/Streamlink path must not be empty");
                 else if (!File.Exists(value))
                     AddError(nameof(LivestreamerFullPath), "File not found");
                 else
@@ -189,7 +189,7 @@ namespace Livestream.Monitor.ViewModels
             if (string.IsNullOrWhiteSpace(startingPath))
                 startingPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
 
-            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe", startingPath);
+            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe|Streamlink|streamlink.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
             {
                 LivestreamerFullPath = livestreamerFilePath;

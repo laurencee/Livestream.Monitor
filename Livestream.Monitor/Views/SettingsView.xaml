@@ -43,7 +43,7 @@
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 
-                <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer Path" />
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer/Streamlink Path" />
                 <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
                 <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 
@@ -61,8 +61,8 @@
                       ToolTip="When unchecked, will disable all notifications (including online notifications) from displaying" />
             <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide Stream Output On Load"
                       ToolTip="When checked, the stream output box will be hidden upon successful stream load" />
-            <CheckBox x:Name="PassthroughClientId" Content="Bypass Livestreamer OAuth to twitch"
-                      ToolTip="When checked, a client id for Livestream Monitor will provided to Livestreamer so an OAuth token for Livestreamer is not required to launch streams.&#x0a;This client id will appear in the stream output message box livestreamer args." />
+            <CheckBox x:Name="PassthroughClientId" Content="Bypass OAuth to twitch"
+                      ToolTip="When checked, a client id for Livestream Monitor will provided to twitch so an OAuth token is not required to launch streams." />
         </StackPanel>
 
         <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20" />
