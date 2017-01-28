@@ -38,7 +38,7 @@ namespace Livestream.Monitor
             container.Singleton<ISettingsHandler, SettingsHandler>();
             container.Singleton<IApiClientFactory, ApiClientFactory>();
             container.Singleton<FilterModel>();
-            container.Singleton<NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
+            container.Singleton<INotificationHandler, NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
             container.Singleton<PopularLivestreamWatcher>();
             container.Singleton<StreamLauncher>();
 

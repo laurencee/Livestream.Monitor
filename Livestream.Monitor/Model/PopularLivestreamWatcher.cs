@@ -18,7 +18,7 @@ namespace Livestream.Monitor.Model
         private const int PollMs = 30000;
         
         private readonly ISettingsHandler settingsHandler;
-        private readonly NotificationHandler notificationHandler;
+        private readonly INotificationHandler notificationHandler;
         private readonly IApiClientFactory apiClientFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
@@ -29,7 +29,7 @@ namespace Livestream.Monitor.Model
         
         public PopularLivestreamWatcher(
             ISettingsHandler settingsHandler,
-            NotificationHandler notificationHandler,
+            INotificationHandler notificationHandler,
             INavigationService navigationService,
             IMonitorStreamsModel monitorStreamsModel,
             IApiClientFactory apiClientFactory)
@@ -101,28 +101,7 @@ namespace Livestream.Monitor.Model
             {
                 while (watching)
                 {
-                    var livestreamModels = await GetPopularStreams();
-
-                    foreach (var stream in livestreamModels)
-                    {
-                        // don't notify about the same event again within the next hour
-                        if (notifiedEvents.Get(stream.UniqueStreamKey.ToString()) != null)
-                            continue;
-
-                        notifiedEvents.Set(stream.UniqueStreamKey.ToString(), stream, DateTimeOffset.Now.AddHours(1));
-
-                        stream.SetLivestreamNotifyState(settingsHandler.Settings);
-                        notificationHandler.AddNotification(new LivestreamNotification()
-                        {
-                            LivestreamModel = stream,
-                            ImageUrl = stream.ThumbnailUrls?.Small,
-                            Message = stream.Description,
-                            Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
-                            Duration = LivestreamNotification.MaxDuration,
-                            ClickAction = clickAction
-                        });
-                    }
-
+                    await NotifyPopularStreams();
                     await Task.Delay(PollMs);
                 }
 
@@ -135,11 +114,38 @@ namespace Livestream.Monitor.Model
             watching = false;
         }
 
-        private async Task<List<LivestreamModel>> GetPopularStreams()
+        public async Task NotifyPopularStreams()
+        {
+            if (MinimumEventViewers == 0) return;
+
+            var livestreamModels = await GetPopularStreams();
+
+            foreach (var stream in livestreamModels)
+            {
+                // don't notify about the same event again within the next hour
+                if (notifiedEvents.Get(stream.UniqueStreamKey.ToString()) != null)
+                    continue;
+
+                notifiedEvents.Set(stream.UniqueStreamKey.ToString(), stream, DateTimeOffset.Now.AddHours(1));
+
+                stream.SetLivestreamNotifyState(settingsHandler.Settings);
+                notificationHandler.AddNotification(new LivestreamNotification()
+                {
+                    LivestreamModel = stream,
+                    ImageUrl = stream.ThumbnailUrls?.Small,
+                    Message = stream.Description,
+                    Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
+                    Duration = LivestreamNotification.MaxDuration,
+                    ClickAction = clickAction
+                });
+            }
+        }
+
+        private async Task<HashSet<LivestreamModel>> GetPopularStreams()
         {
             const int maxReturnCount = 5;
 
-            var popularStreams = new List<LivestreamModel>();
+            var popularStreams = new HashSet<LivestreamModel>();
             int requeries = 0;
             try
             {
@@ -158,7 +164,7 @@ namespace Livestream.Monitor.Model
                     // perform this check before further filtering since this is the most important check
                     if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break;
 
-                    popularStreams.AddRange(
+                    popularStreams.UnionWith(
                         possibleStreams.Where(x =>
                                               x.Viewers >= MinimumEventViewers &&
                                               !ExcludedGames.Contains(x.Game) &&
@@ -172,8 +178,7 @@ namespace Livestream.Monitor.Model
             {
                 // nothing we can really do here, we just wanna make sure the polling continues
             }
-
-
+            
             return popularStreams;
         }
     }

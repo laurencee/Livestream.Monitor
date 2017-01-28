@@ -14,13 +14,14 @@ namespace Livestream.Monitor.Tests
             get
             {
                 return typeof(Settings).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
-                                        .Select(x => new[] { x });
+                    .Where(x => x.GetSetMethod() != null) // public set method available
+                    .Select(x => new[] { x });
             }
         }
 
         [Theory]
         [MemberData("SettingsProperties")]
-        public void AllPublicPropertiesHaveJsonPropertyAttribute(PropertyInfo property)
+        public void HaveJsonAttribute_On_SettableProperties(PropertyInfo property)
         {
             var jsonProperty = property.GetCustomAttribute<JsonPropertyAttribute>();
             Assert.NotNull(jsonProperty);

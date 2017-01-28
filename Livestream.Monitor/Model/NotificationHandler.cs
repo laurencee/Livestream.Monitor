@@ -13,7 +13,7 @@ using Livestream.Monitor.ViewModels;
 
 namespace Livestream.Monitor.Model
 {
-    public class NotificationHandler
+    public class NotificationHandler : INotificationHandler
     {
         private const double NotificationViewWindowHeight = 100;
         private const double NotificationViewWindowWidth = 400;
@@ -46,12 +46,16 @@ namespace Livestream.Monitor.Model
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
 
-            foreach (var livestream in monitorStreamsModel.Livestreams)
-            {
-                HookLivestreamChangeEvents(livestream);
-            }
             monitorStreamsModel.LivestreamsRefreshComplete += MonitorStreamsModelOnLivestreamsRefreshComplete;
-            monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
+
+            if (monitorStreamsModel.Livestreams != null)
+            {
+                foreach (var livestream in monitorStreamsModel.Livestreams)
+                {
+                    HookLivestreamChangeEvents(livestream);
+                }
+                monitorStreamsModel.Livestreams.CollectionChanged += LivestreamsOnCollectionChanged;
+            }
         }
 
         public void AddNotification(LivestreamNotification livestreamNotification)
