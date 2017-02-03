@@ -291,7 +291,10 @@ namespace Livestream.Monitor.Model.ApiClients
             var channelVideos = await twitchTvClient.GetChannelVideos(channelVideosQuery);
             var vods = channelVideos.Select(channelVideo => new VodDetails
             {
-                Url = channelVideo.Url,
+                // hack to correct the url path for twitch videos see github issue: https://github.com/laurencee/Livestream.Monitor/issues/24
+                // was previously   twitch.tv/videos/XXXXXXX
+                // now is           twitch.tv/user/v/XXXXXXX
+                Url = channelVideo.Url.Replace(@"twitch.tv/videos/", @"twitch.tv/user/v/"),
                 Length = TimeSpan.FromSeconds(channelVideo.Length),
                 RecordedAt = channelVideo.RecordedAt ?? DateTimeOffset.MinValue,
                 Views = channelVideo.Views,
