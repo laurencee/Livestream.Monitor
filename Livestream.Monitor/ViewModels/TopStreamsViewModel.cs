@@ -223,7 +223,8 @@ namespace Livestream.Monitor.ViewModels
         {
             var comboBox = sender as ComboBox;
             if (comboBox?.Text == null) return;
-            TextBox textBox = (TextBox)(comboBox).Template.FindName("PART_EditableTextBox", (ComboBox)sender);
+            TextBox textBox = comboBox.Template.FindName("PART_EditableTextBox", comboBox) as TextBox;
+            if (textBox == null) return;
             textBox.SelectionStart = comboBox.Text.Length;
             textBox.SelectionLength = 0;
         }
@@ -351,8 +352,9 @@ namespace Livestream.Monitor.ViewModels
             try
             {
                 var games = await SelectedApiClient.GetKnownGameNames(game);
-                PossibleGameNames.Clear();
+                var oldItems = PossibleGameNames.ToList();
                 PossibleGameNames.AddRange(games.Select(x => x.GameName));
+                PossibleGameNames.RemoveRange(oldItems);
                 ExpandPossibleGames = true;
             }
             catch
