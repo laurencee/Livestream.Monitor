@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Controls;
 using Caliburn.Micro;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
@@ -216,6 +217,15 @@ namespace Livestream.Monitor.ViewModels
             }
 
             topStreamResult.IsBusy = false;
+        }
+
+        public void DropDownOpened(object sender)
+        {
+            var comboBox = sender as ComboBox;
+            if (comboBox?.Text == null) return;
+            TextBox textBox = (TextBox)(comboBox).Template.FindName("PART_EditableTextBox", (ComboBox)sender);
+            textBox.SelectionStart = comboBox.Text.Length;
+            textBox.SelectionLength = 0;
         }
 
         protected override void OnInitialize()
