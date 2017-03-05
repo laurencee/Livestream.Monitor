@@ -38,7 +38,7 @@ namespace Livestream.Monitor.Model
             if (channel == null) return;
 
             livestreamModel.DisplayName = channel.DisplayName;
-            livestreamModel.Description = channel.Status;
+            livestreamModel.Description = channel.Status?.Trim();
             livestreamModel.Game = channel.Game;
             livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
             livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
@@ -48,7 +48,7 @@ namespace Livestream.Monitor.Model
         public static void PopulateSelf(this LivestreamModel livestreamModel, LivestreamModel consume)
         {
             livestreamModel.BroadcasterLanguage = consume.BroadcasterLanguage;
-            livestreamModel.Description = consume.Description;
+            livestreamModel.Description = consume.Description?.Trim();
             livestreamModel.DisplayName = consume.DisplayName;
             livestreamModel.Game = consume.Game;
             livestreamModel.IsPartner = consume.IsPartner;

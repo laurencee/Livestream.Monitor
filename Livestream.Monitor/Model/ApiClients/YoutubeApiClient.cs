@@ -218,7 +218,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 if (!livestreamModel.Live) continue;
 
                 livestreamModel.DisplayName = snippet.ChannelTitle;
-                livestreamModel.Description = snippet.Title;
+                livestreamModel.Description = snippet.Title?.Trim();
                 livestreamModel.ThumbnailUrls = new ThumbnailUrls()
                 {
                     Small = snippet.Thumbnails?.Standard?.Url,

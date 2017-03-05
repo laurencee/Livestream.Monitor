@@ -181,7 +181,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return new LivestreamModel(channel.token, new ChannelIdentifier(this, channel.token))
             {
                 DisplayName = channel.user?.username,
-                Description = channel.name,
+                Description = channel.name?.Trim(),
                 Viewers = channel.viewersCurrent,
                 Live = channel.online,
                 Game = channel.type?.name,

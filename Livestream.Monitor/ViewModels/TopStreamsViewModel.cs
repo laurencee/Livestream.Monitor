@@ -219,6 +219,7 @@ namespace Livestream.Monitor.ViewModels
             topStreamResult.IsBusy = false;
         }
 
+        // HACK to avoid combobox auto selecting all text on opening resuling in the user deleting what they just typed
         public void DropDownOpened(object sender)
         {
             var comboBox = sender as ComboBox;

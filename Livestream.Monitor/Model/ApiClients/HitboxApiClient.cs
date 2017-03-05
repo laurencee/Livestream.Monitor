@@ -205,7 +205,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var livestreamModel = new LivestreamModel(livestream.Channel?.UserName, existingChannel ?? new ChannelIdentifier(this, livestream.Channel?.UserName));
 
             livestreamModel.DisplayName = livestream.MediaDisplayName;
-            livestreamModel.Description = livestream.MediaStatus;
+            livestreamModel.Description = livestream.MediaStatus?.Trim();
             livestreamModel.Game = livestream.CategoryName;
             livestreamModel.BroadcasterLanguage = livestream.MediaCountries?.FirstOrDefault()?.ToLower();
             livestreamModel.ThumbnailUrls = new ThumbnailUrls()
