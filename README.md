@@ -9,7 +9,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 
 ## Pre-requisites
 * [.NET 4.6](https://www.microsoft.com/en-us/download/details.aspx?id=48130) installed
-* [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
+* [streamlink](https://github.com/streamlink/streamlink) or [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
 * Chrome browser installed (app runs fine without chrome but chrome is required for chat to function)
 
 ## Usage
