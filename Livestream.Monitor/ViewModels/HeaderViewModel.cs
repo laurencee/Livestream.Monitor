@@ -183,9 +183,21 @@ namespace Livestream.Monitor.ViewModels
             {
                 await MonitorStreamsModel.RefreshLivestreams();
             }
-            catch (AggregateException ex)
+            catch (AggregateException aggregateException)
             {
-                await this.ShowMessageAsync("Error refreshing livestreams", ex.Flatten().ExtractErrorMessage());
+                foreach (var ex in aggregateException.InnerExceptions)
+                {
+                    var messageDialogResult = await this.ShowMessageAsync(
+                        "Error refreshing livestreams", ex.ExtractErrorMessage(),
+                        MessageDialogStyle.AffirmativeAndNegative,
+                        new MetroDialogSettings()
+                        {
+                            NegativeButtonText = "Ignore"
+                        });
+
+                    if (messageDialogResult == MessageDialogResult.Negative)
+                        MonitorStreamsModel.IgnoreQueryFailure(ex.Message);
+                }
             }
             catch (Exception ex)
             {

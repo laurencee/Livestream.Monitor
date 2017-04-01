@@ -115,6 +115,10 @@ namespace Livestream.Monitor.Model.Monitoring
             return Task.CompletedTask;
         }
 
+        public void IgnoreQueryFailure(string errorToIgnore)
+        {
+        }
+
         public Task RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));

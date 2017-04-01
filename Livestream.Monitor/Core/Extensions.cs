@@ -170,11 +170,19 @@ namespace Livestream.Monitor.Core
         }
 
         /// <summary> Rethrows any failed query exceptions or does nothing if no failed queries exist </summary>
-        public static void EnsureAllQuerySuccess(this IReadOnlyCollection<LivestreamQueryResult> livestreamQueryResults)
+        public static void EnsureAllQuerySuccess(
+            this IReadOnlyCollection<LivestreamQueryResult> livestreamQueryResults,
+            List<string> ignoredQueryFailures = null)
         {
-            var failedQuery = livestreamQueryResults.FirstOrDefault(x => !x.IsSuccess);
-            if (failedQuery != null)
-                throw failedQuery.FailedQueryException;
+            if (ignoredQueryFailures == null) ignoredQueryFailures = new List<string>();
+
+            var exceptions = livestreamQueryResults
+                .Where(x => !x.IsSuccess &&
+                            !ignoredQueryFailures.Contains(x.FailedQueryException.Message))
+                .Select(x => x.FailedQueryException)
+                .ToList();
+
+            if (exceptions.Any()) throw new AggregateException($"{exceptions.Count} failed query(s)", exceptions);
         }
 
         /// <summary>

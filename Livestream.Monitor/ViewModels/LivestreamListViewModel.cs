@@ -24,7 +24,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
-        private int refreshErrorCount = 0;
+        private int refreshErrorCount, refreshCount;
         private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
@@ -90,25 +90,44 @@ namespace Livestream.Monitor.ViewModels
                 // only reactive the timer if we're still on this screen
                 if (IsActive) refreshTimer.Start();
             }
-            catch (Exception ex)
+            catch (AggregateException aggregateException)
             {
                 if (!IsActive) return;
                 refreshErrorCount++;
 
-                // keep trying to refresh until we hit too many consecutive errors
-                if (refreshErrorCount >= 3)
+                // keep trying to refresh until we hit too many consecutive errors unless it's our first query
+                if (refreshCount == 0 || refreshErrorCount >= 3)
                 {
-                    Execute.OnUIThread(async () =>
+                    foreach (var ex in aggregateException.InnerExceptions)
                     {
-                        await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
-                        refreshTimer.Start();
-                    });
+                        var messageDialogResult = await this.ShowMessageAsync(
+                            "Error refreshing livestreams", ex.ExtractErrorMessage(),
+                            MessageDialogStyle.AffirmativeAndNegative,
+                            new MetroDialogSettings()
+                            {
+                                NegativeButtonText = "Ignore"
+                            });
+
+                        if (messageDialogResult == MessageDialogResult.Negative)
+                            StreamsModel.IgnoreQueryFailure(ex.Message);
+                    }
+
+                    refreshTimer.Start();
                 }
                 else
                 {
                     refreshTimer.Start();
                 }
             }
+            catch (Exception ex)
+            {
+                if (!IsActive) return;
+                refreshErrorCount++;
+
+                await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
+            }
+
+            refreshCount++;
         }
 
         /// <summary> 
@@ -118,7 +137,7 @@ namespace Livestream.Monitor.ViewModels
         public async Task OpenStream()
         {
             if (Loading) return;
-            
+
             await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, StreamsModel.SelectedStreamQuality, this);
         }
 
@@ -138,7 +157,7 @@ namespace Livestream.Monitor.ViewModels
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
                 vm.SelectedApiClient = stream.ApiClient;
-                vm.StreamId = stream.Id;                
+                vm.StreamId = stream.Id;
             });
         }
 

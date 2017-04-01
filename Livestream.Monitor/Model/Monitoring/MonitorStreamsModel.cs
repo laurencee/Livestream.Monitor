@@ -18,6 +18,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IApiClientFactory apiClientFactory;
         private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
         private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
+        private readonly List<string> ignoredQueryFailures = new List<string>();
 
         private bool initialised;
         private bool canRefreshLivestreams = true;
@@ -206,7 +207,7 @@ namespace Livestream.Monitor.Model.Monitoring
                     var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
 
                     PopulateLivestreams(livestreams);
-                    livestreamQueryResults.EnsureAllQuerySuccess();
+                    livestreamQueryResults.EnsureAllQuerySuccess(ignoredQueryFailures);
 
                     // before the first refresh (or after some network error) all the channels are offline 
                     // but we would already have a channel selected
@@ -222,6 +223,14 @@ namespace Livestream.Monitor.Model.Monitoring
                 LastRefreshTime = DateTimeOffset.Now;
                 CanRefreshLivestreams = true;
             }
+        }
+
+        public void IgnoreQueryFailure(string errorToIgnore)
+        {
+            if (string.IsNullOrWhiteSpace(errorToIgnore))
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(errorToIgnore));
+
+            ignoredQueryFailures.Add(errorToIgnore);
         }
 
         public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)

@@ -31,6 +31,10 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();
 
+        /// <summary> Prevent a specific error message from raising query failed exceptions </summary>
+        /// <param name="errorToIgnore">The error message from a query failure to ignore</param>
+        void IgnoreQueryFailure(string errorToIgnore);
+
         void SetDefaultSelectedStreamQuality();
     }
 }
