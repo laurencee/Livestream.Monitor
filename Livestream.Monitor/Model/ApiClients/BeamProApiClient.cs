@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
@@ -103,15 +104,15 @@ namespace Livestream.Monitor.Model.ApiClients
             var pagedQuery = new BeamProPagedQuery() { Skip = vodQuery.Skip, Take = vodQuery.Take };
             var vods = await beamProClient.GetChannelVideos(streamid, pagedQuery);
 
-            var vodDetails = vods.ConvertAll(input => new VodDetails()
+            var vodDetails = vods.Select(x => new VodDetails()
             {
-                Views = input.viewsTotal.GetValueOrDefault(),
-                Length = TimeSpan.FromSeconds(input.duration),
-                Title = input.name,
-                RecordedAt = input.createdAt.GetValueOrDefault(),
-                Url = input.vods?[0]?.baseUrl,
+                Views = x.viewsTotal.GetValueOrDefault(),
+                Length = TimeSpan.FromSeconds(x.duration),
+                Title = x.name,
+                RecordedAt = x.createdAt.GetValueOrDefault(),
+                Url = $" https://beam.pro/{vodQuery.StreamId}?vod={x.id}",
                 ApiClient = this,
-            });
+            }).ToList();
 
             return vodDetails;
         }
