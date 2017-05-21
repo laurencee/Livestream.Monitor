@@ -1,8 +1,8 @@
 using System;
-using ExternalAPIs.Hitbox.Converters;
+using ExternalAPIs.Smashcast.Converters;
 using Newtonsoft.Json;
 
-namespace ExternalAPIs.Hitbox.Dto
+namespace ExternalAPIs.Smashcast.Dto
 {
     public class Channel
     {

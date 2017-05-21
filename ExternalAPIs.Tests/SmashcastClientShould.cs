@@ -1,11 +1,11 @@
 ﻿using System.Threading.Tasks;
-using ExternalAPIs.Hitbox;
-using ExternalAPIs.Hitbox.Query;
+using ExternalAPIs.Smashcast;
+using ExternalAPIs.Smashcast.Query;
 using Xunit;
 
 namespace ExternalAPIs.Tests
 {
-    public class HitboxClientShould
+    public class SmashcastClientShould
     {
         private const string KnownChannelName = "rewardsgg";
         private const int KnownChannelId = 859185;
@@ -13,7 +13,7 @@ namespace ExternalAPIs.Tests
         //private const string KnownChannelName = "Heroesofcards";
         //private const int KnownChannelId = 217859;
 
-        private readonly HitboxReadonlyClient sut = new HitboxReadonlyClient();
+        private readonly SmashcastReadonlyClient sut = new SmashcastReadonlyClient();
 
         [Fact]
         public async Task GetTopStreams()

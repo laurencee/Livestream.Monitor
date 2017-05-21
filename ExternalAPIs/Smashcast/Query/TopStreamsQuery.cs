@@ -1,4 +1,4 @@
-﻿namespace ExternalAPIs.Hitbox.Query
+﻿namespace ExternalAPIs.Smashcast.Query
 {
     public class TopStreamsQuery : PagedQuery
     {

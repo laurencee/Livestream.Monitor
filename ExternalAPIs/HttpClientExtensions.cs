@@ -31,10 +31,17 @@ namespace ExternalAPIs
             
             using (httpClient)
             {
-                var httpResponseMessage = await httpClient.GetAsync(request, cancellationToken);
-                await httpResponseMessage.EnsureSuccessStatusCodeAsync();
-                var response = await httpResponseMessage.Content.ReadAsStringAsync();
-                return JsonConvert.DeserializeObject<T>(response);
+                try
+                {
+                    var httpResponseMessage = await httpClient.GetAsync(request, cancellationToken);
+                    await httpResponseMessage.EnsureSuccessStatusCodeAsync();
+                    var response = await httpResponseMessage.Content.ReadAsStringAsync();
+                    return JsonConvert.DeserializeObject<T>(response);
+                }
+                catch (TaskCanceledException e)
+                {
+                    throw new TimeoutException("Timed out executing web request", e);
+                }
             }
         }
 

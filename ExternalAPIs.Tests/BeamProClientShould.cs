@@ -9,8 +9,12 @@ namespace ExternalAPIs.Tests
     public class BeamProClientShould
     {
         private readonly IBeamProReadonlyClient sut = new BeamProReadonlyClient();
-        
-        [Fact]
+
+        [InlineData((string)null)]
+        [InlineData("World of Warcraft")]
+        [InlineData("Minecraft")]
+        [InlineData("League of Legends")]
+        [Theory]
         public async Task GetTopStreams(string gameName)
         {
             var topStreams = await sut.GetTopStreams(new BeamProPagedQuery());

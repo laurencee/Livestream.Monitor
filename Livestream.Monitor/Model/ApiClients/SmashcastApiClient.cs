@@ -6,33 +6,35 @@ using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs;
-using ExternalAPIs.Hitbox;
+using ExternalAPIs.Smashcast;
+using ExternalAPIs.Smashcast.Query;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using static System.String;
+using ChannelVideosQuery = ExternalAPIs.Smashcast.Query.ChannelVideosQuery;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
-    public class HitboxApiClient : IApiClient
+    public class SmashcastApiClient : IApiClient
     {
-        public const string API_NAME = "hitbox";
+        public const string API_NAME = "smashcast";
         // this doesn't appear anywhere in the returned api values but it is where the static data comes from...
-        private const string StaticContentPrefixUrl = "http://edge.sf.hitbox.tv";
-        private const string VideoPrefix = "http://www.hitbox.tv/video/";
+        private const string StaticContentPrefixUrl = "https://edge.sf.hitbox.tv";
+        private const string VideoPrefix = "https://www.smashcast.tv/video/";
 
-        private readonly IHitboxReadonlyClient hitboxClient;
+        private readonly ISmashcastReadonlyClient smashcastClient;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
 
-        public HitboxApiClient(IHitboxReadonlyClient hitboxClient)
+        public SmashcastApiClient(ISmashcastReadonlyClient smashcastClient)
         {
-            if (hitboxClient == null) throw new ArgumentNullException(nameof(hitboxClient));
-            this.hitboxClient = hitboxClient;
+            if (smashcastClient == null) throw new ArgumentNullException(nameof(smashcastClient));
+            this.smashcastClient = smashcastClient;
         }
 
         public string ApiName => API_NAME;
 
-        public string BaseUrl => "https://www.hitbox.tv/";
+        public string BaseUrl => "https://www.smashcast.tv/";
 
         public bool HasChatSupport => true;
 
@@ -96,10 +98,10 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
         {
-            var channelVideosQuery = new ExternalAPIs.Hitbox.Query.ChannelVideosQuery(vodQuery.StreamId);
+            var channelVideosQuery = new ChannelVideosQuery(vodQuery.StreamId);
             try
             {
-                var videos = await hitboxClient.GetChannelVideos(channelVideosQuery);
+                var videos = await smashcastClient.GetChannelVideos(channelVideosQuery);
 
                 return videos.Select(x =>
                 {
@@ -133,11 +135,11 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
         {
-            var hitboxTopStreamQuery = new ExternalAPIs.Hitbox.Query.TopStreamsQuery()
+            var topStreamsQuery = new TopStreamsQuery()
             {
                 GameName = topStreamQuery.GameName
             };
-            var topStreams = await hitboxClient.GetTopStreams(hitboxTopStreamQuery);
+            var topStreams = await smashcastClient.GetTopStreams(topStreamsQuery);
             if (topStreams == null) return new List<LivestreamQueryResult>();
 
             return topStreams.ConvertAll(ConvertToLivestreamModel)
@@ -149,7 +151,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
         {
-            var topGames = await hitboxClient.GetTopGames(filterGameName);
+            var topGames = await smashcastClient.GetTopGames(filterGameName);
             return topGames.Select(x => new KnownGame()
             {
                 GameName = x.CategoryName,
@@ -165,7 +167,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
         {
-            var userFollows = await hitboxClient.GetUserFollows(userName);
+            var userFollows = await smashcastClient.GetUserFollows(userName);
             return userFollows.Select(x =>
             {
                 var channelIdentifier = new ChannelIdentifier(this, x.UserName);
@@ -186,7 +188,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     var queryResult = new LivestreamQueryResult(channelIdentifier);
                     try
                     {
-                        var livestream = await hitboxClient.GetChannelDetails(channelIdentifier.ChannelId, cancellationToken);
+                        var livestream = await smashcastClient.GetChannelDetails(channelIdentifier.ChannelId, cancellationToken);
                         queryResult.LivestreamModel = ConvertToLivestreamModel(livestream);
                     }
                     catch (Exception ex)
@@ -199,7 +201,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 cancellationToken: cancellationToken);
         }
 
-        private LivestreamModel ConvertToLivestreamModel(ExternalAPIs.Hitbox.Dto.Livestream livestream)
+        private LivestreamModel ConvertToLivestreamModel(ExternalAPIs.Smashcast.Dto.Livestream livestream)
         {
             var existingChannel = moniteredChannels.FirstOrDefault(x => x.ChannelId.IsEqualTo(livestream.Channel?.UserName));
             var livestreamModel = new LivestreamModel(livestream.Channel?.UserName, existingChannel ?? new ChannelIdentifier(this, livestream.Channel?.UserName));

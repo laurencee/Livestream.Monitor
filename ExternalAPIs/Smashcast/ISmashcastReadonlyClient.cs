@@ -1,12 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.Hitbox.Dto;
-using ExternalAPIs.Hitbox.Query;
+using ExternalAPIs.Smashcast.Dto;
+using ExternalAPIs.Smashcast.Query;
 
-namespace ExternalAPIs.Hitbox
+namespace ExternalAPIs.Smashcast
 {
-    public interface IHitboxReadonlyClient
+    public interface ISmashcastReadonlyClient
     {
         Task<List<Livestream>> GetTopStreams(TopStreamsQuery topStreamsQuery, CancellationToken cancellationToken = default(CancellationToken));
 
@@ -18,7 +18,7 @@ namespace ExternalAPIs.Hitbox
 
         Task<List<Following>> GetUserFollows(string username, CancellationToken cancellationToken = default(CancellationToken));
 
-        /// <summary> Gets top games current on hitbox with an optional game name filter </summary>
+        /// <summary> Gets top games current on smashcast with an optional game name filter </summary>
         /// <param name="gameName">Optional value to filter games by</param>
         /// <param name="cancellationToken"></param>
         Task<List<Category>> GetTopGames(string gameName = null, CancellationToken cancellationToken = default(CancellationToken));

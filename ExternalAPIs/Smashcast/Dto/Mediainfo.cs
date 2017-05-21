@@ -1,6 +1,6 @@
 ﻿using Newtonsoft.Json;
 
-namespace ExternalAPIs.Hitbox.Dto
+namespace ExternalAPIs.Smashcast.Dto
 {
     public class Mediainfo
     {

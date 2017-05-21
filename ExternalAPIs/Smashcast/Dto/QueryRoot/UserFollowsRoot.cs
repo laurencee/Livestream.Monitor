@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace ExternalAPIs.Hitbox.Dto.QueryRoot
+namespace ExternalAPIs.Smashcast.Dto.QueryRoot
 {
     public class UserFollowsRoot
     {

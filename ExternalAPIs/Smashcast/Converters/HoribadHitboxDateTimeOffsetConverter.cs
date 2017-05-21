@@ -1,7 +1,7 @@
 ﻿using System;
 using Newtonsoft.Json;
 
-namespace ExternalAPIs.Hitbox.Converters
+namespace ExternalAPIs.Smashcast.Converters
 {
     /// <summary> Treats poorly formatted date time values from hitbox as UTC values </summary>
     public class HoribadHitboxDateTimeOffsetConverter : JsonConverter
