@@ -14,8 +14,7 @@ namespace Livestream.Monitor.ViewModels
     {
         private readonly Dictionary<string, List<string>> errors = new Dictionary<string, List<string>>();
         private readonly ISettingsHandler settingsHandler;
-        private string chromeFullPath;
-        private string livestreamerFullPath;
+        private string livestreamerFullPath, chatCommandLine;
         private int minimumEventViewers;
         private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId;
 
@@ -25,7 +24,7 @@ namespace Livestream.Monitor.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             LivestreamerFullPath = "Livestreamer/Streamlink path - design time";
-            ChromeFullPath = "Chrome path - design time";
+            ChatCommandLine = "Chat command - design time";
             MinimumEventViewers = 30000;
         }
 
@@ -64,21 +63,21 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public string ChromeFullPath
+        public string ChatCommandLine
         {
-            get { return chromeFullPath; }
+            get { return chatCommandLine; }
             set
             {
-                if (value == chromeFullPath) return;
+                if (value == chatCommandLine) return;
 
-                // Must allow chrome full path to be blank as it's an optional component for chat only
-                if (!string.IsNullOrWhiteSpace(value) && !File.Exists(value))
-                    AddError(nameof(ChromeFullPath), "File not found");
+                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
+                    AddError(nameof(ChatCommandLine),
+                        $"Chat commmand line must include a {Settings.CHAT_URL_REPLACEMENT_TOKEN} token so the chat url can be passed to the command");
                 else
-                    RemoveErrors(nameof(ChromeFullPath));
+                    RemoveErrors(nameof(ChatCommandLine));
 
-                chromeFullPath = value;
-                NotifyOfPropertyChange(() => ChromeFullPath);
+                chatCommandLine = value;
+                NotifyOfPropertyChange(() => ChatCommandLine);
                 NotifyOfPropertyChange(() => CanSave);
             }
         }
@@ -138,11 +137,10 @@ namespace Livestream.Monitor.ViewModels
             get
             {
                 if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
-                // Must allow chrome full path to be blank as it's an optional component for chat only
-                if (!string.IsNullOrWhiteSpace(ChromeFullPath) && !File.Exists(ChromeFullPath)) return false;
+                if (ChatCommandLine != null && ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
-                return ChromeFullPath != settingsHandler.Settings.ChromeFullPath ||
+                return ChatCommandLine != settingsHandler.Settings.ChatCommandLine ||
                        LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath ||
                        MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
@@ -170,7 +168,7 @@ namespace Livestream.Monitor.ViewModels
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
 
-            settingsHandler.Settings.ChromeFullPath = ChromeFullPath;
+            settingsHandler.Settings.ChatCommandLine = ChatCommandLine;
             settingsHandler.Settings.LivestreamerFullPath = LivestreamerFullPath;
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
@@ -196,16 +194,30 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public void SetChromeFilePath()
+        public void Chrome()
         {
-            var startingPath = settingsHandler.Settings.ChromeFullPath;
-            if (string.IsNullOrWhiteSpace(startingPath))
-                startingPath = Settings.DEFAULT_CHROME_FULL_PATH;
+            var startingPath = Settings.DEFAULT_CHROME_FULL_PATH;
 
-            var chromeFilePath = SelectFile("Chrome|chrome.exe", startingPath);
+            var chromeFilePath = SelectFile("Chrome|*.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(chromeFilePath))
             {
-                ChromeFullPath = chromeFilePath;
+                ChatCommandLine = $"\"{chromeFilePath}\" {Settings.CHROME_ARGS}";
+            }
+        }
+
+        public void Edge()
+        {
+            ChatCommandLine = $"start microsoft-edge:{Settings.CHAT_URL_REPLACEMENT_TOKEN}";
+        }
+
+        public void Firefox()
+        {
+            var startingPath = Settings.DEFAULT_FIREFOX_FULL_PATH;
+
+            var firefoxFilePath = SelectFile("Firefox|*.exe", startingPath);
+            if (!string.IsNullOrWhiteSpace(firefoxFilePath))
+            {
+                ChatCommandLine = $"\"{firefoxFilePath}\" {Settings.FIREFOX_ARGS}";
             }
         }
 
@@ -232,7 +244,7 @@ namespace Livestream.Monitor.ViewModels
         {
             // We need to keep these as isolated properties so we can determine if a valid change has been made 
             LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
-            ChromeFullPath = settingsHandler.Settings.ChromeFullPath;
+            ChatCommandLine = settingsHandler.Settings.ChatCommandLine;
             MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
@@ -246,8 +258,8 @@ namespace Livestream.Monitor.ViewModels
         {
             if (e.PropertyName == nameof(Settings.LivestreamerFullPath))
                 LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
-            else if (e.PropertyName == nameof(Settings.ChromeFullPath))
-                ChromeFullPath = settingsHandler.Settings.ChromeFullPath;
+            else if (e.PropertyName == nameof(Settings.ChatCommandLine))
+                ChatCommandLine = settingsHandler.Settings.ChatCommandLine;
             else if (e.PropertyName == nameof(Settings.MinimumEventViewers))
                 MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
         }

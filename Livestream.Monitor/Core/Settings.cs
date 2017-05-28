@@ -14,13 +14,20 @@ namespace Livestream.Monitor.Core
     public class Settings : PropertyChangedBase
     {
         public const string DEFAULT_CHROME_FULL_PATH = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
+        public const string DEFAULT_FIREFOX_FULL_PATH = @"C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
+        public const string DEFAULT_CHROME_COMMAND_LINE = DEFAULT_CHROME_FULL_PATH + " " + CHROME_ARGS;
         public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
         public const int DEFAULT_MINIMUM_EVENT_VIEWERS = 30000;
+
+        public const string CHAT_URL_REPLACEMENT_TOKEN = "{url}";
+        public const string CHROME_ARGS = "--app=" + CHAT_URL_REPLACEMENT_TOKEN + " --window-size=350 -height=760";
+        public const string FIREFOX_ARGS = "-url " + CHAT_URL_REPLACEMENT_TOKEN;
 
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
         private StreamQuality defaultStreamQuality;
         private string livestreamerFullPath;
+        private string chatCommandLine;
         private string chromeFullPath;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
         private bool disableNotifications, passthroughClientId;
@@ -77,8 +84,21 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(DEFAULT_CHROME_FULL_PATH)]
+        [DefaultValue(DEFAULT_CHROME_COMMAND_LINE)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        public string ChatCommandLine
+        {
+            get { return chatCommandLine; }
+            set
+            {
+                if (value == chatCommandLine) return;
+                chatCommandLine = value;
+                NotifyOfPropertyChange(() => ChatCommandLine);
+            }
+        }
+
+        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
+        [Obsolete("Replaced by " + nameof(ChatCommandLine))]
         public string ChromeFullPath
         {
             get { return chromeFullPath; }

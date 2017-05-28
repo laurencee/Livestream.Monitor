@@ -10,7 +10,7 @@
              d:DataContext="{d:DesignInstance Type=viewModels:SettingsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True" 
              d:DesignWidth="300">
-    <Grid Margin="20">
+    <Grid Margin="10,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
@@ -41,15 +41,27 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 
                 <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer/Streamlink Path" />
                 <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
                 <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
 
-                <TextBlock Grid.Row="2" Grid.Column="0" Text="Chrome Path (Optional)" />
-                <TextBox Grid.Row="3" Grid.Column="0" x:Name="ChromeFullPath" />
-                <Button Grid.Row="3" Grid.Column="1" x:Name="SetChromeFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="Predefined Chat Commands (Optional)" />
+                <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" >
+                    <Button x:Name="Chrome" Content="Chrome" Margin="5,0" />
+                    <Button x:Name="Edge" Content="Edge" Margin="5,0" />
+                    <Button x:Name="Firefox" Content="Firefox" Margin="5,0" />
+                </StackPanel>
+
+                <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
+                           Text="Chat Command (Optional) - variable {url}"
+                           ToolTip="Command line argument to pass in a chat {url} - e.g. microsoft-edge:{url}" />
+                <TextBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" 
+                         x:Name="ChatCommandLine"
+                         ToolTip="Command line argument to pass in a chat {url} - e.g. microsoft-edge:{url}" />
             </Grid>
 
             <TextBlock Text="Popular stream minimum viewers (0 for off)" Margin="0,20,0,0"

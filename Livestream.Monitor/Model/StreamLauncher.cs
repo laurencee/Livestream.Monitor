@@ -45,21 +45,7 @@ namespace Livestream.Monitor.Model
 
         public async Task OpenChat(LivestreamModel livestreamModel, IViewAware fromScreen)
         {
-            // guard against invalid/missing chrome path
-            var chromeLocation = settingsHandler.Settings.ChromeFullPath;
-            if (string.IsNullOrWhiteSpace(chromeLocation))
-            {
-                await fromScreen.ShowMessageAsync("No chrome locations specified",
-                    $"Chrome location is not set in settings.{Environment.NewLine}Chat relies on chrome to function.");
-                return;
-            }
-            if (!File.Exists(chromeLocation))
-            {
-                await fromScreen.ShowMessageAsync("Chrome not found",
-                    $"Could not find chrome @ {chromeLocation}.{Environment.NewLine}Chat relies on chrome to function.");
-                return;
-            }
-            // guard against stream provider not having chat support
+            // guard against stream provider with unknown chat support
             if (!livestreamModel.ApiClient.HasChatSupport)
             {
                 await fromScreen.ShowMessageAsync("Chat not supported",
@@ -67,30 +53,42 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            string chromeArgs = $"--app={livestreamModel.ChatUrl} --window-size=350,758";
-
-            await Task.Run(async () =>
+            if (string.IsNullOrWhiteSpace(settingsHandler.Settings.ChatCommandLine))
             {
-                try
-                {
-                    var proc = new Process
-                    {
-                        StartInfo =
-                        {
-                            FileName = chromeLocation,
-                            Arguments = chromeArgs,
-                            CreateNoWindow = true,
-                            UseShellExecute = false
-                        }
-                    };
+                await fromScreen.ShowMessageAsync("No chat command specified", "Chat command is not set in settings.");
+                return;
+            }
 
-                    proc.Start();
-                }
-                catch (Exception ex)
+            // guard against chat command that contains no url token
+            if (!settingsHandler.Settings.ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
+            {
+                await fromScreen.ShowMessageAsync("Missing url token in chat command",
+                    $"Chat command is missing the url token {Settings.CHAT_URL_REPLACEMENT_TOKEN}.");
+                return;
+            }
+
+            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, livestreamModel.ChatUrl);
+
+            try
+            {
+                var proc = new Process
                 {
-                    await fromScreen.ShowMessageAsync("Error launching chat", ex.Message);
-                }
-            });
+                    StartInfo =
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = "/c " + command,
+                        CreateNoWindow = true,
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                    }
+                };
+                proc.Start();
+            }
+            catch (Exception ex)
+            {
+                await fromScreen.ShowMessageAsync("Error launching chat", ex.Message);
+            }
         }
 
         public async Task OpenStream(LivestreamModel livestreamModel, string streamQuality, IViewAware viewAware)
@@ -314,7 +312,7 @@ namespace Livestream.Monitor.Model
                 MessageText =
                     $"Could not find livestreamer/streamlink @ '{settingsHandler.Settings.LivestreamerFullPath}'" + Environment.NewLine +
                     "Please download and install streamlink from 'https://streamlink.github.io/install.html#windows-binaries'" + Environment.NewLine +
-                    "OR download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"                    
+                    "OR download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
             };
 
             var settings = new WindowSettingsBuilder().SizeToContent()
