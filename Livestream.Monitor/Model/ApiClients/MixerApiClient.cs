@@ -4,32 +4,32 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
-using ExternalAPIs.Beam.Pro;
-using ExternalAPIs.Beam.Pro.Dto;
-using ExternalAPIs.Beam.Pro.Query;
+using ExternalAPIs.Mixer;
+using ExternalAPIs.Mixer.Dto;
+using ExternalAPIs.Mixer.Query;
 using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
-    public class BeamProApiClient : IApiClient
+    public class MixerApiClient : IApiClient
     {
-        public const string API_NAME = "beam.pro";
+        public const string API_NAME = "mixer";
 
-        private readonly IBeamProReadonlyClient beamProClient;
+        private readonly IMixerReadonlyClient mixerClient;
         private readonly Dictionary<string, int> channelNameIdMap = new Dictionary<string, int>();
         private readonly HashSet<ChannelIdentifier> followedChannels = new HashSet<ChannelIdentifier>();
 
-        public BeamProApiClient(IBeamProReadonlyClient beamProClient)
+        public MixerApiClient(IMixerReadonlyClient mixerClient)
         {
-            if (beamProClient == null) throw new ArgumentNullException(nameof(beamProClient));
-            this.beamProClient = beamProClient;
+            if (mixerClient == null) throw new ArgumentNullException(nameof(mixerClient));
+            this.mixerClient = mixerClient;
         }
 
         public string ApiName => API_NAME;
 
-        public string BaseUrl => @"https://beam.pro/";
+        public string BaseUrl => @"https://mixer.com/";
 
         public bool HasChatSupport => true;
 
@@ -95,14 +95,14 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 if (!channelNameIdMap.TryGetValue(vodQuery.StreamId, out streamid))
                 {
-                    var channel = await beamProClient.GetStreamDetails(vodQuery.StreamId, CancellationToken.None);
+                    var channel = await mixerClient.GetStreamDetails(vodQuery.StreamId, CancellationToken.None);
                     channelNameIdMap[channel.token] = channel.id;
                     streamid = channel.id;
                 }
             }
 
-            var pagedQuery = new BeamProPagedQuery() { Skip = vodQuery.Skip, Take = vodQuery.Take };
-            var vods = await beamProClient.GetChannelVideos(streamid, pagedQuery);
+            var pagedQuery = new MixerPagedQuery() { Skip = vodQuery.Skip, Take = vodQuery.Take };
+            var vods = await mixerClient.GetChannelVideos(streamid, pagedQuery);
 
             var vodDetails = vods.Select(x => new VodDetails()
             {
@@ -110,7 +110,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 Length = TimeSpan.FromSeconds(x.duration),
                 Title = x.name,
                 RecordedAt = x.createdAt.GetValueOrDefault(),
-                Url = $" https://beam.pro/{vodQuery.StreamId}?vod={x.id}",
+                Url = $"{BaseUrl}{vodQuery.StreamId}?vod={x.id}",
                 ApiClient = this,
             }).ToList();
 
@@ -119,12 +119,12 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
         {
-            var pagedQuery = new BeamProPagedQuery()
+            var pagedQuery = new MixerPagedQuery()
             {
                 Skip = topStreamQuery.Skip,
                 Take = topStreamQuery.Take
             };
-            var topStreams = await beamProClient.GetTopStreams(pagedQuery);
+            var topStreams = await mixerClient.GetTopStreams(pagedQuery);
 
             return topStreams.ConvertAll(input =>
             {
@@ -139,7 +139,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
         {
-            var games = await beamProClient.GetKnownGames(new KnownGamesPagedQuery() {GameName = filterGameName});
+            var games = await mixerClient.GetKnownGames(new KnownGamesPagedQuery() {GameName = filterGameName});
             return games.ConvertAll(input => new KnownGame()
             {
                 GameName = input.name,
@@ -164,7 +164,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             try
             {
-                var channel = await beamProClient.GetStreamDetails(channelIdentifier.ChannelId, cancellationToken);
+                var channel = await mixerClient.GetStreamDetails(channelIdentifier.ChannelId, cancellationToken);
                 channelNameIdMap[channel.token] = channel.id; // record the mapping of the channels token/name to its underlying id
                 var livestreamModel = ConvertToLivestreamModel(channel);
                 queryResult.LivestreamModel = livestreamModel;

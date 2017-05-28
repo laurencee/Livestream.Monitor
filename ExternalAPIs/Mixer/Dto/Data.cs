@@ -1,4 +1,4 @@
-﻿namespace ExternalAPIs.Beam.Pro.Dto
+﻿namespace ExternalAPIs.Mixer.Dto
 {
     public class Data
     {

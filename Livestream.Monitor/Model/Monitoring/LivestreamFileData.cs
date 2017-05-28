@@ -26,6 +26,9 @@ namespace Livestream.Monitor.Model.Monitoring
                 // convert stream providers who have changed names to allow for old stored names
                 if (streamProvider == "hitbox")
                     return "smashcast";
+                if (streamProvider == "beam.pro")
+                    return "mixer";
+
                 return streamProvider;
             }
             set { streamProvider = value; }

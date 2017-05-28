@@ -1,9 +1,4 @@
-﻿using System;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ExternalAPIs.Beam.Pro.Dto
+﻿namespace ExternalAPIs.Mixer.Dto
 {
     public class Channel
     {

@@ -1,14 +1,14 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.Beam.Pro;
-using ExternalAPIs.Beam.Pro.Query;
+using ExternalAPIs.Mixer;
+using ExternalAPIs.Mixer.Query;
 using Xunit;
 
 namespace ExternalAPIs.Tests
 {
-    public class BeamProClientShould
+    public class MixerClientShould
     {
-        private readonly IBeamProReadonlyClient sut = new BeamProReadonlyClient();
+        private readonly IMixerReadonlyClient sut = new MixerReadonlyClient();
 
         [InlineData((string)null)]
         [InlineData("World of Warcraft")]
@@ -17,7 +17,7 @@ namespace ExternalAPIs.Tests
         [Theory]
         public async Task GetTopStreams(string gameName)
         {
-            var topStreams = await sut.GetTopStreams(new BeamProPagedQuery());
+            var topStreams = await sut.GetTopStreams(new MixerPagedQuery());
             Assert.NotEmpty(topStreams);
             Assert.NotNull(topStreams[0]);
         }
@@ -33,9 +33,9 @@ namespace ExternalAPIs.Tests
         [Fact]
         public async Task GetChannelVideos()
         {
-            // to find a user to query for recordings, look for hasVod=true in the response for channels "https://beam.pro/api/v1/channels?order=hasVod:DESC"
+            // to find a user to query for recordings, look for hasVod=true in the response for channels "https://mixer.com/api/v1/channels?order=hasVod:DESC"
             // you must use the "id" of the channel rather than the channel name/token
-            var videos = await sut.GetChannelVideos(1903, new BeamProPagedQuery() { Take = 10});
+            var videos = await sut.GetChannelVideos(1903, new MixerPagedQuery() { Take = 10});
             Assert.NotEmpty(videos);
             Assert.NotNull(videos[0].duration);
         }

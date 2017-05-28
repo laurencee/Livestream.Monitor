@@ -46,21 +46,21 @@
     <Compile Include="..\GlobalAssemblyInfo.cs">
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
-    <Compile Include="Beam.Pro\Dto\KnownGame.cs" />
-    <Compile Include="Beam.Pro\Query\BeamProPagedQuery.cs" />
-    <Compile Include="Beam.Pro\BeamProReadonlyClient.cs" />
-    <Compile Include="Beam.Pro\Dto\Channel.cs" />
-    <Compile Include="Beam.Pro\Dto\Data.cs" />
-    <Compile Include="Beam.Pro\Dto\Meta.cs" />
-    <Compile Include="Beam.Pro\Dto\Recording.cs" />
-    <Compile Include="Beam.Pro\Dto\Social.cs" />
-    <Compile Include="Beam.Pro\Dto\Thumbnail.cs" />
-    <Compile Include="Beam.Pro\Dto\Type.cs" />
-    <Compile Include="Beam.Pro\Dto\User.cs" />
-    <Compile Include="Beam.Pro\Dto\Vod.cs" />
-    <Compile Include="Beam.Pro\IBeamProReadonlyClient.cs" />
-    <Compile Include="Beam.Pro\Query\KnownGamesPagedQuery.cs" />
-    <Compile Include="Beam.Pro\RequestConstants.cs" />
+    <Compile Include="Mixer\Dto\KnownGame.cs" />
+    <Compile Include="Mixer\Query\MixerPagedQuery.cs" />
+    <Compile Include="Mixer\MixerReadonlyClient.cs" />
+    <Compile Include="Mixer\Dto\Channel.cs" />
+    <Compile Include="Mixer\Dto\Data.cs" />
+    <Compile Include="Mixer\Dto\Meta.cs" />
+    <Compile Include="Mixer\Dto\Recording.cs" />
+    <Compile Include="Mixer\Dto\Social.cs" />
+    <Compile Include="Mixer\Dto\Thumbnail.cs" />
+    <Compile Include="Mixer\Dto\Type.cs" />
+    <Compile Include="Mixer\Dto\User.cs" />
+    <Compile Include="Mixer\Dto\Vod.cs" />
+    <Compile Include="Mixer\IMixerReadonlyClient.cs" />
+    <Compile Include="Mixer\Query\KnownGamesPagedQuery.cs" />
+    <Compile Include="Mixer\RequestConstants.cs" />
     <Compile Include="BooleanConverter.cs" />
     <Compile Include="Smashcast\Converters\HoribadHitboxDateTimeOffsetConverter.cs" />
     <Compile Include="Smashcast\Dto\Category.cs" />

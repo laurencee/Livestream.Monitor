@@ -1,6 +1,6 @@
-﻿namespace ExternalAPIs.Beam.Pro.Dto
+﻿namespace ExternalAPIs.Mixer.Dto
 {
-    public class Type
+    public class KnownGame
     {
         public int id { get; set; }
 
@@ -16,6 +16,7 @@
 
         public string coverUrl { get; set; }
 
+        /// <summary> Number of streams online for this game </summary>
         public int online { get; set; }
     }
 }

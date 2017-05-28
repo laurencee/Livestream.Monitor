@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace ExternalAPIs.Beam.Pro.Dto
+namespace ExternalAPIs.Mixer.Dto
 {
     public class Meta
     {
