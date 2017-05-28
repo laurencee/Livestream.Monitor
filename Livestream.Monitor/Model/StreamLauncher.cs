@@ -83,7 +83,16 @@ namespace Livestream.Monitor.Model
                         RedirectStandardError = true,
                     }
                 };
+                
                 proc.Start();
+                string errorOutput = proc.StandardError.ReadToEnd();
+                proc.WaitForExit();
+
+                // check for exit code as well because sometimes processes emit warnings in the error output stream
+                if (proc.ExitCode != 0 && errorOutput != string.Empty)
+                {
+                    await fromScreen.ShowMessageAsync("Error launching chat", errorOutput);
+                }
             }
             catch (Exception ex)
             {
