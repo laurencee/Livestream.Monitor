@@ -8,6 +8,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionItems", "{F4253C96-9A1B-46CE-B0AB-C30916E64CAA}"
 	ProjectSection(SolutionItems) = preProject
 		GlobalAssemblyInfo.cs = GlobalAssemblyInfo.cs
+		README.md = README.md
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Livestream.Monitor.Tests", "Livestream.Monitor.Tests\Livestream.Monitor.Tests.csproj", "{9AAF7490-A238-41BB-A0BC-95A5EF84FF0F}"
