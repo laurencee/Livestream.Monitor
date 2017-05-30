@@ -137,7 +137,8 @@ namespace Livestream.Monitor.ViewModels
             get
             {
                 if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
-                if (ChatCommandLine != null && ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
+                if (!string.IsNullOrEmpty(ChatCommandLine) &&
+                    !ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN)) return false;
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
                 return ChatCommandLine != settingsHandler.Settings.ChatCommandLine ||

@@ -69,35 +69,38 @@ namespace Livestream.Monitor.Model
 
             var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, livestreamModel.ChatUrl);
 
-            try
+            await Task.Run(async () =>
             {
-                var proc = new Process
+                try
                 {
-                    StartInfo =
+                    var proc = new Process
                     {
-                        FileName = "cmd.exe",
-                        Arguments = "/c " + command,
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                    }
-                };
-                
-                proc.Start();
-                string errorOutput = proc.StandardError.ReadToEnd();
-                proc.WaitForExit();
+                        StartInfo =
+                        {
+                            FileName = "cmd.exe",
+                            Arguments = "/c " + command,
+                            CreateNoWindow = true,
+                            UseShellExecute = false,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                        }
+                    };
 
-                // check for exit code as well because sometimes processes emit warnings in the error output stream
-                if (proc.ExitCode != 0 && errorOutput != string.Empty)
-                {
-                    await fromScreen.ShowMessageAsync("Error launching chat", errorOutput);
+                    proc.Start();
+                    string errorOutput = proc.StandardError.ReadToEnd();
+                    proc.WaitForExit();
+
+                    // check for exit code as well because sometimes processes emit warnings in the error output stream
+                    if (proc.ExitCode != 0 && errorOutput != string.Empty)
+                    {
+                        await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorOutput));
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                await fromScreen.ShowMessageAsync("Error launching chat", ex.Message);
-            }
+                catch (Exception ex)
+                {
+                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", ex.Message));
+                }
+            });
         }
 
         public async Task OpenStream(LivestreamModel livestreamModel, string streamQuality, IViewAware viewAware)
