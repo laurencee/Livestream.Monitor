@@ -62,7 +62,13 @@ namespace Livestream.Monitor.Core
 
                 if (string.IsNullOrWhiteSpace(settings.LivestreamerFullPath))
                 {
-                    settings.LivestreamerFullPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
+                    if (File.Exists(Settings.DEFAULT_STREAMLINK_FULL_PATH))
+                        settings.LivestreamerFullPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
+                    else if (File.Exists(Settings.DEFAULT_LIVESTREAMER_FULL_PATH))
+                        settings.LivestreamerFullPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
+                    else
+                        settings.LivestreamerFullPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
+
                     saveSettings = true;
                 }
                 

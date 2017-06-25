@@ -17,6 +17,7 @@ namespace Livestream.Monitor.Core
         public const string DEFAULT_FIREFOX_FULL_PATH = @"C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
         public const string DEFAULT_CHROME_COMMAND_LINE = DEFAULT_CHROME_FULL_PATH + " " + CHROME_ARGS;
         public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
+        public const string DEFAULT_STREAMLINK_FULL_PATH = @"C:\Program Files (x86)\Streamlink\streamlink.exe";
         public const int DEFAULT_MINIMUM_EVENT_VIEWERS = 30000;
 
         public const string CHAT_URL_REPLACEMENT_TOKEN = "{url}";
@@ -71,7 +72,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(DEFAULT_LIVESTREAMER_FULL_PATH)]
+        [DefaultValue(DEFAULT_STREAMLINK_FULL_PATH)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string LivestreamerFullPath
         {
