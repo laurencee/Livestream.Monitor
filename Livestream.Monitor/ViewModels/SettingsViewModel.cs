@@ -186,9 +186,9 @@ namespace Livestream.Monitor.ViewModels
         {
             var startingPath = settingsHandler.Settings.LivestreamerFullPath;
             if (string.IsNullOrWhiteSpace(startingPath))
-                startingPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
+                startingPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
 
-            var livestreamerFilePath = SelectFile("Livestreamer|livestreamer.exe|Streamlink|streamlink.exe", startingPath);
+            var livestreamerFilePath = SelectFile("Streamlink|streamlink.exe|Livestreamer|livestreamer.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
             {
                 LivestreamerFullPath = livestreamerFilePath;
@@ -229,13 +229,22 @@ namespace Livestream.Monitor.ViewModels
 
             var openFileDialog = new OpenFileDialog { Filter = filter };
 
-            var directoryInfo = new DirectoryInfo(Path.GetDirectoryName(startingPath));
-            while (directoryInfo.Parent != null && !directoryInfo.Exists)
+            string initialDir = null;
+            try
             {
-                directoryInfo = directoryInfo.Parent;
+                var directoryInfo = new DirectoryInfo(Path.GetDirectoryName(startingPath));
+                while (directoryInfo.Parent != null && !directoryInfo.Exists)
+                {
+                    directoryInfo = directoryInfo.Parent;
+                }
+                initialDir = directoryInfo.FullName;
+            }
+            // most likely invalid path defined as starting path, can't do anything about that
+            catch
+            {
             }
 
-            openFileDialog.InitialDirectory = directoryInfo.FullName;
+            if (initialDir != null) openFileDialog.InitialDirectory = initialDir;
             var showDialog = openFileDialog.ShowDialog();
 
             return showDialog == true ? openFileDialog.FileName : null;

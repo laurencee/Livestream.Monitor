@@ -71,7 +71,7 @@ namespace Livestream.Monitor.Core
 
                     saveSettings = true;
                 }
-                
+
                 if (saveSettings) SaveSettings();
 
                 settings.PropertyChanged += SettingsOnPropertyChanged;
