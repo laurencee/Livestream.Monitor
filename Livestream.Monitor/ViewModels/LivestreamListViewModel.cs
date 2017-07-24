@@ -197,11 +197,20 @@ namespace Livestream.Monitor.ViewModels
             this.SetFocus("LivestreamListDataGrid");
         }
 
-        public void CopyLivestreamUrl()
+        public async Task CopyLivestreamUrl()
         {
             if (StreamsModel.SelectedLivestream?.ApiClient == null) return;
 
-            Clipboard.SetText(StreamsModel.SelectedLivestream.StreamUrl);
+            try
+            {
+                // clipboard.settext can sometimes fail due to a WPF bug, at least don't crash the app if this happens
+                Clipboard.SetDataObject(StreamsModel.SelectedLivestream.StreamUrl);
+            }
+            catch (Exception e)
+            {
+                await this.ShowMessageAsync("Error copying url", 
+                    $"An error occurred attempting to copy the url, please try again: {e.Message}");
+            }
         }
 
         protected override async void OnActivate()
