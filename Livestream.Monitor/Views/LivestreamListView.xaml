@@ -1,9 +1,9 @@
 ﻿<UserControl x:Class="Livestream.Monitor.Views.LivestreamListView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             mc:Ignorable="d" 
+             mc:Ignorable="d"
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
@@ -20,9 +20,9 @@
                         <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                             <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
-                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}" 
+                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}"
                                       cal:Message.Attach="[Click] = [GotoVodViewer]" />
-                            <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]" 
+                            <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]"
                                       IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                                       ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
                         </ContextMenu>
@@ -45,11 +45,11 @@
                         <DataGridTemplateColumn Header="Live">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Image Name="MyImage" Source="/Livestream.Monitor;component/Images/Live.png" Width="15"
+                                    <Image Name="IsLiveImage" Source="/Livestream.Monitor;component/Images/Live.png" Width="15"
                                    RenderOptions.BitmapScalingMode="HighQuality" RenderOptions.EdgeMode="Aliased" />
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding Live}" Value="False">
-                                            <Setter TargetName="MyImage" Property="Source" Value="/Livestream.Monitor;component/Images/Offline.png"/>
+                                            <Setter TargetName="IsLiveImage" Property="Source" Value="/Livestream.Monitor;component/Images/Offline.png"/>
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
@@ -67,7 +67,7 @@
                 <!-- TODO nice tile layout with the tiles containing the image and the text to the right of the tile -->
             </DataTemplate>
         </Grid.Resources>
-        
+
         <ContentControl x:Name="LayoutControl"  Content="{Binding}">
             <ContentControl.Style>
                 <Style TargetType="ContentControl">

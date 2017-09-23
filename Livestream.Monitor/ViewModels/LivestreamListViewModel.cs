@@ -130,9 +130,9 @@ namespace Livestream.Monitor.ViewModels
             refreshCount++;
         }
 
-        /// <summary> 
+        /// <summary>
         /// Loads the selected stream through livestreamer/streamlink
-        /// and displays a messagebox with the loading process details 
+        /// and displays a messagebox with the loading process details
         /// </summary>
         public async Task OpenStream()
         {
@@ -208,7 +208,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception e)
             {
-                await this.ShowMessageAsync("Error copying url", 
+                await this.ShowMessageAsync("Error copying url",
                     $"An error occurred attempting to copy the url, please try again: {e.Message}");
             }
         }
@@ -323,23 +323,33 @@ namespace Livestream.Monitor.ViewModels
             }
             else
             {
-                var apiClientNameFilter = FilterModel.SelectedApiClientName;
-                var nameFilter = FilterModel.LivestreamNameFilter;
+                // quick exits for least expensive paths
+                if (FilterModel.ShowOnlineOnly && !livestreamModel.Live)
+                {
+                    e.Accepted = false;
+                    return;
+                }
 
+                var apiClientNameFilter = FilterModel.SelectedApiClientName;
+                if (apiClientNameFilter != FilterModel.AllApiClientsFilterName &&
+                    livestreamModel.ApiClient.ApiName != apiClientNameFilter)
+                {
+                    e.Accepted = false;
+                    return;
+                }
+
+                var nameFilter = FilterModel.LivestreamNameFilter;
                 bool filterNameMatch = string.IsNullOrWhiteSpace(nameFilter) ||
                                        livestreamModel.DisplayName.Contains(nameFilter, StringComparison.OrdinalIgnoreCase) ||
                                        livestreamModel.ChannelIdentifier.ChannelId.Contains(nameFilter, StringComparison.OrdinalIgnoreCase);
 
-                bool apiClientMatch = apiClientNameFilter == FilterModel.AllApiClientsFilterName ||
-                                      livestreamModel.ApiClient.ApiName == apiClientNameFilter;
-
-                e.Accepted = filterNameMatch && apiClientMatch;
+                e.Accepted = filterNameMatch;
             }
         }
 
         private void OnLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
-            // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately 
+            // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately
             ViewSource.View.Refresh();
         }
 

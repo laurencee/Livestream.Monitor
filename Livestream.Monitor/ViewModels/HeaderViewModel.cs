@@ -112,7 +112,7 @@ namespace Livestream.Monitor.ViewModels
                 NotifyOfPropertyChange(() => SelectedApiClient);
             }
         }
-        
+
         public async Task AddStream()
         {
             if (IsNullOrWhiteSpace(StreamName) || !CanAddStream) return;
@@ -213,6 +213,11 @@ namespace Livestream.Monitor.ViewModels
             await streamLauncher.OpenChat(selectedLivestream, this);
         }
 
+        public void ToggleShowOnlineOnly()
+        {
+            FilterModel.ShowOnlineOnly = !FilterModel.ShowOnlineOnly;
+        }
+
         public async void KeyPressed(KeyEventArgs e)
         {
             if (e.Key == Key.Enter && CanAddStream)
@@ -240,7 +245,7 @@ namespace Livestream.Monitor.ViewModels
             MonitorStreamsModel.Livestreams.CollectionChanged -= LivestreamsOnCollectionChanged;
             base.OnDeactivate(close);
         }
-        
+
         private void MonitorStreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(MonitorStreamsModel.CanRefreshLivestreams))

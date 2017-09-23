@@ -10,9 +10,23 @@ namespace Livestream.Monitor.Model
         private string livestreamNameFilter;
         private string selectedApiClientName;
         private BindableCollection<string> apiClientNames;
+        private bool showOnlineOnly;
 
         /// <summary> Simple check to know if the model is doing any filtering </summary>
-        public bool IsFiltering => LivestreamNameFilter != null || SelectedApiClientName != AllApiClientsFilterName;
+        public bool IsFiltering => LivestreamNameFilter != null ||
+                                   SelectedApiClientName != AllApiClientsFilterName ||
+                                   ShowOnlineOnly;
+
+        public bool ShowOnlineOnly
+        {
+            get { return showOnlineOnly; }
+            set
+            {
+                if (value == showOnlineOnly) return;
+                showOnlineOnly = value;
+                NotifyOfPropertyChange(() => ShowOnlineOnly);
+            }
+        }
 
         public string LivestreamNameFilter
         {

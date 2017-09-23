@@ -1,7 +1,7 @@
 ﻿<UserControl x:Class="Livestream.Monitor.Views.HeaderView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
@@ -12,9 +12,26 @@
     <StackPanel Orientation="Horizontal">
         <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100" 
+        <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100"
                  controls:TextBoxHelper.ClearTextButton="True" />
         <ComboBox x:Name="FilterModel_ApiClientNames" Margin="2" />
+        <ToggleButton x:Name="ToggleShowOnlineOnly" Margin="2"
+                      ToolTip="Toggle show online streams only">
+            <Image Height="13" RenderOptions.BitmapScalingMode="HighQuality">
+                <Image.Style>
+                    <Style TargetType="{x:Type Image}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding FilterModel.ShowOnlineOnly}" Value="true">
+                                <Setter Property="Source" Value="/Livestream.Monitor;component/Images/Live.png"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding FilterModel.ShowOnlineOnly}" Value="false">
+                                <Setter Property="Source" Value="/Livestream.Monitor;component/Images/Offline.png"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Image.Style>
+            </Image>
+        </ToggleButton>
 
         <!-- Open Chat & Set Stream Quality -->
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
