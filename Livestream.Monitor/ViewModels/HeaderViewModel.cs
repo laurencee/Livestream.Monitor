@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
@@ -8,6 +8,7 @@ using System.Windows.Input;
 using Caliburn.Micro;
 using ExternalAPIs;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -216,6 +217,10 @@ namespace Livestream.Monitor.ViewModels
         public void ToggleShowOnlineOnly()
         {
             FilterModel.ShowOnlineOnly = !FilterModel.ShowOnlineOnly;
+
+            // remove focus from the toggle button after it has been clicked
+            // looks nicer ¯\_(ツ)_/¯
+            Keyboard.ClearFocus();
         }
 
         public async void KeyPressed(KeyEventArgs e)
