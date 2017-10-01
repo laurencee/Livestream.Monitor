@@ -107,10 +107,14 @@ namespace Livestream.Monitor.Model
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
+            // always fall back to an auto-selection stream quality if for some reason none was passed in
+            if (string.IsNullOrWhiteSpace(streamQuality))
+                streamQuality = StreamQuality.Best.ToString();
+
             string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
             var apiClient = livestreamModel.ApiClient;
 
-            // hack to pass through the client id to livestreamer 
+            // hack to pass through the client id to livestreamer
             if (settingsHandler.Settings.PassthroughClientId)
             {
                 if (apiClient is TwitchApiClient)
@@ -165,7 +169,7 @@ namespace Livestream.Monitor.Model
 
             string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} best";
 
-            // hack to pass through the client id to livestreamer 
+            // hack to pass through the client id to livestreamer
             if (settingsHandler.Settings.PassthroughClientId)
             {
                 // check domain name of url to see if this is a twitch.tv vod link
