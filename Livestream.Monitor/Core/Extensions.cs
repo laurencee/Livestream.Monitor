@@ -43,6 +43,11 @@ namespace Livestream.Monitor.Core
             return original.IndexOf(value, stringComparison) >= 0;
         }
 
+        public static bool Contains(this IEnumerable<string> collection, string value, StringComparison stringComparison)
+        {
+            return collection.Any(x => x.IsEqualTo(value, stringComparison));
+        }
+
         public static bool IsEqualTo(this string original, string value, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
         {
             return string.Compare(original, value, stringComparison) == 0;

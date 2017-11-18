@@ -24,6 +24,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -71,6 +72,7 @@
     <Reference Include="System.Drawing" />
     <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Runtime.Remoting" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Windows.Interactivity, Version=4.5.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <HintPath>..\packages\Caliburn.Micro.3.0.0\lib\net45\System.Windows.Interactivity.dll</HintPath>
       <Private>True</Private>
@@ -111,9 +113,10 @@
     <Compile Include="Core\Settings.cs" />
     <Compile Include="Core\SettingsHandler.cs" />
     <Compile Include="Core\Utility\SingleInstance.cs" />
-    <Compile Include="Core\StreamQuality.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />
+    <Compile Include="Model\ApiClients\DesignTimeApiClient.cs" />
     <Compile Include="Model\ApiClients\MixerApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />
     <Compile Include="Model\ApiClients\SmashcastApiClient.cs" />
@@ -155,9 +158,13 @@
     <Compile Include="Model\Monitoring\MonitoredStreamsFileHandler.cs" />
     <Compile Include="Model\Monitoring\MonitorStreamsModel.cs" />
     <Compile Include="ViewModels\NotificationViewModel.cs" />
+    <Compile Include="ViewModels\ApiClientsQualitiesViewModel.cs" />
     <Compile Include="ViewModels\SettingsViewModel.cs" />
     <Compile Include="ViewModels\TopStreamsViewModel.cs" />
     <Compile Include="ViewModels\VodListViewModel.cs" />
+    <Compile Include="Views\ApiClientQualitiesView.xaml.cs">
+      <DependentUpon>ApiClientQualitiesView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Views\EmulatorView.xaml.cs">
       <DependentUpon>EmulatorView.xaml</DependentUpon>
     </Compile>
@@ -186,6 +193,10 @@
       <DependentUpon>ThemeSelectorView.xaml</DependentUpon>
     </Compile>
     <Compile Include="ViewModels\ThemeSelectorViewModel.cs" />
+    <Page Include="Views\ApiClientQualitiesView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Views\EmulatorView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -207,6 +218,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Views\NotificationView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Views\ApiClientsQualitiesView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

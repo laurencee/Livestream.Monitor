@@ -50,6 +50,7 @@ namespace Livestream.Monitor
             container.PerRequest<LivestreamListViewModel>();
             container.PerRequest<TopStreamsViewModel>();
             container.PerRequest<VodListViewModel>();
+            container.PerRequest<ApiClientsQualitiesViewModel>();
 
             // singleton instance of the navigation service - this relies on using the container so it needs special registration
             INavigationService navigationService = null;
@@ -96,7 +97,7 @@ namespace Livestream.Monitor
 #if FAKE_DATA
             var windowManager = container.GetInstance<IWindowManager>();
             windowManager.ShowWindow(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
-#endif      
+#endif
         }
 
         protected override void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)

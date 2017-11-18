@@ -138,7 +138,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (Loading) return;
 
-            await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, StreamsModel.SelectedStreamQuality, this);
+            await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, this);
         }
 
         public void ToggleNotify()

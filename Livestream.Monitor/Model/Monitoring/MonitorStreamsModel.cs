@@ -24,7 +24,6 @@ namespace Livestream.Monitor.Model.Monitoring
         private bool canRefreshLivestreams = true;
         private LivestreamModel selectedLivestream;
         private DateTimeOffset lastRefreshTime;
-        private string selectedStreamQuality;
 
         #region Design Time Constructor
 
@@ -86,33 +85,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 NotifyOfPropertyChange(() => CanOpenStream);
             }
         }
-        
+
         public bool CanOpenStream => selectedLivestream != null && selectedLivestream.Live;
-
-        public string SelectedStreamQuality
-        {
-            get { return selectedStreamQuality; }
-            set
-            {
-                if (value == selectedStreamQuality) return;
-                selectedStreamQuality = value;
-                NotifyOfPropertyChange();
-
-                // update the saved default stream quality if necessary
-                if (!string.IsNullOrWhiteSpace(selectedStreamQuality) && 
-                    selectedStreamQuality != settingsHandler.Settings.DefaultStreamQuality.ToString() &&
-                    // we have to do a string contains check because tryparse succeeds on string integer comparisons e.g. "1"
-                    Enum.GetNames(typeof(StreamQuality)).Contains(selectedStreamQuality))
-                {
-                    StreamQuality streamQuality;
-                    if (StreamQuality.TryParse(selectedStreamQuality, true, out streamQuality))
-                    {
-                        settingsHandler.Settings.DefaultStreamQuality = streamQuality;
-                        settingsHandler.SaveSettings();
-                    }
-                }
-            }
-        }
 
         public bool CanRefreshLivestreams
         {
@@ -169,7 +143,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 Livestreams.Add(newChannel.LivestreamModel);
                 newChannel.ChannelIdentifier.ApiClient.AddChannelWithoutQuerying(newChannel.ChannelIdentifier);
             }
-            
+
             AddChannels(newChannels.Select(x => x.ChannelIdentifier).ToArray());
             await RefreshLivestreams();
         }
@@ -209,10 +183,9 @@ namespace Livestream.Monitor.Model.Monitoring
                     PopulateLivestreams(livestreams);
                     livestreamQueryResults.EnsureAllQuerySuccess(ignoredQueryFailures);
 
-                    // before the first refresh (or after some network error) all the channels are offline 
+                    // before the first refresh (or after some network error) all the channels are offline
                     // but we would already have a channel selected
                     // if the selected channel is now online we have to try and update the selected stream quality/allow the user to open the stream
-                    SetDefaultSelectedStreamQuality();
                     NotifyOfPropertyChange(() => CanOpenStream);
                 }
             }
@@ -243,21 +216,6 @@ namespace Livestream.Monitor.Model.Monitoring
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
             Livestreams.RemoveRange(matchingLivestreams);
             SaveLivestreams();
-        }
-
-        public void SetDefaultSelectedStreamQuality()
-        {
-            if (!string.IsNullOrWhiteSpace(SelectedStreamQuality) || !CanOpenStream) return;
-
-            // update the field value to prevent saving the new quality value to disk
-            if (selectedLivestream.IsPartner) // twitch partner specific
-            {
-                SelectedStreamQuality = settingsHandler.Settings.DefaultStreamQuality.ToString();
-            }
-            else
-            {
-                SelectedStreamQuality = StreamQuality.Best.ToString();
-            }
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()
@@ -315,7 +273,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     livestreamModel.DisplayName = channelIdentifier.ChannelId;
                 }
-                
+
                 livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
                 followedLivestreams.Add(livestreamModel);
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;

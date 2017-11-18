@@ -43,16 +43,6 @@ namespace Livestream.Monitor.Core
                     saveSettings = ExcludeNotifyConverter.SaveRequired;
                 }
 
-                // migrate old value
-#pragma warning disable 618
-                if (settings.ChromeFullPath != null)
-                {
-                    settings.ChatCommandLine = $"\"{settings.ChromeFullPath}\" {Settings.CHROME_ARGS}";
-                    settings.ChromeFullPath = null;
-                    saveSettings = true;
-                }
-#pragma warning restore 618
-
                 // try to set a nice default value for the chat command line
                 if (settings.ChatCommandLine == null)
                 {

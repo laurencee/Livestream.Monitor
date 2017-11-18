@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Input;
 using Caliburn.Micro;
 using ExternalAPIs;
@@ -23,6 +24,8 @@ namespace Livestream.Monitor.ViewModels
 
         private readonly StreamLauncher streamLauncher;
         private readonly IApiClientFactory apiClientFactory;
+        private readonly IWindowManager windowManager;
+        private readonly ApiClientsQualitiesViewModel apiClientsQualitiesViewModel;
         private string streamName;
         private bool canRefreshLivestreams, canOpenChat, canAddStream;
         private IApiClient selectedApiClient;
@@ -37,7 +40,9 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel,
-            IApiClientFactory apiClientFactory)
+            IApiClientFactory apiClientFactory,
+            ApiClientsQualitiesViewModel apiClientsQualitiesViewModel,
+            IWindowManager windowManager)
         {
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
@@ -48,6 +53,8 @@ namespace Livestream.Monitor.ViewModels
             MonitorStreamsModel = monitorStreamsModel;
             this.streamLauncher = streamLauncher;
             this.apiClientFactory = apiClientFactory;
+            this.windowManager = windowManager;
+            this.apiClientsQualitiesViewModel = apiClientsQualitiesViewModel ?? throw new ArgumentNullException(nameof(apiClientsQualitiesViewModel));
         }
 
         public FilterModel FilterModel { get; }
@@ -98,8 +105,6 @@ namespace Livestream.Monitor.ViewModels
         }
 
         public IMonitorStreamsModel MonitorStreamsModel { get; }
-
-        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
 
         public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
 
@@ -229,6 +234,20 @@ namespace Livestream.Monitor.ViewModels
                 await AddStream();
         }
 
+        public void OpenQualities()
+        {
+            var settings = new WindowSettingsBuilder()
+                .AsTopmost()
+                .SizeToContent(SizeToContent.Width)
+                .Height(300)
+                .Create();
+            windowManager.ShowDialog(apiClientsQualitiesViewModel, null, settings);
+
+            // remove focus from the toggle button after it has been clicked
+            // looks nicer ¯\_(ツ)_/¯
+            Keyboard.ClearFocus();
+        }
+
         protected override void OnInitialize()
         {
             ApiClients.AddRange(apiClientFactory.GetAll());
@@ -261,20 +280,6 @@ namespace Livestream.Monitor.ViewModels
             {
                 var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
                 CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;
-                // would like a nicer way of resetting the stream qualities when changing selected streams or the currently selected stream changes between offline/online
-                StreamQualities.Clear();
-                if (MonitorStreamsModel.CanOpenStream)
-                {
-                    if (selectedLivestream.IsPartner) // twitch partner specific
-                    {
-                        StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
-                    }
-                    else
-                    {
-                        StreamQualities.AddRange(new[] { StreamQuality.Best.ToString(), StreamQuality.Worst.ToString(), });
-                    }
-                    MonitorStreamsModel.SetDefaultSelectedStreamQuality();
-                }
             }
         }
 

@@ -1,4 +1,5 @@
 using System;
+using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
@@ -7,6 +8,15 @@ namespace Livestream.Monitor.Model.Monitoring
     /// <summary> Unique identifier of a livestream channel </summary>
     public class ChannelIdentifier
     {
+        public ChannelIdentifier()
+        {
+            if (!Execute.InDesignMode) throw new InvalidOperationException("Design time only constructor");
+
+            ChannelId = "DesignTimeChannel";
+            ApiClient = new DesignTimeApiClient();
+            ImportedBy = "DesignTime Import";
+        }
+
         public ChannelIdentifier(IApiClient apiClient, string channelId)
         {
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));

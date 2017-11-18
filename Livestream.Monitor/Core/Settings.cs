@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
@@ -26,10 +28,8 @@ namespace Livestream.Monitor.Core
 
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
-        private StreamQuality defaultStreamQuality;
         private string livestreamerFullPath;
         private string chatCommandLine;
-        private string chromeFullPath;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
         private bool disableNotifications, passthroughClientId;
         private bool hideStreamOutputMessageBoxOnLoad;
@@ -60,18 +60,6 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [JsonProperty]
-        public StreamQuality DefaultStreamQuality
-        {
-            get { return defaultStreamQuality; }
-            set
-            {
-                if (value == defaultStreamQuality) return;
-                defaultStreamQuality = value;
-                NotifyOfPropertyChange(() => DefaultStreamQuality);
-            }
-        }
-
         [DefaultValue(DEFAULT_STREAMLINK_FULL_PATH)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string LivestreamerFullPath
@@ -95,19 +83,6 @@ namespace Livestream.Monitor.Core
                 if (value == chatCommandLine) return;
                 chatCommandLine = value;
                 NotifyOfPropertyChange(() => ChatCommandLine);
-            }
-        }
-
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-        [Obsolete("Replaced by " + nameof(ChatCommandLine))]
-        public string ChromeFullPath
-        {
-            get { return chromeFullPath; }
-            set
-            {
-                if (value == chromeFullPath) return;
-                chromeFullPath = value;
-                NotifyOfPropertyChange(() => ChromeFullPath);
             }
         }
 
@@ -160,13 +135,18 @@ namespace Livestream.Monitor.Core
             }
         }
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public Dictionary<string, FavoriteQualities> FavoriteApiQualities { get; } =
+            new Dictionary<string, FavoriteQualities>();
+
+
         /// <summary>
         /// Channel names in this collection should not raise notifications. <para/>
         /// We store these in settings so it can apply to both monitored and popular streams.
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [JsonConverter(typeof(ExcludeNotifyConverter))]
-        public ObservableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new ObservableCollection<UniqueStreamKey>();
+        public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new BindableCollection<UniqueStreamKey>();
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool TwitchAuthTokenInLivestreamerConfig
@@ -203,6 +183,12 @@ namespace Livestream.Monitor.Core
         /// Name of the livestreamer/streamlink exe without the file extension
         /// </summary>
         public string LivestreamExeDisplayName => Path.GetFileNameWithoutExtension(LivestreamerFullPath);
+
+        public FavoriteQualities GetStreamQualities(string apiName)
+        {
+            FavoriteApiQualities.TryGetValue(apiName, out var qualities);
+            return qualities ?? new FavoriteQualities();
+        }
     }
 
     /// <summary>
@@ -221,9 +207,9 @@ namespace Livestream.Monitor.Core
         public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
         {
             if (reader.TokenType == JsonToken.Null) return null;
-            
-            var exclusions = (ObservableCollection<UniqueStreamKey>) existingValue;
-            
+
+            var exclusions = (ObservableCollection<UniqueStreamKey>)existingValue;
+
             while (reader.Read())
             {
                 switch (reader.TokenType)
@@ -248,6 +234,35 @@ namespace Livestream.Monitor.Core
         public override bool CanConvert(Type objectType)
         {
             return true;
+        }
+    }
+
+    public class FavoriteQualities
+    {
+        public static class FallbackQualityOption
+        {
+            public const string Worst = "Worst";
+            public const string Best = "Best";
+        }
+
+        public List<string> Qualities { get; set; } = new List<string>();
+
+        public string FallbackQuality { get; set; } = FallbackQualityOption.Best;
+
+        public override bool Equals(object obj)
+        {
+            var qualities = obj as FavoriteQualities;
+            return qualities != null &&
+                   Qualities.SequenceEqual(qualities.Qualities) &&
+                   FallbackQuality == qualities.FallbackQuality;
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = 643755790;
+            hashCode = hashCode * -1521134295 + EqualityComparer<List<string>>.Default.GetHashCode(Qualities);
+            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(FallbackQuality);
+            return hashCode;
         }
     }
 }

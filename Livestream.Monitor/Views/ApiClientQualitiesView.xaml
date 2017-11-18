@@ -1,0 +1,64 @@
+﻿<UserControl x:Class="Livestream.Monitor.Views.ApiClientQualitiesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
+             xmlns:cal="http://www.caliburnproject.org"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=viewModels:ApiClientQualitiesViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
+             d:DesignHeight="300" d:DesignWidth="300">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Label Grid.Row="0" Content="Quality priority" HorizontalAlignment="Center" Margin="0,2" FontSize="16" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="Qualities">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center" HorizontalAlignment="Left" />
+                            <Button Grid.Column="1" Content="▲" Margin="2"
+                                cal:Message.Attach="MoveQualityUp($dataContext)" />
+                            <Button Grid.Column="2" Content="▼" Margin="2"
+                                cal:Message.Attach="MoveQualityDown($dataContext)" />
+                            <Button Grid.Column="3" Content="x" Foreground="Red" Margin="2"
+                                cal:Message.Attach="RemoveQuality($dataContext)" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+        <Grid Grid.Row="2" >
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" x:Name="NewQuality" Margin="2,2,0,2"
+                     controls:TextBoxHelper.Watermark="add quality favorite..."
+                     cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
+            <Button Grid.Column="1" x:Name="AddQuality" Content="Add"  Margin="2"/>
+        </Grid>
+        <Grid Grid.Row="3" >
+            <StackPanel Orientation="Horizontal" Margin="0,2" >
+                <Label Content="Fallback Quality:" Margin="2,0,5,0" />
+                <RadioButton x:Name="FallbackQualityBest" Content="Best" GroupName="QualityFallback" IsChecked="{Binding FallbackQualityBestChecked}" Margin="2,0" />
+                <RadioButton x:Name="FallbackQualityWorst" Content="Worst" GroupName="QualityFallback" IsChecked="{Binding FallbackQualityWorstChecked}" Margin="2,0" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

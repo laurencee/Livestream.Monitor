@@ -19,7 +19,15 @@ namespace Livestream.Monitor.Model
         private DateTimeOffset? lastLiveTime;
         private string broadcasterLanguage;
         private string language;
-        
+
+        public LivestreamModel()
+        {
+            if (!Execute.InDesignMode) throw new InvalidOperationException("Design time only constructor");
+            Id = "DesignTimeId";
+            ChannelIdentifier = new ChannelIdentifier();
+            UniqueStreamKey = new UniqueStreamKey();
+        }
+
         /// <summary> A livestream object from an Api/Channel </summary>
         /// <param name="id">A unique id for this livestream for its <see cref="ApiClient"/></param>
         /// <param name="channelIdentifier">The <see cref="ApiClient"/> and unique channel identifier for that api client where this stream came from</param>
@@ -137,7 +145,7 @@ namespace Livestream.Monitor.Model
                 NotifyOfPropertyChange(() => ThumbnailUrls);
             }
         }
-        
+
         public string BroadcasterLanguage
         {
             get { return broadcasterLanguage; }
@@ -200,7 +208,7 @@ namespace Livestream.Monitor.Model
             StartTime = DateTimeOffset.MinValue;
         }
 
-        public override string ToString() => 
+        public override string ToString() =>
             $"{displayName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
 
         #region Equality members

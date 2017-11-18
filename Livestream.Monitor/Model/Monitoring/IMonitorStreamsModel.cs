@@ -16,8 +16,6 @@ namespace Livestream.Monitor.Model.Monitoring
 
         DateTimeOffset LastRefreshTime { get; }
 
-        string SelectedStreamQuality { get; set; }
-
         bool CanOpenStream { get; }
 
         event EventHandler LivestreamsRefreshComplete;
@@ -34,7 +32,5 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> Prevent a specific error message from raising query failed exceptions </summary>
         /// <param name="errorToIgnore">The error message from a query failure to ignore</param>
         void IgnoreQueryFailure(string errorToIgnore);
-
-        void SetDefaultSelectedStreamQuality();
     }
 }
