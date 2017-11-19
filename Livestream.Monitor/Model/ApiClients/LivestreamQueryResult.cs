@@ -20,5 +20,10 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool IsSuccess => FailedQueryException == null;
 
         public FailedQueryException FailedQueryException { get; set; }
+
+        public override string ToString()
+        {
+            return $"{ChannelIdentifier} - IsSuccess: {IsSuccess}";
+        }
     }
 }

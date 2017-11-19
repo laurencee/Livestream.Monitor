@@ -7,6 +7,6 @@
         public const string VideoLivestreamDetails = GoogleApiRoot + @"videos?part=LiveStreamingDetails&key=" + API_KEY;
         public const string VideoSnippet = GoogleApiRoot + @"videos?part=Snippet&key=" + API_KEY;
         public const string SearchChannelLiveVideos = GoogleApiRoot + @"search?type=video&eventType=live&part=snippet,id&channelId={0}&key=" + API_KEY;
-        public const string GetChannelIdByName = GoogleApiRoot + @"channels?forUsername={0}&part=id&key=" + API_KEY;
+        public const string GetChannelIdByUsername = GoogleApiRoot + @"channels?forUsername={0}&part=id&key=" + API_KEY;
     }
 }

@@ -20,15 +20,15 @@ namespace ExternalAPIs.Youtube
             return searchChannelLiveVideos;
         }
 
-        public async Task<string> GetChannelIdFromChannelName(string channelName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<string> GetChannelIdFromUsername(string userName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(channelName))
-                throw new ArgumentException("Argument is null or whitespace", nameof(channelName));
+            if (IsNullOrWhiteSpace(userName))
+                throw new ArgumentException("Argument is null or whitespace", nameof(userName));
 
-            var request = RequestConstants.GetChannelIdByName.Replace("{0}", channelName);
+            var request = RequestConstants.GetChannelIdByUsername.Replace("{0}", userName);
             var channelDetails = await HttpClientExtensions.ExecuteRequest<GetChannelIdByNameRoot>(request, cancellationToken);
             if (channelDetails.Items == null || channelDetails.Items.Count == 0)
-                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channel name not found " + channelName);
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "No channel found for username" + userName);
 
             return channelDetails.Items?.FirstOrDefault()?.Id;
         }
