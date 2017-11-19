@@ -10,9 +10,9 @@
              xmlns:model="clr-namespace:Livestream.Monitor.Model"
              d:DataContext="{d:DesignInstance Type=viewModels:TopStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
-             d:DesignHeight="600" d:DesignWidth="500">
+             d:DesignHeight="300" d:DesignWidth="500">
     <UserControl.Resources>
-        <Style x:Key="StreamTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}" d:DataContext="{d:DesignInstance model:TopStreamResult}">
+        <Style x:Key="StreamTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}">
             <Setter Property="Background" Value="{DynamicResource AccentColorBrush3}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsMonitored}" Value="True">
@@ -45,10 +45,6 @@
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"
                       cal:Message.Attach="[Event DropDownOpened] = [Action DropDownOpened($source)]"
                       IsEnabled="{Binding SelectedApiClient.HasTopStreamGameFilterSupport}"/>
-            <TextBlock Text="Quality:" VerticalAlignment="Center" Margin="5" FontWeight="Bold" />
-            <ComboBox Margin="2" MinWidth="75" IsEditable="True"
-                      ItemsSource="{Binding StreamQualities}" Text="{Binding SelectedStreamQuality}"
-                      ToolTip="You can freely type in any quality option you want, leave empty if you want to see all qualities supported for the stream." />
             <Button x:Name="RefreshItems" Content="{StaticResource RefreshButtonText}" FontWeight="ExtraBold" Margin="2" ToolTip="Refresh Top Streams" />
         </StackPanel>
 
@@ -70,7 +66,7 @@
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
                                         <MenuItem Header="Open Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
-                                        <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]" 
+                                        <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]"
                                                   IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                                                   ToolTip="Untick this to prevent popup notifications about this stream coming online (if being followed) or showing up as a popular stream"/>
                                     </ContextMenu>
@@ -113,7 +109,7 @@
                                 </controls:Tile.Content>
                             </controls:Tile>
                             <Popup IsOpen="{Binding ElementName=StreamTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
-                                   AllowsTransparency="True" PopupAnimation="Slide" 
+                                   AllowsTransparency="True" PopupAnimation="Slide"
                                    HorizontalOffset="-35" VerticalOffset="0">
                                 <Border BorderThickness="1" BorderBrush="Black">
                                     <Image Margin="2" Source="{Binding LivestreamModel.ThumbnailUrls.Medium, IsAsync=True}" />
@@ -134,7 +130,7 @@
             <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <Button x:Name="Next" Content="{StaticResource NextButtonText}" Padding="10,0" />
         </StackPanel>
-        <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}" 
+        <controls:ProgressRing Grid.Row="1" IsActive="{Binding LoadingItems}"
                                IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
     </Grid>
 </UserControl>

@@ -103,15 +103,14 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        public async Task OpenStream(LivestreamModel livestreamModel, string streamQuality, IViewAware viewAware)
+        public async Task OpenStream(LivestreamModel livestreamModel, IViewAware viewAware)
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
-            // always fall back to an auto-selection stream quality if for some reason none was passed in
-            if (string.IsNullOrWhiteSpace(streamQuality))
-                streamQuality = StreamQuality.Best.ToString();
+            var favoriteQualities = settingsHandler.Settings.GetStreamQualities(livestreamModel.ApiClient.ApiName);
+            var qualities = favoriteQualities.Qualities.Union(new[] {favoriteQualities.FallbackQuality});
 
-            string livestreamerArgs = $"{livestreamModel.StreamUrl} {streamQuality}";
+            string livestreamerArgs = $"{livestreamModel.StreamUrl} {string.Join(",", qualities)}";
             var apiClient = livestreamModel.ApiClient;
 
             // hack to pass through the client id to livestreamer
@@ -141,19 +140,12 @@ namespace Livestream.Monitor.Model
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
 
-            // Notify the user if the quality has been swapped back to source due to the livestream not being partenered (twitch specific).
-            if (!livestreamModel.IsPartner && streamQuality != StreamQuality.Best.ToString())
-            {
-                messageBoxViewModel.MessageText += Environment.NewLine +
-                                                   $"[NOTE] Channel is not a twitch partner so falling back to {StreamQuality.Best} quality";
-            }
-
             lock (WatchingStreamsLock)
             {
                 watchingStreams.Add(livestreamModel);
             }
 
-            StartLivestreamer(livestreamerArgs, streamQuality, messageBoxViewModel, onClose: () =>
+            StartLivestreamer(livestreamerArgs, messageBoxViewModel, onClose: () =>
             {
                 lock (WatchingStreamsLock)
                 {
@@ -167,7 +159,10 @@ namespace Livestream.Monitor.Model
             if (string.IsNullOrWhiteSpace(vodDetails.Url) ||
                 !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute)) return;
 
-            string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} best";
+            var favoriteQualities = settingsHandler.Settings.GetStreamQualities(vodDetails.ApiClient.ApiName);
+            var qualities = favoriteQualities.Qualities.Union(new[] { favoriteQualities.FallbackQuality });
+
+            string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} {string.Join(",", qualities)}";
 
             // hack to pass through the client id to livestreamer
             if (settingsHandler.Settings.PassthroughClientId)
@@ -209,10 +204,10 @@ namespace Livestream.Monitor.Model
                 title: title,
                 messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
 
-            StartLivestreamer(livestreamerArgs, "best", messageBoxViewModel);
+            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
         }
 
-        private void StartLivestreamer(string livestreamerArgs, string streamQuality, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
+        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
         {
             if (!CheckLivestreamerExists()) return;
 
@@ -285,14 +280,6 @@ namespace Livestream.Monitor.Model
                                                        $"Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
 
                     // open the message box if it was somehow closed prior to the error being displayed
-                    if (!messageBoxViewModel.IsActive)
-                        windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
-                }
-                else if (string.IsNullOrEmpty(streamQuality))
-                {
-                    messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       $"No stream quality provided: Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
-
                     if (!messageBoxViewModel.IsActive)
                         windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
                 }

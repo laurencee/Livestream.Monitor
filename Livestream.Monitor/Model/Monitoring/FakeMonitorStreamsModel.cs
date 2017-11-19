@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
@@ -19,7 +18,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
             for (int i = 0; i < 10; i++)
             {
-                var livestream = new LivestreamModel("Livestream " + i, null);
+                var livestream = new LivestreamModel();
                 livestream.DisplayName = "Livestream " + i;
 
                 if (i < 3)
@@ -89,8 +88,6 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public string SelectedStreamQuality { get; set; }
-
         public bool CanOpenStream { get; }
 
         public event EventHandler LivestreamsRefreshComplete;
@@ -125,11 +122,6 @@ namespace Livestream.Monitor.Model.Monitoring
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
             Livestreams.RemoveRange(matchingLivestreams);
             return Task.CompletedTask;
-        }
-
-        public void SetDefaultSelectedStreamQuality()
-        {
-            SelectedStreamQuality = StreamQuality.Best.ToString();
         }
 
         protected virtual void OnOnlineLivestreamsRefreshComplete()

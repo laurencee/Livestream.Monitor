@@ -10,6 +10,7 @@ using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
+using INavigationService = Livestream.Monitor.Core.INavigationService;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -22,13 +23,12 @@ namespace Livestream.Monitor.ViewModels
         private readonly StreamLauncher streamLauncher;
         private readonly INavigationService navigationService;
         private readonly IApiClientFactory apiClientFactory;
-        
+
         private bool loadingItems;
         private string gameName;
         private BindableCollection<string> possibleGameNames = new BindableCollection<string>();
         private bool expandPossibleGames;
         private IApiClient selectedApiClient;
-        private string selectedStreamQuality;
 
         #region Design time constructor
 
@@ -38,6 +38,7 @@ namespace Livestream.Monitor.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
+            Items.Add(new TopStreamResult());
         }
 
         #endregion
@@ -54,7 +55,7 @@ namespace Livestream.Monitor.ViewModels
             if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
             if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-            
+
             this.monitorStreamsModel = monitorStreamsModel;
             this.settingsHandler = settingsHandler;
             this.streamLauncher = streamLauncher;
@@ -62,7 +63,6 @@ namespace Livestream.Monitor.ViewModels
             this.apiClientFactory = apiClientFactory;
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
-            StreamQualities.AddRange(Enum.GetNames(typeof(StreamQuality)));
 
             PropertyChanged += (sender, args) =>
             {
@@ -130,19 +130,6 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<IApiClient> ApiClients { get; set; }
 
-        public BindableCollection<string> StreamQualities { get; set; } = new BindableCollection<string>();
-
-        public string SelectedStreamQuality
-        {
-            get { return selectedStreamQuality; }
-            set
-            {
-                if (value == selectedStreamQuality) return;
-                selectedStreamQuality = value;
-                NotifyOfPropertyChange(() => SelectedStreamQuality);
-            }
-        }
-
         public IApiClient SelectedApiClient
         {
             get { return selectedApiClient; }
@@ -165,7 +152,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (stream == null) return;
 
-            await streamLauncher.OpenStream(stream.LivestreamModel, SelectedStreamQuality, this);
+            await streamLauncher.OpenStream(stream.LivestreamModel, this);
         }
 
         public async Task OpenChat(TopStreamResult stream)
@@ -182,7 +169,7 @@ namespace Livestream.Monitor.ViewModels
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
                 vm.SelectedApiClient = stream.LivestreamModel.ApiClient;
-                vm.StreamId = stream.LivestreamModel.Id;                
+                vm.StreamId = stream.LivestreamModel.Id;
             });
         }
 
@@ -233,7 +220,6 @@ namespace Livestream.Monitor.ViewModels
         protected override void OnInitialize()
         {
             ApiClients = new BindableCollection<IApiClient>(apiClientFactory.GetAll().Where(x => x.HasTopStreamsSupport));
-            SelectedStreamQuality = StreamQuality.Best.ToString();
 
             if (SelectedApiClient == null)
                 SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
@@ -246,7 +232,7 @@ namespace Livestream.Monitor.ViewModels
 
             await EnsureItems();
             InitializeKnownGames();
-            
+
             base.OnViewLoaded(view);
         }
 

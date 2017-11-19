@@ -10,6 +10,14 @@ namespace Livestream.Monitor.Model
         private bool isMonitored;
         private bool isBusy;
 
+        public TopStreamResult()
+        {
+            if (!Execute.InDesignMode) throw new InvalidOperationException("Design time only constructor");
+
+            LivestreamModel = new LivestreamModel();
+            ChannelIdentifier = new ChannelIdentifier();
+        }
+
         public TopStreamResult(LivestreamModel livestreamModel, ChannelIdentifier channelIdentifier)
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));

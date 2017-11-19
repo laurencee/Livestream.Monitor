@@ -2,14 +2,14 @@
                       xmlns:mah="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                       xmlns:cal="http://www.caliburnproject.org"
-                      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+                      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
                       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
                       mc:Ignorable="d" x:Class="Livestream.Monitor.Views.ShellView"
                       xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
                       xmlns:tb="http://www.hardcodet.net/taskbar"
                       d:DataContext="{d:DesignInstance Type=viewModels:ShellViewModel, IsDesignTimeCreatable=True}"
                       cal:Bind.AtDesignTime="True" WindowState="{Binding WindowState}" AllowsTransparency="True"
-                      Height="475" Width="810">
+                      Height="477" Width="810">
     <mah:MetroWindow.RightWindowCommands>
         <mah:WindowCommands>
             <!--<ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" />-->
@@ -30,8 +30,8 @@
     </mah:MetroWindow.Flyouts>
 
     <Grid>
-        <tb:TaskbarIcon x:Name="TrayIcon" Visibility="Visible" 
-                        IconSource="/Livestream.Monitor;component/Images/TrayIcon.ico" 
+        <tb:TaskbarIcon x:Name="TrayIcon" Visibility="Visible"
+                        IconSource="/Livestream.Monitor;component/Images/TrayIcon.ico"
                         cal:Message.Attach="[Event TrayMouseDoubleClick] = [Action ShowWindow]">
             <tb:TaskbarIcon.ContextMenu>
                 <ContextMenu>

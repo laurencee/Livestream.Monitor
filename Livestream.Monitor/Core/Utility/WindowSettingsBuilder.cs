@@ -94,6 +94,18 @@ namespace Livestream.Monitor.Core.Utility
             return this;
         }
 
+        public WindowSettingsBuilder Height(int height)
+        {
+            settings.Height = height;
+            return this;
+        }
+
+        public WindowSettingsBuilder Width(int width)
+        {
+            settings.Width = width;
+            return this;
+        }
+
         public ExpandoObject Create()
         {
             return settings;

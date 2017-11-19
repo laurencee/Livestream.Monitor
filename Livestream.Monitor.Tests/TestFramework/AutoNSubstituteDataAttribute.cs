@@ -9,7 +9,7 @@ namespace Livestream.Monitor.Tests.TestFramework
         public AutoNSubstituteDataAttribute()
             : base(new Fixture()
                 .Customize(new CompositeCustomization(
-                    //new SettingsCustomization(),
+                    new LivestreamModelCustomization(),
                     new AutoConfiguredNSubstituteCustomization()
                 )))
         {

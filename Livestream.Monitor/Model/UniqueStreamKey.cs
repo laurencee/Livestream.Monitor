@@ -1,4 +1,5 @@
 using System;
+using Caliburn.Micro;
 using Livestream.Monitor.Core;
 
 namespace Livestream.Monitor.Model
@@ -6,6 +7,15 @@ namespace Livestream.Monitor.Model
     /// <summary> A unique definition of a stream specific to an api client. ToString and equality members are implemented. </summary>
     public class UniqueStreamKey
     {
+        public UniqueStreamKey()
+        {
+            if (Execute.InDesignMode)
+            {
+                ApiClientName = "Design time api client";
+                StreamId = "Design time stream id";
+            }
+        }
+
         public UniqueStreamKey(string apiClientName, string streamId)
         {
             if (String.IsNullOrWhiteSpace(apiClientName))

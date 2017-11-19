@@ -14,6 +14,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls.Dialogs;
+using INavigationService = Livestream.Monitor.Core.INavigationService;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -138,7 +139,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (Loading) return;
 
-            await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, StreamsModel.SelectedStreamQuality, this);
+            await streamLauncher.OpenStream(StreamsModel.SelectedLivestream, this);
         }
 
         public void ToggleNotify()

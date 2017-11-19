@@ -12,6 +12,7 @@ using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
 using Octokit;
 using Application = System.Windows.Application;
+using INavigationService = Livestream.Monitor.Core.INavigationService;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -31,7 +32,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
-            
+
             Settings = new SettingsViewModel();
             ActiveItem = new MainViewModel();
         }
@@ -45,7 +46,7 @@ namespace Livestream.Monitor.ViewModels
             if (settingsViewModel == null) throw new ArgumentNullException(nameof(settingsViewModel));
             if (mainViewModel == null) throw new ArgumentNullException(nameof(mainViewModel));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
-            
+
             Settings = settingsViewModel;
             this.mainViewModel = mainViewModel;
             this.navigationService = navigationService;
@@ -63,7 +64,7 @@ namespace Livestream.Monitor.ViewModels
         }
 
         public override string DisplayName { get; set; }
-        
+
         public SettingsViewModel Settings { get; set; }
 
         public WindowState WindowState
@@ -127,7 +128,7 @@ namespace Livestream.Monitor.ViewModels
         protected override async void OnViewLoaded(object view)
         {
             if (Execute.InDesignMode) return;
-            
+
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
             if (!Debugger.IsAttached) await CheckForNewVersion();
             base.OnViewLoaded(view);
