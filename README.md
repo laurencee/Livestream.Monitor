@@ -20,7 +20,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 ## General Features
 * Add your favourite livestreams to be monitored from twitch, youtube, mixer or smashcast
 * Custom command line option for launching twitch/youtube/hitbox chat for the selected stream (presets include Chrome/Firefox/Edge)
-* Stream quality selection options
+* Stream quality favorites stored per api in a priority order
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
 * Filter your channel list to find and manage streams quickly
@@ -50,8 +50,13 @@ I didn't like the large amount of memory used by java/web based GUIs for livestr
 
 ### FAQ
 **Q. How do I add YouTube streams?**  
-A. You need to provide the username/channel name. You can find this by clicking on a users channel link to get to their profile page.  
-(The URL looks like this: https://www.youtube.com/user/{username})
+A. You can either use the username or the channelid. 
+(For usernames the URL looks like this: https://www.youtube.com/user/{username})
+(For channelIds the URL looks like this: https://www.youtube.com/channel/{channelId})
+
+You can always get the channel id by clicking on the channel from the description of a video you are currently watching.
+
+If the username happens to start with "UC" or "HC" then it will fail to add the channel. In this instance please use the channelid approach instead.
 
 **Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?**  
 A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser).  
