@@ -35,18 +35,18 @@ namespace ExternalAPIs.Tests
         }
 
         [Fact, Trait("Category", "LocalOnly")]
-        public async Task GetChannelIdFromChannelName()
+        public async Task GetChannelIdFromUsername()
         {
             const string channelName = "LoLChampSeries";
-            var channelId = await sut.GetChannelIdFromChannelName(channelName);
-            
+            var channelId = await sut.GetChannelIdFromUsername(channelName);
+
             Assert.NotNull(channelId);
         }
 
         [Fact, Trait("Category", "LocalOnly")]
         public async Task GetLiveVideos()
         {
-            // channelId of the value returned by the test "GetChannelIdFromChannelName"
+            // channelId of the value returned by the test "GetChannelIdFromUsername"
             const string channelId = "UCvqRdlKsE5Q8mf8YXbdIJLw";
             var onlineVideos = await sut.GetLivestreamVideos(channelId);
 

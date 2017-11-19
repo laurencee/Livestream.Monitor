@@ -113,15 +113,15 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        private async Task<string> GetChannelIdByChannelName(string channelName, CancellationToken cancellationToken)
+        private async Task<string> GetChannelIdByUsername(string userName, CancellationToken cancellationToken)
         {
-            string channelId = (string)cache.Get(channelName);
+            string channelId = (string)cache.Get(userName);
             if (channelId != null)
                 return channelId;
 
-            channelId = await youtubeClient.GetChannelIdFromChannelName(channelName, cancellationToken);
+            channelId = await youtubeClient.GetChannelIdFromUsername(userName, cancellationToken);
             // the id will never change so cache it forever once it's found
-            cache.Add(channelName, channelId, DateTimeOffset.MaxValue);
+            cache.Add(userName, channelId, DateTimeOffset.MaxValue);
             return channelId;
         }
 
@@ -135,7 +135,12 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 try
                 {
-                    var channelId = await GetChannelIdByChannelName(channelIdentifier.ChannelId, cancellationToken);
+                    string channelId;
+                    if (channelIdentifier.ChannelId.StartsWith("UC") || channelIdentifier.ChannelId.StartsWith("HC"))
+                        channelId = channelIdentifier.ChannelId;
+                    else
+                        channelId = await GetChannelIdByUsername(channelIdentifier.ChannelId, cancellationToken);
+
                     var videoIds = await GetVideoIdsByChannelId(channelId, cancellationToken);
                     var livestreamModels = await GetLivestreamModels(channelIdentifier, videoIds, cancellationToken);
                     queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
@@ -150,7 +155,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
-                            LivestreamModel = new LivestreamModel("offline", channelIdentifier)
+                            LivestreamModel = new LivestreamModel("offline-" + channelIdentifier.ChannelId, channelIdentifier)
                             {
                                 DisplayName = channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
@@ -208,12 +213,12 @@ namespace Livestream.Monitor.Model.ApiClients
                     }
                     retryCount++;
                 }
-                
+
                 if (livestreamDetails == null) continue;
 
                 var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
                 if (snippet == null) continue;
-                
+
                 var livestreamModel = new LivestreamModel(videoId, channelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
                 if (!livestreamModel.Live) continue;
 
