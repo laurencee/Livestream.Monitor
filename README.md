@@ -50,9 +50,9 @@ I didn't like the large amount of memory used by java/web based GUIs for livestr
 
 ### FAQ
 **Q. How do I add YouTube streams?**  
-A. You can either use the username or the channelid. 
-(For usernames the URL looks like this: https://www.youtube.com/user/{username})
-(For channelIds the URL looks like this: https://www.youtube.com/channel/{channelId})
+A. You can either use the username or the channelid.  
+`For usernames the URL looks like this: https://www.youtube.com/user/{username}`  
+`For channelIds the URL looks like this: https://www.youtube.com/channel/{channelId}`  
 
 You can always get the channel id by clicking on the channel from the description of a video you are currently watching.
 
