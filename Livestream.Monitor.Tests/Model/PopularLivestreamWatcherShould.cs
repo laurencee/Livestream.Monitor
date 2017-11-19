@@ -31,7 +31,7 @@ namespace Livestream.Monitor.Tests.Model
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamQueryResults);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
-            
+
             await sut.NotifyPopularStreams();
 
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
@@ -53,7 +53,7 @@ namespace Livestream.Monitor.Tests.Model
 
             notificationHandler.DidNotReceive().AddNotification(Arg.Any<LivestreamNotification>());
         }
-        
+
         [InlineAutoNSubstituteData(1, 2)]
         [InlineAutoNSubstituteData(500, 1)]
         [Theory]

@@ -10,6 +10,7 @@ using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
+using INavigationService = Livestream.Monitor.Core.INavigationService;
 
 namespace Livestream.Monitor.ViewModels
 {
