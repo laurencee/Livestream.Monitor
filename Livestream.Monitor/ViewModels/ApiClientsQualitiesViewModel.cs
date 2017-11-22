@@ -4,6 +4,7 @@ using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -61,6 +62,19 @@ namespace Livestream.Monitor.ViewModels
         }
 
         public bool CanRevert => CanSave;
+
+        public override async void CanClose(Action<bool> callback)
+        {
+            if (CanSave)
+            {
+                var result = await this.ShowMessageAsync("Unsaved changes", "Close without saving?", MessageDialogStyle.AffirmativeAndNegative);
+                callback(result == MessageDialogResult.Affirmative);
+            }
+            else
+            {
+                callback(true);
+            }
+        }
 
         public void Save()
         {

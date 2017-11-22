@@ -18,7 +18,10 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <Label Grid.Row="0" Content="Quality priority" HorizontalAlignment="Center" Margin="0,2" FontSize="16" />
+        <StackPanel Grid.Row="0" Margin="0,2">
+            <TextBlock Text="Quality priority" HorizontalAlignment="Center" FontSize="16" />
+            <TextBlock Text="(top item is tried first)" HorizontalAlignment="Center" FontSize="12" />
+        </StackPanel>
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <ItemsControl x:Name="Qualities">
                 <ItemsControl.ItemTemplate>
@@ -32,11 +35,11 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center" HorizontalAlignment="Left" />
-                            <Button Grid.Column="1" Content="▲" Margin="2"
+                            <Button Grid.Column="1" Content="▲" Margin="2" ToolTip="Increase priority"
                                 cal:Message.Attach="MoveQualityUp($dataContext)" />
-                            <Button Grid.Column="2" Content="▼" Margin="2"
+                            <Button Grid.Column="2" Content="▼" Margin="2" ToolTip="Decrease priority"
                                 cal:Message.Attach="MoveQualityDown($dataContext)" />
-                            <Button Grid.Column="3" Content="x" Foreground="Red" Margin="2"
+                            <Button Grid.Column="3" Content="x" Foreground="Red" Margin="2" ToolTip="Remove quality"
                                 cal:Message.Attach="RemoveQuality($dataContext)" />
                         </Grid>
                     </DataTemplate>
@@ -51,13 +54,16 @@
             <TextBox Grid.Column="0" x:Name="NewQuality" Margin="2,2,0,2"
                      controls:TextBoxHelper.Watermark="add quality favorite..."
                      cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
-            <Button Grid.Column="1" x:Name="AddQuality" Content="Add"  Margin="2"/>
+            <Button Grid.Column="1" x:Name="AddQuality" Content="Add" Margin="2"
+                    ToolTip="Add new quality option" />
         </Grid>
         <Grid Grid.Row="3" >
             <StackPanel Orientation="Horizontal" Margin="0,2" >
-                <Label Content="Fallback Quality:" Margin="2,0,5,0" />
-                <RadioButton x:Name="FallbackQualityBest" Content="Best" GroupName="QualityFallback" IsChecked="{Binding FallbackQualityBestChecked}" Margin="2,0" />
-                <RadioButton x:Name="FallbackQualityWorst" Content="Worst" GroupName="QualityFallback" IsChecked="{Binding FallbackQualityWorstChecked}" Margin="2,0" />
+                <Label Content="Fallback Quality:" Margin="2,0,5,0" ToolTip="This option will always be used if no custom options worked" />
+                <RadioButton x:Name="FallbackQualityBest" Content="Best" GroupName="QualityFallback"
+                             IsChecked="{Binding FallbackQualityBestChecked}" Margin="2,0" />
+                <RadioButton x:Name="FallbackQualityWorst" Content="Worst" GroupName="QualityFallback"
+                             IsChecked="{Binding FallbackQualityWorstChecked}" Margin="2,0" />
             </StackPanel>
         </Grid>
     </Grid>
