@@ -234,8 +234,16 @@ namespace Livestream.Monitor.Model.Monitoring
             var newStreams = livestreamModels.Except(Livestreams).ToList();
             var removedStreams = Livestreams.Except(livestreamModels).ToList();
 
-            Livestreams.AddRange(newStreams);
-            Livestreams.RemoveRange(removedStreams);
+            // add/remove streams one at a time so we trigger regular add/remove collection change event
+            // using addrange/removerange will instead trigger a reset event and will not state what new items were added/removed
+            foreach (var livestreamModel in newStreams)
+            {
+                Livestreams.Add(livestreamModel);
+            }
+            foreach (var livestreamModel in removedStreams)
+            {
+                Livestreams.Remove(livestreamModel);
+            }
         }
 
         private void AddChannels(params ChannelIdentifier[] newChannels)

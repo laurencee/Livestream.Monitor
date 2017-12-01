@@ -151,7 +151,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     // video ids are only returned for online streams, we need to show something to the user
                     // so create a placeholder livestream model object for the offline channel.
                     // TODO - query the channel to get their display name information rather than using the actual channel name
-                    if (!videoIds.Any())
+                    if (!livestreamModels.Any())
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
@@ -210,6 +210,12 @@ namespace Livestream.Monitor.Model.ApiClients
                     catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
                     {
                         await Task.Delay(2000, cancellationToken);
+                    }
+                    catch (HttpRequestWithStatusException)
+                    {
+                        // can happen in the case of the video being removed
+                        // the youtube api will report the videoid as live but looking up the videoid will fail with BadRequest
+                        break;
                     }
                     retryCount++;
                 }

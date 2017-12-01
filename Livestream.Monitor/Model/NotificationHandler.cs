@@ -27,7 +27,7 @@ namespace Livestream.Monitor.Model
         private readonly StreamLauncher streamLauncher;
         private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
         private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
-        
+
         private bool hasRefreshed;
 
         public NotificationHandler(
@@ -64,7 +64,7 @@ namespace Livestream.Monitor.Model
             if (livestreamNotification.LivestreamModel.DontNotify) return;
             // don't notify for streams that are being watched right now
             if (streamLauncher.WatchingStreams.Contains(livestreamNotification.LivestreamModel)) return;
-            
+
             if ((notifications.Count + 1) > MAX_NOTIFICATIONS)
             {
                 buffer.Add(livestreamNotification);
@@ -183,6 +183,7 @@ namespace Livestream.Monitor.Model
                 foreach (LivestreamModel livestream in e.NewItems)
                 {
                     HookLivestreamChangeEvents(livestream);
+                    NotifyIfLive(livestream);
                 }
             }
 
@@ -198,25 +199,31 @@ namespace Livestream.Monitor.Model
         private void LivestreamOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             var livestreamModel = (LivestreamModel)sender;
-            if (e.PropertyName == nameof(LivestreamModel.Live) && hasRefreshed) // dont show notifications for the initial refresh
+            if (e.PropertyName == nameof(LivestreamModel.Live))
             {
-                if (!livestreamModel.Live) return; // only care about streams coming online
-
-                // avoid a twitch api bug where sometimes online streams will not be returned when querying for online streams
-                // the best way we can work around this is to pick a reasonable uptime value after which we will never show online notifications.
-                // we check the LastLiveTime for null to ensure we will always notify the first time a stream come online
-                if (livestreamModel.LastLiveTime != null && livestreamModel.Uptime > TimeSpan.FromMinutes(5)) return;
-
-                var notification = new LivestreamNotification()
-                {
-                    Title = $"{livestreamModel.DisplayName} Online",
-                    Message = livestreamModel.Description,
-                    ImageUrl = livestreamModel.ThumbnailUrls?.Small,
-                    LivestreamModel = livestreamModel,
-                };
-
-                AddNotification(notification);
+                NotifyIfLive(livestreamModel);
             }
+        }
+
+        private void NotifyIfLive(LivestreamModel livestreamModel)
+        {
+            if (!hasRefreshed) return; // dont show notifications for the initial refresh
+            if (!livestreamModel.Live) return; // only care about streams coming online
+
+            // avoid a twitch api bug where sometimes online streams will not be returned when querying for online streams
+            // the best way we can work around this is to pick a reasonable uptime value after which we will never show online notifications.
+            // we check the LastLiveTime for null to ensure we will always notify the first time a stream come online
+            if (livestreamModel.LastLiveTime != null && livestreamModel.Uptime > TimeSpan.FromMinutes(5)) return;
+
+            var notification = new LivestreamNotification()
+            {
+                Title = $"{livestreamModel.DisplayName} Online",
+                Message = livestreamModel.Description,
+                ImageUrl = livestreamModel.ThumbnailUrls?.Small,
+                LivestreamModel = livestreamModel,
+            };
+
+            AddNotification(notification);
         }
     }
 }
