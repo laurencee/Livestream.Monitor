@@ -205,22 +205,23 @@ namespace Livestream.Monitor.Model.ApiClients
             var queryResults = new List<LivestreamQueryResult>();
             if (moniteredChannels.Count == 0) return queryResults;
 
-            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details. 
+            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
             List<Stream> onlineStreams = new List<Stream>();
 
             int retryCount = 0;
-            while (onlineStreams.Count == 0 && !cancellationToken.IsCancellationRequested && retryCount < 3)
+            bool success = false;
+            while (!success && !cancellationToken.IsCancellationRequested && retryCount < 3)
             {
                 try
                 {
                     onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId), cancellationToken);
+                    success = true;
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
                 {
                     await Task.Delay(2000, cancellationToken);
+                    retryCount++;
                 }
-
-                retryCount++;
             }
 
             foreach (var onlineStream in onlineStreams)
