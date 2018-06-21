@@ -108,7 +108,7 @@ namespace Livestream.Monitor.Model
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
             var favoriteQualities = settingsHandler.Settings.GetStreamQualities(livestreamModel.ApiClient.ApiName);
-            var qualities = favoriteQualities.Qualities.Union(new[] {favoriteQualities.FallbackQuality});
+            var qualities = favoriteQualities.Qualities.Union(new[] { favoriteQualities.FallbackQuality });
 
             string livestreamerArgs = $"{livestreamModel.StreamUrl} {string.Join(",", qualities)}";
             var apiClient = livestreamModel.ApiClient;
@@ -243,7 +243,8 @@ namespace Livestream.Monitor.Model
                     (sender, args) =>
                     {
                         if (args.Data == null) return;
-                        if (args.Data.StartsWith("[cli][info] Starting player") && settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad)
+                        if (args.Data.Contains("Starting player") &&
+                            settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad)
                         {
                             messageBoxViewModel.TryClose();
                             // can continue adding messages, the view model still exists so it doesn't really matter
