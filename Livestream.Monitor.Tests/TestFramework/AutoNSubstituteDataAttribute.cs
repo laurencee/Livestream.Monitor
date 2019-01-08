@@ -1,16 +1,16 @@
-﻿using Ploeh.AutoFixture;
-using Ploeh.AutoFixture.AutoNSubstitute;
-using Ploeh.AutoFixture.Xunit2;
+﻿using AutoFixture;
+using AutoFixture.AutoNSubstitute;
+using AutoFixture.Xunit2;
 
 namespace Livestream.Monitor.Tests.TestFramework
 {
     public class AutoNSubstituteDataAttribute : AutoDataAttribute
     {
         public AutoNSubstituteDataAttribute()
-            : base(new Fixture()
+            : base(() => new Fixture()
                 .Customize(new CompositeCustomization(
                     new LivestreamModelCustomization(),
-                    new AutoConfiguredNSubstituteCustomization()
+                    new AutoNSubstituteCustomization() { ConfigureMembers = true }
                 )))
         {
         }

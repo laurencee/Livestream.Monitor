@@ -37,7 +37,6 @@ namespace ExternalAPIs.Tests
             // you must use the "id" of the channel rather than the channel name/token
             var videos = await sut.GetChannelVideos(1903, new MixerPagedQuery() { Take = 10});
             Assert.NotEmpty(videos);
-            Assert.NotNull(videos[0].duration);
         }
 
         [InlineData(null)]

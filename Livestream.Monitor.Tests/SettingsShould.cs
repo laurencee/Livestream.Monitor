@@ -20,7 +20,7 @@ namespace Livestream.Monitor.Tests
         }
 
         [Theory]
-        [MemberData("SettingsProperties")]
+        [MemberData(nameof(SettingsProperties))]
         public void HaveJsonAttribute_On_SettableProperties(PropertyInfo property)
         {
             var jsonProperty = property.GetCustomAttribute<JsonPropertyAttribute>();

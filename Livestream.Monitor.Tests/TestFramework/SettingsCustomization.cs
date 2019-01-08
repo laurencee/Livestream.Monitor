@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Livestream.Monitor.Core;
 using NSubstitute;
-using Ploeh.AutoFixture;
+using AutoFixture;
 
 namespace Livestream.Monitor.Tests.TestFramework
 {

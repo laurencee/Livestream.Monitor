@@ -9,7 +9,7 @@ using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Tests.TestFramework;
 using NSubstitute;
-using Ploeh.AutoFixture.Xunit2;
+using AutoFixture.Xunit2;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Model

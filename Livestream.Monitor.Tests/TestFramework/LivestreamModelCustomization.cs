@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Ploeh.AutoFixture;
+using AutoFixture;
 
 namespace Livestream.Monitor.Tests.TestFramework
 {
