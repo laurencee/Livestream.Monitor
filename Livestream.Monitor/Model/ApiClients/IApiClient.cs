@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv.Dto;
-using ExternalAPIs.TwitchTv.Dto.QueryRoot;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Dto;
+using ExternalAPIs.TwitchTv.V3.Dto.QueryRoot;
+using ExternalAPIs.TwitchTv.V3.Query;
 
-namespace ExternalAPIs.TwitchTv
+namespace ExternalAPIs.TwitchTv.V3
 {
     public interface ITwitchTvReadonlyClient
     {

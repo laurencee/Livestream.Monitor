@@ -8,7 +8,7 @@ using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.Smashcast;
 using ExternalAPIs.Smashcast.Query;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using static System.String;

@@ -4,12 +4,11 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv.Dto;
-using ExternalAPIs.TwitchTv.Dto.QueryRoot;
-using ExternalAPIs.TwitchTv.Query;
-using static System.String;
+using ExternalAPIs.TwitchTv.V3.Dto;
+using ExternalAPIs.TwitchTv.V3.Dto.QueryRoot;
+using ExternalAPIs.TwitchTv.V3.Query;
 
-namespace ExternalAPIs.TwitchTv
+namespace ExternalAPIs.TwitchTv.V3
 {
     public class TwitchTvReadonlyClient : ITwitchTvReadonlyClient
     {
@@ -17,7 +16,7 @@ namespace ExternalAPIs.TwitchTv
 
         public async Task<UserFollows> GetUserFollows(string username, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(username)) throw new ArgumentNullException(nameof(username));
+            if (String.IsNullOrWhiteSpace(username)) throw new ArgumentNullException(nameof(username));
 
             var request = $"{RequestConstants.UserFollows.Replace("{0}", username)}?limit={DefaultItemsPerQuery}";
             var userFollows = await ExecuteRequest<UserFollows>(request, cancellationToken);
@@ -33,7 +32,7 @@ namespace ExternalAPIs.TwitchTv
 
         public async Task<Channel> GetChannelDetails(string streamName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
+            if (String.IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
 
             var request = $"{RequestConstants.Channels}/{streamName}";
             var channelDetails = await ExecuteRequest<Channel>(request, cancellationToken);
@@ -46,7 +45,7 @@ namespace ExternalAPIs.TwitchTv
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
             var request = $"{RequestConstants.Streams}?offset={topStreamQuery.Skip}&limit={topStreamQuery.Take}";
-            if (!IsNullOrWhiteSpace(topStreamQuery.GameName))
+            if (!String.IsNullOrWhiteSpace(topStreamQuery.GameName))
                 request += $"&game={topStreamQuery.GameName}";
 
             var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
@@ -55,7 +54,7 @@ namespace ExternalAPIs.TwitchTv
 
         public async Task<Stream> GetStreamDetails(string streamName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
+            if (String.IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
 
             var request = $"{RequestConstants.Streams}/{streamName}";
             var streamRoot = await ExecuteRequest<StreamRoot>(request, cancellationToken);
@@ -66,7 +65,7 @@ namespace ExternalAPIs.TwitchTv
         {
             if (streamNames == null) throw new ArgumentNullException(nameof(streamNames));
             
-            var request = $"{RequestConstants.Streams}?channel={Join(",", streamNames)}&limit={DefaultItemsPerQuery}";
+            var request = $"{RequestConstants.Streams}?channel={String.Join(",", streamNames)}&limit={DefaultItemsPerQuery}";
             var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
 
             // if necessary, page until we get all followed streams
@@ -89,7 +88,7 @@ namespace ExternalAPIs.TwitchTv
 
         public async Task<List<Stream>> SearchStreams(string streamName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
+            if (String.IsNullOrWhiteSpace(streamName)) throw new ArgumentNullException(nameof(streamName));
 
             var request = RequestConstants.SearchStreams.Replace("{0}", streamName);
             var streamsRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
@@ -98,7 +97,7 @@ namespace ExternalAPIs.TwitchTv
 
         public async Task<List<Game>> SearchGames(string gameName, CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (IsNullOrWhiteSpace(gameName)) throw new ArgumentNullException(nameof(gameName));
+            if (String.IsNullOrWhiteSpace(gameName)) throw new ArgumentNullException(nameof(gameName));
 
             var request = RequestConstants.SearchGames.Replace("{0}", gameName);
             var gamesRoot = await ExecuteRequest<GamesRoot>(request, cancellationToken);
@@ -108,7 +107,7 @@ namespace ExternalAPIs.TwitchTv
         public async Task<List<Video>> GetChannelVideos(ChannelVideosQuery channelVideosQuery, CancellationToken cancellationToken = default(CancellationToken))
         {
             if (channelVideosQuery == null) throw new ArgumentNullException(nameof(channelVideosQuery));
-            if (IsNullOrWhiteSpace(channelVideosQuery.ChannelName)) throw new ArgumentNullException(nameof(channelVideosQuery.ChannelName));
+            if (String.IsNullOrWhiteSpace(channelVideosQuery.ChannelName)) throw new ArgumentNullException(nameof(channelVideosQuery.ChannelName));
 
             var request = RequestConstants.ChannelVideos.Replace("{0}", channelVideosQuery.ChannelName);
             request += $"?offset={channelVideosQuery.Skip}&limit={channelVideosQuery.Take}";

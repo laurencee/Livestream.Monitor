@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
@@ -10,6 +9,7 @@ using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Tests.TestFramework;
 using NSubstitute;
 using AutoFixture.Xunit2;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Model

@@ -26,7 +26,7 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
 
-namespace Livestream.Monitor.Core
+namespace Livestream.Monitor.Core.Utility
 {
     internal enum WM
     {
@@ -192,12 +192,12 @@ namespace Livestream.Monitor.Core
             }
         }
 
-    } 
+    }
 
-    public interface ISingleInstanceApp 
-    { 
-         bool SignalExternalCommandLineArgs(IList<string> args); 
-    } 
+    public interface ISingleInstanceApp
+    {
+        bool SignalExternalCommandLineArgs(IList<string> args);
+    }
 
     /// <summary>
     /// This class checks to make sure that only one instance of 
@@ -210,9 +210,9 @@ namespace Livestream.Monitor.Core
     /// running as Administrator, can activate it with command line arguments.
     /// For most apps, this will not be much of an issue.
     /// </remarks>
-    public static class SingleInstance<TApplication>  
-                where   TApplication: Application ,  ISingleInstanceApp 
-                                    
+    public static class SingleInstance<TApplication>
+                where TApplication : Application, ISingleInstanceApp
+
     {
         #region Private Fields
 
@@ -272,14 +272,14 @@ namespace Livestream.Monitor.Core
         /// If not, activates the first instance.
         /// </summary>
         /// <returns>True if this is the first instance of the application.</returns>
-        public static bool InitializeAsFirstInstance( string uniqueName )
+        public static bool InitializeAsFirstInstance(string uniqueName)
         {
             commandLineArgs = GetCommandLineArgs(uniqueName);
 
             // Build unique application Id and the IPC channel name.
             string applicationIdentifier = uniqueName + Environment.UserName;
 
-            string channelName = String.Concat(applicationIdentifier, Delimiter, ChannelNameSuffix);
+            string channelName = string.Concat(applicationIdentifier, Delimiter, ChannelNameSuffix);
 
             // Create mutex based on unique application Id to check if this is the first instance of the application. 
             bool firstInstance;
@@ -322,7 +322,7 @@ namespace Livestream.Monitor.Core
         /// Gets command line args - for ClickOnce deployed applications, command line args may not be passed directly, they have to be retrieved.
         /// </summary>
         /// <returns>List of command line arg strings.</returns>
-        private static IList<string> GetCommandLineArgs( string uniqueApplicationName )
+        private static IList<string> GetCommandLineArgs(string uniqueApplicationName)
         {
             string[] args = null;
             if (AppDomain.CurrentDomain.ActivationContext == null)
@@ -468,7 +468,7 @@ namespace Livestream.Monitor.Core
                 {
                     // Do an asynchronous call to ActivateFirstInstance function
                     Application.Current.Dispatcher.BeginInvoke(
-                        DispatcherPriority.Normal, new DispatcherOperationCallback(SingleInstance<TApplication>.ActivateFirstInstanceCallback), args);
+                        DispatcherPriority.Normal, new DispatcherOperationCallback(ActivateFirstInstanceCallback), args);
                 }
             }
 

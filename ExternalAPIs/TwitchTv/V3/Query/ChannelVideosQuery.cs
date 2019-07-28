@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ExternalAPIs.TwitchTv.Query
+namespace ExternalAPIs.TwitchTv.V3.Query
 {
     public class ChannelVideosQuery : PagedQuery
     {

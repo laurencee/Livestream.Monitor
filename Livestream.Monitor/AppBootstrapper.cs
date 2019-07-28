@@ -4,7 +4,7 @@
 
 using System.IO;
 using System.Windows.Threading;
-using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.V3;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;

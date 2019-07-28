@@ -154,7 +154,7 @@ namespace Livestream.Monitor.ViewModels
 
             if (firstMinimize) // only show the notification one time
             {
-                taskbarIcon.ShowBalloonTip("Livestream Monitor", "Livestream Monitored minimized to tray", BalloonIcon.Info);
+                taskbarIcon.ShowBalloonTip("Livestream Monitor", "Livestream Monitor minimized to tray", BalloonIcon.Info);
                 firstMinimize = false;
             }
         }

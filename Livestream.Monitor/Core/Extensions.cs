@@ -101,33 +101,34 @@ namespace Livestream.Monitor.Core
             livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => Equals(x, livestreamModel.ToExcludeNotify()));
         }
 
-        // sourced from http://stackoverflow.com/a/22078975/2631967
         public static async Task<TResult> TimeoutAfter<TResult>(this Task<TResult> task, TimeSpan timeout)
         {
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-
-            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
-            if (completedTask == task)
+            using (var timeoutCancellationTokenSource = new CancellationTokenSource())
             {
-                timeoutCancellationTokenSource.Cancel();
-                return await task;
-            }
+                var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
+                if (completedTask == task)
+                {
+                    timeoutCancellationTokenSource.Cancel();
+                    return await task;
+                }
 
-            throw new TimeoutException("The operation has timed out.");
+                throw new TimeoutException();
+            }
         }
 
         public static async Task TimeoutAfter(this Task task, TimeSpan timeout)
         {
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-
-            var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
-            if (completedTask == task)
+            using (var timeoutCancellationTokenSource = new CancellationTokenSource())
             {
-                timeoutCancellationTokenSource.Cancel();
-                await task; // allow any original task exception to bubble up
+                var completedTask = await Task.WhenAny(task, Task.Delay(timeout, timeoutCancellationTokenSource.Token));
+                if (completedTask == task)
+                {
+                    timeoutCancellationTokenSource.Cancel();
+                    await task;
+                }
+
+                throw new TimeoutException();
             }
-            else
-                throw new TimeoutException("The operation has timed out.");
         }
 
         /// <summary>

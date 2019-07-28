@@ -1,4 +1,4 @@
-namespace ExternalAPIs.TwitchTv
+namespace ExternalAPIs.TwitchTv.V3
 {
     public static class RequestConstants
     {

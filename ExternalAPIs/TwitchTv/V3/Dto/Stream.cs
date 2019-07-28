@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace ExternalAPIs.TwitchTv.Dto
+namespace ExternalAPIs.TwitchTv.V3.Dto
 {
     public class Stream
     {

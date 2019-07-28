@@ -7,7 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Query;
 using ExternalAPIs.Youtube;
 using ExternalAPIs.Youtube.Dto;
 using ExternalAPIs.Youtube.Dto.QueryRoot;

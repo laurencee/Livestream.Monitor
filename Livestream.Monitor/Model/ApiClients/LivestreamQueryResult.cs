@@ -1,5 +1,4 @@
 ﻿using System;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients

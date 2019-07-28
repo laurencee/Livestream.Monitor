@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 using Caliburn.Micro;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;

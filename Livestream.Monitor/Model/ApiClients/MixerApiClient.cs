@@ -7,7 +7,7 @@ using Caliburn.Micro;
 using ExternalAPIs.Mixer;
 using ExternalAPIs.Mixer.Dto;
 using ExternalAPIs.Mixer.Query;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 

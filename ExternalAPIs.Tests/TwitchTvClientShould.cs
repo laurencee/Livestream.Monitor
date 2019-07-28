@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv;
-using ExternalAPIs.TwitchTv.Query;
+using ExternalAPIs.TwitchTv.V3;
+using ExternalAPIs.TwitchTv.V3.Query;
 using Xunit;
 using Assert = Xunit.Assert;
 

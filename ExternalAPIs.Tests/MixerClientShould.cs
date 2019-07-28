@@ -1,5 +1,4 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using ExternalAPIs.Mixer;
 using ExternalAPIs.Mixer.Query;
 using Xunit;
@@ -10,12 +9,8 @@ namespace ExternalAPIs.Tests
     {
         private readonly IMixerReadonlyClient sut = new MixerReadonlyClient();
 
-        [InlineData((string)null)]
-        [InlineData("World of Warcraft")]
-        [InlineData("Minecraft")]
-        [InlineData("League of Legends")]
-        [Theory]
-        public async Task GetTopStreams(string gameName)
+        [Fact]
+        public async Task GetTopStreams()
         {
             var topStreams = await sut.GetTopStreams(new MixerPagedQuery());
             Assert.NotEmpty(topStreams);

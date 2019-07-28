@@ -1,4 +1,4 @@
-namespace ExternalAPIs.TwitchTv.Query
+namespace ExternalAPIs.TwitchTv.V3.Query
 {
     public class TopStreamQuery : PagedQuery
     {

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using ExternalAPIs.TwitchTv.Converters;
+using ExternalAPIs.TwitchTv.V3.Converters;
 using Newtonsoft.Json;
 
-namespace ExternalAPIs.TwitchTv.Dto
+namespace ExternalAPIs.TwitchTv.V3.Dto
 {
     public class Video
     {

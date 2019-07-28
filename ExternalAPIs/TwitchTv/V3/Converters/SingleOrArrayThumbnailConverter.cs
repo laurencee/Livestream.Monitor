@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using ExternalAPIs.TwitchTv.Dto;
+using ExternalAPIs.TwitchTv.V3.Dto;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace ExternalAPIs.TwitchTv.Converters
+namespace ExternalAPIs.TwitchTv.V3.Converters
 {
     /// <summary>
     /// Special case converter since sometimes thumbnails are returned as just the string url of the thumbnail

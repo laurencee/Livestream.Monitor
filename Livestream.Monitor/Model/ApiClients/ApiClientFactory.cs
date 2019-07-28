@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExternalAPIs.Mixer;
 using ExternalAPIs.Smashcast;
-using ExternalAPIs.TwitchTv;
+using ExternalAPIs.TwitchTv.V3;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Core;
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Windows;
-using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Utility;
 
 namespace Livestream.Monitor
 {
