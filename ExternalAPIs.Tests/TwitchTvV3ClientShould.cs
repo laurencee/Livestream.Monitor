@@ -4,11 +4,10 @@ using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.V3;
 using ExternalAPIs.TwitchTv.V3.Query;
 using Xunit;
-using Assert = Xunit.Assert;
 
 namespace ExternalAPIs.Tests
 {
-    public class TwitchTvClientShould
+    public class TwitchTvV3ClientShould
     {
         private const string StreamName = "etup";
         private readonly TwitchTvReadonlyClient sut = new TwitchTvReadonlyClient();

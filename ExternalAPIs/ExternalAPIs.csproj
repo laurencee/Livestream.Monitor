@@ -84,6 +84,21 @@
     <Compile Include="HttpClientExtensions.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleHttpResponseException.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\Games.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\Pagination.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\Streams.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\TopGames.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\User.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\UserFollows.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\Videos.cs" />
+    <Compile Include="TwitchTv\Helix\ITwitchTvReadonlyClient.cs" />
+    <Compile Include="TwitchTv\Helix\Query\CursorPagination.cs" />
+    <Compile Include="TwitchTv\Helix\Query\GetGamesQuery.cs" />
+    <Compile Include="TwitchTv\Helix\Query\GetStreamsQuery.cs" />
+    <Compile Include="TwitchTv\Helix\Query\GetUsersQuery.cs" />
+    <Compile Include="TwitchTv\Helix\Query\GetVideosQuery.cs" />
+    <Compile Include="TwitchTv\Helix\RequestConstants.cs" />
+    <Compile Include="TwitchTv\Helix\TwitchTvHelixReadonlyClient.cs" />
     <Compile Include="TwitchTv\V3\Dto\Channel.cs" />
     <Compile Include="TwitchTv\V3\Dto\ChannelLinks.cs" />
     <Compile Include="TwitchTv\V3\Dto\Follow.cs" />
@@ -128,6 +143,7 @@
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
