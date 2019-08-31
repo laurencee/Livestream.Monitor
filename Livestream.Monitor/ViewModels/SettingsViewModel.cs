@@ -16,7 +16,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private string livestreamerFullPath, chatCommandLine;
         private int minimumEventViewers;
-        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions;
+        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions, disableRefreshErrorDialogs;
 
         public SettingsViewModel()
         {
@@ -141,6 +141,18 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool DisableRefreshErrorDialogs
+        {
+            get => disableRefreshErrorDialogs;
+            set
+            {
+                if (value == disableRefreshErrorDialogs) return;
+                disableRefreshErrorDialogs = value;
+                NotifyOfPropertyChange(() => DisableRefreshErrorDialogs);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         public bool CanSave
         {
             get
@@ -156,7 +168,8 @@ namespace Livestream.Monitor.ViewModels
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
                        PassthroughClientId != settingsHandler.Settings.PassthroughClientId ||
-                       CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions;
+                       CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
+                       DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs;
             }
         }
 
@@ -185,6 +198,8 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
             settingsHandler.Settings.PassthroughClientId = PassthroughClientId;
+            settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
+            settingsHandler.Settings.DisableRefreshErrorDialogs = DisableRefreshErrorDialogs;
             settingsHandler.SaveSettings();
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
@@ -270,6 +285,7 @@ namespace Livestream.Monitor.ViewModels
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
             PassthroughClientId = settingsHandler.Settings.PassthroughClientId;
             CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
+            DisableRefreshErrorDialogs = settingsHandler.Settings.DisableRefreshErrorDialogs;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();

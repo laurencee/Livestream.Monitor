@@ -22,6 +22,7 @@ namespace Livestream.Monitor.ViewModels
     {
         private readonly StreamLauncher streamLauncher;
         private readonly INavigationService navigationService;
+        private readonly ISettingsHandler settingsHandler;
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
@@ -41,10 +42,12 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             FilterModel filterModel,
             StreamLauncher streamLauncher,
-            INavigationService navigationService)
+            INavigationService navigationService,
+            ISettingsHandler settingsHandler)
         {
             this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
             this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             this.StreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
             FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = Constants.RefreshPollingTime };
@@ -95,18 +98,21 @@ namespace Livestream.Monitor.ViewModels
                 // keep trying to refresh until we hit too many consecutive errors unless it's our first query
                 if (refreshCount == 0 || refreshErrorCount >= 3)
                 {
-                    foreach (var ex in aggregateException.InnerExceptions)
+                    if (!settingsHandler.Settings.DisableRefreshErrorDialogs)
                     {
-                        var messageDialogResult = await this.ShowMessageAsync(
-                            "Error refreshing livestreams", ex.ExtractErrorMessage(),
-                            MessageDialogStyle.AffirmativeAndNegative,
-                            new MetroDialogSettings()
-                            {
-                                NegativeButtonText = "Ignore"
-                            });
+                        foreach (var ex in aggregateException.InnerExceptions)
+                        {
+                            var messageDialogResult = await this.ShowMessageAsync(
+                                "Error refreshing livestreams", ex.ExtractErrorMessage(),
+                                MessageDialogStyle.AffirmativeAndNegative,
+                                new MetroDialogSettings()
+                                {
+                                    NegativeButtonText = "Ignore"
+                                });
 
-                        if (messageDialogResult == MessageDialogResult.Negative)
-                            StreamsModel.IgnoreQueryFailure(ex.Message);
+                            if (messageDialogResult == MessageDialogResult.Negative)
+                                StreamsModel.IgnoreQueryFailure(ex.Message);
+                        }
                     }
 
                     refreshTimer.Start();

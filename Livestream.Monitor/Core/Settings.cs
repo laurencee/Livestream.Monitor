@@ -29,15 +29,10 @@ namespace Livestream.Monitor.Core
 
         private MetroThemeBaseColour? metroThemeBaseColour;
         private MetroThemeAccentColour? metroThemeAccentColour;
-        private string livestreamerFullPath;
-        private string chatCommandLine;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
-        private bool disableNotifications, passthroughClientId;
-        private bool hideStreamOutputMessageBoxOnLoad;
-        private string twitchAuthToken;
-        private bool twitchAuthTokenInLivestreamerConfig;
+        private string livestreamerFullPath, chatCommandLine, twitchAuthToken;
+        private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs, twitchAuthTokenInLivestreamerConfig;
         private int settingsVersion;
-        private bool checkForNewVersions;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
@@ -60,6 +55,18 @@ namespace Livestream.Monitor.Core
                 if (value == checkForNewVersions) return;
                 checkForNewVersions = value;
                 NotifyOfPropertyChange(() => SettingsVersion);
+            }
+        }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool DisableRefreshErrorDialogs
+        {
+            get => disableRefreshErrorDialogs;
+            set
+            {
+                if (value == disableRefreshErrorDialogs) return;
+                disableRefreshErrorDialogs = value;
+                NotifyOfPropertyChange(() => DisableRefreshErrorDialogs);
             }
         }
 
