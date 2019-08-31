@@ -8,7 +8,7 @@ A windows GUI for [streamlink](https://streamlink.github.io/) / [livestreamer](h
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a java GUI for livestreamer.
 
 ## Pre-requisites
-* [.NET 4.6](https://www.microsoft.com/en-us/download/details.aspx?id=48130) installed
+* [.NET 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) installed
 * [streamlink](https://github.com/streamlink/streamlink) or [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
 
 ## Usage
