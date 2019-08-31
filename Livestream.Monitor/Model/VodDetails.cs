@@ -8,7 +8,7 @@ namespace Livestream.Monitor.Model
     {
         private string url;
         private TimeSpan length;
-        private int views;
+        private long views;
         private DateTimeOffset recordedAt;
         private string game;
         private string description;
@@ -38,7 +38,7 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public int Views
+        public long Views
         {
             get { return views; }
             set

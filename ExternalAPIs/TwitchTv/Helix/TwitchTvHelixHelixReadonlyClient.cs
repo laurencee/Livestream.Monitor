@@ -9,9 +9,10 @@ using ExternalAPIs.TwitchTv.Helix.Query;
 
 namespace ExternalAPIs.TwitchTv.Helix
 {
-    public class TwitchTvHelixReadonlyClient : ITwitchTvReadonlyClient
+    public class TwitchTvHelixHelixReadonlyClient : ITwitchTvHelixReadonlyClient
     {
-        public const int DefaultItemsPerQuery = 100; // 20 is default, 100 is maximum
+        public const int DefaultItemsPerQuery = MaxItemsPerQuery; // 20 is default, 100 is maximum
+        public const int MaxItemsPerQuery = 100; // 100 is maximum
 
         public async Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default)
         {
@@ -34,13 +35,15 @@ namespace ExternalAPIs.TwitchTv.Helix
         {
             if (getStreamsQuery == null) throw new ArgumentNullException(nameof(getStreamsQuery));
 
+            var streams = new List<Stream>();
             var request = $"{RequestConstants.Streams}?first={getStreamsQuery.First}";
             if (!string.IsNullOrWhiteSpace(getStreamsQuery.Pagination.After))
                 request += $"&after={getStreamsQuery.Pagination.After}";
 
             if (getStreamsQuery.GameIds?.Any() == true)
             {
-                if (getStreamsQuery.GameIds.Count > 100) throw new ArgumentException("Max allowed game ids is 100, attempted to query " + getStreamsQuery.GameIds.Count);
+                if (getStreamsQuery.GameIds.Count > MaxItemsPerQuery)
+                    throw new ArgumentException($"Max allowed game ids is {MaxItemsPerQuery}, attempted to query {getStreamsQuery.GameIds.Count}");
 
                 foreach (var gameId in getStreamsQuery.GameIds)
                 {
@@ -50,7 +53,8 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             if (getStreamsQuery.Languages?.Any() == true)
             {
-                if (getStreamsQuery.Languages.Count > 100) throw new ArgumentException("Max allowed languages is 100, attempted to query " + getStreamsQuery.Languages.Count);
+                if (getStreamsQuery.Languages.Count > MaxItemsPerQuery)
+                    throw new ArgumentException($"Max allowed languages is {MaxItemsPerQuery}, attempted to query {getStreamsQuery.Languages.Count}");
 
                 foreach (var language in getStreamsQuery.Languages)
                 {
@@ -60,16 +64,39 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             if (getStreamsQuery.UserIds?.Any() == true)
             {
-                if (getStreamsQuery.UserIds.Count > 100) throw new ArgumentException("Max allowed user ids is 100, attempted to query " + getStreamsQuery.UserIds.Count);
-
-                foreach (var userId in getStreamsQuery.UserIds)
+                if (getStreamsQuery.UserIds.Count > MaxItemsPerQuery)
                 {
-                    request += "&user_id=" + userId;
+                    var nonPagedRequest = request;
+                    int taken = 0;
+                    while (taken < getStreamsQuery.UserIds.Count)
+                    {
+                        var pagedRequest = nonPagedRequest;
+                        var pagedIds = getStreamsQuery.UserIds.Skip(taken).Take(DefaultItemsPerQuery);
+                        taken += DefaultItemsPerQuery;
+                        foreach (var userId in pagedIds)
+                        {
+                            pagedRequest += "&user_id=" + userId;
+                        }
+
+                        var streamRoot = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
+                        streams.AddRange(streamRoot.Streams);
+                    }
+                }
+                else
+                {
+                    foreach (var userId in getStreamsQuery.UserIds)
+                    {
+                        request += "&user_id=" + userId;
+                    }
                 }
             }
 
-            var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
-            return streamRoot.Streams;
+            if (!streams.Any())
+            {
+                var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
+                streams = streamRoot.Streams;
+            }
+            return streams;
         }
 
         public async Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default)
@@ -82,12 +109,14 @@ namespace ExternalAPIs.TwitchTv.Helix
         public async Task<List<Game>> GetGames(GetGamesQuery getGamesQuery, CancellationToken cancellationToken = default)
         {
             if (getGamesQuery == null) throw new ArgumentNullException(nameof(getGamesQuery));
-            if (!getGamesQuery.GameIds.Any() && !getGamesQuery.GameNames.Any()) throw new ArgumentException("At least one game id or game name must be specified");
+            if (!getGamesQuery.GameIds.Any() && !getGamesQuery.GameNames.Any())
+                throw new ArgumentException("At least one game id or game name must be specified");
 
             var request = RequestConstants.Games;
             if (getGamesQuery.GameIds?.Any() == true)
             {
-                if (getGamesQuery.GameIds.Count > 100) throw new ArgumentException("Max allowed game ids is 100, attempted to query " + getGamesQuery.GameIds.Count);
+                if (getGamesQuery.GameIds.Count > MaxItemsPerQuery)
+                    throw new ArgumentException($"Max allowed game ids is {MaxItemsPerQuery}, attempted to query {getGamesQuery.GameIds.Count}");
 
                 foreach (var gameId in getGamesQuery.GameIds)
                 {
@@ -98,7 +127,8 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             if (getGamesQuery.GameNames?.Any() == true)
             {
-                if (getGamesQuery.GameNames.Count > 100) throw new ArgumentException("Max allowed game names is 100, attempted to query " + getGamesQuery.GameNames.Count);
+                if (getGamesQuery.GameNames.Count > MaxItemsPerQuery)
+                    throw new ArgumentException($"Max allowed game names is {MaxItemsPerQuery}, attempted to query {getGamesQuery.GameNames.Count}");
 
                 foreach (var gameName in getGamesQuery.GameNames)
                 {
@@ -115,10 +145,29 @@ namespace ExternalAPIs.TwitchTv.Helix
         {
             if (getUsersQuery == null) throw new ArgumentNullException(nameof(getUsersQuery));
 
+            var users = new List<User>();
             var request = RequestConstants.Users;
             if (getUsersQuery.UserIds?.Any() == true)
             {
-                if (getUsersQuery.UserIds.Count > 100) throw new ArgumentException("Max allowed user ids is 100, attempted to query " + getUsersQuery.UserIds.Count);
+                if (getUsersQuery.UserIds.Count > MaxItemsPerQuery)
+                {
+                    var nonPagedRequest = request;
+                    int taken = 0;
+                    while (taken < getUsersQuery.UserIds.Count)
+                    {
+                        var pagedRequest = nonPagedRequest;
+                        var pagedIds = getUsersQuery.UserIds.Skip(taken).Take(DefaultItemsPerQuery);
+                        taken += DefaultItemsPerQuery;
+                        foreach (var userId in pagedIds)
+                        {
+                            if (pagedRequest == RequestConstants.Users) pagedRequest += "?id=" + userId;
+                            else pagedRequest += "&id=" + userId;
+                        }
+
+                        var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
+                        users.AddRange(usersRoot.Users);
+                    }
+                }
 
                 foreach (var userId in getUsersQuery.UserIds)
                 {
@@ -129,17 +178,42 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             if (getUsersQuery.UserNames?.Any() == true)
             {
-                if (getUsersQuery.UserNames.Count > 100) throw new ArgumentException("Max allowed usernames is 100, attempted to query " + getUsersQuery.UserNames.Count);
-
-                foreach (var userName in getUsersQuery.UserNames)
+                if (getUsersQuery.UserNames.Count > MaxItemsPerQuery)
                 {
-                    if (request == RequestConstants.Users) request += "?login=" + userName;
-                    else request += "&login=" + userName;
+                    var nonPagedRequest = request;
+                    int taken = 0;
+                    while (taken < getUsersQuery.UserNames.Count)
+                    {
+                        var pagedRequest = nonPagedRequest;
+                        var pagedUserNames = getUsersQuery.UserNames.Skip(taken).Take(DefaultItemsPerQuery);
+                        taken += DefaultItemsPerQuery;
+                        foreach (var userName in pagedUserNames)
+                        {
+                            if (pagedRequest == RequestConstants.Users) pagedRequest += "?login=" + userName;
+                            else pagedRequest += "&login=" + userName;
+                        }
+
+                        var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
+                        users.AddRange(usersRoot.Users);
+                    }
+                }
+                else
+                {
+                    foreach (var userName in getUsersQuery.UserNames)
+                    {
+                        if (request == RequestConstants.Users) request += "?login=" + userName;
+                        else request += "&login=" + userName;
+                    }
                 }
             }
 
-            var usersRoot = await ExecuteRequest<UsersRoot>(request, cancellationToken);
-            return usersRoot.Users;
+            if (!users.Any())
+            {
+                var usersRoot = await ExecuteRequest<UsersRoot>(request, cancellationToken);
+                users = usersRoot.Users;
+            }
+
+            return users;
         }
 
         public async Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default)

@@ -26,11 +26,8 @@ namespace Livestream.Monitor.ViewModels
             LivestreamNotification livestreamNotification,
             IMonitorStreamsModel model)
         {
-            if (livestreamNotification == null) throw new ArgumentNullException(nameof(livestreamNotification));
-            if (model == null) throw new ArgumentNullException(nameof(model));
-
-            LivestreamNotification = livestreamNotification;
-            this.model = model;
+            LivestreamNotification = livestreamNotification ?? throw new ArgumentNullException(nameof(livestreamNotification));
+            this.model = model ?? throw new ArgumentNullException(nameof(model));
         }
 
         public LivestreamNotification LivestreamNotification { get; }

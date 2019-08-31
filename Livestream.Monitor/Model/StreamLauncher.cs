@@ -24,11 +24,8 @@ namespace Livestream.Monitor.Model
 
         public StreamLauncher(ISettingsHandler settingsHandler, IWindowManager windowManager)
         {
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-
-            this.settingsHandler = settingsHandler;
-            this.windowManager = windowManager;
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.windowManager = windowManager ?? throw new ArgumentNullException(nameof(windowManager));
         }
 
         public List<LivestreamModel> WatchingStreams
@@ -67,7 +64,8 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, livestreamModel.ChatUrl);
+            var chatUrl = await livestreamModel.GetChatUrl;
+            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, chatUrl);
 
             await Task.Run(async () =>
             {
@@ -110,7 +108,8 @@ namespace Livestream.Monitor.Model
             var favoriteQualities = settingsHandler.Settings.GetStreamQualities(livestreamModel.ApiClient.ApiName);
             var qualities = favoriteQualities.Qualities.Union(new[] { favoriteQualities.FallbackQuality });
 
-            string livestreamerArgs = $"{livestreamModel.StreamUrl} {string.Join(",", qualities)}";
+            var streamUrl = await livestreamModel.GetStreamUrl;
+            string livestreamerArgs = $"{streamUrl} {string.Join(",", qualities)}";
             var apiClient = livestreamModel.ApiClient;
 
             // hack to pass through the client id to livestreamer

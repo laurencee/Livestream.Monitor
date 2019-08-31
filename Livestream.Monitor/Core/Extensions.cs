@@ -31,6 +31,13 @@ namespace Livestream.Monitor.Core
             return friendlyString.Replace(" ", string.Empty);
         }
 
+        /// <summary> Safe with null/empty strings </summary>
+        public static int ToInt(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return 0;
+            return int.Parse(input);
+        }
+
         /// <summary>
         /// Contains method allowing for a <see cref="StringComparison"/> to be passed in
         /// </summary>

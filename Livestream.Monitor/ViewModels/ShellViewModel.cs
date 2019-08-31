@@ -7,6 +7,7 @@ using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
+using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Views;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
@@ -20,6 +21,7 @@ namespace Livestream.Monitor.ViewModels
     {
         private readonly MainViewModel mainViewModel;
         private readonly INavigationService navigationService;
+        private readonly IMonitorStreamsModel monitorStreamsModel;
         public const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
@@ -41,15 +43,14 @@ namespace Livestream.Monitor.ViewModels
             SettingsViewModel settingsViewModel,
             MainViewModel mainViewModel,
             IEventAggregator eventAggregator,
-            INavigationService navigationService)
+            INavigationService navigationService,
+            IMonitorStreamsModel monitorStreamsModel)
         {
-            if (settingsViewModel == null) throw new ArgumentNullException(nameof(settingsViewModel));
-            if (mainViewModel == null) throw new ArgumentNullException(nameof(mainViewModel));
-            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
+            Settings = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
+            this.mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
+            this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
 
-            Settings = settingsViewModel;
-            this.mainViewModel = mainViewModel;
-            this.navigationService = navigationService;
             ActiveItem = mainViewModel;
 
             eventAggregator.Subscribe(this);
@@ -131,6 +132,7 @@ namespace Livestream.Monitor.ViewModels
 
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
             if (!Debugger.IsAttached) await CheckForNewVersion();
+            await InitializeMonitorStreamsModel();
             base.OnViewLoaded(view);
         }
 
@@ -159,6 +161,22 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        private async Task InitializeMonitorStreamsModel()
+        {
+            var dialogController = await this.ShowProgressAsync("Initializing", "Initializing App...");
+            try
+            {
+                await monitorStreamsModel.Initialize();
+            }
+            catch (Exception ex)
+            {
+                if (dialogController.IsOpen) await dialogController.CloseAsync();
+                await this.ShowMessageAsync("Error", $"An error occured initializing the app.{Environment.NewLine}{ex.Message}");
+            }
+
+            if (dialogController.IsOpen) await dialogController.CloseAsync();
+        }
+
         private async Task CheckForNewVersion()
         {
             var githubClient =
@@ -184,7 +202,7 @@ namespace Livestream.Monitor.ViewModels
 
                         if (dialogResult == MessageDialogResult.Affirmative)
                         {
-                            System.Diagnostics.Process.Start(latestRelease.HtmlUrl);
+                            Process.Start(latestRelease.HtmlUrl);
                         }
                     }
                 }
@@ -192,8 +210,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error",
-                    $"An error occured while checking for a newer version.{Environment.NewLine}{ex.Message}");
+                await this.ShowMessageAsync("Error", $"An error occured while checking for a newer version.{Environment.NewLine}{ex.Message}");
             }
 
             if (dialogController.IsOpen) await dialogController.CloseAsync();

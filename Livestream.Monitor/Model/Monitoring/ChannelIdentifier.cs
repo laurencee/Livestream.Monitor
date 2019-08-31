@@ -19,10 +19,9 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public ChannelIdentifier(IApiClient apiClient, string channelId)
         {
-            if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
-            ApiClient = apiClient;
+            ApiClient = apiClient ?? throw new ArgumentNullException(nameof(apiClient));
             ChannelId = channelId;
         }
 
@@ -31,6 +30,8 @@ namespace Livestream.Monitor.Model.Monitoring
         public IApiClient ApiClient { get; }
 
         public string ImportedBy { get; set; }
+
+        public string DisplayName { get; set; }
 
         public override string ToString() => $"{ApiClient.ApiName}:{ChannelId}";
 

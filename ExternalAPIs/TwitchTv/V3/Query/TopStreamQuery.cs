@@ -4,7 +4,7 @@ namespace ExternalAPIs.TwitchTv.V3.Query
     {
         public TopStreamQuery()
         {
-            Take = TwitchTvReadonlyClient.DefaultItemsPerQuery;
+            Take = TwitchTvV3ReadonlyClient.DefaultItemsPerQuery;
         }
 
         public string GameName { get; set; }

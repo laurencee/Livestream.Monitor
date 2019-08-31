@@ -12,8 +12,7 @@ namespace Livestream.Monitor.Core.UI
 
         public MetroWindowManager(ISettingsHandler settingsHandler)
         {
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            this.settingsHandler = settingsHandler;
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         }
 
         protected override Window EnsureWindow(object model, object view, bool isDialog)

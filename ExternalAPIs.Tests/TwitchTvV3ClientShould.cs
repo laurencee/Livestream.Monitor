@@ -10,7 +10,7 @@ namespace ExternalAPIs.Tests
     public class TwitchTvV3ClientShould
     {
         private const string StreamName = "etup";
-        private readonly TwitchTvReadonlyClient sut = new TwitchTvReadonlyClient();
+        private readonly TwitchTvV3ReadonlyClient sut = new TwitchTvV3ReadonlyClient();
 
         [Fact]
         public async Task GetFollowsFromUser()

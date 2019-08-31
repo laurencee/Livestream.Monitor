@@ -32,11 +32,8 @@ namespace Livestream.Monitor.ViewModels
             ISettingsHandler settingsHandler,
             ThemeSelectorViewModel themeSelectorViewModel)
         {
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (themeSelectorViewModel == null) throw new ArgumentNullException(nameof(themeSelectorViewModel));
-
-            this.settingsHandler = settingsHandler;
-            ThemeSelector = themeSelectorViewModel;
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            ThemeSelector = themeSelectorViewModel ?? throw new ArgumentNullException(nameof(themeSelectorViewModel));
 
             ThemeSelector.ActivateWith(this);
         }

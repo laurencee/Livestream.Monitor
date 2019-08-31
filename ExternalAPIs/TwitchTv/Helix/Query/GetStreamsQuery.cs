@@ -7,7 +7,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
         public string CommunityId { get; set; }
 
         /// <summary> Number of objects to return, max 100, defaulted to 20 </summary>
-        public int First { get; set; } = TwitchTvHelixReadonlyClient.DefaultItemsPerQuery;
+        public int First { get; set; } = TwitchTvHelixHelixReadonlyClient.DefaultItemsPerQuery;
 
 
         public List<string> Languages { get; set; } = new List<string>();

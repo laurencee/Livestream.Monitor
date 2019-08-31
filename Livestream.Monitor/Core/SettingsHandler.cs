@@ -35,7 +35,7 @@ namespace Livestream.Monitor.Core
 
                 if (settings == null)
                 {
-                    settings = new Settings();
+                    settings = new Settings() { SettingsVersion = Settings.CurrentSettingsVersion };
                     saveSettings = true;
                 }
                 else
@@ -43,6 +43,12 @@ namespace Livestream.Monitor.Core
                     saveSettings = ExcludeNotifyConverter.SaveRequired;
                 }
 
+                if (settings.SettingsVersion < Settings.CurrentSettingsVersion)
+                {
+                    // Can do migrations here in future
+                    saveSettings = true;
+                }
+                
                 // try to set a nice default value for the chat command line
                 if (settings.ChatCommandLine == null)
                 {

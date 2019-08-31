@@ -26,8 +26,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
         {
-            if (youtubeClient == null) throw new ArgumentNullException(nameof(youtubeClient));
-            this.youtubeClient = youtubeClient;
+            this.youtubeClient = youtubeClient ?? throw new ArgumentNullException(nameof(youtubeClient));
         }
 
         public string ApiName => API_NAME;
@@ -52,20 +51,20 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
-        public string GetStreamUrl(string channelId)
+        public Task<string> GetStreamUrl(string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
 
-            return $"{BaseUrl}watch?v={channelId}";
+            return Task.FromResult($"{BaseUrl}watch?v={channelId}");
         }
 
-        public string GetChatUrl(string channelId)
+        public Task<string> GetChatUrl(string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
 
             // the '&from_gaming=1' prevents the annoying popup message appearing at the top of the chat window
             // not all youtube streams have chat support as chat can be disabled for a stream, need to see if there's an api call that provides that info
-            return $"{BaseUrl}live_chat?v={channelId}&dark_theme=1&is_popout=1&from_gaming=1";
+            return Task.FromResult($"{BaseUrl}live_chat?v={channelId}&dark_theme=1&is_popout=1&from_gaming=1");
         }
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)

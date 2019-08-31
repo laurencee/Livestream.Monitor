@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -7,12 +8,15 @@ using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs;
+using ExternalAPIs.TwitchTv.Helix;
+using ExternalAPIs.TwitchTv.Helix.Dto;
+using ExternalAPIs.TwitchTv.Helix.Query;
 using ExternalAPIs.TwitchTv.V3;
-using ExternalAPIs.TwitchTv.V3.Dto;
 using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls.Dialogs;
+using RequestConstants = ExternalAPIs.TwitchTv.Helix.RequestConstants;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
@@ -23,21 +27,21 @@ namespace Livestream.Monitor.Model.ApiClients
         private const string HighlightVodType = "Highlights";
         private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
 
-        private readonly ITwitchTvReadonlyClient twitchTvClient;
+        private readonly ITwitchTvV3ReadonlyClient twitchTvV3Client;
+        private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient;
         private readonly ISettingsHandler settingsHandler;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
-        private readonly List<LivestreamQueryResult> offlineQueryResultsCache = new List<LivestreamQueryResult>();
+        private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
+        private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
 
-        // 1 time per application run
-        private bool queryAllStreams = true;
-
-        public TwitchApiClient(ITwitchTvReadonlyClient twitchTvClient, ISettingsHandler settingsHandler)
+        public TwitchApiClient(
+            ITwitchTvV3ReadonlyClient twitchTvV3client,
+            ITwitchTvHelixReadonlyClient twitchTvHelixClient, 
+            ISettingsHandler settingsHandler)
         {
-            if (twitchTvClient == null) throw new ArgumentNullException(nameof(twitchTvClient));
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-
-            this.twitchTvClient = twitchTvClient;
-            this.settingsHandler = settingsHandler;
+            twitchTvV3Client = twitchTvV3client ?? throw new ArgumentNullException(nameof(twitchTvV3client));
+            this.twitchTvHelixClient = twitchTvHelixClient ?? throw new ArgumentNullException(nameof(twitchTvHelixClient));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         }
 
         public string ApiName => API_NAME;
@@ -134,18 +138,20 @@ namespace Livestream.Monitor.Model.ApiClients
                 $"Please make sure you copy the full url, it should start with '{RedirectUri}'");
         }
 
-        public string GetStreamUrl(string channelId)
+        public async Task<string> GetStreamUrl(string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
 
-            return $"{BaseUrl}{channelId}/";
+            var urlSuffix = await GetStreamUrlSuffixById(channelId);
+            return $"{BaseUrl}{urlSuffix}/";
         }
 
-        public string GetChatUrl(string channelId)
+        public async Task<string> GetChatUrl(string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
 
-            return $"{BaseUrl}{channelId}/chat?popout=true";
+            var urlSuffix = await GetStreamUrlSuffixById(channelId);
+            return $"{BaseUrl}{urlSuffix}/chat?popout=true";
         }
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)
@@ -154,12 +160,11 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // shorter implementation of QueryChannels
             var queryResults = new List<LivestreamQueryResult>();
-            var onlineStreams = await twitchTvClient.GetStreamsDetails(new[] { newChannel.ChannelId });
+            var onlineStreams = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { newChannel.ChannelId } });
             var onlineStream = onlineStreams.FirstOrDefault();
             if (onlineStream != null)
             {
-                var livestream = new LivestreamModel(onlineStream.Channel?.Name, newChannel);
-                livestream.PopulateWithChannel(onlineStream.Channel);
+                var livestream = new LivestreamModel(onlineStream.UserId, newChannel);
                 livestream.PopulateWithStreamDetails(onlineStream);
                 queryResults.Add(new LivestreamQueryResult(newChannel)
                 {
@@ -167,18 +172,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 });
             }
 
-            // we always need to check for offline channels when attempting to add a channel for the first time
-            // this is the only way to detect non-existant/banned channels
-            var offlineStreams = await GetOfflineStreamQueryResults(new[] { newChannel }, CancellationToken.None);
-            if (onlineStream == null || offlineStreams.Any(x => !x.IsSuccess))
-                queryResults.AddRange(offlineStreams);
-            else
-                offlineStreams.Clear();
-
             if (queryResults.All(x => x.IsSuccess))
             {
                 moniteredChannels.Add(newChannel);
-                offlineQueryResultsCache.AddRange(offlineStreams.Where(x => x.IsSuccess));
             }
             return queryResults;
         }
@@ -191,11 +187,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
-            // we keep our offline query results cached so we don't need to re-query them again this application run
-            // as such, we must cleanup any previous query result that has the channel identifier being removed
-            var queryResult = offlineQueryResultsCache.FirstOrDefault(x => Equals(channelIdentifier, x.ChannelIdentifier));
-            if (queryResult != null) offlineQueryResultsCache.Remove(queryResult);
-
             moniteredChannels.Remove(channelIdentifier);
             return Task.CompletedTask;
         }
@@ -207,6 +198,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
             List<Stream> onlineStreams = new List<Stream>();
+            var users = new List<User>();
 
             int retryCount = 0;
             bool success = false;
@@ -214,7 +206,13 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 try
                 {
-                    onlineStreams = await twitchTvClient.GetStreamsDetails(moniteredChannels.Select(x => x.ChannelId), cancellationToken);
+                    var query = new GetStreamsQuery();
+                    query.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+                    onlineStreams = await twitchTvHelixClient.GetStreams(query, cancellationToken);
+
+                    var usersQuery = new GetUsersQuery();
+                    usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+                    users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
                     success = true;
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
@@ -224,55 +222,39 @@ namespace Livestream.Monitor.Model.ApiClients
                 }
             }
 
+            foreach (var user in users)
+            {
+                channelIdToUserMap.Remove(user.Id);
+                channelIdToUserMap.Add(user.Id, user);
+            }
+
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
 
-                var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.Channel?.Name));
-                var livestream = new LivestreamModel(onlineStream.Channel?.Name, channelIdentifier);
-                livestream.PopulateWithChannel(onlineStream.Channel);
+                var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.UserId));
+                var livestream = new LivestreamModel(onlineStream.UserId, channelIdentifier);
                 livestream.PopulateWithStreamDetails(onlineStream);
                 queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                 {
                     LivestreamModel = livestream
                 });
-
-                // remove cached offline query result if it exists
-                var cachedOfflineResult = offlineQueryResultsCache.FirstOrDefault(x => x.ChannelIdentifier.Equals(livestream.ChannelIdentifier));
-                if (cachedOfflineResult != null) offlineQueryResultsCache.Remove(cachedOfflineResult);
             }
 
-            // As offline stream querying is expensive due to no bulk call, we only do it once for the majority of streams per application run.
-            var offlineChannels = moniteredChannels.Where(x => onlineStreams.All(y => !y.Channel.Name.IsEqualTo(x.ChannelId))).ToList();
-            if (queryAllStreams)
+            var offlineStreams = moniteredChannels.Where(x => onlineStreams.All(y => y.UserId != x.ChannelId)).ToList();
+            foreach (var offlineStream in offlineStreams)
             {
-                var offlineStreams = await GetOfflineStreamQueryResults(offlineChannels, cancellationToken);
-                // only treat offline streams as being queried if no cancel occurred
-                if (!cancellationToken.IsCancellationRequested)
+                var queryResult = new LivestreamQueryResult(offlineStream)
                 {
-                    offlineQueryResultsCache.AddRange(offlineStreams);
-                    queryAllStreams = false;
-                }
-            }
-            else // we also need to query stream information for streams which have gone offline since our last query
-            {
-                var newlyOfflineStreams = offlineChannels.Except(offlineQueryResultsCache.Select(x => x.ChannelIdentifier)).ToList();
-                if (newlyOfflineStreams.Any())
-                {
-                    var offlineStreams = await GetOfflineStreamQueryResults(newlyOfflineStreams, cancellationToken);
-                    if (!cancellationToken.IsCancellationRequested)
+                    LivestreamModel = new LivestreamModel(offlineStream.ChannelId, offlineStream)
                     {
-                        offlineQueryResultsCache.AddRange(offlineStreams);
+                        DisplayName = offlineStream.DisplayName ?? offlineStream.ChannelId
                     }
-                }
+                };
+
+                queryResults.Add(queryResult);
             }
 
-            foreach (var offlineQueryResult in offlineQueryResultsCache.Except(queryResults).Where(x => x.IsSuccess))
-            {
-                offlineQueryResult.LivestreamModel.Offline();
-            }
-
-            queryResults.AddRange(offlineQueryResultsCache);
             return queryResults;
         }
 
@@ -281,29 +263,33 @@ namespace Livestream.Monitor.Model.ApiClients
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
             if (string.IsNullOrWhiteSpace(vodQuery.StreamId)) throw new ArgumentNullException(nameof(vodQuery.StreamId));
 
-            var channelVideosQuery = new ChannelVideosQuery()
+            var getVideosQuery = new GetVideosQuery()
             {
-                ChannelName = vodQuery.StreamId,
-                Take = vodQuery.Take,
-                Skip = vodQuery.Skip,
-                HLSVodsOnly = true,
-                BroadcastsOnly = vodQuery.VodTypes.Contains(BroadcastVodType)
+                UserId = vodQuery.StreamId,
             };
-            var channelVideos = await twitchTvClient.GetChannelVideos(channelVideosQuery);
-            var vods = channelVideos.Select(channelVideo => new VodDetails
+            var videos = await twitchTvHelixClient.GetVideos(getVideosQuery);
+            var vods = videos.Select(video =>
             {
-                // hack to correct the url path for twitch videos see github issue: https://github.com/laurencee/Livestream.Monitor/issues/24
-                // was previously   twitch.tv/videos/XXXXXXX
-                // now is           twitch.tv/user/v/XXXXXXX
-                Url = channelVideo.Url.Replace(@"twitch.tv/videos/", @"twitch.tv/user/v/"),
-                Length = TimeSpan.FromSeconds(channelVideo.Length),
-                RecordedAt = channelVideo.RecordedAt ?? DateTimeOffset.MinValue,
-                Views = channelVideo.Views,
-                Game = channelVideo.Game,
-                Description = channelVideo.Description,
-                Title = channelVideo.Title,
-                PreviewImage = channelVideo.Preview,
-                ApiClient = this,
+                var largeThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "640").Replace("%{height}", "360");
+                // stupid fucking new duration format from twitch instead of just returning seconds or some other sensible value
+                var match = Regex.Match(video.Duration, @"((?<hours>\d+)?h)?((?<mins>\d+)?)m?(?<secs>\d+)s");
+                var hours = match.Groups["hours"].Value;
+                var mins = match.Groups["mins"].Value;
+                var secs = match.Groups["secs"].Value;
+                var timespan = new TimeSpan(hours.ToInt(), mins.ToInt(), secs.ToInt());
+
+                return new VodDetails
+                {
+                    Url = video.Url,
+                    Length = timespan,
+                    RecordedAt = video.CreatedAt,
+                    Views = video.ViewCount,
+                    //Game = video.Game,
+                    Description = video.Description,
+                    Title = video.Title,
+                    PreviewImage = largeThumbnail,
+                    ApiClient = this,
+                };
             }).ToList();
 
             return vods;
@@ -312,15 +298,22 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
-            var topStreams = await twitchTvClient.GetTopStreams(topStreamQuery);
+
+            var query = new GetStreamsQuery();
+            if (!string.IsNullOrWhiteSpace(topStreamQuery.GameName))
+            {
+                var gameId = await GetGameIdByName(topStreamQuery.GameName);
+                query.GameIds.Add(gameId);
+            }
+
+            var topStreams = await twitchTvHelixClient.GetStreams(query);
 
             return topStreams.Select(x =>
             {
-                var channelIdentifier = new ChannelIdentifier(this, x.Channel.Name);
+                var channelIdentifier = new ChannelIdentifier(this, x.Id);
                 var queryResult = new LivestreamQueryResult(channelIdentifier);
-                var livestreamModel = new LivestreamModel(x.Channel?.Name, channelIdentifier);
+                var livestreamModel = new LivestreamModel(x.UserId, channelIdentifier);
                 livestreamModel.PopulateWithStreamDetails(x);
-                livestreamModel.PopulateWithChannel(x.Channel);
 
                 queryResult.LivestreamModel = livestreamModel;
                 return queryResult;
@@ -331,7 +324,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (string.IsNullOrEmpty(filterGameName))
             {
-                return (await twitchTvClient.GetTopGames()).Select(x => new KnownGame()
+                return (await twitchTvV3Client.GetTopGames()).Select(x => new KnownGame()
                 {
                     GameName = x.Game.Name,
                     ThumbnailUrls = new ThumbnailUrls()
@@ -343,7 +336,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 }).ToList();
             }
 
-            var twitchGames = await twitchTvClient.SearchGames(filterGameName);
+            var twitchGames = await twitchTvV3Client.SearchGames(filterGameName);
             return twitchGames.Select(x => new KnownGame()
             {
                 GameName = x.Name,
@@ -358,44 +351,50 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
         {
-            var userFollows = await twitchTvClient.GetUserFollows(userName);
-            return (from follow in userFollows.Follows
-                    let channelIdentifier = new ChannelIdentifier(this, follow.Channel.Name)
+            // TODO - query all user followed channels
+
+            var userFollows = await twitchTvHelixClient.GetUserFollows(userName);
+            return (from follow in userFollows
+                    let channelIdentifier = new ChannelIdentifier(this, follow.ToId)
                     select new LivestreamQueryResult(channelIdentifier)
                     {
-                        LivestreamModel = new LivestreamModel(follow.Channel?.Name, channelIdentifier)
+                        LivestreamModel = new LivestreamModel(follow.ToId, channelIdentifier)
                         {
-                            DisplayName = follow.Channel?.Name,
-                            Description = follow.Channel?.Status,
-                            Game = follow.Channel?.Game,
-                            IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
+                            DisplayName = follow.ToName,
+                            //Description = follow.Channel?.Status,
+                            //Game = follow.Channel?.Game,
+                            //IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
                             ImportedBy = userName,
-                            BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
+                            //BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
                         }
                     }).ToList();
         }
 
-        private async Task<List<LivestreamQueryResult>> GetOfflineStreamQueryResults(
-            IEnumerable<ChannelIdentifier> offlineChannels,
-            CancellationToken cancellationToken)
+        private async Task<string> GetStreamUrlSuffixById(string channelId)
         {
-            return await offlineChannels.ExecuteInParallel(async channelIdentifier =>
-            {
-                var queryResult = new LivestreamQueryResult(channelIdentifier);
-                try
-                {
-                    var channel = await twitchTvClient.GetChannelDetails(channelIdentifier.ChannelId, cancellationToken);
-                    queryResult.LivestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
-                    queryResult.LivestreamModel.PopulateWithChannel(channel);
-                    queryResult.LivestreamModel.Offline();
-                }
-                catch (Exception ex)
-                {
-                    queryResult.FailedQueryException = new FailedQueryException(channelIdentifier, ex);
-                }
+            if (channelIdToUserMap.TryGetValue(channelId, out var user)) return user.Login;
 
-                return queryResult;
-            }, Constants.HalfRefreshPollingTime, cancellationToken);
+            var query = new GetUsersQuery();
+            query.UserIds.Add(channelId);
+            var users = await twitchTvHelixClient.GetUsers(query);
+            channelIdToUserMap.Add(channelId, users[0]);
+            return users[0].Login;
+        }
+
+        private async Task<string> GetGameIdByName(string gameName)
+        {
+            if (!gameNameToIdMap.TryGetValue(gameName, out var gameId))
+            {
+                var query = new GetGamesQuery();
+                query.GameNames.Add(gameName);
+                var games = await twitchTvHelixClient.GetGames(query);
+                if (!games.Any()) return null;
+
+                gameId = games[0].Id;
+                gameNameToIdMap.Add(gameName, gameId);
+            }
+
+            return gameId;
         }
 
         /// <summary> Launches browser for user to authorize us </summary>

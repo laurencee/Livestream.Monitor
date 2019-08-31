@@ -7,9 +7,7 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         public LivestreamQueryResult(ChannelIdentifier channelIdentifier)
         {
-            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
-
-            ChannelIdentifier = channelIdentifier;
+            ChannelIdentifier = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
         }
 
         public ChannelIdentifier ChannelIdentifier { get; }

@@ -38,7 +38,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Dto
         public Uri OfflineImageUrl { get; set; }
 
         [JsonProperty("view_count")]
-        public long ViewCount { get; set; }
+        public long? ViewCount { get; set; }
 
         [JsonProperty("email")]
         public string Email { get; set; }

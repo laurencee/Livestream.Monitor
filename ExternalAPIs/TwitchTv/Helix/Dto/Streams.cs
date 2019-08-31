@@ -40,7 +40,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Dto
         public long ViewerCount { get; set; }
 
         [JsonProperty("started_at")]
-        public DateTimeOffset StartedAt { get; set; }
+        public DateTimeOffset? StartedAt { get; set; }
 
         [JsonProperty("language")]
         public string Language { get; set; }

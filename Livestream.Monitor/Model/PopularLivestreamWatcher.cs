@@ -34,15 +34,12 @@ namespace Livestream.Monitor.Model
             IMonitorStreamsModel monitorStreamsModel,
             IApiClientFactory apiClientFactory)
         {
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (notificationHandler == null) throw new ArgumentNullException(nameof(notificationHandler));
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
             if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-            
-            this.settingsHandler = settingsHandler;
-            this.notificationHandler = notificationHandler;
-            this.apiClientFactory = apiClientFactory;
+
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.notificationHandler = notificationHandler ?? throw new ArgumentNullException(nameof(notificationHandler));
+            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
 
             clickAction = (model, notification) =>
             {

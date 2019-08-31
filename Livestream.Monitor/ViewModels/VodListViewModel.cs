@@ -43,13 +43,9 @@ namespace Livestream.Monitor.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             IApiClientFactory apiClientFactory)
         {
-            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-
-            this.streamLauncher = streamLauncher;
-            this.monitorStreamsModel = monitorStreamsModel;
-            this.apiClientFactory = apiClientFactory;
+            this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
+            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
+            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
 
             ItemsPerPage = VOD_TILES_PER_PAGE;
         }

@@ -66,7 +66,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public LivestreamModel SelectedLivestream
         {
-            get { return selectedLivestream; }
+            get => selectedLivestream;
             set
             {
                 if (Equals(value, selectedLivestream)) return;
@@ -75,11 +75,13 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
+        public bool Initialised => true;
+
         public bool CanRefreshLivestreams => true;
 
         public DateTimeOffset LastRefreshTime
         {
-            get { return lastRefreshTime; }
+            get => lastRefreshTime;
             private set
             {
                 if (value.Equals(lastRefreshTime)) return;
@@ -88,7 +90,7 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public bool CanOpenStream { get; }
+        public bool CanOpenStream { get; } = true;
 
         public event EventHandler LivestreamsRefreshComplete;
 
@@ -114,6 +116,11 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public void IgnoreQueryFailure(string errorToIgnore)
         {
+        }
+
+        public Task Initialize()
+        {
+            return Task.CompletedTask;
         }
 
         public Task RemoveLivestream(ChannelIdentifier channelIdentifier)

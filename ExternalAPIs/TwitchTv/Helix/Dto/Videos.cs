@@ -37,7 +37,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Dto
         public DateTimeOffset PublishedAt { get; set; }
 
         [JsonProperty("url")]
-        public Uri Url { get; set; }
+        public string Url { get; set; }
 
         /// <summary> Contains a {width} and {height} property that must be replaced to get the actual url </summary>
         [JsonProperty("thumbnail_url")]

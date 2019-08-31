@@ -8,8 +8,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public FailedQueryException(ChannelIdentifier channelIdentifier, Exception ex) 
             : base($"Error querying {channelIdentifier.ApiClient.ApiName} channel '{channelIdentifier.ChannelId}'. {ex.Message}", ex)
         {
-            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
-            ChannelIdentifier = channelIdentifier;
+            ChannelIdentifier = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
         }
 
         public ChannelIdentifier ChannelIdentifier { get; }

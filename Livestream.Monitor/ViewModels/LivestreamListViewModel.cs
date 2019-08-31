@@ -43,20 +43,16 @@ namespace Livestream.Monitor.ViewModels
             StreamLauncher streamLauncher,
             INavigationService navigationService)
         {
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
-
-            this.streamLauncher = streamLauncher;
-            this.navigationService = navigationService;
-            this.StreamsModel = monitorStreamsModel;
+            this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
+            this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            this.StreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
             FilterModel = filterModel;
             refreshTimer = new DispatcherTimer { Interval = Constants.RefreshPollingTime };
         }
 
         public bool Loading
         {
-            get { return loading; }
+            get => loading;
             set
             {
                 if (value == loading) return;
@@ -202,10 +198,11 @@ namespace Livestream.Monitor.ViewModels
         {
             if (StreamsModel.SelectedLivestream?.ApiClient == null) return;
 
+            // clipboard.SetDataObject can sometimes fail due to a WPF bug, at least don't crash the app if this happens
             try
             {
-                // clipboard.settext can sometimes fail due to a WPF bug, at least don't crash the app if this happens
-                Clipboard.SetDataObject(StreamsModel.SelectedLivestream.StreamUrl);
+                var streamUrl = await StreamsModel.SelectedLivestream.GetStreamUrl;
+                Clipboard.SetDataObject(streamUrl);
             }
             catch (Exception e)
             {
@@ -222,6 +219,7 @@ namespace Livestream.Monitor.ViewModels
                 refreshErrorCount = 0;
                 refreshTimer.Tick += RefreshTimerOnTick;
                 StreamsModel.LivestreamsRefreshComplete += OnLivestreamsRefreshComplete;
+                StreamsModel.PropertyChanged += StreamsModelOnPropertyChanged;
                 FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
                 ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
@@ -250,11 +248,20 @@ namespace Livestream.Monitor.ViewModels
             base.OnActivate();
         }
 
+        private async void StreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(StreamsModel.Initialised) && StreamsModel.Initialised)
+            {
+                await RefreshLivestreams();
+            }
+        }
+
         protected override void OnDeactivate(bool close)
         {
             refreshTimer.Tick -= RefreshTimerOnTick;
             refreshTimer.Stop();
             StreamsModel.LivestreamsRefreshComplete -= OnLivestreamsRefreshComplete;
+            StreamsModel.PropertyChanged -= StreamsModelOnPropertyChanged;
             FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
             ViewSource.Filter -= ViewSourceOnFilter;
             ViewSource.SortDescriptions.Clear();

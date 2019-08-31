@@ -36,15 +36,10 @@ namespace Livestream.Monitor.Model
             ISettingsHandler settingsHandler,
             StreamLauncher streamLauncher)
         {
-            if (windowManager == null) throw new ArgumentNullException(nameof(windowManager));
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-
-            this.windowManager = windowManager;
-            this.monitorStreamsModel = monitorStreamsModel;
-            this.settingsHandler = settingsHandler;
-            this.streamLauncher = streamLauncher;
+            this.windowManager = windowManager ?? throw new ArgumentNullException(nameof(windowManager));
+            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
 
             monitorStreamsModel.LivestreamsRefreshComplete += MonitorStreamsModelOnLivestreamsRefreshComplete;
 

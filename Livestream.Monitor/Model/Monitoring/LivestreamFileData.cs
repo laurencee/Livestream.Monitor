@@ -1,8 +1,18 @@
-﻿using Newtonsoft.Json;
+﻿using System.Collections.Generic;
+using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamFileData
+    {
+        public const int CurrentFileVersion = 1;
+
+        public int FileVersion { get; set; }
+
+        public List<LivestreamFileEntry> LivestreamFileEntries { get; set; }
+    }
+
+    public class LivestreamFileEntry
     {
         private string streamProvider;
 
@@ -16,6 +26,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         /// <summary> The username this livestream was imported from </summary>
         public string ImportedBy { get; set; }
+
+        public string DisplayName { get; set; }
 
         /// <summary> The site which this livestream belongs to (twitch/youtube etc.) </summary>
         [JsonRequired]
@@ -31,7 +43,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 return streamProvider;
             }
-            set { streamProvider = value; }
+            set => streamProvider = value;
         }
     }
 }

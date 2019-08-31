@@ -16,11 +16,8 @@ namespace Livestream.Monitor.ViewModels
 
         public MainViewModel(HeaderViewModel header, LivestreamListViewModel livestreamList)
         {
-            if (header == null) throw new ArgumentNullException(nameof(header));
-            if (livestreamList == null) throw new ArgumentNullException(nameof(livestreamList));
-
-            Header = header;
-            LivestreamList = livestreamList;
+            Header = header ?? throw new ArgumentNullException(nameof(header));
+            LivestreamList = livestreamList ?? throw new ArgumentNullException(nameof(livestreamList));
 
             Header.ActivateWith(this);
             Header.DeactivateWith(this);

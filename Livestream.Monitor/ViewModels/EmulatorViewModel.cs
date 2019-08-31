@@ -15,8 +15,7 @@ namespace Livestream.Monitor.ViewModels
         public EmulatorViewModel(
             IMonitorStreamsModel monitorStreamsModel)
         {
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            this.monitorStreamsModel = monitorStreamsModel;
+            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
         }
 
         public override string DisplayName { get; set; } = "EMULATOR";

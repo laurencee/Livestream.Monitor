@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -6,6 +7,6 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         void SaveToDisk(IEnumerable<ChannelIdentifier> livestreams);
 
-        List<ChannelIdentifier> LoadFromDisk();
+        Task<List<ChannelIdentifier>> LoadFromDisk();
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -34,10 +35,9 @@ namespace Livestream.Monitor.Model
         public LivestreamModel(string id, ChannelIdentifier channelIdentifier)
         {
             if (String.IsNullOrWhiteSpace(id)) throw new ArgumentException("Argument is null or whitespace", nameof(id));
-            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
 
             Id = id;
-            ChannelIdentifier = channelIdentifier;
+            ChannelIdentifier = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
             UniqueStreamKey = new UniqueStreamKey(ApiClient.ApiName, Id);
         }
 
@@ -53,7 +53,7 @@ namespace Livestream.Monitor.Model
 
         public bool Live
         {
-            get { return live; }
+            get => live;
             set
             {
                 if (value == live) return;
@@ -69,7 +69,7 @@ namespace Livestream.Monitor.Model
 
         public string DisplayName
         {
-            get { return displayName; }
+            get => displayName;
             set
             {
                 if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(DisplayName));
@@ -81,7 +81,7 @@ namespace Livestream.Monitor.Model
 
         public string Description
         {
-            get { return description; }
+            get => description;
             set
             {
                 if (value == description) return;
@@ -92,7 +92,7 @@ namespace Livestream.Monitor.Model
 
         public string Game
         {
-            get { return game; }
+            get => game;
             set
             {
                 if (value == game) return;
@@ -103,7 +103,7 @@ namespace Livestream.Monitor.Model
 
         public long Viewers
         {
-            get { return viewers; }
+            get => viewers;
             set
             {
                 if (value == viewers) return;
@@ -114,7 +114,7 @@ namespace Livestream.Monitor.Model
 
         public DateTimeOffset? StartTime
         {
-            get { return startTime; }
+            get => startTime;
             set
             {
                 if (value.Equals(startTime)) return;
@@ -126,7 +126,7 @@ namespace Livestream.Monitor.Model
 
         public bool IsPartner
         {
-            get { return isPartner; }
+            get => isPartner;
             set
             {
                 if (value == isPartner) return;
@@ -137,7 +137,7 @@ namespace Livestream.Monitor.Model
 
         public ThumbnailUrls ThumbnailUrls
         {
-            get { return thumbnailUrls; }
+            get => thumbnailUrls;
             set
             {
                 if (Equals(value, thumbnailUrls)) return;
@@ -148,7 +148,7 @@ namespace Livestream.Monitor.Model
 
         public string BroadcasterLanguage
         {
-            get { return broadcasterLanguage; }
+            get => broadcasterLanguage;
             set
             {
                 if (value == broadcasterLanguage) return;
@@ -159,7 +159,7 @@ namespace Livestream.Monitor.Model
 
         public string Language
         {
-            get { return language; }
+            get => language;
             set
             {
                 if (value == language) return;
@@ -168,9 +168,9 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public string StreamUrl => ApiClient?.GetStreamUrl(Id);
+        public Task<string> GetStreamUrl => ApiClient?.GetStreamUrl(ChannelIdentifier.ChannelId);
 
-        public string ChatUrl => ApiClient?.GetChatUrl(Id);
+        public Task<string> GetChatUrl => ApiClient?.GetChatUrl(ChannelIdentifier.ChannelId);
 
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }
@@ -179,7 +179,7 @@ namespace Livestream.Monitor.Model
 
         public DateTimeOffset? LastLiveTime
         {
-            get { return lastLiveTime; }
+            get => lastLiveTime;
             private set
             {
                 if (value.Equals(lastLiveTime)) return;
@@ -191,7 +191,7 @@ namespace Livestream.Monitor.Model
         /// <summary> Exclude this livestream from raising popup notifications </summary>
         public bool DontNotify
         {
-            get { return dontNotify; }
+            get => dontNotify;
             set
             {
                 if (value == dontNotify) return;

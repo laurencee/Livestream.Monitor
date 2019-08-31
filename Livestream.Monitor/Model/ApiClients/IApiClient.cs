@@ -36,10 +36,10 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <returns>True if the user was authorized successfully</returns>
         Task Authorize(IViewAware screen);
 
-        string GetStreamUrl(string channelId);
+        Task<string> GetStreamUrl(string channelId);
 
         /// <summary> Returns null if <see cref="HasChatSupport"/> is false </summary>
-        string GetChatUrl(string channelId);
+        Task<string> GetChatUrl(string channelId);
 
         // TODO - consider isolating the add/remove/query logic into some other "monitoring api client" class
         /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called  and immediately queries the channel. </summary>

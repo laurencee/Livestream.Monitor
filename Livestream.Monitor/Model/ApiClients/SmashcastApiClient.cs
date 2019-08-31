@@ -28,8 +28,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public SmashcastApiClient(ISmashcastReadonlyClient smashcastClient)
         {
-            if (smashcastClient == null) throw new ArgumentNullException(nameof(smashcastClient));
-            this.smashcastClient = smashcastClient;
+            this.smashcastClient = smashcastClient ?? throw new ArgumentNullException(nameof(smashcastClient));
         }
 
         public string ApiName => API_NAME;
@@ -54,18 +53,18 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
-        public string GetStreamUrl(string channelId)
+        public Task<string> GetStreamUrl(string channelId)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
-            return $"{BaseUrl}{channelId}";
+            return Task.FromResult($"{BaseUrl}{channelId}");
         }
 
-        public string GetChatUrl(string channelId)
+        public Task<string> GetChatUrl(string channelId)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
-            return $"{BaseUrl}embedchat/{channelId}?autoconnect=true";
+            return Task.FromResult($"{BaseUrl}embedchat/{channelId}?autoconnect=true");
         }
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ExternalAPIs.Mixer;
 using ExternalAPIs.Smashcast;
+using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.TwitchTv.V3;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Core;
@@ -22,7 +23,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
-            twitchApiClient = new TwitchApiClient(new TwitchTvReadonlyClient(), settingsHandler);
+            twitchApiClient = new TwitchApiClient(new TwitchTvV3ReadonlyClient(), new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
             youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
             smashcastApiClient = new SmashcastApiClient(new SmashcastReadonlyClient());
             mixerClient = new MixerApiClient(new MixerReadonlyClient());

@@ -16,12 +16,11 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
         private readonly IApiClientFactory apiClientFactory;
-        private readonly BindableCollection<LivestreamModel> followedLivestreams = new BindableCollection<LivestreamModel>();
         private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
         private readonly List<string> ignoredQueryFailures = new List<string>();
 
         private bool initialised;
-        private bool canRefreshLivestreams = true;
+        private bool canRefreshLivestreams;
         private LivestreamModel selectedLivestream;
         private DateTimeOffset lastRefreshTime;
 
@@ -37,7 +36,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
             for (int i = 0; i < 100; i++)
             {
-                followedLivestreams.Add(new LivestreamModel("Livestream " + i, null)
+                Livestreams.Add(new LivestreamModel("Livestream " + i, null)
                 {
                     Live = i < 14,
                     DisplayName = $"Channel Name {i + 1}",
@@ -56,27 +55,16 @@ namespace Livestream.Monitor.Model.Monitoring
             ISettingsHandler settingsHandler,
             IApiClientFactory apiClientFactory)
         {
-            if (fileHandler == null) throw new ArgumentNullException(nameof(fileHandler));
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-
-            this.fileHandler = fileHandler;
-            this.settingsHandler = settingsHandler;
-            this.apiClientFactory = apiClientFactory;
+            this.fileHandler = fileHandler ?? throw new ArgumentNullException(nameof(fileHandler));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
         }
 
-        public BindableCollection<LivestreamModel> Livestreams
-        {
-            get
-            {
-                if (!initialised) LoadLivestreams();
-                return followedLivestreams;
-            }
-        }
+        public BindableCollection<LivestreamModel> Livestreams { get; } = new BindableCollection<LivestreamModel>();
 
         public LivestreamModel SelectedLivestream
         {
-            get { return selectedLivestream; }
+            get => selectedLivestream;
             set
             {
                 if (Equals(value, selectedLivestream)) return;
@@ -88,9 +76,20 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public bool CanOpenStream => selectedLivestream != null && selectedLivestream.Live;
 
+        public bool Initialised
+        {
+            get => initialised;
+            private set
+            {
+                if (value == initialised) return;
+                initialised = value;
+                NotifyOfPropertyChange();
+            }
+        }
+
         public bool CanRefreshLivestreams
         {
-            get { return canRefreshLivestreams; }
+            get => canRefreshLivestreams;
             private set
             {
                 if (value == canRefreshLivestreams) return;
@@ -101,7 +100,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public DateTimeOffset LastRefreshTime
         {
-            get { return lastRefreshTime; }
+            get => lastRefreshTime;
             private set
             {
                 if (value.Equals(lastRefreshTime)) return;
@@ -111,6 +110,35 @@ namespace Livestream.Monitor.Model.Monitoring
         }
 
         public event EventHandler LivestreamsRefreshComplete;
+
+        public async Task Initialize()
+        {
+            if (Initialised) return;
+            var channels = await fileHandler.LoadFromDisk();
+            foreach (var channelIdentifier in channels)
+            {
+                channelIdentifiers.Add(channelIdentifier);
+                channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
+
+                var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
+                if (livestreamModel.ApiClient.ApiName == YoutubeApiClient.API_NAME)
+                {
+                    livestreamModel.DisplayName = "Youtube Channel: " + (channelIdentifier.DisplayName ?? channelIdentifier.ChannelId);
+                }
+                else
+                {
+                    livestreamModel.DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId;
+                }
+
+                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
+                Livestreams.Add(livestreamModel);
+                livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
+            }
+
+            Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
+            CanRefreshLivestreams = true;
+            Initialised = true;
+        }
 
         public async Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
         {
@@ -260,35 +288,6 @@ namespace Livestream.Monitor.Model.Monitoring
                 SaveLivestreams();
                 SelectedLivestream = Livestreams.FirstOrDefault();
             }
-        }
-
-        private void LoadLivestreams()
-        {
-            if (initialised) return;
-            foreach (var channelIdentifier in fileHandler.LoadFromDisk())
-            {
-                channelIdentifiers.Add(channelIdentifier);
-                channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
-
-                // the channel id will have to be replaced when the livestream is queried the first time
-                var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
-                // give livestreams some initial displayname before they have been queried
-                if (livestreamModel.ApiClient.ApiName == YoutubeApiClient.API_NAME)
-                {
-                    livestreamModel.DisplayName = "Youtube Channel: " + channelIdentifier.ChannelId;
-                }
-                else
-                {
-                    livestreamModel.DisplayName = channelIdentifier.ChannelId;
-                }
-
-                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
-                followedLivestreams.Add(livestreamModel);
-                livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
-            }
-
-            followedLivestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
-            initialised = true;
         }
 
         private void SaveLivestreams()

@@ -44,15 +44,10 @@ namespace Livestream.Monitor.ViewModels
             ApiClientsQualitiesViewModel apiClientsQualitiesViewModel,
             IWindowManager windowManager)
         {
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-            if (filterModelModel == null) throw new ArgumentNullException(nameof(filterModelModel));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-
-            FilterModel = filterModelModel;
-            MonitorStreamsModel = monitorStreamsModel;
-            this.streamLauncher = streamLauncher;
-            this.apiClientFactory = apiClientFactory;
+            FilterModel = filterModelModel ?? throw new ArgumentNullException(nameof(filterModelModel));
+            MonitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
+            this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
+            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
             this.windowManager = windowManager;
             this.apiClientsQualitiesViewModel = apiClientsQualitiesViewModel ?? throw new ArgumentNullException(nameof(apiClientsQualitiesViewModel));
         }

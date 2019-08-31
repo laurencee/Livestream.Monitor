@@ -21,6 +21,7 @@ namespace Livestream.Monitor.Core
         public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
         public const string DEFAULT_STREAMLINK_FULL_PATH = @"C:\Program Files (x86)\Streamlink\bin\streamlink.exe";
         public const int DEFAULT_MINIMUM_EVENT_VIEWERS = 30000;
+        public const int CurrentSettingsVersion = 1;
 
         public const string CHAT_URL_REPLACEMENT_TOKEN = "{url}";
         public const string CHROME_ARGS = "--app=" + CHAT_URL_REPLACEMENT_TOKEN + " --window-size=350 -height=760";
@@ -35,11 +36,23 @@ namespace Livestream.Monitor.Core
         private bool hideStreamOutputMessageBoxOnLoad;
         private string twitchAuthToken;
         private bool twitchAuthTokenInLivestreamerConfig;
+        private int settingsVersion;
+
+        public int SettingsVersion
+        {
+            get => settingsVersion;
+            set
+            {
+                if (value == settingsVersion) return;
+                settingsVersion = value;
+                NotifyOfPropertyChange(() => SettingsVersion);
+            }
+        }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour? MetroThemeBaseColour
         {
-            get { return metroThemeBaseColour; }
+            get => metroThemeBaseColour;
             set
             {
                 if (value == metroThemeBaseColour) return;
@@ -51,7 +64,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeAccentColour? MetroThemeAccentColour
         {
-            get { return metroThemeAccentColour; }
+            get => metroThemeAccentColour;
             set
             {
                 if (value == metroThemeAccentColour) return;
@@ -64,7 +77,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string LivestreamerFullPath
         {
-            get { return livestreamerFullPath; }
+            get => livestreamerFullPath;
             set
             {
                 if (value == livestreamerFullPath) return;
@@ -77,7 +90,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string ChatCommandLine
         {
-            get { return chatCommandLine; }
+            get => chatCommandLine;
             set
             {
                 if (value == chatCommandLine) return;
@@ -90,7 +103,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore)]
         public int MinimumEventViewers
         {
-            get { return minimumEventViewers; }
+            get => minimumEventViewers;
             set
             {
                 if (value == minimumEventViewers) return;
@@ -102,7 +115,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableNotifications
         {
-            get { return disableNotifications; }
+            get => disableNotifications;
             set
             {
                 if (value == disableNotifications) return;
@@ -114,7 +127,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool HideStreamOutputMessageBoxOnLoad
         {
-            get { return hideStreamOutputMessageBoxOnLoad; }
+            get => hideStreamOutputMessageBoxOnLoad;
             set
             {
                 if (value == hideStreamOutputMessageBoxOnLoad) return;
@@ -126,7 +139,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool PassthroughClientId
         {
-            get { return passthroughClientId; }
+            get => passthroughClientId;
             set
             {
                 if (value == passthroughClientId) return;
@@ -151,7 +164,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool TwitchAuthTokenInLivestreamerConfig
         {
-            get { return twitchAuthTokenInLivestreamerConfig; }
+            get => twitchAuthTokenInLivestreamerConfig;
             set
             {
                 if (value == twitchAuthTokenInLivestreamerConfig) return;
@@ -163,7 +176,7 @@ namespace Livestream.Monitor.Core
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string TwitchAuthToken
         {
-            get { return twitchAuthToken; }
+            get => twitchAuthToken;
             set
             {
                 if (value == twitchAuthToken) return;

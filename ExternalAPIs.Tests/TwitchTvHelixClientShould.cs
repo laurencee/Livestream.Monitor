@@ -17,7 +17,7 @@ namespace ExternalAPIs.Tests
         public const string UserIdMethod = "121649330";
         public const string UserIdThijs = "57025612";
 
-        private readonly TwitchTvHelixReadonlyClient sut = new TwitchTvHelixReadonlyClient();
+        private readonly TwitchTvHelixHelixReadonlyClient sut = new TwitchTvHelixHelixReadonlyClient();
 
         [Fact]
         public async Task GetUser()

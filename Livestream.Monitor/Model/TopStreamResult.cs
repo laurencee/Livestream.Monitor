@@ -20,10 +20,8 @@ namespace Livestream.Monitor.Model
 
         public TopStreamResult(LivestreamModel livestreamModel, ChannelIdentifier channelIdentifier)
         {
-            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
-            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
-            LivestreamModel = livestreamModel;
-            ChannelIdentifier = channelIdentifier;
+            LivestreamModel = livestreamModel ?? throw new ArgumentNullException(nameof(livestreamModel));
+            ChannelIdentifier = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
         }
 
         public bool IsMonitored

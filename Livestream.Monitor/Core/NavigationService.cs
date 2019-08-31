@@ -11,11 +11,8 @@ namespace Livestream.Monitor.Core
 
         public NavigationService(SimpleContainer container, IEventAggregator eventAggregator)
         {
-            if (container == null) throw new ArgumentNullException(nameof(container));
-            if (eventAggregator == null) throw new ArgumentNullException(nameof(eventAggregator));
-
-            this.container = container;
-            this.eventAggregator = eventAggregator;
+            this.container = container ?? throw new ArgumentNullException(nameof(container));
+            this.eventAggregator = eventAggregator ?? throw new ArgumentNullException(nameof(eventAggregator));
         }
 
         public void NavigateTo<T>(Action<T> initAction = null) where T : IScreen

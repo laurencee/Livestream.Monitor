@@ -23,8 +23,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public MixerApiClient(IMixerReadonlyClient mixerClient)
         {
-            if (mixerClient == null) throw new ArgumentNullException(nameof(mixerClient));
-            this.mixerClient = mixerClient;
+            this.mixerClient = mixerClient ?? throw new ArgumentNullException(nameof(mixerClient));
         }
 
         public string ApiName => API_NAME;
@@ -49,14 +48,14 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
-        public string GetStreamUrl(string channelId)
+        public Task<string> GetStreamUrl(string channelId)
         {
-            return BaseUrl + channelId;
+            return Task.FromResult(BaseUrl + channelId);
         }
 
-        public string GetChatUrl(string channelId)
+        public Task<string> GetChatUrl(string channelId)
         {
-            return BaseUrl + "embed/chat/" + channelId;
+            return Task.FromResult(BaseUrl + "embed/chat/" + channelId);
         }
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)

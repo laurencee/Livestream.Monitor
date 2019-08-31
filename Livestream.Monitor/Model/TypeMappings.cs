@@ -1,5 +1,5 @@
 ﻿using System;
-using ExternalAPIs.TwitchTv.V3.Dto;
+using ExternalAPIs.TwitchTv.Helix.Dto;
 
 namespace Livestream.Monitor.Model
 {
@@ -7,43 +7,43 @@ namespace Livestream.Monitor.Model
     {
         public static LivestreamModel PopulateWithStreamDetails(
             this LivestreamModel livestreamModel, 
-            Stream streamDetails)
+            Stream stream)
         {
-            if (streamDetails == null) return livestreamModel;
+            if (stream == null) return livestreamModel;
             
-            livestreamModel.Viewers = streamDetails.Viewers ?? 0;
+            livestreamModel.Viewers = stream.ViewerCount;
+            // the values here are what the v5 api returned for large/medium/small
+            var largeThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "640").Replace("{height}", "360");
+            var mediumThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "320").Replace("{height}", "180");
+            var smallThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "80").Replace("{height}", "45");
             livestreamModel.ThumbnailUrls = new ThumbnailUrls()
             {
-                Large = streamDetails.Preview.Large,
-                Medium = streamDetails.Preview.Medium,
-                Small = streamDetails.Preview.Small,
+                Large = largeThumbnail,
+                Medium = mediumThumbnail,
+                Small = smallThumbnail,
             };
-            if (streamDetails.CreatedAt != null)
-            {
-                livestreamModel.StartTime = DateTimeOffset.Parse(streamDetails.CreatedAt);
-                livestreamModel.NotifyOfPropertyChange(nameof(livestreamModel.Uptime));
-            }
+            livestreamModel.StartTime = stream.StartedAt;
 
             // need to update other details before flipping the stream to online
-            livestreamModel.Live = streamDetails.Viewers.HasValue;
+            livestreamModel.Live = stream.Type == "live";
 
-            if (streamDetails.Channel != null)
-                livestreamModel.PopulateWithChannel(streamDetails.Channel);
+            livestreamModel.DisplayName = stream.UserName;
+            livestreamModel.Description = stream.Title;
 
             return livestreamModel;
         }
 
-        public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)
-        {
-            if (channel == null) return;
+        //public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)
+        //{
+        //    if (channel == null) return;
 
-            livestreamModel.DisplayName = channel.DisplayName;
-            livestreamModel.Description = channel.Status?.Trim();
-            livestreamModel.Game = channel.Game;
-            livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
-            livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
-            livestreamModel.Language = channel.Language;
-        }
+        //    livestreamModel.DisplayName = channel.DisplayName;
+        //    livestreamModel.Description = channel.Status?.Trim();
+        //    livestreamModel.Game = channel.Game;
+        //    livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
+        //    livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
+        //    livestreamModel.Language = channel.Language;
+        //}
 
         public static void PopulateSelf(this LivestreamModel livestreamModel, LivestreamModel consume)
         {

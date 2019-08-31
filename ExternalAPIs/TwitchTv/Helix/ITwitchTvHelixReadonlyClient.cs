@@ -6,7 +6,7 @@ using ExternalAPIs.TwitchTv.Helix.Query;
 
 namespace ExternalAPIs.TwitchTv.Helix
 {
-    public interface ITwitchTvReadonlyClient
+    public interface ITwitchTvHelixReadonlyClient
     {
         Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default);
 

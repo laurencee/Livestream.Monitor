@@ -48,9 +48,7 @@ namespace Livestream.Monitor.ViewModels
         /// <summary> Shows the hide on load checkbox requiring a settings handler to bind the checkbox to </summary>
         public void ShowHideOnLoadCheckbox(ISettingsHandler settingsHandler)
         {
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-
-            this.settingsHandler = settingsHandler;
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             hideOnLoadCheckboxVisible = true;
             hideOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
         }

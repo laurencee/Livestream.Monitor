@@ -7,7 +7,7 @@ using ExternalAPIs.TwitchTv.V3.Query;
 
 namespace ExternalAPIs.TwitchTv.V3
 {
-    public interface ITwitchTvReadonlyClient
+    public interface ITwitchTvV3ReadonlyClient
     {
         Task<UserFollows> GetUserFollows(string username, CancellationToken cancellationToken = default(CancellationToken));
 

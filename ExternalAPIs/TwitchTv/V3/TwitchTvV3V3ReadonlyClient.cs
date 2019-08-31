@@ -10,7 +10,7 @@ using ExternalAPIs.TwitchTv.V3.Query;
 
 namespace ExternalAPIs.TwitchTv.V3
 {
-    public class TwitchTvReadonlyClient : ITwitchTvReadonlyClient
+    public class TwitchTvV3ReadonlyClient : ITwitchTvV3ReadonlyClient
     {
         public const int DefaultItemsPerQuery = 100; // 25 is default, 100 is maximum
 

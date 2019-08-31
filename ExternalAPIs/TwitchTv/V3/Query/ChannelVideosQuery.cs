@@ -16,8 +16,7 @@ namespace ExternalAPIs.TwitchTv.V3.Query
             get { return channelName; }
             set
             {
-                if (value == null) throw new ArgumentNullException(nameof(ChannelName));
-                channelName = value;
+                channelName = value ?? throw new ArgumentNullException(nameof(ChannelName));
             }
         }
 

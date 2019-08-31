@@ -12,6 +12,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         LivestreamModel SelectedLivestream { get; set; }
 
+        bool Initialised { get; }
+
         bool CanRefreshLivestreams { get; }
 
         DateTimeOffset LastRefreshTime { get; }
@@ -20,12 +22,15 @@ namespace Livestream.Monitor.Model.Monitoring
 
         event EventHandler LivestreamsRefreshComplete;
 
+        /// <summary> Allows for loading of livestreams and any other initialization tasks before refreshes can take place </summary>
+        Task Initialize();
+
         Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware);
 
         Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 
         Task ImportFollows(string username, IApiClient apiClient);
-
+        
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();
 

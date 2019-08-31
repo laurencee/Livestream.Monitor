@@ -50,17 +50,11 @@ namespace Livestream.Monitor.ViewModels
             INavigationService navigationService,
             IApiClientFactory apiClientFactory)
         {
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
-            if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
-            if (streamLauncher == null) throw new ArgumentNullException(nameof(streamLauncher));
-            if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
-            if (apiClientFactory == null) throw new ArgumentNullException(nameof(apiClientFactory));
-
-            this.monitorStreamsModel = monitorStreamsModel;
-            this.settingsHandler = settingsHandler;
-            this.streamLauncher = streamLauncher;
-            this.navigationService = navigationService;
-            this.apiClientFactory = apiClientFactory;
+            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
+            this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
+            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
 
             ItemsPerPage = STREAM_TILES_PER_PAGE;
 
