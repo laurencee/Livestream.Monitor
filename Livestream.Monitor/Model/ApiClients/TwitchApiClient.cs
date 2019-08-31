@@ -266,6 +266,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var getVideosQuery = new GetVideosQuery()
             {
                 UserId = vodQuery.StreamId,
+                First = vodQuery.Take
             };
             var videos = await twitchTvHelixClient.GetVideos(getVideosQuery);
             var vods = videos.Select(video =>

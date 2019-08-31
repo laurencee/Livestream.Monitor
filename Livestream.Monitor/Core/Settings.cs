@@ -37,7 +37,9 @@ namespace Livestream.Monitor.Core
         private string twitchAuthToken;
         private bool twitchAuthTokenInLivestreamerConfig;
         private int settingsVersion;
+        private bool checkForNewVersions;
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
         {
             get => settingsVersion;
@@ -45,6 +47,18 @@ namespace Livestream.Monitor.Core
             {
                 if (value == settingsVersion) return;
                 settingsVersion = value;
+                NotifyOfPropertyChange(() => SettingsVersion);
+            }
+        }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool CheckForNewVersions
+        {
+            get => checkForNewVersions;
+            set
+            {
+                if (value == checkForNewVersions) return;
+                checkForNewVersions = value;
                 NotifyOfPropertyChange(() => SettingsVersion);
             }
         }

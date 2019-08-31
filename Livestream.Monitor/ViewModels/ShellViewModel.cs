@@ -22,6 +22,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly MainViewModel mainViewModel;
         private readonly INavigationService navigationService;
         private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly ISettingsHandler settingsHandler;
         public const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
@@ -44,12 +45,14 @@ namespace Livestream.Monitor.ViewModels
             MainViewModel mainViewModel,
             IEventAggregator eventAggregator,
             INavigationService navigationService,
-            IMonitorStreamsModel monitorStreamsModel)
+            IMonitorStreamsModel monitorStreamsModel,
+            ISettingsHandler settingsHandler)
         {
             Settings = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
             this.mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
             this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
+            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
 
             ActiveItem = mainViewModel;
 
@@ -131,7 +134,7 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
 
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
-            if (!Debugger.IsAttached) await CheckForNewVersion();
+            if (!Debugger.IsAttached && settingsHandler.Settings.CheckForNewVersions) await CheckForNewVersion();
             await InitializeMonitorStreamsModel();
             base.OnViewLoaded(view);
         }

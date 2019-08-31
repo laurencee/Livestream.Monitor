@@ -10,6 +10,8 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
 
         public string GameId { get; set; }
 
+        public int First { get; set; } = 15;
+
         public CursorPagination CursorPagination { get; set; } = new CursorPagination();
     }
 }

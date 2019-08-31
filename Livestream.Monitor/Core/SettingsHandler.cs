@@ -45,7 +45,12 @@ namespace Livestream.Monitor.Core
 
                 if (settings.SettingsVersion < Settings.CurrentSettingsVersion)
                 {
-                    // Can do migrations here in future
+                    if (settings.SettingsVersion == 0)
+                    {
+                        settings.CheckForNewVersions = true;
+                    }
+                    
+                    settings.SettingsVersion = Settings.CurrentSettingsVersion;
                     saveSettings = true;
                 }
                 

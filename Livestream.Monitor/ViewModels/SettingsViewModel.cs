@@ -16,7 +16,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private string livestreamerFullPath, chatCommandLine;
         private int minimumEventViewers;
-        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId;
+        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions;
 
         public SettingsViewModel()
         {
@@ -42,7 +42,7 @@ namespace Livestream.Monitor.ViewModels
 
         public string LivestreamerFullPath
         {
-            get { return livestreamerFullPath; }
+            get => livestreamerFullPath;
             set
             {
                 if (value == livestreamerFullPath) return;
@@ -62,7 +62,7 @@ namespace Livestream.Monitor.ViewModels
 
         public string ChatCommandLine
         {
-            get { return chatCommandLine; }
+            get => chatCommandLine;
             set
             {
                 if (value == chatCommandLine) return;
@@ -81,7 +81,7 @@ namespace Livestream.Monitor.ViewModels
 
         public int MinimumEventViewers
         {
-            get { return minimumEventViewers; }
+            get => minimumEventViewers;
             set
             {
                 if (value == minimumEventViewers) return;
@@ -95,7 +95,7 @@ namespace Livestream.Monitor.ViewModels
 
         public bool DisableNotifications
         {
-            get { return disableNotifications; }
+            get => disableNotifications;
             set
             {
                 if (value == disableNotifications) return;
@@ -107,7 +107,7 @@ namespace Livestream.Monitor.ViewModels
 
         public bool HideStreamOutputOnLoad
         {
-            get { return hideStreamOutputOnLoad; }
+            get => hideStreamOutputOnLoad;
             set
             {
                 if (value == hideStreamOutputOnLoad) return;
@@ -119,12 +119,24 @@ namespace Livestream.Monitor.ViewModels
 
         public bool PassthroughClientId
         {
-            get { return passthroughClientId; }
+            get => passthroughClientId;
             set
             {
                 if (value == passthroughClientId) return;
                 passthroughClientId = value;
                 NotifyOfPropertyChange(() => PassthroughClientId);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
+        public bool CheckForNewVersions
+        {
+            get => checkForNewVersions;
+            set
+            {
+                if (value == checkForNewVersions) return;
+                checkForNewVersions = value;
+                NotifyOfPropertyChange(() => CheckForNewVersions);
                 NotifyOfPropertyChange(() => CanSave);
             }
         }
@@ -143,7 +155,8 @@ namespace Livestream.Monitor.ViewModels
                        MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
-                       PassthroughClientId != settingsHandler.Settings.PassthroughClientId;
+                       PassthroughClientId != settingsHandler.Settings.PassthroughClientId ||
+                       CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions;
             }
         }
 
@@ -256,6 +269,7 @@ namespace Livestream.Monitor.ViewModels
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
             PassthroughClientId = settingsHandler.Settings.PassthroughClientId;
+            CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();

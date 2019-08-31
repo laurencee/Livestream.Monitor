@@ -220,29 +220,26 @@ namespace ExternalAPIs.TwitchTv.Helix
         {
             if (getVideosQuery == null) throw new ArgumentNullException(nameof(getVideosQuery));
             
-            var request = RequestConstants.Videos;
+            var request = RequestConstants.Videos + "?first=" + getVideosQuery.First;
             if (!string.IsNullOrWhiteSpace(getVideosQuery.CursorPagination.After))
-                request += "?after=" + getVideosQuery.CursorPagination.After;
+                request += "&after=" + getVideosQuery.CursorPagination.After;
 
             if (getVideosQuery.VideoIds?.Any() == true)
             {
                 foreach (var videoId in getVideosQuery.VideoIds)
                 {
-                    if (request == RequestConstants.Videos) request += "?id=" + videoId;
-                    else request += "&id=" + videoId;
+                    request += "&id=" + videoId;
                 }
             }
 
             if (!string.IsNullOrWhiteSpace(getVideosQuery.GameId))
             {
-                if (request == RequestConstants.Videos) request += "?game_id=" + getVideosQuery.GameId;
-                else request += "&game_id=" + getVideosQuery.GameId;
+                request += "&game_id=" + getVideosQuery.GameId;
             }
 
             if (!string.IsNullOrWhiteSpace(getVideosQuery.UserId))
             {
-                if (request == RequestConstants.Videos) request += "?user_id=" + getVideosQuery.UserId;
-                else request += "&user_id=" + getVideosQuery.UserId;
+                request += "&user_id=" + getVideosQuery.UserId;
             }
 
             var channelVideosRoot = await ExecuteRequest<VideosRoot>(request, cancellationToken);
