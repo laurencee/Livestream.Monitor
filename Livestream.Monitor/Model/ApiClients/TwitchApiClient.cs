@@ -344,7 +344,14 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (string.IsNullOrEmpty(filterGameName))
             {
-                return (await twitchTvV3Client.GetTopGames()).Select(x => new KnownGame()
+                var topGames = await twitchTvV3Client.GetTopGames();
+                foreach (var topGame in topGames)
+                {
+                    gameNameToIdMap.Remove(topGame.Game.Name);
+                    gameNameToIdMap.Add(topGame.Game.Name, topGame.Game.Id.ToString());
+                }
+
+                return topGames.Select(x => new KnownGame()
                 {
                     GameName = x.Game.Name,
                     ThumbnailUrls = new ThumbnailUrls()
@@ -357,6 +364,11 @@ namespace Livestream.Monitor.Model.ApiClients
             }
 
             var twitchGames = await twitchTvV3Client.SearchGames(filterGameName);
+            foreach (var game in twitchGames)
+            {
+                gameNameToIdMap.Remove(game.Name);
+                gameNameToIdMap.Add(game.Name, game.Id.ToString());
+            }
             return twitchGames.Select(x => new KnownGame()
             {
                 GameName = x.Name,
