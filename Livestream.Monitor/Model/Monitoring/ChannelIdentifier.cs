@@ -25,7 +25,7 @@ namespace Livestream.Monitor.Model.Monitoring
             ChannelId = channelId;
         }
 
-        public string ChannelId { get; }
+        public string ChannelId { get; private set; }
 
         public IApiClient ApiClient { get; }
 
@@ -34,6 +34,11 @@ namespace Livestream.Monitor.Model.Monitoring
         public string DisplayName { get; set; }
 
         public override string ToString() => $"{ApiClient.ApiName}:{ChannelId}";
+
+        public void OverrideChannelId(string newChannelId)
+        {
+            ChannelId = newChannelId;
+        }
 
         #region Equality members
 

@@ -36,7 +36,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public TwitchApiClient(
             ITwitchTvV3ReadonlyClient twitchTvV3client,
-            ITwitchTvHelixReadonlyClient twitchTvHelixClient, 
+            ITwitchTvHelixReadonlyClient twitchTvHelixClient,
             ISettingsHandler settingsHandler)
         {
             twitchTvV3Client = twitchTvV3client ?? throw new ArgumentNullException(nameof(twitchTvV3client));
@@ -160,17 +160,25 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // shorter implementation of QueryChannels
             var queryResults = new List<LivestreamQueryResult>();
-            var onlineStreams = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { newChannel.ChannelId } });
+            var user = await twitchTvHelixClient.GetUserByUsername(newChannel.ChannelId);
+            if (user == null) throw new InvalidOperationException("No user found named " + newChannel.ChannelId);
+
+            newChannel.OverrideChannelId(user.Id);
+            newChannel.DisplayName = user.DisplayName;
+            channelIdToUserMap.Add(user.Id, user);
+            var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
+
+            var onlineStreams = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
             var onlineStream = onlineStreams.FirstOrDefault();
             if (onlineStream != null)
             {
-                var livestream = new LivestreamModel(onlineStream.UserId, newChannel);
                 livestream.PopulateWithStreamDetails(onlineStream);
-                queryResults.Add(new LivestreamQueryResult(newChannel)
-                {
-                    LivestreamModel = livestream
-                });
             }
+
+            queryResults.Add(new LivestreamQueryResult(newChannel)
+            {
+                LivestreamModel = livestream
+            });
 
             if (queryResults.All(x => x.IsSuccess))
             {
@@ -187,6 +195,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
+            channelIdToUserMap.Remove(channelIdentifier.ChannelId);
             moniteredChannels.Remove(channelIdentifier);
             return Task.CompletedTask;
         }
@@ -352,11 +361,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
         {
-            // TODO - query all user followed channels
+            var user = await twitchTvHelixClient.GetUserByUsername(userName);
+            if (user == null) throw new InvalidOperationException("Could not find user with username: " + userName);
 
-            var userFollows = await twitchTvHelixClient.GetUserFollows(userName);
+            channelIdToUserMap.Add(user.Id, user);
+            var userFollows = await twitchTvHelixClient.GetUserFollows(user.Id);
             return (from follow in userFollows
-                    let channelIdentifier = new ChannelIdentifier(this, follow.ToId)
+                    let channelIdentifier = new ChannelIdentifier(this, follow.ToId) { DisplayName = follow.ToName }
                     select new LivestreamQueryResult(channelIdentifier)
                     {
                         LivestreamModel = new LivestreamModel(follow.ToId, channelIdentifier)

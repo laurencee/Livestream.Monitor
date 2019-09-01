@@ -14,6 +14,8 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default);
 
+        Task<User> GetUserByUsername(string username, CancellationToken cancellationToken = default);
+
         Task<List<User>> GetUsers(GetUsersQuery getUsersQuery, CancellationToken cancellationToken = default);
 
         Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default);

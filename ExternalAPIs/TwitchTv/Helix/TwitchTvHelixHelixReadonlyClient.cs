@@ -106,6 +106,12 @@ namespace ExternalAPIs.TwitchTv.Helix
             return gamesRoot.TopGames;
         }
 
+        public async Task<User> GetUserByUsername(string username, CancellationToken cancellationToken = default)
+        {
+            var users = await GetUsers(new GetUsersQuery() {UserNames = new List<string>() {username}}, cancellationToken);
+            return users.FirstOrDefault();
+        }
+
         public async Task<List<Game>> GetGames(GetGamesQuery getGamesQuery, CancellationToken cancellationToken = default)
         {
             if (getGamesQuery == null) throw new ArgumentNullException(nameof(getGamesQuery));
