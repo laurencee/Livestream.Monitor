@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Controls;
 using Caliburn.Micro;
 using ExternalAPIs.TwitchTv.V3.Query;
@@ -75,7 +76,7 @@ namespace Livestream.Monitor.ViewModels
 
         public bool LoadingItems
         {
-            get { return loadingItems; }
+            get => loadingItems;
             set
             {
                 if (value == loadingItems) return;
@@ -89,7 +90,7 @@ namespace Livestream.Monitor.ViewModels
 
         public string GameName
         {
-            get { return gameName; }
+            get => gameName;
             set
             {
                 if (value == gameName) return;
@@ -102,7 +103,7 @@ namespace Livestream.Monitor.ViewModels
 
         public BindableCollection<string> PossibleGameNames
         {
-            get { return possibleGameNames; }
+            get => possibleGameNames;
             set
             {
                 if (Equals(value, possibleGameNames)) return;
@@ -113,7 +114,7 @@ namespace Livestream.Monitor.ViewModels
 
         public bool ExpandPossibleGames
         {
-            get { return expandPossibleGames; }
+            get => expandPossibleGames;
             set
             {
                 if (value == expandPossibleGames) return;
@@ -126,7 +127,7 @@ namespace Livestream.Monitor.ViewModels
 
         public IApiClient SelectedApiClient
         {
-            get { return selectedApiClient; }
+            get => selectedApiClient;
             set
             {
                 if (Equals(value, selectedApiClient)) return;
@@ -165,6 +166,21 @@ namespace Livestream.Monitor.ViewModels
                 vm.SelectedApiClient = stream.LivestreamModel.ApiClient;
                 vm.StreamId = stream.LivestreamModel.Id;
             });
+        }
+
+        public async Task CopyStreamUrl(TopStreamResult stream)
+        {
+            // clipboard.SetDataObject can sometimes fail due to a WPF bug, at least don't crash the app if this happens
+            try
+            {
+                var streamUrl = await stream.LivestreamModel.GetStreamUrl;
+                Clipboard.SetDataObject(streamUrl);
+            }
+            catch (Exception e)
+            {
+                await this.ShowMessageAsync("Error copying url",
+                    $"An error occurred attempting to copy the url, please try again: {e.Message}");
+            }
         }
 
         public void ToggleNotify(TopStreamResult stream)

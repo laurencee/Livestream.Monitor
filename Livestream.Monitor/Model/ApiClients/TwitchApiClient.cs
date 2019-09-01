@@ -125,7 +125,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             if (input.StartsWith(RedirectUri))
             {
-                var match = Regex.Match(input, "#access_token=(?<token>.*)&");
+                var match = Regex.Match(input, "#access_token=(?<token>.*?)&");
                 if (match.Groups["token"].Success)
                 {
                     settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
@@ -160,8 +160,18 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // shorter implementation of QueryChannels
             var queryResults = new List<LivestreamQueryResult>();
-            var user = await twitchTvHelixClient.GetUserByUsername(newChannel.ChannelId);
-            if (user == null) throw new InvalidOperationException("No user found named " + newChannel.ChannelId);
+            User user;
+            if (long.TryParse(newChannel.ChannelId, out var _))
+            {
+                var users = await twitchTvHelixClient.GetUsers(new GetUsersQuery() { UserIds = new List<string>() { newChannel.ChannelId } });
+                user = users.FirstOrDefault();
+            }
+            else
+            {
+                user = await twitchTvHelixClient.GetUserByUsername(newChannel.ChannelId);
+            }
+
+            if (user == null) throw new InvalidOperationException("No user found for id " + newChannel.ChannelId);
 
             newChannel.OverrideChannelId(user.Id);
             newChannel.DisplayName = user.DisplayName;
@@ -309,7 +319,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
-            var query = new GetStreamsQuery();
+            var query = new GetStreamsQuery() { First = topStreamQuery.Take };
             if (!string.IsNullOrWhiteSpace(topStreamQuery.GameName))
             {
                 var gameId = await GetGameIdByName(topStreamQuery.GameName);
@@ -320,7 +330,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             return topStreams.Select(x =>
             {
-                var channelIdentifier = new ChannelIdentifier(this, x.Id);
+                var channelIdentifier = new ChannelIdentifier(this, x.UserId) { DisplayName = x.UserName };
                 var queryResult = new LivestreamQueryResult(channelIdentifier);
                 var livestreamModel = new LivestreamModel(x.UserId, channelIdentifier);
                 livestreamModel.PopulateWithStreamDetails(x);
@@ -412,7 +422,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Launches browser for user to authorize us </summary>
         private void RequestAuthorization()
         {
-            const string scopes = "user_read+channel_read";
+            const string scopes = "user_read+user_subscriptions";
 
             var request =
                 "https://api.twitch.tv/kraken/oauth2/authorize?response_type=token" +

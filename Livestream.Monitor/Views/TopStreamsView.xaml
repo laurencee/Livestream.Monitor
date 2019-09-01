@@ -63,6 +63,7 @@
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
+                                        <MenuItem Header="Copy Stream Url" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
                                         <MenuItem Header="Open Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
