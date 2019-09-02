@@ -177,6 +177,8 @@ namespace Livestream.Monitor.Model.ApiClients
             }).ToList();
         }
 
+        public Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         private Task<List<LivestreamQueryResult>> QueryChannels(
             IReadOnlyCollection<ChannelIdentifier> identifiers,
             CancellationToken cancellationToken)

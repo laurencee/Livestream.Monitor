@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.Helix.Dto;
@@ -13,6 +15,7 @@ namespace ExternalAPIs.TwitchTv.Helix
     {
         public const int DefaultItemsPerQuery = MaxItemsPerQuery; // 20 is default, 100 is maximum
         public const int MaxItemsPerQuery = 100; // 100 is maximum
+        private string _accessToken = null;
 
         public async Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default)
         {
@@ -252,10 +255,19 @@ namespace ExternalAPIs.TwitchTv.Helix
             return channelVideosRoot.Videos;
         }
 
+        public void SetAccessToken(string accessToken)
+        {
+            _accessToken = accessToken;
+        }
+
         private Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
             HttpClient httpClient = HttpClientExtensions.CreateCompressionHttpClient();
-            httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
+            if (_accessToken != null)
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+            else
+                httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
+
             return httpClient.ExecuteRequest<T>(request, cancellationToken);
         }
     }

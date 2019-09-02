@@ -74,5 +74,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             throw new NotImplementedException();
         }
+
+        public Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 }

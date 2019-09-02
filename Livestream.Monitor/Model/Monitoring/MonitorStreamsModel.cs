@@ -111,7 +111,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
-        public async Task Initialize()
+        public async Task Initialize(CancellationToken cancellationToken = default)
         {
             if (Initialised) return;
             var channels = await fileHandler.LoadFromDisk();
@@ -133,6 +133,11 @@ namespace Livestream.Monitor.Model.Monitoring
                 livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
                 Livestreams.Add(livestreamModel);
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
+            }
+
+            foreach (var apiClient in apiClientFactory.GetAll())
+            {
+                await apiClient.Initialize(cancellationToken);
             }
 
             Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;

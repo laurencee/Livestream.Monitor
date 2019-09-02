@@ -1,5 +1,6 @@
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
@@ -118,7 +119,7 @@ namespace Livestream.Monitor.Model.Monitoring
         {
         }
 
-        public Task Initialize()
+        public Task Initialize(CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

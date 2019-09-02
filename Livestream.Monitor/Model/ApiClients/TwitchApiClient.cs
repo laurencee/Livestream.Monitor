@@ -32,6 +32,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly ISettingsHandler settingsHandler;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
         private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
         private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
 
         public TwitchApiClient(
@@ -130,6 +131,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
                     settingsHandler.SaveSettings();
+                    twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
                     return;
                 }
             }
@@ -175,7 +177,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             newChannel.OverrideChannelId(user.Id);
             newChannel.DisplayName = user.DisplayName;
-            channelIdToUserMap.Add(user.Id, user);
+            channelIdToUserMap[user.Id] = user;
             var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
 
             var onlineStreams = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
@@ -217,7 +219,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
             List<Stream> onlineStreams = new List<Stream>();
-            var users = new List<User>();
 
             int retryCount = 0;
             bool success = false;
@@ -228,10 +229,6 @@ namespace Livestream.Monitor.Model.ApiClients
                     var query = new GetStreamsQuery();
                     query.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
                     onlineStreams = await twitchTvHelixClient.GetStreams(query, cancellationToken);
-
-                    var usersQuery = new GetUsersQuery();
-                    usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
-                    users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
                     success = true;
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
@@ -241,19 +238,16 @@ namespace Livestream.Monitor.Model.ApiClients
                 }
             }
 
-            foreach (var user in users)
-            {
-                channelIdToUserMap.Remove(user.Id);
-                channelIdToUserMap.Add(user.Id, user);
-            }
-
             foreach (var onlineStream in onlineStreams)
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
 
                 var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.UserId));
+                var gameName = await GetGameNameById(onlineStream.GameId);
+
                 var livestream = new LivestreamModel(onlineStream.UserId, channelIdentifier);
                 livestream.PopulateWithStreamDetails(onlineStream);
+                livestream.Game = gameName;
                 queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                 {
                     LivestreamModel = livestream
@@ -347,8 +341,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 var topGames = await twitchTvV3Client.GetTopGames();
                 foreach (var topGame in topGames)
                 {
-                    gameNameToIdMap.Remove(topGame.Game.Name);
-                    gameNameToIdMap.Add(topGame.Game.Name, topGame.Game.Id.ToString());
+                    var gameId = topGame.Game.Id.ToString();
+                    gameNameToIdMap[topGame.Game.Name] = gameId;
+                    gameIdToNameMap[gameId] = topGame.Game.Name;
                 }
 
                 return topGames.Select(x => new KnownGame()
@@ -366,8 +361,9 @@ namespace Livestream.Monitor.Model.ApiClients
             var twitchGames = await twitchTvV3Client.SearchGames(filterGameName);
             foreach (var game in twitchGames)
             {
-                gameNameToIdMap.Remove(game.Name);
-                gameNameToIdMap.Add(game.Name, game.Id.ToString());
+                var gameId = game.Id.ToString();
+                gameNameToIdMap[game.Name] = gameId;
+                gameIdToNameMap[gameId] = game.Name;
             }
             return twitchGames.Select(x => new KnownGame()
             {
@@ -386,7 +382,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var user = await twitchTvHelixClient.GetUserByUsername(userName);
             if (user == null) throw new InvalidOperationException("Could not find user with username: " + userName);
 
-            channelIdToUserMap.Add(user.Id, user);
+            channelIdToUserMap[user.Id] = user;
             var userFollows = await twitchTvHelixClient.GetUserFollows(user.Id);
             return (from follow in userFollows
                     let channelIdentifier = new ChannelIdentifier(this, follow.ToId) { DisplayName = follow.ToName }
@@ -404,6 +400,24 @@ namespace Livestream.Monitor.Model.ApiClients
                     }).ToList();
         }
 
+        public async Task Initialize(CancellationToken cancellationToken = default)
+        {
+            if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
+                twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
+
+            // sets up initial cache of game id/name maps
+            await GetKnownGameNames(null);
+
+            // initialize user cache
+            var usersQuery = new GetUsersQuery();
+            usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+            var users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
+            foreach (var user in users)
+            {
+                channelIdToUserMap[user.Id] = user;
+            }
+        }
+
         private async Task<string> GetStreamUrlSuffixById(string channelId)
         {
             if (channelIdToUserMap.TryGetValue(channelId, out var user)) return user.Login;
@@ -411,7 +425,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var query = new GetUsersQuery();
             query.UserIds.Add(channelId);
             var users = await twitchTvHelixClient.GetUsers(query);
-            channelIdToUserMap.Add(channelId, users[0]);
+            channelIdToUserMap[channelId] = users[0];
             return users[0].Login;
         }
 
@@ -425,10 +439,28 @@ namespace Livestream.Monitor.Model.ApiClients
                 if (!games.Any()) return null;
 
                 gameId = games[0].Id;
-                gameNameToIdMap.Add(gameName, gameId);
+                gameNameToIdMap[gameName] = gameId;
+                gameIdToNameMap[gameId] = gameName;
             }
 
             return gameId;
+        }
+
+        private async Task<string> GetGameNameById(string gameId)
+        {
+            if (!gameIdToNameMap.TryGetValue(gameId, out var gameName))
+            {
+                var query = new GetGamesQuery();
+                query.GameIds.Add(gameId);
+                var games = await twitchTvHelixClient.GetGames(query);
+                if (!games.Any()) return null;
+
+                gameName = games[0].Name;
+                gameNameToIdMap[gameId] = gameName;
+                gameIdToNameMap[gameName] = gameId;
+            }
+
+            return gameName;
         }
 
         /// <summary> Launches browser for user to authorize us </summary>

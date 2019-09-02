@@ -67,5 +67,8 @@ namespace Livestream.Monitor.Model.ApiClients
         Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
 
         Task<List<LivestreamQueryResult>> GetUserFollows(string userName);
+
+        /// <summary> Give the api client a chance to initialize/preload data if necessary. Call after adding channels to be monitored. </summary>
+        Task Initialize(CancellationToken cancellationToken = default);
     }
 }

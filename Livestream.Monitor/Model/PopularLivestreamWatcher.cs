@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.Caching;
+using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
@@ -22,6 +23,7 @@ namespace Livestream.Monitor.Model
         private readonly IApiClientFactory apiClientFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
+        private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
 
         private bool watching = true;
         private bool stoppedWatching;
@@ -31,11 +33,9 @@ namespace Livestream.Monitor.Model
             ISettingsHandler settingsHandler,
             INotificationHandler notificationHandler,
             INavigationService navigationService,
-            IMonitorStreamsModel monitorStreamsModel,
             IApiClientFactory apiClientFactory)
         {
             if (navigationService == null) throw new ArgumentNullException(nameof(navigationService));
-            if (monitorStreamsModel == null) throw new ArgumentNullException(nameof(monitorStreamsModel));
 
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             this.notificationHandler = notificationHandler ?? throw new ArgumentNullException(nameof(notificationHandler));
@@ -77,7 +77,7 @@ namespace Livestream.Monitor.Model
         /// <summary> Minimum event viewers before notifications occur, set to 0 to disable notifications </summary>
         public int MinimumEventViewers
         {
-            get { return minimumEventViewers; }
+            get => minimumEventViewers;
             private set
             {
                 if (value < 0) value = 0;
@@ -103,12 +103,13 @@ namespace Livestream.Monitor.Model
                 }
 
                 stoppedWatching = true;
-            });
+            }, cancellationTokenSource.Token).ContinueWith(task => {}, TaskContinuationOptions.OnlyOnCanceled); // ignore cancellations
         }
 
         public void StopWatching()
         {
             watching = false;
+            cancellationTokenSource.Cancel();
         }
 
         public async Task NotifyPopularStreams()

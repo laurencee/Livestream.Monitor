@@ -7,6 +7,7 @@ using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Views;
 using MahApps.Metro.Controls;
@@ -23,6 +24,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly INavigationService navigationService;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
+        private readonly PopularLivestreamWatcher popularLivestreamWatcher;
         public const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
@@ -46,13 +48,15 @@ namespace Livestream.Monitor.ViewModels
             IEventAggregator eventAggregator,
             INavigationService navigationService,
             IMonitorStreamsModel monitorStreamsModel,
-            ISettingsHandler settingsHandler)
+            ISettingsHandler settingsHandler,
+            PopularLivestreamWatcher popularLivestreamWatcher)
         {
             Settings = settingsViewModel ?? throw new ArgumentNullException(nameof(settingsViewModel));
             this.mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
             this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            this.popularLivestreamWatcher = popularLivestreamWatcher ?? throw new ArgumentNullException(nameof(popularLivestreamWatcher));
 
             ActiveItem = mainViewModel;
 
@@ -136,11 +140,13 @@ namespace Livestream.Monitor.ViewModels
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
             if (!Debugger.IsAttached && settingsHandler.Settings.CheckForNewVersions) await CheckForNewVersion();
             await InitializeMonitorStreamsModel();
+            popularLivestreamWatcher.StartWatching();
             base.OnViewLoaded(view);
         }
 
         protected override void OnDeactivate(bool close)
         {
+            popularLivestreamWatcher.StopWatching();
             taskbarIcon?.Dispose(); // this will be cleaned up on app close anyway but this is a bit cleaner
             base.OnDeactivate(close);
         }

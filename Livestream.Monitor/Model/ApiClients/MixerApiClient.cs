@@ -157,6 +157,8 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new System.NotImplementedException();
         }
 
+        public Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
         private async Task<LivestreamQueryResult> QueryChannel(ChannelIdentifier channelIdentifier, CancellationToken cancellationToken)
         {
             var queryResult = new LivestreamQueryResult(channelIdentifier);

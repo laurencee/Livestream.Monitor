@@ -21,5 +21,7 @@ namespace ExternalAPIs.TwitchTv.Helix
         Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default);
 
         Task<List<Game>> GetGames(GetGamesQuery getGamesQuery, CancellationToken cancellationToken = default);
+
+        void SetAccessToken(string accessToken);
     }
 }

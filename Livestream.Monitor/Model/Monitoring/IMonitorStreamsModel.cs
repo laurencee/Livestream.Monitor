@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Model.ApiClients;
@@ -23,7 +24,8 @@ namespace Livestream.Monitor.Model.Monitoring
         event EventHandler LivestreamsRefreshComplete;
 
         /// <summary> Allows for loading of livestreams and any other initialization tasks before refreshes can take place </summary>
-        Task Initialize();
+        /// <param name="cancellationToken"></param>
+        Task Initialize(CancellationToken cancellationToken = default);
 
         Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware);
 

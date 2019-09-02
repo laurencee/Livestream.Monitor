@@ -93,9 +93,6 @@ namespace Livestream.Monitor
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
 
-            var livestreamEventWatcher = container.GetInstance<PopularLivestreamWatcher>();
-            livestreamEventWatcher.StartWatching();
-
 #if FAKE_DATA
             var windowManager = container.GetInstance<IWindowManager>();
             windowManager.ShowWindow(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
