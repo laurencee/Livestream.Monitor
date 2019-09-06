@@ -1,5 +1,4 @@
-﻿using System;
-using ExternalAPIs.TwitchTv.Helix.Dto;
+﻿using ExternalAPIs.TwitchTv.Helix.Dto;
 
 namespace Livestream.Monitor.Model
 {

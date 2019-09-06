@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
+using ExternalAPIs;
 using ExternalAPIs.Mixer;
 using ExternalAPIs.Mixer.Dto;
 using ExternalAPIs.Mixer.Query;
-using ExternalAPIs.TwitchTv.V3.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 

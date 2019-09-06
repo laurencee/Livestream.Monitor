@@ -121,7 +121,7 @@
     <Compile Include="TwitchTv\V3\ITwitchTvV3ReadonlyClient.cs" />
     <Compile Include="TwitchTv\V3\Query\ChannelVideosQuery.cs" />
     <Compile Include="PagedQuery.cs" />
-    <Compile Include="TwitchTv\V3\Query\TopStreamQuery.cs" />
+    <Compile Include="TopStreamQuery.cs" />
     <Compile Include="TwitchTv\V3\RequestConstants.cs" />
     <Compile Include="TwitchTv\V3\TwitchTvV3V3ReadonlyClient.cs" />
     <Compile Include="TwitchTv\V5\Dto\Box.cs" />

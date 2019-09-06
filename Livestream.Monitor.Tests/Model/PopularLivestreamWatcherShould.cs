@@ -9,7 +9,7 @@ using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Tests.TestFramework;
 using NSubstitute;
 using AutoFixture.Xunit2;
-using ExternalAPIs.TwitchTv.V3.Query;
+using ExternalAPIs;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Model

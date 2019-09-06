@@ -1,10 +1,10 @@
-namespace ExternalAPIs.TwitchTv.V3.Query
+namespace ExternalAPIs
 {
     public class TopStreamQuery : PagedQuery
     {
         public TopStreamQuery()
         {
-            Take = TwitchTvV3ReadonlyClient.DefaultItemsPerQuery;
+            Take = 10;
         }
 
         public string GameName { get; set; }

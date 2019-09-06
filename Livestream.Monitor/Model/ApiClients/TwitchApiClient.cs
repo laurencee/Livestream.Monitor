@@ -10,7 +10,6 @@ using ExternalAPIs;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.TwitchTv.Helix.Dto;
 using ExternalAPIs.TwitchTv.Helix.Query;
-using ExternalAPIs.TwitchTv.V3.Query;
 using ExternalAPIs.TwitchTv.V5;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;

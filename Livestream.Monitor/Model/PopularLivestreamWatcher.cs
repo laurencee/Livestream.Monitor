@@ -5,7 +5,7 @@ using System.Linq;
 using System.Runtime.Caching;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.TwitchTv.V3.Query;
+using ExternalAPIs;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
