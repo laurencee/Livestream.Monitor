@@ -405,8 +405,16 @@ namespace Livestream.Monitor.Model.ApiClients
             if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
                 twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
 
-            // sets up initial cache of game id/name maps
-            await GetKnownGameNames(null);
+            try
+            {
+                // sets up initial cache of game id/name maps
+                await GetKnownGameNames(null);
+            }
+            catch
+            {
+                // not important enough to prevent the app from initializing if this fails
+            }
+
 
             // initialize user cache
             var usersQuery = new GetUsersQuery();

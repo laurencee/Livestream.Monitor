@@ -142,7 +142,14 @@ namespace Livestream.Monitor.Model.Monitoring
 
             Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
             CanRefreshLivestreams = true;
-            Initialised = true;
+            try
+            {
+                await RefreshLivestreams();
+            }
+            finally // don't stop initialization just due to something failing during stream refreshing
+            {
+                Initialised = true;
+            }
         }
 
         public async Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
@@ -183,7 +190,11 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public async Task RefreshLivestreams()
         {
-            if (!CanRefreshLivestreams) return;
+            if (!CanRefreshLivestreams || 
+                (LastRefreshTime > DateTimeOffset.MinValue && LastRefreshTime.AddSeconds(10) >= DateTimeOffset.Now))
+            {
+                return;
+            }
 
             CanRefreshLivestreams = false;
 
