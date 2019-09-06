@@ -415,14 +415,20 @@ namespace Livestream.Monitor.Model.ApiClients
                 // not important enough to prevent the app from initializing if this fails
             }
 
-
-            // initialize user cache
-            var usersQuery = new GetUsersQuery();
-            usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
-            var users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
-            foreach (var user in users)
+            try
             {
-                channelIdToUserMap[user.Id] = user;
+                // initialize user cache
+                var usersQuery = new GetUsersQuery();
+                usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+                var users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
+                foreach (var user in users)
+                {
+                    channelIdToUserMap[user.Id] = user;
+                }
+            }
+            catch
+            {
+                // not important enough to prevent the app from initializing if this fails
             }
         }
 
