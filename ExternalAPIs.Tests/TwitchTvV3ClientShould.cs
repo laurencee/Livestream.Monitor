@@ -7,6 +7,7 @@ using Xunit;
 
 namespace ExternalAPIs.Tests
 {
+    [Obsolete]
     public class TwitchTvV3ClientShould
     {
         private const string StreamName = "etup";

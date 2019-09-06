@@ -241,7 +241,7 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
 
             await EnsureItems();
-            InitializeKnownGames();
+            if (!PossibleGameNames.Any()) InitializeKnownGames();
 
             base.OnViewLoaded(view);
         }

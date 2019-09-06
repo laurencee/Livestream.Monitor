@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +8,7 @@ using ExternalAPIs.TwitchTv.V3.Query;
 
 namespace ExternalAPIs.TwitchTv.V3
 {
+    [Obsolete("Use the helix api or the V5 if helix is missing a feature")]
     public interface ITwitchTvV3ReadonlyClient
     {
         Task<UserFollows> GetUserFollows(string username, CancellationToken cancellationToken = default(CancellationToken));

@@ -10,6 +10,7 @@ using ExternalAPIs.TwitchTv.V3.Query;
 
 namespace ExternalAPIs.TwitchTv.V3
 {
+    [Obsolete("Use the helix api or the V5 if helix is missing a feature")]
     public class TwitchTvV3ReadonlyClient : ITwitchTvV3ReadonlyClient
     {
         public const int DefaultItemsPerQuery = 100; // 25 is default, 100 is maximum

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -11,8 +10,8 @@ using ExternalAPIs;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.TwitchTv.Helix.Dto;
 using ExternalAPIs.TwitchTv.Helix.Query;
-using ExternalAPIs.TwitchTv.V3;
 using ExternalAPIs.TwitchTv.V3.Query;
+using ExternalAPIs.TwitchTv.V5;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 using MahApps.Metro.Controls.Dialogs;
@@ -27,7 +26,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private const string HighlightVodType = "Highlights";
         private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
 
-        private readonly ITwitchTvV3ReadonlyClient twitchTvV3Client;
+        private readonly ITwitchTvV5ReadonlyClient twitchTvV5ReadonlyClient;
         private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient;
         private readonly ISettingsHandler settingsHandler;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
@@ -36,11 +35,11 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
 
         public TwitchApiClient(
-            ITwitchTvV3ReadonlyClient twitchTvV3client,
+            ITwitchTvV5ReadonlyClient twitchTvV5Client,
             ITwitchTvHelixReadonlyClient twitchTvHelixClient,
             ISettingsHandler settingsHandler)
         {
-            twitchTvV3Client = twitchTvV3client ?? throw new ArgumentNullException(nameof(twitchTvV3client));
+            twitchTvV5ReadonlyClient = twitchTvV5Client ?? throw new ArgumentNullException(nameof(twitchTvV5Client));
             this.twitchTvHelixClient = twitchTvHelixClient ?? throw new ArgumentNullException(nameof(twitchTvHelixClient));
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         }
@@ -131,6 +130,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
                     settingsHandler.SaveSettings();
+                    twitchTvV5ReadonlyClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
                     twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
                     return;
                 }
@@ -338,7 +338,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (string.IsNullOrEmpty(filterGameName))
             {
-                var topGames = await twitchTvV3Client.GetTopGames();
+                var topGames = await twitchTvV5ReadonlyClient.GetTopGames();
                 foreach (var topGame in topGames)
                 {
                     var gameId = topGame.Game.Id.ToString();
@@ -351,14 +351,14 @@ namespace Livestream.Monitor.Model.ApiClients
                     GameName = x.Game.Name,
                     ThumbnailUrls = new ThumbnailUrls()
                     {
-                        Medium = x.Game.Logo?.Medium,
-                        Small = x.Game.Logo?.Small,
-                        Large = x.Game.Logo?.Large
+                        Medium = x.Game.Box?.Medium?.ToString(),
+                        Small = x.Game.Box?.Small?.ToString(),
+                        Large = x.Game.Box?.Large?.ToString()
                     }
                 }).ToList();
             }
 
-            var twitchGames = await twitchTvV3Client.SearchGames(filterGameName);
+            var twitchGames = await twitchTvV5ReadonlyClient.SearchGames(filterGameName);
             foreach (var game in twitchGames)
             {
                 var gameId = game.Id.ToString();
@@ -370,9 +370,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 GameName = x.Name,
                 ThumbnailUrls = new ThumbnailUrls()
                 {
-                    Medium = x.Logo?.Medium,
-                    Small = x.Logo?.Small,
-                    Large = x.Logo?.Large
+                    Medium = x.Box?.Medium?.ToString(),
+                    Small = x.Box?.Small?.ToString(),
+                    Large = x.Box?.Large?.ToString()
                 }
             }).ToList();
         }
@@ -403,7 +403,10 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task Initialize(CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
+            {
+                twitchTvV5ReadonlyClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
                 twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
+            }
 
             try
             {
@@ -470,8 +473,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 if (!games.Any()) return null;
 
                 gameName = games[0].Name;
-                gameNameToIdMap[gameId] = gameName;
-                gameIdToNameMap[gameName] = gameId;
+                gameNameToIdMap[gameName] = gameId;
+                gameIdToNameMap[gameId] = gameName;
             }
 
             return gameName;

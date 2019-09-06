@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.Mixer;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.TwitchTv.Helix.Dto;
 using ExternalAPIs.TwitchTv.Helix.Query;
@@ -18,16 +17,13 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         private const string FileName = "livestreams.json";
         private readonly IApiClientFactory apiClientFactory;
-        private readonly ISettingsHandler settingsHandler;
         private readonly ITwitchTvHelixReadonlyClient twitchTvHelixReadonlyClient;
 
         public MonitoredStreamsFileHandler(
             IApiClientFactory apiClientFactory,
-            ISettingsHandler settingsHandler,
             ITwitchTvHelixReadonlyClient twitchTvHelixReadonlyClient)
         {
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             this.twitchTvHelixReadonlyClient = twitchTvHelixReadonlyClient ?? throw new ArgumentNullException(nameof(twitchTvHelixReadonlyClient));
         }
 

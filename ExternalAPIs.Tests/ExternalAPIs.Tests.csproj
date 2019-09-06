@@ -70,6 +70,7 @@
   <ItemGroup>
     <Compile Include="MixerClientShould.cs" />
     <Compile Include="TwitchTvHelixClientShould.cs" />
+    <Compile Include="TwitchTvV5ClientShould.cs" />
     <Compile Include="YoutubeClientShould.cs" />
     <Compile Include="SmashcastClientShould.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
