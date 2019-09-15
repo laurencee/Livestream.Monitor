@@ -7,7 +7,8 @@ namespace ExternalAPIs.Tests
 {
     public class YoutubeClientShould
     {
-        private const string SKY_NEWS_VIDEO_ID = "y60wDzZt8yg";
+        private const string SKY_NEWS_VIDEO_ID = "siyW0GOBtbo";
+        private const string SKY_NEWS_CHANNEL_ID = "UCoMdktPbSTixAyNGwb-UYkQ";
         private readonly YoutubeReadonlyClient sut = new YoutubeReadonlyClient();
 
         [Fact, Trait("Category", "LocalOnly")]
@@ -37,7 +38,7 @@ namespace ExternalAPIs.Tests
         [Fact, Trait("Category", "LocalOnly")]
         public async Task GetChannelIdFromUsername()
         {
-            const string channelName = "LoLChampSeries";
+            const string channelName = "skynews";
             var channelId = await sut.GetChannelIdFromUsername(channelName);
 
             Assert.NotNull(channelId);
@@ -46,9 +47,7 @@ namespace ExternalAPIs.Tests
         [Fact, Trait("Category", "LocalOnly")]
         public async Task GetLiveVideos()
         {
-            // channelId of the value returned by the test "GetChannelIdFromUsername"
-            const string channelId = "UCvqRdlKsE5Q8mf8YXbdIJLw";
-            var onlineVideos = await sut.GetLivestreamVideos(channelId);
+            var onlineVideos = await sut.GetLivestreamVideos(SKY_NEWS_CHANNEL_ID);
 
             Assert.NotNull(onlineVideos);
             Assert.NotNull(onlineVideos.Items);

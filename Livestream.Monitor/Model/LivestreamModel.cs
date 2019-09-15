@@ -168,9 +168,17 @@ namespace Livestream.Monitor.Model
             }
         }
 
-        public Task<string> GetStreamUrl => ApiClient?.GetStreamUrl(ChannelIdentifier.ChannelId);
+        public Task<string> GetStreamUrl => ApiClient?.GetStreamUrl(
+            ApiClient.ApiName == YoutubeApiClient.API_NAME
+                ? Id // hack as youtube can return multiple livestreams for a channel and we store the video id in this field
+                : ChannelIdentifier.ChannelId
+        );
 
-        public Task<string> GetChatUrl => ApiClient?.GetChatUrl(ChannelIdentifier.ChannelId);
+        public Task<string> GetChatUrl => ApiClient?.GetChatUrl(
+            ApiClient.ApiName == YoutubeApiClient.API_NAME
+                ? Id // hack as youtube can return multiple livestreams for a channel and we store the video id in this field
+                : ChannelIdentifier.ChannelId
+        );
 
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }
