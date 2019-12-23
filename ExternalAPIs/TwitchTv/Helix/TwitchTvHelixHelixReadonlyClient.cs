@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
@@ -48,10 +47,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                 if (getStreamsQuery.GameIds.Count > MaxItemsPerQuery)
                     throw new ArgumentException($"Max allowed game ids is {MaxItemsPerQuery}, attempted to query {getStreamsQuery.GameIds.Count}");
 
-                foreach (var gameId in getStreamsQuery.GameIds)
-                {
-                    request += "&game_id=" + gameId;
-                }
+                request = request.AppendQueryStringValues("game_id", getStreamsQuery.Languages, isFirstParam: false);
             }
 
             if (getStreamsQuery.Languages?.Any() == true)
@@ -59,38 +55,22 @@ namespace ExternalAPIs.TwitchTv.Helix
                 if (getStreamsQuery.Languages.Count > MaxItemsPerQuery)
                     throw new ArgumentException($"Max allowed languages is {MaxItemsPerQuery}, attempted to query {getStreamsQuery.Languages.Count}");
 
-                foreach (var language in getStreamsQuery.Languages)
-                {
-                    request += "&language=" + language;
-                }
+                request = request.AppendQueryStringValues("language", getStreamsQuery.Languages, isFirstParam: false);
             }
 
             if (getStreamsQuery.UserIds?.Any() == true)
             {
-                if (getStreamsQuery.UserIds.Count > MaxItemsPerQuery)
+                var nonPagedRequest = request;
+                int taken = 0;
+                while (taken < getStreamsQuery.UserIds.Count)
                 {
-                    var nonPagedRequest = request;
-                    int taken = 0;
-                    while (taken < getStreamsQuery.UserIds.Count)
-                    {
-                        var pagedRequest = nonPagedRequest;
-                        var pagedIds = getStreamsQuery.UserIds.Skip(taken).Take(DefaultItemsPerQuery);
-                        taken += DefaultItemsPerQuery;
-                        foreach (var userId in pagedIds)
-                        {
-                            pagedRequest += "&user_id=" + userId;
-                        }
+                    var take = Math.Min(DefaultItemsPerQuery, getStreamsQuery.UserIds.Count - taken);
+                    var pagedIds = getStreamsQuery.UserIds.Skip(taken).Take(take);
+                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("user_id", pagedIds, isFirstParam: false);
 
-                        var streamRoot = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
-                        streams.AddRange(streamRoot.Streams);
-                    }
-                }
-                else
-                {
-                    foreach (var userId in getStreamsQuery.UserIds)
-                    {
-                        request += "&user_id=" + userId;
-                    }
+                    var streamRoot = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
+                    streams.AddRange(streamRoot.Streams);
+                    taken += take;
                 }
             }
 
@@ -111,7 +91,7 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         public async Task<User> GetUserByUsername(string username, CancellationToken cancellationToken = default)
         {
-            var users = await GetUsers(new GetUsersQuery() {UserNames = new List<string>() {username}}, cancellationToken);
+            var users = await GetUsers(new GetUsersQuery() { UserNames = new List<string>() { username } }, cancellationToken);
             return users.FirstOrDefault();
         }
 
@@ -127,11 +107,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                 if (getGamesQuery.GameIds.Count > MaxItemsPerQuery)
                     throw new ArgumentException($"Max allowed game ids is {MaxItemsPerQuery}, attempted to query {getGamesQuery.GameIds.Count}");
 
-                foreach (var gameId in getGamesQuery.GameIds)
-                {
-                    if (request == RequestConstants.Games) request += "?id=" + gameId;
-                    else request += "&id=" + gameId;
-                }
+                request = request.AppendQueryStringValues("id", getGamesQuery.GameIds);
             }
 
             if (getGamesQuery.GameNames?.Any() == true)
@@ -139,11 +115,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                 if (getGamesQuery.GameNames.Count > MaxItemsPerQuery)
                     throw new ArgumentException($"Max allowed game names is {MaxItemsPerQuery}, attempted to query {getGamesQuery.GameNames.Count}");
 
-                foreach (var gameName in getGamesQuery.GameNames)
-                {
-                    if (request == RequestConstants.Games) request += "?name=" + gameName;
-                    else request += "&name=" + gameName;
-                }
+                request = request.AppendQueryStringValues("name", getGamesQuery.GameNames);
             }
 
             var gamesRoot = await ExecuteRequest<GamesRoot>(request, cancellationToken);
@@ -158,68 +130,34 @@ namespace ExternalAPIs.TwitchTv.Helix
             var request = RequestConstants.Users;
             if (getUsersQuery.UserIds?.Any() == true)
             {
-                if (getUsersQuery.UserIds.Count > MaxItemsPerQuery)
+                var nonPagedRequest = request;
+                int taken = 0;
+                while (taken < getUsersQuery.UserIds.Count)
                 {
-                    var nonPagedRequest = request;
-                    int taken = 0;
-                    while (taken < getUsersQuery.UserIds.Count)
-                    {
-                        var pagedRequest = nonPagedRequest;
-                        var pagedIds = getUsersQuery.UserIds.Skip(taken).Take(DefaultItemsPerQuery);
-                        taken += DefaultItemsPerQuery;
-                        foreach (var userId in pagedIds)
-                        {
-                            if (pagedRequest == RequestConstants.Users) pagedRequest += "?id=" + userId;
-                            else pagedRequest += "&id=" + userId;
-                        }
+                    var take = Math.Min(DefaultItemsPerQuery, getUsersQuery.UserIds.Count - taken);
+                    var pagedIds = getUsersQuery.UserIds.Skip(taken).Take(take);
+                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("id", pagedIds);
 
-                        var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
-                        users.AddRange(usersRoot.Users);
-                    }
-                }
-
-                foreach (var userId in getUsersQuery.UserIds)
-                {
-                    if (request == RequestConstants.Users) request += "?id=" + userId;
-                    else request += "&id=" + userId;
+                    var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
+                    users.AddRange(usersRoot.Users);
+                    taken += take;
                 }
             }
 
             if (getUsersQuery.UserNames?.Any() == true)
             {
-                if (getUsersQuery.UserNames.Count > MaxItemsPerQuery)
+                var nonPagedRequest = request;
+                int taken = 0;
+                while (taken < getUsersQuery.UserNames.Count)
                 {
-                    var nonPagedRequest = request;
-                    int taken = 0;
-                    while (taken < getUsersQuery.UserNames.Count)
-                    {
-                        var pagedRequest = nonPagedRequest;
-                        var pagedUserNames = getUsersQuery.UserNames.Skip(taken).Take(DefaultItemsPerQuery);
-                        taken += DefaultItemsPerQuery;
-                        foreach (var userName in pagedUserNames)
-                        {
-                            if (pagedRequest == RequestConstants.Users) pagedRequest += "?login=" + userName;
-                            else pagedRequest += "&login=" + userName;
-                        }
+                    var take = Math.Min(DefaultItemsPerQuery, getUsersQuery.UserNames.Count - taken);
+                    var pagedUserNames = getUsersQuery.UserNames.Skip(taken).Take(take);
+                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("login", pagedUserNames);
 
-                        var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
-                        users.AddRange(usersRoot.Users);
-                    }
+                    var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
+                    users.AddRange(usersRoot.Users);
+                    taken += take;
                 }
-                else
-                {
-                    foreach (var userName in getUsersQuery.UserNames)
-                    {
-                        if (request == RequestConstants.Users) request += "?login=" + userName;
-                        else request += "&login=" + userName;
-                    }
-                }
-            }
-
-            if (!users.Any())
-            {
-                var usersRoot = await ExecuteRequest<UsersRoot>(request, cancellationToken);
-                users = usersRoot.Users;
             }
 
             return users;
@@ -228,17 +166,14 @@ namespace ExternalAPIs.TwitchTv.Helix
         public async Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default)
         {
             if (getVideosQuery == null) throw new ArgumentNullException(nameof(getVideosQuery));
-            
+
             var request = RequestConstants.Videos + "?first=" + getVideosQuery.First;
             if (!string.IsNullOrWhiteSpace(getVideosQuery.CursorPagination.After))
                 request += "&after=" + getVideosQuery.CursorPagination.After;
 
             if (getVideosQuery.VideoIds?.Any() == true)
             {
-                foreach (var videoId in getVideosQuery.VideoIds)
-                {
-                    request += "&id=" + videoId;
-                }
+                request = request.AppendQueryStringValues("id", getVideosQuery.VideoIds, isFirstParam: false);
             }
 
             if (!string.IsNullOrWhiteSpace(getVideosQuery.GameId))

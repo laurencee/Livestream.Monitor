@@ -47,6 +47,7 @@
     <Compile Include="..\GlobalAssemblyInfo.cs">
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="Extensions.cs" />
     <Compile Include="Mixer\Dto\KnownGame.cs" />
     <Compile Include="Mixer\Query\MixerPagedQuery.cs" />
     <Compile Include="Mixer\MixerReadonlyClient.cs" />
