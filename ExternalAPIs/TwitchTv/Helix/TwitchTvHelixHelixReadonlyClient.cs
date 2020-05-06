@@ -73,8 +73,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                     taken += take;
                 }
             }
-
-            if (!streams.Any())
+            else
             {
                 var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
                 streams = streamRoot.Streams;

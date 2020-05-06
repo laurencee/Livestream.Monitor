@@ -31,7 +31,7 @@ namespace Livestream.Monitor.Core
         private MetroThemeAccentColour? metroThemeAccentColour;
         private int minimumEventViewers = DEFAULT_MINIMUM_EVENT_VIEWERS;
         private string livestreamerFullPath, chatCommandLine, twitchAuthToken;
-        private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs, twitchAuthTokenInLivestreamerConfig;
+        private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
         private int settingsVersion;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -182,18 +182,6 @@ namespace Livestream.Monitor.Core
         [JsonConverter(typeof(ExcludeNotifyConverter))]
         public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new BindableCollection<UniqueStreamKey>();
 
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public bool TwitchAuthTokenInLivestreamerConfig
-        {
-            get => twitchAuthTokenInLivestreamerConfig;
-            set
-            {
-                if (value == twitchAuthTokenInLivestreamerConfig) return;
-                twitchAuthTokenInLivestreamerConfig = value;
-                NotifyOfPropertyChange(() => TwitchAuthTokenInLivestreamerConfig);
-            }
-        }
-
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string TwitchAuthToken
         {
@@ -210,8 +198,7 @@ namespace Livestream.Monitor.Core
         /// Flag to indicate if the twitch oauth token has been defined either in livestream monitor settings
         /// or in the livestreamer/streamlink configuration file
         /// </summary>
-        public bool TwitchAuthTokenSet => TwitchAuthTokenInLivestreamerConfig ||
-                                          !string.IsNullOrWhiteSpace(TwitchAuthToken);
+        public bool TwitchAuthTokenSet => !string.IsNullOrWhiteSpace(TwitchAuthToken);
 
         /// <summary>
         /// Name of the livestreamer/streamlink exe without the file extension

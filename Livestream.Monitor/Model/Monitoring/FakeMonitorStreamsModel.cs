@@ -103,7 +103,7 @@ namespace Livestream.Monitor.Model.Monitoring
             return Task.CompletedTask;
         }
 
-        public Task ImportFollows(string username, IApiClient apiClient)
+        public Task ImportFollows(string username, IApiClient apiClient, IViewAware viewAware)
         {
             return Task.CompletedTask;
         }

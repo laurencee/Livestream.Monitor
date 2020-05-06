@@ -31,7 +31,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 
-        Task ImportFollows(string username, IApiClient apiClient);
+        Task ImportFollows(string username, IApiClient apiClient, IViewAware viewAware);
         
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();

@@ -165,7 +165,7 @@ namespace Livestream.Monitor.ViewModels
                 var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from '{SelectedApiClient.ApiName}' for username '{username}'");
                 try
                 {
-                    await MonitorStreamsModel.ImportFollows(username, SelectedApiClient);
+                    await MonitorStreamsModel.ImportFollows(username, SelectedApiClient, this);
                 }
                 catch (Exception ex)
                 {

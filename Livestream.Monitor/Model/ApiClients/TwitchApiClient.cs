@@ -80,24 +80,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task Authorize(IViewAware screen)
         {
-            var messageDialogResult = await screen.ShowMessageAsync(title: "Authorization",
-                message: $"Twitch requires authorization to connect to their services, have you set your oauth token in your {settingsHandler.Settings.LivestreamExeDisplayName} configuration file?",
-                messageDialogStyle: MessageDialogStyle.AffirmativeAndNegative,
-                dialogSettings: new MetroDialogSettings()
-                {
-                    AffirmativeButtonText = "Yes",
-                    NegativeButtonText = "No"
-                });
-
-            if (messageDialogResult == MessageDialogResult.Affirmative)
-            {
-                settingsHandler.Settings.TwitchAuthTokenInLivestreamerConfig = true;
-                settingsHandler.SaveSettings();
-                return;
-            }
-
-            messageDialogResult = await screen.ShowMessageAsync(title: "Authorization",
-                message: "Would you like to authorize this application now?",
+            var messageDialogResult = await screen.ShowMessageAsync(title: "Twitch Authorization",
+                message: "Twitch requires authorization for querying livestreams.\nWould you like to authorize this application now?",
                 messageDialogStyle: MessageDialogStyle.AffirmativeAndNegative,
                 dialogSettings: new MetroDialogSettings()
                 {

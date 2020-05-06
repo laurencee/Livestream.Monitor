@@ -157,18 +157,23 @@ namespace Livestream.Monitor.Model.Monitoring
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             if (channelIdentifiers.Contains(channelIdentifier)) return; // ignore duplicate requests
 
-            var livestreamQueryResults = await channelIdentifier.ApiClient.AddChannel(channelIdentifier);
+            var apiClient = channelIdentifier.ApiClient;
+            if (!apiClient.IsAuthorized) await apiClient.Authorize(viewAware);
+
+            var livestreamQueryResults = await apiClient.AddChannel(channelIdentifier);
             livestreamQueryResults.EnsureAllQuerySuccess();
 
             AddChannels(channelIdentifier);
             Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
         }
 
-        public async Task ImportFollows(string username, IApiClient apiClient)
+        public async Task ImportFollows(string username, IApiClient apiClient, IViewAware viewAware)
         {
             if (username == null) throw new ArgumentNullException(nameof(username));
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
             if (!apiClient.HasUserFollowQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
+
+            if (!apiClient.IsAuthorized) await apiClient.Authorize(viewAware);
 
             var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
             followedChannelsQueryResults.EnsureAllQuerySuccess();
