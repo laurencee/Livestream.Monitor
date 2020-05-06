@@ -28,7 +28,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly ITwitchTvV5ReadonlyClient twitchTvV5ReadonlyClient;
         private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient;
         private readonly ISettingsHandler settingsHandler;
-        private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
+        private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
         private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
         private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
         private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
@@ -193,7 +193,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             if (queryResults.All(x => x.IsSuccess))
             {
-                moniteredChannels.Add(newChannel);
+                monitoredChannels.Add(newChannel);
             }
             return queryResults;
         }
@@ -201,20 +201,20 @@ namespace Livestream.Monitor.Model.ApiClients
         public void AddChannelWithoutQuerying(ChannelIdentifier newChannel)
         {
             if (newChannel == null) throw new ArgumentNullException(nameof(newChannel));
-            moniteredChannels.Add(newChannel);
+            monitoredChannels.Add(newChannel);
         }
 
         public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
             channelIdToUserMap.Remove(channelIdentifier.ChannelId);
-            moniteredChannels.Remove(channelIdentifier);
+            monitoredChannels.Remove(channelIdentifier);
             return Task.CompletedTask;
         }
 
         public async Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
         {
             var queryResults = new List<LivestreamQueryResult>();
-            if (moniteredChannels.Count == 0) return queryResults;
+            if (monitoredChannels.Count == 0) return queryResults;
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
             List<Stream> onlineStreams = new List<Stream>();
@@ -226,7 +226,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 try
                 {
                     var query = new GetStreamsQuery();
-                    query.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+                    query.UserIds.AddRange(monitoredChannels.Select(x => x.ChannelId));
                     onlineStreams = await twitchTvHelixClient.GetStreams(query, cancellationToken);
                     success = true;
                 }
@@ -241,7 +241,7 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 if (cancellationToken.IsCancellationRequested) return queryResults;
 
-                var channelIdentifier = moniteredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.UserId));
+                var channelIdentifier = monitoredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.UserId));
                 var gameName = await GetGameNameById(onlineStream.GameId);
 
                 var livestream = new LivestreamModel(onlineStream.UserId, channelIdentifier);
@@ -253,7 +253,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 });
             }
 
-            var offlineStreams = moniteredChannels.Where(x => onlineStreams.All(y => y.UserId != x.ChannelId)).ToList();
+            var offlineStreams = monitoredChannels.Where(x => onlineStreams.All(y => y.UserId != x.ChannelId)).ToList();
             foreach (var offlineStream in offlineStreams)
             {
                 var queryResult = new LivestreamQueryResult(offlineStream)
@@ -421,7 +421,7 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 // initialize user cache
                 var usersQuery = new GetUsersQuery();
-                usersQuery.UserIds.AddRange(moniteredChannels.Select(x => x.ChannelId));
+                usersQuery.UserIds.AddRange(monitoredChannels.Select(x => x.ChannelId));
                 var users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
                 foreach (var user in users)
                 {

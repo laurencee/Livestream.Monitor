@@ -198,10 +198,9 @@ namespace ExternalAPIs.TwitchTv.Helix
         private Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
             HttpClient httpClient = HttpClientExtensions.CreateCompressionHttpClient();
+            httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
             if (_accessToken != null)
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
-            else
-                httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
+                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);                
 
             return httpClient.ExecuteRequest<T>(request, cancellationToken);
         }
