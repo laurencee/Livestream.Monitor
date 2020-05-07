@@ -69,7 +69,7 @@ namespace Livestream.Monitor.ViewModels
 
                 if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
                     AddError(nameof(ChatCommandLine),
-                        $"Chat commmand line must include a {Settings.CHAT_URL_REPLACEMENT_TOKEN} token so the chat url can be passed to the command");
+                        $"Chat command line must include a {Settings.CHAT_URL_REPLACEMENT_TOKEN} token so the chat url can be passed to the command");
                 else
                     RemoveErrors(nameof(ChatCommandLine));
 

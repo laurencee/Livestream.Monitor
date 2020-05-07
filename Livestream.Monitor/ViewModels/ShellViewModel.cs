@@ -180,7 +180,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error", $"An error occured initializing the app.{Environment.NewLine}{ex.ExtractErrorMessage()}");
+                await this.ShowMessageAsync("Error", $"An error occurred initializing the app.{Environment.NewLine}{ex.ExtractErrorMessage()}");
             }
 
             if (dialogController.IsOpen) await dialogController.CloseAsync();
@@ -219,7 +219,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error", $"An error occured while checking for a newer version.{Environment.NewLine}{ex.Message}");
+                await this.ShowMessageAsync("Error", $"An error occurred while checking for a newer version.{Environment.NewLine}{ex.Message}");
             }
 
             if (dialogController.IsOpen) await dialogController.CloseAsync();

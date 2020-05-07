@@ -276,7 +276,7 @@ namespace Livestream.Monitor.Model
                 if (preventClose)
                 {
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       $"ERROR occured in {settingsHandler.Settings.LivestreamExeDisplayName}: " +
+                                                       $"ERROR occurred in {settingsHandler.Settings.LivestreamExeDisplayName}: " +
                                                        $"Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
 
                     // open the message box if it was somehow closed prior to the error being displayed
