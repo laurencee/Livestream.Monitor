@@ -28,21 +28,11 @@ namespace Livestream.Monitor.Model
 
             livestreamModel.DisplayName = stream.UserName;
             livestreamModel.Description = stream.Title;
+            livestreamModel.BroadcasterLanguage = stream.Language;
+            livestreamModel.Language = stream.Language;
 
             return livestreamModel;
         }
-
-        //public static void PopulateWithChannel(this LivestreamModel livestreamModel, Channel channel)
-        //{
-        //    if (channel == null) return;
-
-        //    livestreamModel.DisplayName = channel.DisplayName;
-        //    livestreamModel.Description = channel.Status?.Trim();
-        //    livestreamModel.Game = channel.Game;
-        //    livestreamModel.IsPartner = channel.Partner.HasValue && channel.Partner.Value;
-        //    livestreamModel.BroadcasterLanguage = channel.BroadcasterLanguage;
-        //    livestreamModel.Language = channel.Language;
-        //}
 
         public static void PopulateSelf(this LivestreamModel livestreamModel, LivestreamModel consume)
         {
