@@ -65,6 +65,7 @@
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
                                         <MenuItem Header="Copy Stream Url" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
+                                        <MenuItem Header="Open Stream in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
                                         <MenuItem Header="Open Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
                                         <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]"

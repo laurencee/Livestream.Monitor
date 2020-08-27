@@ -47,7 +47,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                 if (getStreamsQuery.GameIds.Count > MaxItemsPerQuery)
                     throw new ArgumentException($"Max allowed game ids is {MaxItemsPerQuery}, attempted to query {getStreamsQuery.GameIds.Count}");
 
-                request = request.AppendQueryStringValues("game_id", getStreamsQuery.Languages, isFirstParam: false);
+                request = request.AppendQueryStringValues("game_id", getStreamsQuery.GameIds, isFirstParam: false);
             }
 
             if (getStreamsQuery.Languages?.Any() == true)

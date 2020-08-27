@@ -300,7 +300,7 @@ namespace Livestream.Monitor.Model.ApiClients
             if (!string.IsNullOrWhiteSpace(topStreamQuery.GameName))
             {
                 var gameId = await GetGameIdByName(topStreamQuery.GameName);
-                query.GameIds.Add(gameId);
+                if (gameId != null) query.GameIds.Add(gameId);
             }
 
             var topStreams = await twitchTvHelixClient.GetStreams(query);
@@ -342,6 +342,8 @@ namespace Livestream.Monitor.Model.ApiClients
             }
 
             var twitchGames = await twitchTvV5ReadonlyClient.SearchGames(filterGameName);
+            if (twitchGames == null) return new List<KnownGame>();
+
             foreach (var game in twitchGames)
             {
                 var gameId = game.Id.ToString();

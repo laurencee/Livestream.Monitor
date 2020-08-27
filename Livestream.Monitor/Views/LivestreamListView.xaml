@@ -21,6 +21,7 @@
                         <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                             <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
+                            <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser]" />
                             <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}"
                                       cal:Message.Attach="[Click] = [GotoVodViewer]" />
                             <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]"

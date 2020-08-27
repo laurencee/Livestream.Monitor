@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
@@ -148,6 +149,14 @@ namespace Livestream.Monitor.ViewModels
             if (stream == null) return;
 
             await streamLauncher.OpenStream(stream.LivestreamModel, this);
+        }
+
+        public async Task OpenStreamInBrowser(TopStreamResult stream)
+        {
+            if (stream == null) return;
+
+            var streamUrl = await stream.LivestreamModel.GetStreamUrl;
+            Process.Start(streamUrl);
         }
 
         public async Task OpenChat(TopStreamResult stream)
@@ -310,6 +319,8 @@ namespace Livestream.Monitor.ViewModels
             try
             {
                 Items.Clear();
+
+                if (!SelectedApiClient.IsAuthorized) await SelectedApiClient.Authorize(this);
 
                 var topStreamsQuery = new TopStreamQuery
                 {
