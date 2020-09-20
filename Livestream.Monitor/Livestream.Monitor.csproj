@@ -114,7 +114,6 @@
     <Compile Include="Core\UI\ActivateScreen.cs" />
     <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />
     <Compile Include="Model\ApiClients\DesignTimeApiClient.cs" />
-    <Compile Include="Model\ApiClients\MixerApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />
     <Compile Include="Model\ApiClients\SmashcastApiClient.cs" />
     <Compile Include="Model\ApiClients\KnownGame.cs" />

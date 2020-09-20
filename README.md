@@ -18,7 +18,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## General Features
-* Add your favourite livestreams to be monitored from twitch, youtube, mixer or smashcast
+* Add your favourite livestreams to be monitored from twitch, youtube or smashcast
 * Custom command line option for launching twitch/youtube/hitbox chat for the selected stream (presets include Chrome/Firefox/Edge)
 * Stream quality favorites stored per api in a priority order
 * Toast notifications for streams coming online
