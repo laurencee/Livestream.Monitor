@@ -274,6 +274,10 @@ namespace Livestream.Monitor.Model.ApiClients
             var vods = videosRoot.Videos.Select(video =>
             {
                 var largeThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "640").Replace("%{height}", "360");
+                var tileThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "110").Replace("%{height}", "110");
+                var singleLineTitle = video.Title.TrimEnd().Replace('\n', ' ');
+                var singleLineDesc = video.Description.TrimEnd().Replace('\n', ' ');
+
                 // stupid fucking new duration format from twitch instead of just returning seconds or some other sensible value
                 var match = Regex.Match(video.Duration, @"((?<hours>\d+)?h)?((?<mins>\d+)?)m?(?<secs>\d+)s");
                 var hours = match.Groups["hours"].Value;
@@ -288,9 +292,10 @@ namespace Livestream.Monitor.Model.ApiClients
                     RecordedAt = video.CreatedAt,
                     Views = video.ViewCount,
                     //Game = video.Game,
-                    Description = video.Description,
-                    Title = video.Title,
+                    Description = singleLineDesc,
+                    Title = singleLineTitle,
                     PreviewImage = largeThumbnail,
+                    TileImage = tileThumbnail,
                     ApiClient = this,
                 };
             }).ToList();

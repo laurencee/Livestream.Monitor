@@ -15,6 +15,7 @@ namespace Livestream.Monitor.Model
         private string title;
         private string previewImage;
         private IApiClient apiClient;
+        private string tileImage;
 
         public string Url
         {
@@ -101,6 +102,17 @@ namespace Livestream.Monitor.Model
                 if (value == previewImage) return;
                 previewImage = value;
                 NotifyOfPropertyChange(() => PreviewImage);
+            }
+        }
+
+        public string TileImage
+        {
+            get { return tileImage; }
+            set
+            {
+                if (value == tileImage) return;
+                tileImage = value;
+                NotifyOfPropertyChange(() => TileImage);
             }
         }
 

@@ -107,16 +107,19 @@ namespace Livestream.Monitor.Model.ApiClients
                     if (!TimeSpan.TryParse(x.MediaDurationFormat, out length))
                         length = TimeSpan.Zero;
 
+                    var singleLineTitle = x.MediaTitle.TrimEnd().Replace('\n', ' ');
+                    var singleLineDesc = x.MediaStatus.TrimEnd().Replace('\n', ' ');
                     return new VodDetails()
                     {
                         Length = length,
                         Game = x.CategoryName,
                         Url = VideoPrefix + x.MediaId,
-                        Title = x.MediaTitle,
-                        Description = x.MediaStatus,
+                        Title = singleLineTitle,
+                        Description = singleLineDesc,
                         RecordedAt = x.MediaDateAdded ?? DateTimeOffset.MinValue,
                         Views = x.MediaViews,
-                        PreviewImage = StaticContentPrefixUrl + x.MediaThumbnail,
+                        PreviewImage = StaticContentPrefixUrl + x.MediaThumbnailLarge,
+                        TileImage = StaticContentPrefixUrl + x.MediaThumbnail,
                         ApiClient = this,
                     };
                 }).ToList();
