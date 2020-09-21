@@ -11,6 +11,26 @@
              d:DataContext="{d:DesignInstance Type=viewModels:VodListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
              d:DesignHeight="300" d:DesignWidth="700">
+    <UserControl.Resources>
+        <Style x:Key="VodTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <ImageBrush ImageSource="{Binding TileImage}" />
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding TileImage, Converter={StaticResource NotNullOrEmptyConverter}}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
+                </DataTrigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource HighlightBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -47,9 +67,9 @@
             <Button Grid.Column="2" x:Name="OpenVod" Content="Open VOD" Margin="3"
                     ToolTip="Opens up the VOD through livestreamer/streamlink (with HLS passthrough to allow seeking)"/>
         </Grid>
-        
-        
-        
+
+
+
         <!-- Vod list -->
         <ItemsControl Grid.Row="1" x:Name="Items">
             <ItemsControl.ItemsPanel>
@@ -60,21 +80,18 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate DataType="model:VodDetails">
                     <Grid>
-                        <controls:Tile x:Name="VodTile" cal:Message.Attach="[Click] = [VodClicked($dataContext)]" Height="120" Width="155">
-                            <controls:Tile.Background>
-                                <ImageBrush ImageSource="{Binding TileImage}" />
-                            </controls:Tile.Background>
+                        <controls:Tile x:Name="VodTile" Style="{StaticResource VodTile}" cal:Message.Attach="[Click] = [VodClicked($dataContext)]" Height="120" Width="155">
                             <controls:Tile.Content>
                                 <StackPanel Width="130">
                                     <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" />
                                     <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}" />
                                     <TextBlock Text="{Binding Game}" />
-                                     <!--Blank spacer--> 
+                                    <!--Blank spacer-->
                                     <TextBlock />
                                     <!-- Setting horizontal alignment makes the textbox auto size to the content so we dont have a black background that stretches the full width of the tile-->
                                     <TextBlock Text="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}" Background="Black" 
                                                HorizontalAlignment="Left" Padding="5,0,5,0" Margin="-5,0,0,0" />
-                                     <!--Blank spacer--> 
+                                    <!--Blank spacer-->
                                     <TextBlock />
                                     <TextBlock Text="{Binding RecordedAt, StringFormat={}{0:MMM} {0:dd}\, {0:yyyy}}" />
                                 </StackPanel>

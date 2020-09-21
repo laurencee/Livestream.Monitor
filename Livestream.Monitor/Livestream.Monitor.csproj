@@ -101,6 +101,7 @@
     <Compile Include="Core\NavigationService.cs" />
     <Compile Include="Core\UI\BindableBehaviors.cs" />
     <Compile Include="Core\UI\CountryIdToFlagImageSourceConverter.cs" />
+    <Compile Include="Core\UI\NotNullOrEmptyConverter.cs" />
     <Compile Include="Core\UI\InvertedBooleanConverter.cs" />
     <Compile Include="Core\UI\RestrictTextBoxInputBehavior.cs" />
     <Compile Include="Core\UI\TotalHoursTimespanConverter.cs" />
