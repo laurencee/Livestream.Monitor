@@ -13,14 +13,28 @@
              d:DesignHeight="300" d:DesignWidth="500">
     <UserControl.Resources>
         <Style x:Key="StreamTile" TargetType="controls:Tile" BasedOn="{StaticResource {x:Type controls:Tile}}">
-            <Setter Property="Background" Value="{DynamicResource AccentColorBrush3}" />
+            <Setter Property="Background">
+                <Setter.Value>
+                    <ImageBrush ImageSource="{Binding LivestreamModel.ThumbnailUrls.Medium, IsAsync=True}" />
+                </Setter.Value>
+            </Setter>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding IsMonitored}" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource AccentColorBrush}" />
-                </DataTrigger>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{DynamicResource HighlightBrush}" />
+                    <Setter Property="BorderThickness" Value="2" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource HighlightBrush}" />
                 </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StreamTileTextBlock" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource BlackBrush}" />
+            <Setter Property="Background" Value="{DynamicResource WhiteBrush}" />
+            <!-- Setting horizontal alignment makes the textbox auto size to the content so we dont have a black background that stretches the full width of the tile-->
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Text, RelativeSource={RelativeSource Self}, Converter={StaticResource NotNullOrEmptyConverter}}" Value="False" >
+                    <Setter Property="Margin" Value="-2,0,0,0" />
+                    <Setter Property="Padding" Value="2,0,2,0" />
+                </DataTrigger>
             </Style.Triggers>
         </Style>
     </UserControl.Resources>
@@ -76,6 +90,9 @@
                                 <controls:Tile.Content>
                                     <Grid Width="130">
                                         <StackPanel>
+                                            <StackPanel.Resources>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource StreamTileTextBlock}" />
+                                            </StackPanel.Resources>
                                             <TextBlock Text="{Binding LivestreamModel.DisplayName}" />
                                             <TextBlock Text="{Binding LivestreamModel.Description}" TextTrimming="CharacterEllipsis"
                                                        ToolTip="{Binding LivestreamModel.Description}"
@@ -86,7 +103,7 @@
                                             <TextBlock Text="{Binding LivestreamModel.Viewers, StringFormat={}Viewers: {0}}" />
                                             <TextBlock HorizontalAlignment="Center" FontWeight="Bold">
                                                 <TextBlock.Style>
-                                                    <Style TargetType="{x:Type TextBlock}">
+                                                    <Style TargetType="{x:Type TextBlock}" BasedOn="{StaticResource StreamTileTextBlock}">
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsMonitored}" Value="True">
                                                                 <Setter Property="Text" Value="FOLLOWING" />
