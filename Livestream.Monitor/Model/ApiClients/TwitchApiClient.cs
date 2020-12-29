@@ -65,18 +65,7 @@ namespace Livestream.Monitor.Model.ApiClients
             HighlightVodType
         };
 
-        public string LivestreamerAuthorizationArg
-        {
-            get
-            {
-                if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
-                {
-                    return "--twitch-oauth-token " + settingsHandler.Settings.TwitchAuthToken;
-                }
-
-                return null;
-            }
-        }
+        public string LivestreamerAuthorizationArg => null;
 
         public async Task Authorize(IViewAware screen)
         {
