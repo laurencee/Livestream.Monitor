@@ -79,9 +79,9 @@ namespace ExternalAPIs.Tests
             };
             var topStreams = await sut.GetStreams(topStreamsQuery);
             Assert.NotNull(topStreams);
-            Assert.NotEmpty(topStreams);
+            Assert.NotEmpty(topStreams.Streams);
 
-            Assert.All(topStreams, stream => Assert.Equal(gameId, stream.GameId));
+            Assert.All(topStreams.Streams, stream => Assert.Equal(gameId, stream.GameId));
         }
 
         [InlineData(UserIdMethod)]

@@ -33,11 +33,10 @@ namespace ExternalAPIs.TwitchTv.Helix
         }
 
         /// <summary> Gets the top streams </summary>
-        public async Task<List<Stream>> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default)
+        public async Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default)
         {
             if (getStreamsQuery == null) throw new ArgumentNullException(nameof(getStreamsQuery));
 
-            var streams = new List<Stream>();
             var request = $"{RequestConstants.Streams}?first={getStreamsQuery.First}";
             if (!string.IsNullOrWhiteSpace(getStreamsQuery.Pagination.After))
                 request += $"&after={getStreamsQuery.Pagination.After}";
@@ -58,6 +57,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                 request = request.AppendQueryStringValues("language", getStreamsQuery.Languages, isFirstParam: false);
             }
 
+            var streamsRoot = new StreamsRoot() { Streams = new List<Stream>() };
             if (getStreamsQuery.UserIds?.Any() == true)
             {
                 var nonPagedRequest = request;
@@ -68,17 +68,17 @@ namespace ExternalAPIs.TwitchTv.Helix
                     var pagedIds = getStreamsQuery.UserIds.Skip(taken).Take(take);
                     var pagedRequest = nonPagedRequest.AppendQueryStringValues("user_id", pagedIds, isFirstParam: false);
 
-                    var streamRoot = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
-                    streams.AddRange(streamRoot.Streams);
+                    var response = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
+                    streamsRoot.Pagination = response.Pagination;
+                    streamsRoot.Streams.AddRange(response.Streams);
                     taken += take;
                 }
             }
             else
             {
-                var streamRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
-                streams = streamRoot.Streams;
+                streamsRoot = await ExecuteRequest<StreamsRoot>(request, cancellationToken);
             }
-            return streams;
+            return streamsRoot;
         }
 
         public async Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default)
@@ -162,7 +162,7 @@ namespace ExternalAPIs.TwitchTv.Helix
             return users;
         }
 
-        public async Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default)
+        public async Task<VideosRoot> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default)
         {
             if (getVideosQuery == null) throw new ArgumentNullException(nameof(getVideosQuery));
 
@@ -186,7 +186,7 @@ namespace ExternalAPIs.TwitchTv.Helix
             }
 
             var channelVideosRoot = await ExecuteRequest<VideosRoot>(request, cancellationToken);
-            return channelVideosRoot.Videos;
+            return channelVideosRoot;
         }
 
         public void SetAccessToken(string accessToken)

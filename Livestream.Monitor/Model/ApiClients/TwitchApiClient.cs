@@ -32,6 +32,8 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
         private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
         private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
+        private readonly Dictionary<TopStreamQuery, string> topStreamsPaginationKeyMap = new Dictionary<TopStreamQuery, string>();
+        private readonly Dictionary<VodQuery, string> vodsPaginationKeyMap = new Dictionary<VodQuery, string>();
 
         public TwitchApiClient(
             ITwitchTvV5ReadonlyClient twitchTvV5Client,
@@ -152,8 +154,8 @@ namespace Livestream.Monitor.Model.ApiClients
             channelIdToUserMap[user.Id] = user;
             var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
 
-            var onlineStreams = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
-            var onlineStream = onlineStreams.FirstOrDefault();
+            var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
+            var onlineStream = streamsRoot.Streams.FirstOrDefault();
             if (onlineStream != null)
             {
                 livestream.PopulateWithStreamDetails(onlineStream);
@@ -200,7 +202,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     var query = new GetStreamsQuery();
                     query.UserIds.AddRange(monitoredChannels.Select(x => x.ChannelId));
-                    onlineStreams = await twitchTvHelixClient.GetStreams(query, cancellationToken);
+                    var streamsRoot = await twitchTvHelixClient.GetStreams(query, cancellationToken);
+                    onlineStreams = streamsRoot.Streams;
                     success = true;
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
@@ -248,13 +251,26 @@ namespace Livestream.Monitor.Model.ApiClients
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
             if (string.IsNullOrWhiteSpace(vodQuery.StreamId)) throw new ArgumentNullException(nameof(vodQuery.StreamId));
 
+            vodsPaginationKeyMap.TryGetValue(vodQuery, out var paginationKey);
             var getVideosQuery = new GetVideosQuery()
             {
                 UserId = vodQuery.StreamId,
-                First = vodQuery.Take
+                First = vodQuery.Take,
+                CursorPagination = new CursorPagination()
+                {
+                    After = paginationKey
+                }
             };
-            var videos = await twitchTvHelixClient.GetVideos(getVideosQuery);
-            var vods = videos.Select(video =>
+            var videosRoot = await twitchTvHelixClient.GetVideos(getVideosQuery);
+
+            var nextPageKeyLookup = new VodQuery()
+            {
+                StreamId = vodQuery.StreamId,
+                Skip = vodQuery.Skip + vodQuery.Take,
+                Take = vodQuery.Take
+            };
+            vodsPaginationKeyMap[nextPageKeyLookup] = videosRoot.Pagination.Cursor;
+            var vods = videosRoot.Videos.Select(video =>
             {
                 var largeThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "640").Replace("%{height}", "360");
                 // stupid fucking new duration format from twitch instead of just returning seconds or some other sensible value
@@ -285,7 +301,15 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
-            var query = new GetStreamsQuery() { First = topStreamQuery.Take };
+            topStreamsPaginationKeyMap.TryGetValue(topStreamQuery, out var paginationKey);
+            var query = new GetStreamsQuery()
+            {
+                First = topStreamQuery.Take,
+                Pagination = new CursorPagination()
+                {
+                    After = paginationKey
+                }
+            };
             if (!string.IsNullOrWhiteSpace(topStreamQuery.GameName))
             {
                 var gameId = await GetGameIdByName(topStreamQuery.GameName);
@@ -293,8 +317,15 @@ namespace Livestream.Monitor.Model.ApiClients
             }
 
             var topStreams = await twitchTvHelixClient.GetStreams(query);
+            var nextPageKeyLookup = new TopStreamQuery()
+            {
+                GameName = topStreamQuery.GameName,
+                Skip = topStreamQuery.Skip + topStreamQuery.Take,
+                Take = topStreamQuery.Take
+            };
+            topStreamsPaginationKeyMap[nextPageKeyLookup] = topStreams.Pagination?.Cursor;
 
-            return topStreams.Select(x =>
+            return topStreams.Streams.Select(x =>
             {
                 var channelIdentifier = new ChannelIdentifier(this, x.UserId) { DisplayName = x.UserName };
                 var queryResult = new LivestreamQueryResult(channelIdentifier);

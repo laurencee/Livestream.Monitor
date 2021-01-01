@@ -10,7 +10,7 @@ namespace ExternalAPIs.TwitchTv.Helix
     {
         Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default);
 
-        Task<List<Stream>> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default);
+        Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default);
 
         Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default);
 
@@ -18,7 +18,7 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         Task<List<User>> GetUsers(GetUsersQuery getUsersQuery, CancellationToken cancellationToken = default);
 
-        Task<List<Video>> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default);
+        Task<VideosRoot> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default);
 
         Task<List<Game>> GetGames(GetGamesQuery getGamesQuery, CancellationToken cancellationToken = default);
 
