@@ -95,7 +95,7 @@ namespace ExternalAPIs.Tests
             };
             var channelVideos = await sut.GetVideos(channelVideosQuery);
             Assert.NotNull(channelVideos);
-            Assert.NotEmpty(channelVideos);
+            Assert.NotEmpty(channelVideos.Videos);
         }
     }
 }
