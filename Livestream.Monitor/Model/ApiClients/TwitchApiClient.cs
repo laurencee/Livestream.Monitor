@@ -267,7 +267,8 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 StreamId = vodQuery.StreamId,
                 Skip = vodQuery.Skip + vodQuery.Take,
-                Take = vodQuery.Take
+                Take = vodQuery.Take,
+                VodTypes = vodQuery.VodTypes
             };
             vodsPaginationKeyMap[nextPageKeyLookup] = videosRoot.Pagination.Cursor;
             var vods = videosRoot.Videos.Select(video =>

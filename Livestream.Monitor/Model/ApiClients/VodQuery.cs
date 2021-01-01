@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ExternalAPIs;
 
 namespace Livestream.Monitor.Model.ApiClients
@@ -26,13 +27,13 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> 
         /// Arbitrary filtering for vod types. The available types are defined in the <see cref="IApiClient.VodTypes"/> property 
         /// </summary>
-        public List<string> VodTypes { get; } = new List<string>();
+        public List<string> VodTypes { get; set; } = new List<string>();
 
         public bool Equals(VodQuery other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return base.Equals(other) && streamId == other.streamId && Equals(VodTypes, other.VodTypes);
+            return base.Equals(other) && streamId == other.streamId && VodTypes.SequenceEqual(other.VodTypes);
         }
 
         public override bool Equals(object obj)
@@ -49,7 +50,13 @@ namespace Livestream.Monitor.Model.ApiClients
             {
                 int hashCode = base.GetHashCode();
                 hashCode = (hashCode * 397) ^ (streamId != null ? streamId.GetHashCode() : 0);
-                hashCode = (hashCode * 397) ^ (VodTypes != null ? VodTypes.GetHashCode() : 0);
+                if (VodTypes != null)
+                {
+                    foreach (var vodType in VodTypes)
+                    {
+                        hashCode = (hashCode * 397) ^ (vodType != null ? vodType.GetHashCode() : 0);
+                    }
+                }
                 return hashCode;
             }
         }
