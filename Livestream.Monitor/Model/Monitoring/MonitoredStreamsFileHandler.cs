@@ -62,19 +62,14 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     livestreamFileData = new LivestreamFileData();
                 }
-                
+
                 if (livestreamFileData.FileVersion == 0)
                 {
-                    var fileEntries = JsonConvert.DeserializeObject<List<LivestreamFileEntry>>(livestreamFileText);
-
-                    await ConvertTwitchUsernamesToChannelIds(fileEntries);
-                    await PopulateDisplayNames(fileEntries);
-                    livestreamFileData.FileVersion = LivestreamFileData.CurrentFileVersion;
-                    livestreamFileData.LivestreamFileEntries = fileEntries;
-                    
-                    // in case something went wrong in the conversion make a copy of the existing file first
-                    File.Copy(FileName, $"{FileName}_{DateTime.Now:yyyyMMddHHmmss}.bak");
-                    SaveToDisk(livestreamFileData);
+                    await ConvertFileVersion0(livestreamFileText, livestreamFileData);
+                }
+                if (livestreamFileData.FileVersion == 1)
+                {
+                    ConvertFileVersion1(livestreamFileData);
                 }
 
                 return livestreamFileData.LivestreamFileEntries.Select(entry =>
@@ -144,6 +139,32 @@ namespace Livestream.Monitor.Model.Monitoring
                     livestreamFileEntries.Remove(twitchStream); // will have to be manually re-imported, most likely the channel has been removed/banned
                 }
             }
+        }
+
+        private void ConvertFileVersion1(LivestreamFileData livestreamFileData)
+        {
+            livestreamFileData.FileVersion = 2;
+            livestreamFileData.LivestreamFileEntries.RemoveAll(x => x.StreamProvider == "smashcast" || x.StreamProvider == "hitbox");
+
+            SaveNewFileVersion(livestreamFileData);
+        }
+
+        private async Task ConvertFileVersion0(string livestreamFileText, LivestreamFileData livestreamFileData)
+        {
+            var fileEntries = JsonConvert.DeserializeObject<List<LivestreamFileEntry>>(livestreamFileText);
+
+            await ConvertTwitchUsernamesToChannelIds(fileEntries);
+            await PopulateDisplayNames(fileEntries);
+            livestreamFileData.FileVersion = 1;
+            livestreamFileData.LivestreamFileEntries = fileEntries;
+
+            SaveNewFileVersion(livestreamFileData);
+        }
+
+        private void SaveNewFileVersion(LivestreamFileData livestreamFileData)
+        {
+            File.Copy(FileName, $"{FileName}_{DateTime.Now:yyyyMMddHHmmss}.bak");
+            SaveToDisk(livestreamFileData);
         }
 
         private void SaveToDisk(LivestreamFileData livestreamFileData)

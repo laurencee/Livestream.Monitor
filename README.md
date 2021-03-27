@@ -18,8 +18,8 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## General Features
-* Add your favourite livestreams to be monitored from twitch, youtube or smashcast
-* Custom command line option for launching twitch/youtube/hitbox chat for the selected stream (presets include Chrome/Firefox/Edge)
+* Add your favourite livestreams to be monitored from twitch or youtube
+* Custom command line option for launching twitch/youtube chat for the selected stream (presets include Chrome/Firefox/Edge)
 * Stream quality favorites stored per api in a priority order
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
@@ -29,7 +29,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 
 TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
-## Twitch/smashcast features
+## Twitch features
 * Import your already followed streams for live monitoring
 * Search for top streams and filter top streams by game (add for monitoring with 1 click)
 * Search for VODS by streamer (you can also just paste any valid vod url and launch that instead)

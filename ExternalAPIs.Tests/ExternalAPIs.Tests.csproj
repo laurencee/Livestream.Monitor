@@ -71,7 +71,6 @@
     <Compile Include="TwitchTvHelixClientShould.cs" />
     <Compile Include="TwitchTvV5ClientShould.cs" />
     <Compile Include="YoutubeClientShould.cs" />
-    <Compile Include="SmashcastClientShould.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TwitchTvV3ClientShould.cs" />
   </ItemGroup>

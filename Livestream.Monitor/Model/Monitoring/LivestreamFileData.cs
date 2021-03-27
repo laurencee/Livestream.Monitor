@@ -5,7 +5,7 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamFileData
     {
-        public const int CurrentFileVersion = 1;
+        public const int CurrentFileVersion = 2;
 
         public int FileVersion { get; set; }
 
@@ -33,14 +33,7 @@ namespace Livestream.Monitor.Model.Monitoring
         [JsonRequired]
         public string StreamProvider
         {
-            get
-            {
-                // convert stream providers who have changed names to allow for old stored names
-                if (streamProvider == "hitbox")
-                    return "smashcast";
-
-                return streamProvider;
-            }
+            get => streamProvider;
             set => streamProvider = value;
         }
     }

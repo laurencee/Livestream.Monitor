@@ -115,7 +115,6 @@
     <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />
     <Compile Include="Model\ApiClients\DesignTimeApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />
-    <Compile Include="Model\ApiClients\SmashcastApiClient.cs" />
     <Compile Include="Model\ApiClients\KnownGame.cs" />
     <Compile Include="Model\ApiClients\LivestreamQueryResult.cs" />
     <Compile Include="Model\INotificationHandler.cs" />

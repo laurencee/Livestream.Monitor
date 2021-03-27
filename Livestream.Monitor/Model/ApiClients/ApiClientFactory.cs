@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ExternalAPIs.Smashcast;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.TwitchTv.V5;
 using ExternalAPIs.Youtube;
@@ -13,7 +12,6 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         private readonly TwitchApiClient twitchApiClient;
         private readonly YoutubeApiClient youtubeApiClient;
-        private readonly SmashcastApiClient smashcastApiClient;
 
         private readonly List<IApiClient> apiClients = new List<IApiClient>();
 
@@ -23,11 +21,9 @@ namespace Livestream.Monitor.Model.ApiClients
 
             twitchApiClient = new TwitchApiClient(new TwitchTvV5ReadonlyClient(), new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
             youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
-            smashcastApiClient = new SmashcastApiClient(new SmashcastReadonlyClient());
 
             apiClients.Add(twitchApiClient);
             apiClients.Add(youtubeApiClient);
-            apiClients.Add(smashcastApiClient);
         }
 
         public T Get<T>() where T : IApiClient
@@ -54,8 +50,6 @@ namespace Livestream.Monitor.Model.ApiClients
                     return youtubeApiClient;
                 case TwitchApiClient.API_NAME:
                     return twitchApiClient;
-                case SmashcastApiClient.API_NAME:
-                    return smashcastApiClient;
                 default:
                     return null;
             }
