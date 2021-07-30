@@ -471,6 +471,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private async Task<string> GetGameNameById(string gameId)
         {
+            if (string.IsNullOrEmpty(gameId)) return null;
+
             if (!gameIdToNameMap.TryGetValue(gameId, out var gameName))
             {
                 var query = new GetGamesQuery();
