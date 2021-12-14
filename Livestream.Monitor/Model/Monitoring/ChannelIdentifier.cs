@@ -1,12 +1,11 @@
 using System;
 using Caliburn.Micro;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
     /// <summary> Unique identifier of a livestream channel </summary>
-    public class ChannelIdentifier
+    public class ChannelIdentifier : IEquatable<ChannelIdentifier>
     {
         public ChannelIdentifier()
         {
@@ -42,9 +41,11 @@ namespace Livestream.Monitor.Model.Monitoring
 
         #region Equality members
 
-        protected bool Equals(ChannelIdentifier other)
+        public bool Equals(ChannelIdentifier other)
         {
-            return ChannelId.IsEqualTo(other.ChannelId) && Equals(ApiClient, other.ApiClient);
+            if (ReferenceEquals(null, other)) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return ChannelId == other.ChannelId && ApiClient?.ApiName == other.ApiClient.ApiName;
         }
 
         public override bool Equals(object obj)
@@ -52,15 +53,15 @@ namespace Livestream.Monitor.Model.Monitoring
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
             if (obj.GetType() != this.GetType()) return false;
-            return Equals((ChannelIdentifier) obj);
+            return Equals((ChannelIdentifier)obj);
         }
 
         public override int GetHashCode()
         {
             unchecked
             {
-                return (ChannelId == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(ChannelId) * 397) ^
-                       (ApiClient?.GetHashCode() ?? 0);
+                return ((ChannelId != null ? ChannelId.GetHashCode() : 0) * 397) ^
+                       (ApiClient != null ? ApiClient.ApiName.GetHashCode() : 0);
             }
         }
 

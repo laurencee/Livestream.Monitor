@@ -140,6 +140,7 @@ namespace Livestream.Monitor.ViewModels
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
             if (!Debugger.IsAttached && settingsHandler.Settings.CheckForNewVersions) await CheckForNewVersion();
             await InitializeMonitorStreamsModel();
+            // TODO - verify api clients are auth'd
             popularLivestreamWatcher.StartWatching();
             base.OnViewLoaded(view);
         }
