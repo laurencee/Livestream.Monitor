@@ -8,6 +8,7 @@ namespace ExternalAPIs.TwitchTv.Helix
         public const string TwitchTvApiRoot = "https://api.twitch.tv/helix";
         public const string UserFollows = TwitchTvApiRoot + "/users/follows?from_id={0}";
         public const string Streams = TwitchTvApiRoot + "/streams";
+        public const string SearchCategories = TwitchTvApiRoot + "/search/categories";
         public const string Games = TwitchTvApiRoot + "/games";
         public const string Videos = TwitchTvApiRoot + "/videos";
         public const string TopGames = TwitchTvApiRoot + "/games/top";

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using ExternalAPIs.TwitchTv.Helix;
-using ExternalAPIs.TwitchTv.V5;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Core;
 
@@ -19,7 +18,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
-            twitchApiClient = new TwitchApiClient(new TwitchTvV5ReadonlyClient(), new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
+            twitchApiClient = new TwitchApiClient(new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
             youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
 
             apiClients.Add(twitchApiClient);

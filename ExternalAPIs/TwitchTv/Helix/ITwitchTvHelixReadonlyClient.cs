@@ -12,7 +12,7 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default);
 
-        Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default);
+        Task<List<TwitchCategory>> GetTopGames(CancellationToken cancellationToken = default);
 
         Task<User> GetUserByUsername(string username, CancellationToken cancellationToken = default);
 
@@ -22,6 +22,8 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         Task<List<Game>> GetGames(GetGamesQuery getGamesQuery, CancellationToken cancellationToken = default);
 
+        Task<List<TwitchCategory>> SearchCategories(string searchCategory, CancellationToken cancellationToken = default);
+        
         void SetAccessToken(string accessToken);
     }
 }

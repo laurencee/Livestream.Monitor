@@ -3,16 +3,16 @@ using Newtonsoft.Json;
 
 namespace ExternalAPIs.TwitchTv.Helix.Dto
 {
-    public class TopGamesRoot
+    public class TopCategoriesRoot
     {
         [JsonProperty("data")]
-        public List<TopGame> TopGames { get; set; }
+        public List<TwitchCategory> TopCategories { get; set; }
 
         [JsonProperty("pagination")]
         public Pagination Pagination { get; set; }
     }
 
-    public class TopGame
+    public class TwitchCategory
     {
         [JsonProperty("id")]
         public string Id { get; set; }

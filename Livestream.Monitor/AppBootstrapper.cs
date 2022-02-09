@@ -5,7 +5,6 @@
 using System.IO;
 using System.Windows.Threading;
 using ExternalAPIs.TwitchTv.Helix;
-using ExternalAPIs.TwitchTv.V5;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
@@ -34,7 +33,6 @@ namespace Livestream.Monitor
 
             container.Singleton<IEventAggregator, EventAggregator>();
             container.Singleton<IWindowManager, MetroWindowManager>();
-            container.Singleton<ITwitchTvV5ReadonlyClient, TwitchTvV5ReadonlyClient>();
             container.Singleton<ITwitchTvHelixReadonlyClient, TwitchTvHelixHelixReadonlyClient>();
             container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
             container.Singleton<ISettingsHandler, SettingsHandler>();

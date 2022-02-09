@@ -81,11 +81,11 @@ namespace ExternalAPIs.TwitchTv.Helix
             return streamsRoot;
         }
 
-        public async Task<List<TopGame>> GetTopGames(CancellationToken cancellationToken = default)
+        public async Task<List<TwitchCategory>> GetTopGames(CancellationToken cancellationToken = default)
         {
             var request = RequestConstants.TopGames;
-            var gamesRoot = await ExecuteRequest<TopGamesRoot>(request, cancellationToken);
-            return gamesRoot.TopGames;
+            var topCategoriesRoot = await ExecuteRequest<TopCategoriesRoot>(request, cancellationToken);
+            return topCategoriesRoot.TopCategories;
         }
 
         public async Task<User> GetUserByUsername(string username, CancellationToken cancellationToken = default)
@@ -187,6 +187,17 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             var channelVideosRoot = await ExecuteRequest<VideosRoot>(request, cancellationToken);
             return channelVideosRoot;
+        }
+
+        public async Task<List<TwitchCategory>> SearchCategories(string searchCategory, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(searchCategory))
+                throw new ArgumentException("Value cannot be null or empty.", nameof(searchCategory));
+            
+            var request = RequestConstants.SearchCategories + "?query=" + searchCategory;
+            
+            var topCategoriesRoot = await ExecuteRequest<TopCategoriesRoot>(request, cancellationToken);
+            return topCategoriesRoot.TopCategories;
         }
 
         public void SetAccessToken(string accessToken)

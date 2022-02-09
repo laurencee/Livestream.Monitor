@@ -1,6 +1,7 @@
 ﻿using System;
 using ExternalAPIs.TwitchTv.Helix;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using ExternalAPIs.TwitchTv.Helix.Query;
 using Xunit;
@@ -18,6 +19,13 @@ namespace ExternalAPIs.Tests
         public const string UserIdThijs = "57025612";
 
         private readonly TwitchTvHelixHelixReadonlyClient sut = new TwitchTvHelixHelixReadonlyClient();
+
+        public TwitchTvHelixClientShould()
+        {
+            // create this file locally, it's already marked to be copied to the output in this test project
+            var twitchAccessToken = File.ReadAllText("twitchaccesstoken.local");
+            sut.SetAccessToken(twitchAccessToken);
+        }
 
         [Fact]
         public async Task GetUser()
@@ -96,6 +104,16 @@ namespace ExternalAPIs.Tests
             var channelVideos = await sut.GetVideos(channelVideosQuery);
             Assert.NotNull(channelVideos);
             Assert.NotEmpty(channelVideos.Videos);
+        }
+        
+        [InlineData("League of Legends")]
+        [InlineData("Just Chatting")]
+        [Theory]
+        public async Task SearchCategories(string category)
+        {
+            var twitchCategories = await sut.SearchCategories(category);
+            Assert.NotNull(twitchCategories);
+            Assert.NotEmpty(twitchCategories);
         }
     }
 }
