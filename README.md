@@ -41,8 +41,9 @@ TIP: You can configure what is considered a "popular stream" in the settings men
 # Number of threads to use when streaming HLS streams
 hls-segment-threads=4
 
-# Number of threads to use when streaming HDS streams
-hds-segment-threads=4
+twitch-low-latency
+twitch-disable-ads
+hls-live-edge=1
 ```
 
 ### Why make another livestreamer GUI?
