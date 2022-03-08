@@ -211,5 +211,8 @@ GeneratedArtifacts/
 _Pvt_Extensions/
 ModelManifest.xml
 
+# Jetbrains
+.idea/
+
 # Credentials
 twitchaccesstoken.local

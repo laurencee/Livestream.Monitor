@@ -321,16 +321,20 @@ namespace Livestream.Monitor.Model.ApiClients
             };
             topStreamsPaginationKeyMap[nextPageKeyLookup] = topStreams.Pagination?.Cursor;
 
-            return topStreams.Streams.Select(x =>
+            var queryResults = new List<LivestreamQueryResult>();
+            foreach (var stream in topStreams.Streams)
             {
-                var channelIdentifier = new ChannelIdentifier(this, x.UserId) { DisplayName = x.UserName };
+                var channelIdentifier = new ChannelIdentifier(this, stream.UserId) { DisplayName = stream.UserName };
                 var queryResult = new LivestreamQueryResult(channelIdentifier);
-                var livestreamModel = new LivestreamModel(x.UserId, channelIdentifier);
-                livestreamModel.PopulateWithStreamDetails(x);
+                var livestreamModel = new LivestreamModel(stream.UserId, channelIdentifier);
+                livestreamModel.PopulateWithStreamDetails(stream);
+                livestreamModel.Game = await GetGameNameById(stream.GameId);
 
                 queryResult.LivestreamModel = livestreamModel;
-                return queryResult;
-            }).ToList();
+                queryResults.Add(queryResult);
+            }
+
+            return queryResults;
         }
 
         public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
