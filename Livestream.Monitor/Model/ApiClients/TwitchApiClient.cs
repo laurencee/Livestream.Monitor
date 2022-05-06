@@ -154,6 +154,7 @@ namespace Livestream.Monitor.Model.ApiClients
             if (onlineStream != null)
             {
                 livestream.PopulateWithStreamDetails(onlineStream);
+                livestream.Game = await GetGameNameById(onlineStream.GameId);
             }
 
             queryResults.Add(new LivestreamQueryResult(newChannel)
