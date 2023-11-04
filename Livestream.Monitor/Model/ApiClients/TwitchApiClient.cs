@@ -53,7 +53,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasTopStreamGameFilterSupport => true;
 
-        public bool HasUserFollowQuerySupport => true;
+        public bool HasFollowedChannelsQuerySupport => true;
 
         public bool IsAuthorized => settingsHandler.Settings.TwitchAuthTokenSet || settingsHandler.Settings.PassthroughClientId;
 
@@ -383,20 +383,20 @@ namespace Livestream.Monitor.Model.ApiClients
             }).ToList();
         }
 
-        public async Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
+        public async Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName)
         {
             var user = await twitchTvHelixClient.GetUserByUsername(userName);
             if (user == null) throw new InvalidOperationException("Could not find user with username: " + userName);
 
             channelIdToUserMap[user.Id] = user;
-            var userFollows = await twitchTvHelixClient.GetUserFollows(user.Id);
+            var userFollows = await twitchTvHelixClient.GetFollowedChannels(user.Id);
             return (from follow in userFollows
-                    let channelIdentifier = new ChannelIdentifier(this, follow.ToId) { DisplayName = follow.ToName }
+                    let channelIdentifier = new ChannelIdentifier(this, follow.BroadcasterId) { DisplayName = follow.BroadcasterName }
                     select new LivestreamQueryResult(channelIdentifier)
                     {
-                        LivestreamModel = new LivestreamModel(follow.ToId, channelIdentifier)
+                        LivestreamModel = new LivestreamModel(follow.BroadcasterId, channelIdentifier)
                         {
-                            DisplayName = follow.ToName,
+                            DisplayName = follow.BroadcasterName,
                             //Description = follow.Channel?.Status,
                             //Game = follow.Channel?.Game,
                             //IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
@@ -490,10 +490,10 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Launches browser for user to authorize us </summary>
         private void RequestAuthorization()
         {
-            const string scopes = "user_read+user_subscriptions";
+            const string scopes = "user:read:follows";
 
             var request =
-                "https://api.twitch.tv/kraken/oauth2/authorize?response_type=token" +
+                "https://id.twitch.tv/oauth2/authorize?response_type=token" +
                 $"&client_id={RequestConstants.ClientIdHeaderValue}" +
                 $"&redirect_uri={RedirectUri}" +
                 $"&scope={scopes}";

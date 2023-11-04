@@ -43,16 +43,7 @@ namespace Livestream.Monitor.Core
                     saveSettings = ExcludeNotifyConverter.SaveRequired;
                 }
 
-                if (settings.SettingsVersion < Settings.CurrentSettingsVersion)
-                {
-                    if (settings.SettingsVersion == 0)
-                    {
-                        settings.CheckForNewVersions = true;
-                    }
-                    
-                    settings.SettingsVersion = Settings.CurrentSettingsVersion;
-                    saveSettings = true;
-                }
+                saveSettings = MigrateSettingsVersion(saveSettings);
                 
                 // try to set a nice default value for the chat command line
                 if (settings.ChatCommandLine == null)
@@ -84,6 +75,25 @@ namespace Livestream.Monitor.Core
                 settings = new Settings();
                 // log error
             }
+        }
+
+        private bool MigrateSettingsVersion(bool saveSettings)
+        {
+            if (settings.SettingsVersion >= Settings.CurrentSettingsVersion) return saveSettings;
+
+            switch (settings.SettingsVersion)
+            {
+                case 0:
+                    settings.CheckForNewVersions = true;
+                    break;
+                case 1:
+                    // twitch changed their scope requirements so we must force re-authentication
+                    settings.TwitchAuthToken = null;
+                    break;
+            }
+
+            settings.SettingsVersion = Settings.CurrentSettingsVersion;
+            return true;
         }
 
         private void SettingsOnPropertyChanged(object sender, PropertyChangedEventArgs e)

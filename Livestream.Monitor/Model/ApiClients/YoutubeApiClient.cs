@@ -40,7 +40,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasTopStreamGameFilterSupport => false;
 
-        public bool HasUserFollowQuerySupport => false;
+        public bool HasFollowedChannelsQuerySupport => false;
 
         public bool IsAuthorized => true;
 
@@ -106,7 +106,7 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
+        public Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName)
         {
             throw new NotImplementedException();
         }

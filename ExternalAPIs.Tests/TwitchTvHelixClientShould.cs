@@ -44,7 +44,7 @@ namespace ExternalAPIs.Tests
         public async Task GetFollowsFromUser()
         {
             // using thijs as he follows more than 100 channels which means the query must page
-            var followedStreams = await sut.GetUserFollows(UserIdThijs);
+            var followedStreams = await sut.GetFollowedChannels(UserIdThijs);
             Assert.NotNull(followedStreams);
             Assert.NotEmpty(followedStreams);
         }

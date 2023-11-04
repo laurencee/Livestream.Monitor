@@ -16,20 +16,20 @@ namespace ExternalAPIs.TwitchTv.Helix
         public const int MaxItemsPerQuery = 100; // 100 is maximum
         private string _accessToken = null;
 
-        public async Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default)
+        public async Task<List<FollowedChannel>> GetFollowedChannels(string userId, CancellationToken cancellationToken = default)
         {
             if (String.IsNullOrWhiteSpace(userId)) throw new ArgumentNullException(nameof(userId));
 
-            var request = $"{RequestConstants.UserFollows.Replace("{0}", userId)}&first={DefaultItemsPerQuery}";
-            var userFollowsRoot = await ExecuteRequest<UserFollowsRoot>(request, cancellationToken);
+            var request = $"{RequestConstants.FollowedChannels.Replace("{0}", userId)}&first={DefaultItemsPerQuery}";
+            var followedChannelsRoot = await ExecuteRequest<FollowedChannelsRoot>(request, cancellationToken);
             // if necessary, page until we get all followed streams
-            while (userFollowsRoot.Total > 0 && userFollowsRoot.UserFollows.Count < userFollowsRoot.Total)
+            while (followedChannelsRoot.Total > 0 && followedChannelsRoot.FollowedChannels.Count < followedChannelsRoot.Total)
             {
-                var pagedRequest = $"{request}&after={userFollowsRoot.Pagination.Cursor}";
-                var pagedFollows = await ExecuteRequest<UserFollowsRoot>(pagedRequest, cancellationToken);
-                userFollowsRoot.UserFollows.AddRange(pagedFollows.UserFollows);
+                var pagedRequest = $"{request}&after={followedChannelsRoot.Pagination.Cursor}";
+                var pagedFollows = await ExecuteRequest<FollowedChannelsRoot>(pagedRequest, cancellationToken);
+                followedChannelsRoot.FollowedChannels.AddRange(pagedFollows.FollowedChannels);
             }
-            return userFollowsRoot.UserFollows;
+            return followedChannelsRoot.FollowedChannels;
         }
 
         /// <summary> Gets the top streams </summary>

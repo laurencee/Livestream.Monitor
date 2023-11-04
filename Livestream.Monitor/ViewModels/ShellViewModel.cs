@@ -176,7 +176,7 @@ namespace Livestream.Monitor.ViewModels
             var dialogController = await this.ShowProgressAsync("Initializing", "Initializing App...");
             try
             {
-                await monitorStreamsModel.Initialize();
+                await monitorStreamsModel.Initialize(this);
             }
             catch (Exception ex)
             {

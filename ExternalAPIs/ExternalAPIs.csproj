@@ -57,7 +57,7 @@
     <Compile Include="TwitchTv\Helix\Dto\Streams.cs" />
     <Compile Include="TwitchTv\Helix\Dto\TopGames.cs" />
     <Compile Include="TwitchTv\Helix\Dto\User.cs" />
-    <Compile Include="TwitchTv\Helix\Dto\UserFollows.cs" />
+    <Compile Include="TwitchTv\Helix\Dto\FollowedChannels.cs" />
     <Compile Include="TwitchTv\Helix\Dto\Videos.cs" />
     <Compile Include="TwitchTv\Helix\ITwitchTvHelixReadonlyClient.cs" />
     <Compile Include="TwitchTv\Helix\Query\CursorPagination.cs" />

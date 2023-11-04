@@ -111,7 +111,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
-        public async Task Initialize(CancellationToken cancellationToken = default)
+        public async Task Initialize(IViewAware viewAware, CancellationToken cancellationToken = default)
         {
             if (Initialised) return;
             var channels = await fileHandler.LoadFromDisk();
@@ -135,13 +135,17 @@ namespace Livestream.Monitor.Model.Monitoring
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
 
-            foreach (var apiClient in apiClientFactory.GetAll())
+            // allows for clearing auth tokens at startup and re-authentication during initialization
+            foreach (var apiClient in Livestreams.Select(x => x.ApiClient).Distinct())
             {
+                if (!apiClient.IsAuthorized)
+                    await apiClient.Authorize(viewAware);
+
                 await apiClient.Initialize(cancellationToken);
             }
 
             Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
-            CanRefreshLivestreams = true;
+            CanRefreshLivestreams = Livestreams.Any();
             try
             {
                 await RefreshLivestreams();
@@ -171,11 +175,11 @@ namespace Livestream.Monitor.Model.Monitoring
         {
             if (username == null) throw new ArgumentNullException(nameof(username));
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
-            if (!apiClient.HasUserFollowQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
+            if (!apiClient.HasFollowedChannelsQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
 
             if (!apiClient.IsAuthorized) await apiClient.Authorize(viewAware);
 
-            var followedChannelsQueryResults = await apiClient.GetUserFollows(username);
+            var followedChannelsQueryResults = await apiClient.GetFollowedChannels(username);
             followedChannelsQueryResults.EnsureAllQuerySuccess();
 
             // Ignore duplicate channels
@@ -190,6 +194,7 @@ namespace Livestream.Monitor.Model.Monitoring
             }
 
             AddChannels(newChannels.Select(x => x.ChannelIdentifier).ToArray());
+            CanRefreshLivestreams = Livestreams.Any();
             await RefreshLivestreams();
         }
 
@@ -243,7 +248,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 OnOnlineLivestreamsRefreshComplete();
                 // make sure we always update the attempted refresh time and allow refreshing in the future
                 LastRefreshTime = DateTimeOffset.Now;
-                CanRefreshLivestreams = true;
+                CanRefreshLivestreams = Livestreams.Any();
             }
         }
 
@@ -255,7 +260,7 @@ namespace Livestream.Monitor.Model.Monitoring
             ignoredQueryFailures.Add(errorToIgnore);
         }
 
-        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)
+        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
         {
             if (channelIdentifier == null) return;
 

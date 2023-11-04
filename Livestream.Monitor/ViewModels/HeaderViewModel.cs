@@ -147,7 +147,7 @@ namespace Livestream.Monitor.ViewModels
 
         public async Task ImportFollows()
         {
-            if (!SelectedApiClient.HasUserFollowQuerySupport)
+            if (!SelectedApiClient.HasFollowedChannelsQuerySupport)
             {
                 await this.ShowMessageAsync("No import support",
                     $"{SelectedApiClient.ApiName} does not have support for importing followed streams");

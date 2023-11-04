@@ -194,7 +194,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 try
                 {
-                    await StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier);
+                    await StreamsModel.RemoveLivestream(StreamsModel.SelectedLivestream.ChannelIdentifier, this);
                 }
                 catch (Exception ex)
                 {

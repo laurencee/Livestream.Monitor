@@ -22,7 +22,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         bool HasTopStreamGameFilterSupport { get; }
 
-        bool HasUserFollowQuerySupport { get; }
+        bool HasFollowedChannelsQuerySupport { get; }
 
         /// <summary> Check if the user is authorized to interact with this api </summary>
         bool IsAuthorized { get; }
@@ -66,7 +66,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <returns>Collection of known games from the api</returns>
         Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
 
-        Task<List<LivestreamQueryResult>> GetUserFollows(string userName);
+        Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName);
 
         /// <summary> Give the api client a chance to initialize/preload data if necessary. Call after adding channels to be monitored. </summary>
         Task Initialize(CancellationToken cancellationToken = default);

@@ -91,7 +91,7 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public bool CanOpenStream { get; } = true;
+        public bool CanOpenStream => true;
 
         public event EventHandler LivestreamsRefreshComplete;
 
@@ -119,12 +119,9 @@ namespace Livestream.Monitor.Model.Monitoring
         {
         }
 
-        public Task Initialize(CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+        public Task Initialize(IViewAware viewAware, CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        public Task RemoveLivestream(ChannelIdentifier channelIdentifier)
+        public Task RemoveLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();

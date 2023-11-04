@@ -16,7 +16,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasVodViewerSupport { get; }
         public bool HasTopStreamsSupport { get; }
         public bool HasTopStreamGameFilterSupport { get; }
-        public bool HasUserFollowQuerySupport { get; }
+        public bool HasFollowedChannelsQuerySupport { get; }
         public bool IsAuthorized { get; }
         public List<string> VodTypes { get; }
         public string LivestreamerAuthorizationArg { get; }
@@ -70,7 +70,7 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<List<LivestreamQueryResult>> GetUserFollows(string userName)
+        public Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName)
         {
             throw new NotImplementedException();
         }

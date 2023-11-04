@@ -24,12 +24,11 @@ namespace Livestream.Monitor.Model.Monitoring
         event EventHandler LivestreamsRefreshComplete;
 
         /// <summary> Allows for loading of livestreams and any other initialization tasks before refreshes can take place </summary>
-        /// <param name="cancellationToken"></param>
-        Task Initialize(CancellationToken cancellationToken = default);
+        Task Initialize(IViewAware viewAware, CancellationToken cancellationToken = default);
 
         Task AddLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware);
 
-        Task RemoveLivestream(ChannelIdentifier channelIdentifier);
+        Task RemoveLivestream(ChannelIdentifier channelIdentifier, IViewAware viewAware);
 
         Task ImportFollows(string username, IApiClient apiClient, IViewAware viewAware);
         

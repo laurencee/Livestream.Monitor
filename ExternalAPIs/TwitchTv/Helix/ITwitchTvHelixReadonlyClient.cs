@@ -8,7 +8,7 @@ namespace ExternalAPIs.TwitchTv.Helix
 {
     public interface ITwitchTvHelixReadonlyClient
     {
-        Task<List<UserFollow>> GetUserFollows(string userId, CancellationToken cancellationToken = default);
+        Task<List<FollowedChannel>> GetFollowedChannels(string userId, CancellationToken cancellationToken = default);
 
         Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default);
 

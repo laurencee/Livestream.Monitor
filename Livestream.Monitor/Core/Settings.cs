@@ -21,7 +21,7 @@ namespace Livestream.Monitor.Core
         public const string DEFAULT_LIVESTREAMER_FULL_PATH = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
         public const string DEFAULT_STREAMLINK_FULL_PATH = @"C:\Program Files (x86)\Streamlink\bin\streamlink.exe";
         public const int DEFAULT_MINIMUM_EVENT_VIEWERS = 30000;
-        public const int CurrentSettingsVersion = 1;
+        public const int CurrentSettingsVersion = 2;
 
         public const string CHAT_URL_REPLACEMENT_TOKEN = "{url}";
         public const string CHROME_ARGS = "--app=" + CHAT_URL_REPLACEMENT_TOKEN + " --window-size=350 -height=760";
