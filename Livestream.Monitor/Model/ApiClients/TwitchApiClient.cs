@@ -301,7 +301,9 @@ namespace Livestream.Monitor.Model.ApiClients
             topStreamsPaginationKeyMap.TryGetValue(topStreamQuery, out var paginationKey);
             var query = new GetStreamsQuery()
             {
-                First = topStreamQuery.Take,
+                // twitch sometimes returns less streams than we ask for some unknown reason
+                // ask for a few more in the query to try avoid pagination issues
+                First = topStreamQuery.Take + 5,
                 Pagination = new CursorPagination()
                 {
                     After = paginationKey
@@ -323,7 +325,7 @@ namespace Livestream.Monitor.Model.ApiClients
             topStreamsPaginationKeyMap[nextPageKeyLookup] = topStreams.Pagination?.Cursor;
 
             var queryResults = new List<LivestreamQueryResult>();
-            foreach (var stream in topStreams.Streams)
+            foreach (var stream in topStreams.Streams.Take(topStreamQuery.Take))
             {
                 var channelIdentifier = new ChannelIdentifier(this, stream.UserId) { DisplayName = stream.UserName };
                 var queryResult = new LivestreamQueryResult(channelIdentifier);
