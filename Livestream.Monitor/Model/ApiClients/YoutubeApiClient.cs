@@ -150,14 +150,14 @@ namespace Livestream.Monitor.Model.ApiClients
 
                     // video ids are only returned for online streams, we need to show something to the user
                     // so create a placeholder livestream model object for the offline channel.
-                    // TODO - query the channel to get their display name information rather than using the actual channel name
+                    // TODO - query the channel to get their display name information rather than using the recorded displayname/channelid
                     if (!livestreamModels.Any())
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
                             LivestreamModel = new LivestreamModel("offline-" + channelIdentifier.ChannelId, channelIdentifier)
                             {
-                                DisplayName = channelIdentifier.ChannelId,
+                                DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
                             }
                         });
