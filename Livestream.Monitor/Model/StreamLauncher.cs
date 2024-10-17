@@ -66,6 +66,7 @@ namespace Livestream.Monitor.Model
 
             var chatUrl = await livestreamModel.GetChatUrl;
             var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, chatUrl);
+            command = command.Replace("&", "^&");
 
             await Task.Run(async () =>
             {
@@ -76,12 +77,12 @@ namespace Livestream.Monitor.Model
                         StartInfo =
                         {
                             FileName = "cmd.exe",
-                            Arguments = "/c " + command,
+                            Arguments = $"/c \"{command}\"",
                             CreateNoWindow = true,
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true,
-                        }
+                        },
                     };
 
                     proc.Start();

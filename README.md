@@ -62,3 +62,8 @@ If the username happens to start with "UC" or "HC" then it will fail to add the 
 **Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?**  
 A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser).  
 I don't believe the Youtube API provides that information right now... hopefully it's something google can add in the future.
+
+**Q. My twitch auth token is invalid, how can I fix this?**
+
+The easiest thing to do is open `settings.json` and delete your token.   
+Relaunch the app and you'll be asked to authenticate again which will generate a fresh auth token.

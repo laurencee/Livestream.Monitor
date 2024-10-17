@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Core
         public const int CurrentSettingsVersion = 2;
 
         public const string CHAT_URL_REPLACEMENT_TOKEN = "{url}";
-        public const string CHROME_ARGS = "--app=" + CHAT_URL_REPLACEMENT_TOKEN + " --window-size=350 -height=760";
+        public const string CHROME_ARGS = "--app=" + CHAT_URL_REPLACEMENT_TOKEN + " --window-size=350,760";
         public const string FIREFOX_ARGS = "-url " + CHAT_URL_REPLACEMENT_TOKEN;
 
         private MetroThemeBaseColour? metroThemeBaseColour;
