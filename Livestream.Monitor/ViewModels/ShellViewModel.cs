@@ -220,7 +220,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception ex)
             {
                 if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error", $"An error occurred while checking for a newer version.{Environment.NewLine}{ex.Message}");
+                await this.ShowMessageAsync("Error", $"An error occurred while checking for a newer version.{Environment.NewLine}{ex.ExtractErrorMessage()}");
             }
 
             if (dialogController.IsOpen) await dialogController.CloseAsync();

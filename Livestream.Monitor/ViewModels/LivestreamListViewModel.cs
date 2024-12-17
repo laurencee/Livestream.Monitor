@@ -112,7 +112,7 @@ namespace Livestream.Monitor.ViewModels
                                 });
 
                             if (messageDialogResult == MessageDialogResult.Negative)
-                                StreamsModel.IgnoreQueryFailure(ex.Message);
+                                StreamsModel.IgnoreQueryFailure(ex.ExtractErrorMessage());
                         }
                     }
 
@@ -199,7 +199,7 @@ namespace Livestream.Monitor.ViewModels
                 catch (Exception ex)
                 {
                     await this.ShowMessageAsync("Error Removing Stream",
-                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.Message}" +
+                        $"Error removing '{StreamsModel.SelectedLivestream.DisplayName}': {ex.ExtractErrorMessage()}" +
                         Environment.NewLine + Environment.NewLine +
                         $"TIP: You may have to remove the livestream directly from the livestreams.json file... :(");
                 }
@@ -256,7 +256,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error loading livestream list", ex.Message);
+                await this.ShowMessageAsync("Error loading livestream list", ex.ExtractErrorMessage());
             }
 
             Loading = false;
@@ -384,7 +384,7 @@ namespace Livestream.Monitor.ViewModels
         public async Task Handle(ExceptionDispatchInfo message)
         {
             await this.ShowMessageAsync(
-                "Error", $"{message.SourceException.Message}{Environment.NewLine}{Environment.NewLine}" +
+                "Error", $"{message.SourceException.ExtractErrorMessage()}{Environment.NewLine}{Environment.NewLine}" +
                          "(TIP: Remove the stream causing the error if it will never resolve itself, e.g. banned channels)");
         }
     }

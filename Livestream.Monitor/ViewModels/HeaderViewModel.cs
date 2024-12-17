@@ -140,7 +140,7 @@ namespace Livestream.Monitor.ViewModels
                 }
                 else
                 {
-                    await this.ShowMessageAsync("Error adding stream.", $"{ex.Message}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+                    await this.ShowMessageAsync("Error adding stream", $"{ex.ExtractErrorMessage()}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
                 }
             }
         }
@@ -170,7 +170,7 @@ namespace Livestream.Monitor.ViewModels
                 catch (Exception ex)
                 {
                     await dialogController.CloseAsync();
-                    await this.ShowMessageAsync("Error importing channels", ex.Message);
+                    await this.ShowMessageAsync("Error importing channels", ex.ExtractErrorMessage());
                     // TODO log import error
                 }
 
@@ -197,7 +197,7 @@ namespace Livestream.Monitor.ViewModels
                         });
 
                     if (messageDialogResult == MessageDialogResult.Negative)
-                        MonitorStreamsModel.IgnoreQueryFailure(ex.Message);
+                        MonitorStreamsModel.IgnoreQueryFailure(ex.ExtractErrorMessage());
                 }
             }
             catch (Exception ex)

@@ -97,7 +97,7 @@ namespace Livestream.Monitor.Model
                 }
                 catch (Exception ex)
                 {
-                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", ex.Message));
+                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", ex.ExtractErrorMessage()));
                 }
             });
         }

@@ -139,6 +139,8 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        // ReSharper disable UnusedMember.Global - these are bound automatically via yaml
+
         public async Task RefreshItems()
         {
             await EnsureItems();
@@ -188,7 +190,7 @@ namespace Livestream.Monitor.ViewModels
             catch (Exception e)
             {
                 await this.ShowMessageAsync("Error copying url",
-                    $"An error occurred attempting to copy the url, please try again: {e.Message}");
+                    $"An error occurred attempting to copy the url, please try again: {e.ExtractErrorMessage()}");
             }
         }
 
@@ -207,7 +209,6 @@ namespace Livestream.Monitor.ViewModels
                 settingsHandler.Settings.ExcludeFromNotifying.Add(excludeNotify);
             }
         }
-
         public async Task StreamClicked(TopStreamResult topStreamResult)
         {
             if (topStreamResult.IsBusy) return;
@@ -235,6 +236,8 @@ namespace Livestream.Monitor.ViewModels
             textBox.SelectionStart = comboBox.Text.Length;
             textBox.SelectionLength = 0;
         }
+
+        // ReSharper restore UnusedMember.Global
 
         protected override void OnInitialize()
         {
@@ -284,7 +287,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error Removing Livestream", ex.Message);
+                await this.ShowMessageAsync("Error Removing Livestream", ex.ExtractErrorMessage());
             }
         }
 
@@ -297,7 +300,7 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (Exception ex)
             {
-                await this.ShowMessageAsync("Error Adding Livestream", ex.Message);
+                await this.ShowMessageAsync("Error Adding Livestream", ex.ExtractErrorMessage());
             }
         }
 
