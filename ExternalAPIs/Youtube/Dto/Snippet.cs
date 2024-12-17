@@ -13,6 +13,10 @@ namespace ExternalAPIs.Youtube.Dto
 
         public string Description { get; set; }
 
+        public string CustomUrl { get; set; }
+
+        public string Country { get; set; }
+
         public Thumbnails Thumbnails { get; set; }
 
         public string ChannelTitle { get; set; }

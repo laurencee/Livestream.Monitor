@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,17 +19,17 @@ namespace ExternalAPIs.Youtube
             return searchChannelLiveVideos;
         }
 
-        public async Task<string> GetChannelIdFromUsername(string userName, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<GetChannelsRoot> GetChannelDetailsFromHandle(string handle, CancellationToken cancellationToken = default)
         {
-            if (IsNullOrWhiteSpace(userName))
-                throw new ArgumentException("Argument is null or whitespace", nameof(userName));
+            if (IsNullOrWhiteSpace(handle))
+                throw new ArgumentException("Argument is null or whitespace", nameof(handle));
 
-            var request = RequestConstants.GetChannelIdByUsername.Replace("{0}", userName);
-            var channelDetails = await HttpClientExtensions.ExecuteRequest<GetChannelIdByNameRoot>(request, cancellationToken);
+            var request = RequestConstants.GetChannelIdByHandle.Replace("{0}", handle);
+            var channelDetails = await HttpClientExtensions.ExecuteRequest<GetChannelsRoot>(request, cancellationToken);
             if (channelDetails.Items == null || channelDetails.Items.Count == 0)
-                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "No channel found for username" + userName);
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, $"No channel found for handle '{handle}'");
 
-            return channelDetails.Items?.FirstOrDefault()?.Id;
+            return channelDetails;
         }
 
         public async Task<VideoRoot> GetLivestreamDetails(string videoId, CancellationToken cancellationToken = default(CancellationToken))

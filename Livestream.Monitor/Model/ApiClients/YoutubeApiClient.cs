@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Runtime.Caching;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
@@ -21,7 +20,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private readonly IYoutubeReadonlyClient youtubeClient;
         private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
-        private readonly MemoryCache cache = new MemoryCache(API_NAME);
 
         public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
         {
@@ -68,10 +66,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)
         {
-            var queryResults = await QueryChannels(new[] { newChannel }, CancellationToken.None);
-            if (queryResults.Any(x => x.IsSuccess))
-                moniteredChannels.Add(newChannel);
+            var channelId = await GetChannelIdByHandle(newChannel.ChannelId);
+            newChannel.DisplayName = newChannel.ChannelId.StartsWith("@") ? newChannel.ChannelId : $"@{newChannel.ChannelId}";
+            newChannel.OverrideChannelId(channelId.ChannelId);
+            moniteredChannels.Add(newChannel); // if we got this far it means it was a real channel
 
+            // immediately query for livestreams
+            var queryResults = await QueryChannels(new[] { newChannel });
             return queryResults;
         }
 
@@ -113,21 +114,19 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Initialize(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-        private async Task<string> GetChannelIdByUsername(string userName, CancellationToken cancellationToken)
+        private async Task<ChannelIdentifier> GetChannelIdByHandle(string handle, CancellationToken cancellationToken = default)
         {
-            string channelId = (string)cache.Get(userName);
-            if (channelId != null)
-                return channelId;
+            if (handle == null) throw new ArgumentNullException(nameof(handle));
 
-            channelId = await youtubeClient.GetChannelIdFromUsername(userName, cancellationToken);
-            // the id will never change so cache it forever once it's found
-            cache.Add(userName, channelId, DateTimeOffset.MaxValue);
-            return channelId;
+            var channelsRoot = await youtubeClient.GetChannelDetailsFromHandle(handle, cancellationToken);
+
+            var channelDetails = channelsRoot.Items[0];
+            return new ChannelIdentifier(this, channelDetails.Id);
         }
 
         private async Task<List<LivestreamQueryResult>> QueryChannels(
             IReadOnlyCollection<ChannelIdentifier> identifiers,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken = default)
         {
             var list = await identifiers.ExecuteInParallel(async channelIdentifier =>
             {
@@ -135,13 +134,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 try
                 {
-                    string channelId;
-                    if (channelIdentifier.ChannelId.StartsWith("UC") || channelIdentifier.ChannelId.StartsWith("HC"))
-                        channelId = channelIdentifier.ChannelId;
-                    else
-                        channelId = await GetChannelIdByUsername(channelIdentifier.ChannelId, cancellationToken);
-
-                    var videoIds = await GetVideoIdsByChannelId(channelId, cancellationToken);
+                    var videoIds = await GetVideoIdsByChannelId(channelIdentifier, cancellationToken);
                     var livestreamModels = await GetLivestreamModels(channelIdentifier, videoIds, cancellationToken);
                     queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
                     {
@@ -155,7 +148,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
-                            LivestreamModel = new LivestreamModel("offline-" + channelIdentifier.ChannelId, channelIdentifier)
+                            LivestreamModel = new LivestreamModel("offline-" + channelIdentifier.DisplayName, channelIdentifier)
                             {
                                 DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
@@ -177,15 +170,12 @@ namespace Livestream.Monitor.Model.ApiClients
             return list.SelectMany(x => x).ToList();
         }
 
-        private async Task<List<string>> GetVideoIdsByChannelId(string channelId, CancellationToken cancellationToken)
+        private async Task<List<string>> GetVideoIdsByChannelId(ChannelIdentifier channelIdentifier, CancellationToken cancellationToken)
         {
-            var searchLiveVideosRoot = await youtubeClient.GetLivestreamVideos(channelId, cancellationToken);
+            var searchLiveVideosRoot = await youtubeClient.GetLivestreamVideos(channelIdentifier.ChannelId, cancellationToken);
             var videoIds = searchLiveVideosRoot.Items?.Select(x => x.Id.VideoId).ToList();
 
-            if (videoIds == null)
-                return new List<string>();
-
-            return videoIds;
+            return videoIds ?? new List<string>();
         }
 
         private async Task<List<LivestreamModel>> GetLivestreamModels(ChannelIdentifier channelIdentifier, List<string> videoIds, CancellationToken cancellationToken)

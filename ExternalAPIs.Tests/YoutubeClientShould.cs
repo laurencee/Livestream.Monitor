@@ -39,7 +39,7 @@ namespace ExternalAPIs.Tests
         public async Task GetChannelIdFromUsername()
         {
             const string channelName = "skynews";
-            var channelId = await sut.GetChannelIdFromUsername(channelName);
+            var channelId = await sut.GetChannelDetailsFromHandle(channelName);
 
             Assert.NotNull(channelId);
         }

@@ -74,7 +74,7 @@
     <Compile Include="Youtube\Dto\LiveStreamingDetails.cs" />
     <Compile Include="Youtube\Dto\Localized.cs" />
     <Compile Include="Youtube\Dto\PageInfo.cs" />
-    <Compile Include="Youtube\Dto\QueryRoot\GetChannelIdByNameRoot.cs" />
+    <Compile Include="Youtube\Dto\QueryRoot\GetChannelsRoot.cs" />
     <Compile Include="Youtube\Dto\QueryRoot\SearchLiveVideosRoot.cs" />
     <Compile Include="Youtube\Dto\SearchItemResult.cs" />
     <Compile Include="Youtube\Dto\Snippet.cs" />

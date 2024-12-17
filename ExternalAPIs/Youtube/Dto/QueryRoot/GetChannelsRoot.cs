@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace ExternalAPIs.Youtube.Dto.QueryRoot
 {
-    public class GetChannelIdByNameRoot
+    public class GetChannelsRoot
     {
         [JsonProperty("kind")]
         public string Kind { get; set; }
