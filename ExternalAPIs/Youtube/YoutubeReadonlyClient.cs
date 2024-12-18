@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,7 +10,7 @@ namespace ExternalAPIs.Youtube
 {
     public class YoutubeReadonlyClient : IYoutubeReadonlyClient
     {
-        public async Task<SearchLiveVideosRoot> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<SearchLiveVideosRoot> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
@@ -32,23 +33,15 @@ namespace ExternalAPIs.Youtube
             return channelDetails;
         }
 
-        public async Task<VideoRoot> GetLivestreamDetails(string videoId, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<VideosRoot> GetVideosDetails(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default)
         {
-            if (IsNullOrWhiteSpace(videoId)) throw new ArgumentNullException(nameof(videoId));
+            if (videoIds == null) throw new ArgumentNullException(nameof(videoIds));
 
-            var request = $"{RequestConstants.VideoLivestreamDetails}&id={videoId}";
-            var livestreamDetails = await HttpClientExtensions.ExecuteRequest<VideoRoot>(request, cancellationToken);
+            var request = $"{RequestConstants.VideoLivestreamDetails}&id={Join(",", videoIds)}";
+            var livestreamDetails = await HttpClientExtensions.ExecuteRequest<VideosRoot>(request, cancellationToken);
 
-            request = $"{RequestConstants.VideoSnippet}&id={videoId}";
-            var snippetDetails = await HttpClientExtensions.ExecuteRequest<VideoRoot>(request, cancellationToken);
-
-            if (livestreamDetails?.Items?.Count > 0 && snippetDetails?.Items?.Count > 0)
-                livestreamDetails.Items[0].Snippet = snippetDetails.Items[0].Snippet;
-            else
-            {
-                // youtube just returns empty values when no stream was found
-                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channel not found " + videoId);
-            }
+            if (livestreamDetails?.Items?.Count == 0)
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channel not found " + videoIds);
 
             return livestreamDetails;
         }

@@ -14,7 +14,7 @@ namespace ExternalAPIs.Tests
         [Fact, Trait("Category", "LocalOnly")]
         public async Task GetLivestreamDetails()
         {
-            var videoRoot = await sut.GetLivestreamDetails(SKY_NEWS_VIDEO_ID);
+            var videoRoot = await sut.GetVideosDetails(new[] { SKY_NEWS_VIDEO_ID });
 
             Assert.NotNull(videoRoot?.Items);
             Assert.NotNull(videoRoot?.Items[0].Snippet);
@@ -27,7 +27,7 @@ namespace ExternalAPIs.Tests
             try
             {
                 // clearly a well thought out random channel id that will fail and not just mashing the keyboard
-                await sut.GetLivestreamDetails("sdlfh94uhf43ouhf3l4uhf3493[]");
+                await sut.GetVideosDetails(new [] {"sdlfh94uhf43ouhf3l4uhf3493[]"});
             }
             catch (HttpRequestWithStatusException exception)
             {

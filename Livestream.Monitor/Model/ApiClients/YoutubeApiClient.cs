@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.Youtube;
-using ExternalAPIs.Youtube.Dto;
 using ExternalAPIs.Youtube.Dto.QueryRoot;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
@@ -19,7 +18,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public const string API_NAME = "youtube";
 
         private readonly IYoutubeReadonlyClient youtubeClient;
-        private readonly HashSet<ChannelIdentifier> moniteredChannels = new HashSet<ChannelIdentifier>();
+        private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
 
         public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
         {
@@ -69,7 +68,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var channelId = await GetChannelIdByHandle(newChannel.ChannelId);
             newChannel.DisplayName = newChannel.ChannelId.StartsWith("@") ? newChannel.ChannelId : $"@{newChannel.ChannelId}";
             newChannel.OverrideChannelId(channelId.ChannelId);
-            moniteredChannels.Add(newChannel); // if we got this far it means it was a real channel
+            monitoredChannels.Add(newChannel); // if we got this far it means it was a real channel
 
             // immediately query for livestreams
             var queryResults = await QueryChannels(new[] { newChannel });
@@ -78,18 +77,18 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public void AddChannelWithoutQuerying(ChannelIdentifier newChannel)
         {
-            moniteredChannels.Add(newChannel);
+            monitoredChannels.Add(newChannel);
         }
 
         public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
-            moniteredChannels.Remove(channelIdentifier);
+            monitoredChannels.Remove(channelIdentifier);
             return Task.CompletedTask;
         }
 
         public Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken)
         {
-            return QueryChannels(moniteredChannels, cancellationToken);
+            return QueryChannels(monitoredChannels, cancellationToken);
         }
 
         public Task<List<VodDetails>> GetVods(VodQuery vodQuery)
@@ -135,16 +134,10 @@ namespace Livestream.Monitor.Model.ApiClients
                 try
                 {
                     var videoIds = await GetVideoIdsByChannelId(channelIdentifier, cancellationToken);
-                    var livestreamModels = await GetLivestreamModels(channelIdentifier, videoIds, cancellationToken);
-                    queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
-                    {
-                        LivestreamModel = x,
-                    }));
 
                     // video ids are only returned for online streams, we need to show something to the user
                     // so create a placeholder livestream model object for the offline channel.
-                    // TODO - query the channel to get their display name information rather than using the recorded displayname/channelid
-                    if (!livestreamModels.Any())
+                    if (videoIds.Count == 0)
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
@@ -152,9 +145,17 @@ namespace Livestream.Monitor.Model.ApiClients
                             {
                                 DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
-                            }
+                            },
                         });
+                        return queryResults;
                     }
+
+                    var videosRoot = await GetVideosDetails(videoIds, cancellationToken);
+                    var livestreamModels = MapLivestreamModels(channelIdentifier, videosRoot);
+                    queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
+                    {
+                        LivestreamModel = x,
+                    }));
                 }
                 catch (Exception ex)
                 {
@@ -178,44 +179,49 @@ namespace Livestream.Monitor.Model.ApiClients
             return videoIds ?? new List<string>();
         }
 
-        private async Task<List<LivestreamModel>> GetLivestreamModels(ChannelIdentifier channelIdentifier, List<string> videoIds, CancellationToken cancellationToken)
+        private async Task<VideosRoot> GetVideosDetails(List<string> videoIds, CancellationToken cancellationToken)
+        {
+            if (videoIds.Count == 0) return null;
+
+            VideosRoot videosRoot = null;
+            int retryCount = 0;
+            while (retryCount < 3 && videosRoot == null)
+            {
+                if (cancellationToken.IsCancellationRequested) return null;
+
+                try
+                {
+                    videosRoot = await youtubeClient.GetVideosDetails(videoIds, cancellationToken);
+                }
+                catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
+                {
+                    await Task.Delay(2000, cancellationToken);
+                }
+                catch (HttpRequestWithStatusException)
+                {
+                    // can happen in the case of the video being removed
+                    // the youtube api will report the videoid as live but looking up the videoid will fail with BadRequest
+                    break;
+                }
+                retryCount++;
+            }
+
+            return videosRoot;
+        }
+
+        private List<LivestreamModel> MapLivestreamModels(ChannelIdentifier channelIdentifier, VideosRoot videosRoot)
         {
             var livestreamModels = new List<LivestreamModel>();
+            if (videosRoot == null) return livestreamModels;
 
-            foreach (var videoId in videoIds)
+            foreach (var videoDetails in videosRoot.Items)
             {
-                LiveStreamingDetails livestreamDetails = null;
-                VideoRoot videoRoot = null;
+                if (videoDetails.LiveStreamingDetails?.ActualStartTime == null) continue;
 
-                int retryCount = 0;
-                while (retryCount < 3 && livestreamDetails == null)
-                {
-                    if (cancellationToken.IsCancellationRequested) return livestreamModels;
-
-                    try
-                    {
-                        videoRoot = await youtubeClient.GetLivestreamDetails(videoId, cancellationToken);
-                        livestreamDetails = videoRoot.Items?.FirstOrDefault()?.LiveStreamingDetails;
-                    }
-                    catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
-                    {
-                        await Task.Delay(2000, cancellationToken);
-                    }
-                    catch (HttpRequestWithStatusException)
-                    {
-                        // can happen in the case of the video being removed
-                        // the youtube api will report the videoid as live but looking up the videoid will fail with BadRequest
-                        break;
-                    }
-                    retryCount++;
-                }
-
-                if (livestreamDetails == null) continue;
-
-                var snippet = videoRoot.Items?.FirstOrDefault()?.Snippet;
+                var snippet = videoDetails.Snippet;
                 if (snippet == null) continue;
 
-                var livestreamModel = new LivestreamModel(videoId, channelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
+                var livestreamModel = new LivestreamModel(videoDetails.Id, channelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
                 if (!livestreamModel.Live) continue;
 
                 livestreamModel.DisplayName = snippet.ChannelTitle;
@@ -224,16 +230,12 @@ namespace Livestream.Monitor.Model.ApiClients
                 {
                     Small = snippet.Thumbnails?.Standard?.Url,
                     Large = snippet.Thumbnails?.High?.Url,
-                    Medium = snippet.Thumbnails?.Medium?.Url
+                    Medium = snippet.Thumbnails?.Medium?.Url,
                 };
 
-                livestreamModel.Viewers = livestreamDetails.ConcurrentViewers;
-
-                if (livestreamDetails.ActualStartTime.HasValue)
-                {
-                    livestreamModel.StartTime = livestreamDetails.ActualStartTime.Value;
-                    livestreamModels.Add(livestreamModel);
-                }
+                livestreamModel.Viewers = videoDetails.LiveStreamingDetails.ConcurrentViewers;
+                livestreamModel.StartTime = videoDetails.LiveStreamingDetails.ActualStartTime;
+                livestreamModels.Add(livestreamModel);
             }
 
             return livestreamModels;

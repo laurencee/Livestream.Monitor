@@ -2,7 +2,7 @@ using System.Collections.Generic;
 
 namespace ExternalAPIs.Youtube.Dto.QueryRoot
 {
-    public class VideoRoot
+    public class VideosRoot
     {
         public string Kind { get; set; }
 
