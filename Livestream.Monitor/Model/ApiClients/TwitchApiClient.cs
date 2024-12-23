@@ -246,6 +246,7 @@ namespace Livestream.Monitor.Model.ApiClients
             if (string.IsNullOrWhiteSpace(vodQuery.StreamDisplayName)) throw new ArgumentNullException(nameof(vodQuery.StreamDisplayName));
 
             var user = await GetUserByUsername(vodQuery.StreamDisplayName);
+            if (user == null) return new List<VodDetails>();
 
             vodsPaginationKeyMap.TryGetValue(vodQuery, out var paginationKey);
             var getVideosQuery = new GetVideosQuery()
