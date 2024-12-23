@@ -7,7 +7,7 @@
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("Livestream.Monitor")]
-[assembly: AssemblyCopyright("Copyright © laurencee 2015-2023")]
+[assembly: AssemblyCopyright("Copyright © laurencee 2015")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -22,5 +22,5 @@
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-[assembly: AssemblyVersion("2.13.10.0")]
-[assembly: AssemblyFileVersion("2.13.10.0")]
+[assembly: AssemblyVersion("2.14.0.0")]
+[assembly: AssemblyFileVersion("2.14.0.0")]
