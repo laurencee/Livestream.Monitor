@@ -7,20 +7,20 @@ namespace Livestream.Monitor.Model.ApiClients
 {
     public class VodQuery : PagedQuery, IEquatable<VodQuery>
     {
-        private string streamId;
+        private string streamDisplayName;
 
         public VodQuery()
         {
             Take = 10;
         }
 
-        public string StreamId
+        public string StreamDisplayName
         {
-            get { return streamId; }
+            get { return streamDisplayName; }
             set
             {
-                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(StreamId));
-                streamId = value;
+                if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(StreamDisplayName));
+                streamDisplayName = value;
             }
         }
 
@@ -33,7 +33,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return base.Equals(other) && streamId == other.streamId && VodTypes.SequenceEqual(other.VodTypes);
+            return base.Equals(other) && streamDisplayName == other.streamDisplayName && VodTypes.SequenceEqual(other.VodTypes);
         }
 
         public override bool Equals(object obj)
@@ -49,7 +49,7 @@ namespace Livestream.Monitor.Model.ApiClients
             unchecked
             {
                 int hashCode = base.GetHashCode();
-                hashCode = (hashCode * 397) ^ (streamId != null ? streamId.GetHashCode() : 0);
+                hashCode = (hashCode * 397) ^ (streamDisplayName != null ? streamDisplayName.GetHashCode() : 0);
                 if (VodTypes != null)
                 {
                     foreach (var vodType in VodTypes)

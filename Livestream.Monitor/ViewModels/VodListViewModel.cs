@@ -20,7 +20,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly IApiClientFactory apiClientFactory;
 
-        private string streamId;
+        private string streamDisplayName;
         private string vodUrl;
         private VodDetails selectedItem;
         private BindableCollection<LivestreamModel> knownStreams = new BindableCollection<LivestreamModel>();
@@ -54,15 +54,15 @@ namespace Livestream.Monitor.ViewModels
 
         public override bool CanNext => !LoadingItems && Items.Count == VOD_TILES_PER_PAGE;
 
-        public string StreamId
+        public string StreamDisplayName
         {
-            get { return streamId; }
+            get { return streamDisplayName; }
             set
             {
-                if (value == streamId) return;
-                streamId = value;
-                NotifyOfPropertyChange(() => StreamId);
-                if (!string.IsNullOrWhiteSpace(streamId))                
+                if (value == streamDisplayName) return;
+                streamDisplayName = value;
+                NotifyOfPropertyChange(() => StreamDisplayName);
+                if (!string.IsNullOrWhiteSpace(streamDisplayName))
                     MovePage();                
                 else                
                     Items.Clear();                
@@ -100,9 +100,9 @@ namespace Livestream.Monitor.ViewModels
 
                 // as streamids are unique to each api client, we should clear the stream id when changing api's 
                 // unless we know it exists in the newly selected api client to avoid immediate query failures
-                if (IsActive && StreamId != null && !orderedLiveStreams.Any(x => x.Id == StreamId))
+                if (IsActive && StreamDisplayName != null && orderedLiveStreams.All(x => x.Id != StreamDisplayName))
                 {
-                    StreamId = null;
+                    StreamDisplayName = null;
                 }
 
                 KnownStreams = new BindableCollection<LivestreamModel>(orderedLiveStreams);
@@ -220,8 +220,8 @@ namespace Livestream.Monitor.ViewModels
 
         private async Task EnsureItems()
         {
-            var newStreamId = StreamId; // avoid possible case of the stream id changes mid query
-            if (!IsActive || string.IsNullOrWhiteSpace(newStreamId)) return;
+            var queryStreamDisplayName = StreamDisplayName; // avoid possible case of the stream id changes mid query
+            if (!IsActive || string.IsNullOrWhiteSpace(queryStreamDisplayName)) return;
 
             LoadingItems = true;
 
@@ -231,7 +231,7 @@ namespace Livestream.Monitor.ViewModels
 
                 var vodQuery = new VodQuery()
                 {
-                    StreamId = newStreamId,
+                    StreamDisplayName = queryStreamDisplayName,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
@@ -243,12 +243,12 @@ namespace Livestream.Monitor.ViewModels
             }
             catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                await this.ShowMessageAsync("Error", $"Unknown stream name '{newStreamId}'.");
+                await this.ShowMessageAsync("Error", $"Unknown stream name '{queryStreamDisplayName}'.");
             }
             catch (Exception ex)
             {
                 await this.ShowMessageAsync("Error Getting Vods",
-                    $"Error occurred getting vods from api '{SelectedApiClient.ApiName}' for channel '{newStreamId}'." +
+                    $"Error occurred getting vods from api '{SelectedApiClient.ApiName}' for channel '{queryStreamDisplayName}'." +
                     $"{Environment.NewLine}{Environment.NewLine}{ex}");
             }
 

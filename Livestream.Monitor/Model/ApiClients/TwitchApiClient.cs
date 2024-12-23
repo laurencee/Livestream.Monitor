@@ -29,7 +29,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
         private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
         private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
-        private readonly Dictionary<string, User> channelIdToUserMap = new Dictionary<string, User>();
+        private readonly Dictionary<string, User> streamDisplayNameToUserMap = new Dictionary<string, User>();
         private readonly Dictionary<TopStreamQuery, string> topStreamsPaginationKeyMap = new Dictionary<TopStreamQuery, string>();
         private readonly Dictionary<VodQuery, string> vodsPaginationKeyMap = new Dictionary<VodQuery, string>();
 
@@ -113,7 +113,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            var urlSuffix = await GetStreamUrlSuffixById(livestreamModel.ChannelIdentifier.ChannelId);
+            var urlSuffix = await GetStreamUrlSuffix(livestreamModel.ChannelIdentifier);
             return $"{BaseUrl}{urlSuffix}/";
         }
 
@@ -121,7 +121,7 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            var urlSuffix = await GetStreamUrlSuffixById(livestreamModel.ChannelIdentifier.ChannelId);
+            var urlSuffix = await GetStreamUrlSuffix(livestreamModel.ChannelIdentifier);
             return $"{BaseUrl}{urlSuffix}/chat?popout=true";
         }
 
@@ -139,14 +139,13 @@ namespace Livestream.Monitor.Model.ApiClients
             }
             else
             {
-                user = await twitchTvHelixClient.GetUserByUsername(newChannel.ChannelId);
+                user = await GetUserByUsername(newChannel.ChannelId);
             }
 
             if (user == null) throw new InvalidOperationException("No user found for id " + newChannel.ChannelId);
 
             newChannel.OverrideChannelId(user.Id);
             newChannel.DisplayName = user.DisplayName;
-            channelIdToUserMap[user.Id] = user;
             var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
 
             var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
@@ -177,7 +176,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task RemoveChannel(ChannelIdentifier channelIdentifier)
         {
-            channelIdToUserMap.Remove(channelIdentifier.ChannelId);
             monitoredChannels.Remove(channelIdentifier);
             return Task.CompletedTask;
         }
@@ -245,12 +243,14 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
         {
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
-            if (string.IsNullOrWhiteSpace(vodQuery.StreamId)) throw new ArgumentNullException(nameof(vodQuery.StreamId));
+            if (string.IsNullOrWhiteSpace(vodQuery.StreamDisplayName)) throw new ArgumentNullException(nameof(vodQuery.StreamDisplayName));
+
+            var user = await GetUserByUsername(vodQuery.StreamDisplayName);
 
             vodsPaginationKeyMap.TryGetValue(vodQuery, out var paginationKey);
             var getVideosQuery = new GetVideosQuery()
             {
-                UserId = vodQuery.StreamId,
+                UserId = user.Id,
                 First = vodQuery.Take,
                 CursorPagination = new CursorPagination()
                 {
@@ -261,12 +261,13 @@ namespace Livestream.Monitor.Model.ApiClients
 
             var nextPageKeyLookup = new VodQuery()
             {
-                StreamId = vodQuery.StreamId,
+                StreamDisplayName = user.Id,
                 Skip = vodQuery.Skip + vodQuery.Take,
                 Take = vodQuery.Take,
-                VodTypes = vodQuery.VodTypes
+                VodTypes = vodQuery.VodTypes,
             };
             vodsPaginationKeyMap[nextPageKeyLookup] = videosRoot.Pagination.Cursor;
+
             var vods = videosRoot.Videos.Select(video =>
             {
                 var largeThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "640").Replace("%{height}", "360");
@@ -390,10 +391,10 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public async Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName)
         {
-            var user = await twitchTvHelixClient.GetUserByUsername(userName);
+            var user = await GetUserByUsername(userName);
             if (user == null) throw new InvalidOperationException("Could not find user with username: " + userName);
 
-            channelIdToUserMap[user.Id] = user;
+            streamDisplayNameToUserMap[user.DisplayName] = user;
             var userFollows = await twitchTvHelixClient.GetFollowedChannels(user.Id);
             return (from follow in userFollows
                     let channelIdentifier = new ChannelIdentifier(this, follow.BroadcasterId) { DisplayName = follow.BroadcasterName }
@@ -436,7 +437,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 var users = await twitchTvHelixClient.GetUsers(usersQuery, cancellationToken);
                 foreach (var user in users)
                 {
-                    channelIdToUserMap[user.Id] = user;
+                    streamDisplayNameToUserMap[user.DisplayName] = user;
                 }
             }
             catch
@@ -445,14 +446,14 @@ namespace Livestream.Monitor.Model.ApiClients
             }
         }
 
-        private async Task<string> GetStreamUrlSuffixById(string channelId)
+        private async Task<string> GetStreamUrlSuffix(ChannelIdentifier channelId)
         {
-            if (channelIdToUserMap.TryGetValue(channelId, out var user)) return user.Login;
+            if (streamDisplayNameToUserMap.TryGetValue(channelId.DisplayName, out var user)) return user.Login;
 
             var query = new GetUsersQuery();
-            query.UserIds.Add(channelId);
+            query.UserIds.Add(channelId.ChannelId);
             var users = await twitchTvHelixClient.GetUsers(query);
-            channelIdToUserMap[channelId] = users[0];
+            streamDisplayNameToUserMap[channelId.DisplayName] = users[0];
             return users[0].Login;
         }
 
@@ -504,6 +505,16 @@ namespace Livestream.Monitor.Model.ApiClients
                 $"&scope={scopes}";
 
             System.Diagnostics.Process.Start(request);
+        }
+
+        private async Task<User> GetUserByUsername(string username)
+        {
+            if (streamDisplayNameToUserMap.TryGetValue(username, out var user))
+                return user;
+
+            user = await twitchTvHelixClient.GetUserByUsername(username);
+            streamDisplayNameToUserMap[username] = user;
+            return user;
         }
     }
 }
