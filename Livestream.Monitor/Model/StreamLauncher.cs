@@ -86,18 +86,20 @@ namespace Livestream.Monitor.Model
                     };
 
                     proc.Start();
-                    string errorOutput = proc.StandardError.ReadToEnd();
+                    string errorOutput = await proc.StandardError.ReadToEndAsync();
                     proc.WaitForExit();
 
                     // check for exit code as well because sometimes processes emit warnings in the error output stream
                     if (proc.ExitCode != 0 && errorOutput != string.Empty)
                     {
-                        await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorOutput));
+                        var errorMessage = $"{errorOutput}{Environment.NewLine}Command executed: {command}";
+                        await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorMessage));
                     }
                 }
                 catch (Exception ex)
                 {
-                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", ex.ExtractErrorMessage()));
+                    var errorMessage = $"{ex.ExtractErrorMessage()}{Environment.NewLine}Command executed: {command}";
+                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorMessage));
                 }
             });
         }
