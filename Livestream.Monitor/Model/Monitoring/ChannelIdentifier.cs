@@ -32,7 +32,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public string DisplayName { get; set; }
 
-        public override string ToString() => $"{ApiClient.ApiName}:{ChannelId}";
+        public override string ToString() => $"{ApiClient.ApiName}:{DisplayName ?? ChannelId}";
 
         public void OverrideChannelId(string newChannelId)
         {

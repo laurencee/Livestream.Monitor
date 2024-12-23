@@ -69,6 +69,6 @@ namespace Livestream.Monitor.Model.ApiClients
         Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName);
 
         /// <summary> Give the api client a chance to initialize/preload data if necessary. Call after adding channels to be monitored. </summary>
-        Task Initialize(CancellationToken cancellationToken = default);
+        Task<InitializeApiClientResult> Initialize(CancellationToken cancellationToken = default);
     }
 }

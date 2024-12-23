@@ -413,8 +413,10 @@ namespace Livestream.Monitor.Model.ApiClients
                     }).ToList();
         }
 
-        public async Task Initialize(CancellationToken cancellationToken = default)
+        public async Task<InitializeApiClientResult> Initialize(CancellationToken cancellationToken = default)
         {
+            var result = new InitializeApiClientResult();
+
             if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
             {
                 twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
@@ -439,12 +441,23 @@ namespace Livestream.Monitor.Model.ApiClients
                 foreach (var user in users)
                 {
                     streamDisplayNameToUserMap[user.DisplayName] = user;
+                    if (monitoredChannels.TryGetValue(new ChannelIdentifier(this, user.Id),
+                            out var existingChannelIdentifier))
+                    {
+                        if (existingChannelIdentifier.DisplayName != user.DisplayName)
+                        {
+                            existingChannelIdentifier.DisplayName = user.DisplayName;
+                            result.ChannelIdentifierDataDirty = true;
+                        }
+                    }
                 }
             }
             catch
             {
                 // not important enough to prevent the app from initializing if this fails
             }
+
+            return result;
         }
 
         private async Task<string> GetStreamUrlSuffix(ChannelIdentifier channelId)

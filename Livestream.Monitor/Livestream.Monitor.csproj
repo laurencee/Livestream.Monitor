@@ -112,6 +112,7 @@
     <Compile Include="Core\Utility\SingleInstance.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Model\ApiClients\InitializeApiClientResult.cs" />
     <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />
     <Compile Include="Model\ApiClients\DesignTimeApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />

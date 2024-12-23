@@ -32,7 +32,6 @@ namespace ExternalAPIs.TwitchTv.Helix
             return followedChannelsRoot.FollowedChannels;
         }
 
-        /// <summary> Gets the top streams </summary>
         public async Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default)
         {
             if (getStreamsQuery == null) throw new ArgumentNullException(nameof(getStreamsQuery));

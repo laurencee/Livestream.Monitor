@@ -141,7 +141,11 @@ namespace Livestream.Monitor.Model.Monitoring
                 if (!apiClient.IsAuthorized && Livestreams.Any(x => x.ApiClient == apiClient))
                     await apiClient.Authorize(viewAware);
 
-                await apiClient.Initialize(cancellationToken);
+                var result = await apiClient.Initialize(cancellationToken);
+                if (result.ChannelIdentifierDataDirty)
+                {
+                    SaveLivestreams();
+                }
             }
 
             Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
