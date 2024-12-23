@@ -135,10 +135,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
 
-            // allows for clearing auth tokens at startup and re-authentication during initialization
-            foreach (var apiClient in Livestreams.Select(x => x.ApiClient).Distinct())
+            foreach (var apiClient in apiClientFactory.GetAll())
             {
-                if (!apiClient.IsAuthorized)
+                // allows for clearing auth tokens at startup and re-authentication during initialization
+                if (!apiClient.IsAuthorized && Livestreams.Any(x => x.ApiClient == apiClient))
                     await apiClient.Authorize(viewAware);
 
                 await apiClient.Initialize(cancellationToken);
