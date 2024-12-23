@@ -15,7 +15,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 1. Run Livestream.Monitor.exe
 2. Import Channels you have already followed using your stream site username (not all stream sites supported)
 3. Add other channels manually
-4. Double click on live channels to open the stream or click on the quality button while having a stream row selected
+4. Double-click on live channels to open the stream or click on the quality button while having a stream row selected
 
 ## General Features
 * Add your favourite livestreams to be monitored from twitch or youtube
@@ -27,7 +27,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Change your colour theme using the theme button in settings
 
 
-TIP: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
+**TIP**: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
 ## Twitch features
 * Import your already followed streams for live monitoring
@@ -51,13 +51,9 @@ I didn't like the large amount of memory used by java/web based GUIs for livestr
 
 ### FAQ
 **Q. How do I add YouTube streams?**  
-A. You can either use the username or the channelid.  
-`For usernames the URL looks like this: https://www.youtube.com/user/{username}`  
+A. You can either use the handle or the channelid.  
+`For handles the URL looks like this: https://www.youtube.com/{@handle}`  
 `For channelIds the URL looks like this: https://www.youtube.com/channel/{channelId}`  
-
-You can always get the channel id by clicking on the channel from the description of a video you are currently watching.
-
-If the username happens to start with "UC" or "HC" then it will fail to add the channel. In this instance please use the channelid approach instead.
 
 **Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?**  
 A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser).  
@@ -65,5 +61,5 @@ I don't believe the Youtube API provides that information right now... hopefully
 
 **Q. My twitch auth token is invalid, how can I fix this?**
 
-The easiest thing to do is open `settings.json` and delete your token.   
+The easiest thing to do is open `settings.json` and delete your token.  
 Relaunch the app and you'll be asked to authenticate again which will generate a fresh auth token.
