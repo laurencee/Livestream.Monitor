@@ -109,19 +109,19 @@ namespace Livestream.Monitor.Model.ApiClients
                 $"Please make sure you copy the full url, it should start with '{RedirectUri}'");
         }
 
-        public async Task<string> GetStreamUrl(string channelId)
+        public async Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
-            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            var urlSuffix = await GetStreamUrlSuffixById(channelId);
+            var urlSuffix = await GetStreamUrlSuffixById(livestreamModel.ChannelIdentifier.ChannelId);
             return $"{BaseUrl}{urlSuffix}/";
         }
 
-        public async Task<string> GetChatUrl(string channelId)
+        public async Task<string> GetChatUrl(LivestreamModel livestreamModel)
         {
-            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            var urlSuffix = await GetStreamUrlSuffixById(channelId);
+            var urlSuffix = await GetStreamUrlSuffixById(livestreamModel.ChannelIdentifier.ChannelId);
             return $"{BaseUrl}{urlSuffix}/chat?popout=true";
         }
 

@@ -25,12 +25,12 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<string> GetStreamUrl(string channelId)
+        public Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
             throw new NotImplementedException();
         }
 
-        public Task<string> GetChatUrl(string channelId)
+        public Task<string> GetChatUrl(LivestreamModel livestreamModel)
         {
             throw new NotImplementedException();
         }

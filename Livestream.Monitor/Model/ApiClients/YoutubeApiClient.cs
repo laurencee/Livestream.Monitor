@@ -47,20 +47,23 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
-        public Task<string> GetStreamUrl(string channelId)
+        public Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
-            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            return Task.FromResult($"{BaseUrl}watch?v={channelId}");
+            var streamUrl = livestreamModel.Live
+                ? $"{BaseUrl}watch?v={livestreamModel.Id}"
+                : $"{BaseUrl}{livestreamModel.ChannelIdentifier.DisplayName}"; // use the youtube handle
+            return Task.FromResult(streamUrl);
         }
 
-        public Task<string> GetChatUrl(string channelId)
+        public Task<string> GetChatUrl(LivestreamModel livestreamModel)
         {
-            if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentNullException(nameof(channelId));
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
             // the '&from_gaming=1' prevents the annoying popup message appearing at the top of the chat window
             // not all youtube streams have chat support as chat can be disabled for a stream, need to see if there's an api call that provides that info
-            return Task.FromResult($"{BaseUrl}live_chat?v={channelId}&dark_theme=1&is_popout=1&from_gaming=1");
+            return Task.FromResult($"{BaseUrl}live_chat?v={livestreamModel.Id}&dark_theme=1&is_popout=1&from_gaming=1");
         }
 
         public async Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel)
@@ -141,7 +144,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
-                            LivestreamModel = new LivestreamModel("offline-" + channelIdentifier.DisplayName, channelIdentifier)
+                            LivestreamModel = new LivestreamModel(channelIdentifier.DisplayName, channelIdentifier)
                             {
                                 DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
