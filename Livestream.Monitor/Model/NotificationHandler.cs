@@ -114,8 +114,8 @@ namespace Livestream.Monitor.Model
             // drop all remaining windows down to the place of the previous window
             for (int i = 0; i < windows.Count; i++)
             {
-                windows[i].Top = SystemParameters.WorkArea.Bottom - (NotificationViewWindowHeight * (i + 1)) -
-                                 BottomMargin;
+                windows[i].Top = SystemParameters.WorkArea.Bottom - (NotificationViewWindowHeight * (i + 1)) - BottomMargin;
+                windows[i].Topmost = true;
             }
         }
 
