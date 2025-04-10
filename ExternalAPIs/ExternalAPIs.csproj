@@ -12,6 +12,7 @@
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <TargetFrameworkProfile />
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -69,19 +70,17 @@
     <Compile Include="TwitchTv\Helix\TwitchTvHelixHelixReadonlyClient.cs" />
     <Compile Include="PagedQuery.cs" />
     <Compile Include="TopStreamQuery.cs" />
-    <Compile Include="Youtube\Dto\Id.cs" />
-    <Compile Include="Youtube\Dto\Item.cs" />
-    <Compile Include="Youtube\Dto\LiveStreamingDetails.cs" />
+    <Compile Include="Youtube\Dto\Channel.cs" />
     <Compile Include="Youtube\Dto\Localized.cs" />
+    <Compile Include="Youtube\Dto\PagedRoot.cs" />
     <Compile Include="Youtube\Dto\PageInfo.cs" />
-    <Compile Include="Youtube\Dto\QueryRoot\GetChannelsRoot.cs" />
-    <Compile Include="Youtube\Dto\QueryRoot\SearchLiveVideosRoot.cs" />
-    <Compile Include="Youtube\Dto\SearchItemResult.cs" />
-    <Compile Include="Youtube\Dto\Snippet.cs" />
+    <Compile Include="Youtube\Dto\Playlistitem.cs" />
+    <Compile Include="Youtube\Dto\SearchResult.cs" />
     <Compile Include="Youtube\Dto\ThumbnailResolution.cs" />
     <Compile Include="Youtube\Dto\Thumbnails.cs" />
-    <Compile Include="Youtube\Dto\QueryRoot\VideosRoot.cs" />
+    <Compile Include="Youtube\Dto\Video.cs" />
     <Compile Include="Youtube\IYoutubeReadonlyClient.cs" />
+    <Compile Include="Youtube\Query\PlaylistItemsQuery.cs" />
     <Compile Include="Youtube\RequestConstants.cs" />
     <Compile Include="Youtube\YoutubeReadonlyClient.cs" />
   </ItemGroup>

@@ -274,7 +274,9 @@ namespace Livestream.Monitor.ViewModels
             else if (e.PropertyName == nameof(MonitorStreamsModel.SelectedLivestream) || e.PropertyName == nameof(MonitorStreamsModel.CanOpenStream))
             {
                 var selectedLivestream = MonitorStreamsModel.SelectedLivestream;
-                CanOpenChat = selectedLivestream != null && selectedLivestream.ApiClient.HasChatSupport;
+                CanOpenChat = selectedLivestream != null &&
+                              selectedLivestream.ApiClient.HasChatSupport &&
+                              !selectedLivestream.IsChatDisabled;
             }
         }
 

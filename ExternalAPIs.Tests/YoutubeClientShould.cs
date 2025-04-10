@@ -1,6 +1,8 @@
-﻿using System.Net;
+﻿using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using ExternalAPIs.Youtube;
+using ExternalAPIs.Youtube.Query;
 using Xunit;
 
 namespace ExternalAPIs.Tests
@@ -9,6 +11,7 @@ namespace ExternalAPIs.Tests
     {
         private const string SKY_NEWS_VIDEO_ID = "siyW0GOBtbo";
         private const string SKY_NEWS_CHANNEL_ID = "UCoMdktPbSTixAyNGwb-UYkQ";
+        private const string YOUTUBE_HANDLE = "@SkyNews";
         private readonly YoutubeReadonlyClient sut = new YoutubeReadonlyClient();
 
         [Fact, Trait("Category", "LocalOnly")]
@@ -17,8 +20,8 @@ namespace ExternalAPIs.Tests
             var videoRoot = await sut.GetVideosDetails(new[] { SKY_NEWS_VIDEO_ID });
 
             Assert.NotNull(videoRoot?.Items);
-            Assert.NotNull(videoRoot?.Items[0].Snippet);
-            Assert.NotNull(videoRoot?.Items[0].LiveStreamingDetails);
+            Assert.NotNull(videoRoot.Items[0].Snippet);
+            Assert.NotNull(videoRoot.Items[0].LiveStreamingDetails);
         }
 
         [Fact, Trait("Category", "LocalOnly")]
@@ -36,12 +39,29 @@ namespace ExternalAPIs.Tests
         }
 
         [Fact, Trait("Category", "LocalOnly")]
-        public async Task GetChannelIdFromUsername()
+        public async Task GetChannelIdFromHandle()
         {
-            const string channelName = "skynews";
-            var channelId = await sut.GetChannelDetailsFromHandle(channelName);
+            var channelsRoot = await sut.GetChannelDetailsFromHandle(YOUTUBE_HANDLE);
 
-            Assert.NotNull(channelId);
+            Assert.NotNull(channelsRoot?.Items);
+            Assert.NotEmpty(channelsRoot.Items);
+        }
+
+        [Fact, Trait("Category", "LocalOnly")]
+        public async Task GetVodsFromHandle()
+        {
+            var channelsRoot = await sut.GetChannelDetailsFromHandle(YOUTUBE_HANDLE);
+            Assert.NotEmpty(channelsRoot.Items);
+
+            var uploadsPlaylistId = channelsRoot.Items[0].ContentDetails.RelatedPlaylists.Uploads;
+
+            var query= new PlaylistItemsQuery(uploadsPlaylistId);
+            var playlistItemsRoot = await sut.GetPlaylistItems(query);
+            Assert.NotEmpty(playlistItemsRoot.Items);
+
+            var videoIds = playlistItemsRoot.Items.Select(x => x.ContentDetails.VideoId).ToArray();
+            var videoDetails = await sut.GetVideosDetails(videoIds);
+            Assert.NotEmpty(videoDetails.Items);
         }
 
         [Fact, Trait("Category", "LocalOnly")]

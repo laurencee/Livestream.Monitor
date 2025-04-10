@@ -55,7 +55,7 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<List<VodDetails>> GetVods(VodQuery vodQuery)
+        public Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {
             throw new NotImplementedException();
         }

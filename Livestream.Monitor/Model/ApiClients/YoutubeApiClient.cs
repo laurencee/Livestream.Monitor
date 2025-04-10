@@ -4,10 +4,12 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using Caliburn.Micro;
 using ExternalAPIs;
 using ExternalAPIs.Youtube;
-using ExternalAPIs.Youtube.Dto.QueryRoot;
+using ExternalAPIs.Youtube.Dto;
+using ExternalAPIs.Youtube.Query;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.Monitoring;
 
@@ -19,6 +21,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private readonly IYoutubeReadonlyClient youtubeClient;
         private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
+        private readonly Dictionary<VodQuery, string> vodsPageTokenMap = new Dictionary<VodQuery, string>();
 
         public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
         {
@@ -31,7 +34,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasChatSupport => true;
 
-        public bool HasVodViewerSupport => false;
+        public bool HasVodViewerSupport => true;
 
         public bool HasTopStreamsSupport => false;
 
@@ -94,9 +97,71 @@ namespace Livestream.Monitor.Model.ApiClients
             return QueryChannels(monitoredChannels, cancellationToken);
         }
 
-        public Task<List<VodDetails>> GetVods(VodQuery vodQuery)
+        public async Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {
-            return Task.FromResult(new List<VodDetails>());
+            ChannelsRoot channelsRoot;
+            var channelIdentifier = monitoredChannels.FirstOrDefault(x => x.DisplayName.IsEqualTo(vodQuery.StreamDisplayName));
+            if (channelIdentifier != null)
+            {
+                channelsRoot = await youtubeClient.GetChannelDetailsFromIds([channelIdentifier.ChannelId]);
+            }
+            else
+            {
+                channelsRoot = await youtubeClient.GetChannelDetailsFromHandle(vodQuery.StreamDisplayName);
+            }
+
+            if (channelsRoot?.Items?.Count == 0) return Array.Empty<VodDetails>();
+
+            var channel = channelsRoot!.Items![0];
+            var uploadPlaylistId = channel.ContentDetails.RelatedPlaylists.Uploads;
+
+            vodsPageTokenMap.TryGetValue(vodQuery, out var pageToken);
+            var query = new PlaylistItemsQuery(uploadPlaylistId)
+            {
+                PageToken = pageToken,
+                ItemsPerPage = vodQuery.Take,
+            };
+            var playlistItemsRoot = await youtubeClient.GetPlaylistItems(query);
+
+            var nextPageKeyLookup = new VodQuery()
+            {
+                StreamDisplayName = vodQuery.StreamDisplayName,
+                Skip = vodQuery.Skip + vodQuery.Take,
+                Take = vodQuery.Take,
+                VodTypes = vodQuery.VodTypes,
+            };
+
+            if (playlistItemsRoot.NextPageToken != null)
+                vodsPageTokenMap[nextPageKeyLookup] = playlistItemsRoot.NextPageToken;
+
+            var videoIds = playlistItemsRoot.Items.Select(x => x.ContentDetails.VideoId).ToArray();
+            var videoDetails = await youtubeClient.GetVideosDetails(videoIds);
+
+            var vods = videoDetails.Items.Select(x =>
+            {
+                var singleLineTitle = x.Snippet.Title.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
+                var singleLineDescription = x.Snippet.Description.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
+                var duration = XmlConvert.ToTimeSpan(x.ContentDetails.Duration); // didn't wanna bother writing my own parser
+
+                var vodDetails = new VodDetails()
+                {
+                    Url = "https://www.youtube.com/watch?v=" + x.Id,
+                    Length = duration,
+                    Views = x.Statistics.ViewCount,
+                    Description = singleLineDescription,
+                    Title = singleLineTitle,
+                    PreviewImage = x.Snippet.Thumbnails.High.Url,
+                    IsUpcoming = x.Snippet.LiveBroadcastContent == "upcoming",
+                    ApiClient = this,
+                };
+
+                if (x.Snippet.PublishedAt != null)
+                    vodDetails.RecordedAt = x.Snippet.PublishedAt.Value;
+
+                return vodDetails;
+            }).ToList();
+
+            return vods;
         }
 
         public Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
@@ -149,6 +214,7 @@ namespace Livestream.Monitor.Model.ApiClients
                             {
                                 DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
                                 Description = "[Offline youtube stream]",
+                                IsChatDisabled = true,
                             },
                         });
                         return queryResults;
@@ -225,7 +291,11 @@ namespace Livestream.Monitor.Model.ApiClients
                 var snippet = videoDetails.Snippet;
                 if (snippet == null) continue;
 
-                var livestreamModel = new LivestreamModel(videoDetails.Id, channelIdentifier) { Live = snippet.LiveBroadcastContent != "none" };
+                var livestreamModel = new LivestreamModel(videoDetails.Id, channelIdentifier)
+                {
+                    Live = snippet.LiveBroadcastContent == "live",
+                    IsChatDisabled = videoDetails.LiveStreamingDetails.ActiveLiveChatId == null,
+                };
                 if (!livestreamModel.Live) continue;
 
                 livestreamModel.DisplayName = snippet.ChannelTitle;

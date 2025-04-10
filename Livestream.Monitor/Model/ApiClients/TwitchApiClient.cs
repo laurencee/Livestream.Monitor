@@ -240,7 +240,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return queryResults;
         }
 
-        public async Task<List<VodDetails>> GetVods(VodQuery vodQuery)
+        public async Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
             if (string.IsNullOrWhiteSpace(vodQuery.StreamDisplayName)) throw new ArgumentNullException(nameof(vodQuery.StreamDisplayName));
@@ -279,8 +279,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 var secs = match.Groups["secs"].Value;
                 var timespan = new TimeSpan(hours.ToInt(), mins.ToInt(), secs.ToInt());
 
-                var singleLineTitle = video.Title.TrimEnd().Replace("\r\n", " ").Replace('\n', ' ');
-                var singleLineDesc = video.Description.TrimEnd().Replace("\r\n", " ").Replace('\n', ' ');
+                var singleLineTitle = video.Title.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
+                var singleLineDesc = video.Description.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
 
                 return new VodDetails
                 {

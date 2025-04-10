@@ -235,7 +235,7 @@ namespace Livestream.Monitor.ViewModels
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
-                vodQuery.VodTypes.Add(SelectedVodType);
+                if (SelectedVodType != null) vodQuery.VodTypes.Add(SelectedVodType);
 
                 var vods = await selectedApiClient.GetVods(vodQuery);
 

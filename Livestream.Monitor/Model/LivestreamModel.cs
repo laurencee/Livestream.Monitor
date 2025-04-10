@@ -20,6 +20,7 @@ namespace Livestream.Monitor.Model
         private DateTimeOffset? lastLiveTime;
         private string broadcasterLanguage;
         private string language;
+        private bool isChatDisabled;
 
         public LivestreamModel()
         {
@@ -197,6 +198,17 @@ namespace Livestream.Monitor.Model
                 if (value == dontNotify) return;
                 dontNotify = value;
                 NotifyOfPropertyChange(() => DontNotify);
+            }
+        }
+
+        public bool IsChatDisabled
+        {
+            get => isChatDisabled;
+            set
+            {
+                if (value == isChatDisabled) return;
+                isChatDisabled = value;
+                NotifyOfPropertyChange(() => IsChatDisabled);
             }
         }
 

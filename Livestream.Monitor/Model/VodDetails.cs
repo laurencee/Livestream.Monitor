@@ -15,6 +15,7 @@ namespace Livestream.Monitor.Model
         private string title;
         private string previewImage;
         private IApiClient apiClient;
+        private bool isUpcoming;
 
         public string Url
         {
@@ -101,6 +102,17 @@ namespace Livestream.Monitor.Model
                 if (value == previewImage) return;
                 previewImage = value;
                 NotifyOfPropertyChange(() => PreviewImage);
+            }
+        }
+
+        public bool IsUpcoming
+        {
+            get { return isUpcoming; }
+            set
+            {
+                if (value == isUpcoming) return;
+                isUpcoming = value;
+                NotifyOfPropertyChange(() => IsUpcoming);
             }
         }
 

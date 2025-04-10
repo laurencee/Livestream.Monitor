@@ -57,7 +57,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <returns>Livestream query results from the channels. Errors from querying will be captured to be examined later. </returns>
         Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken);
 
-        Task<List<VodDetails>> GetVods(VodQuery vodQuery);
+        Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery);
 
         Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery);
 

@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using ExternalAPIs.Youtube.Dto.QueryRoot;
+using ExternalAPIs.Youtube.Dto;
+using ExternalAPIs.Youtube.Query;
 using static System.String;
 
 namespace ExternalAPIs.Youtube
@@ -20,13 +21,26 @@ namespace ExternalAPIs.Youtube
             return searchChannelLiveVideos;
         }
 
-        public async Task<GetChannelsRoot> GetChannelDetailsFromHandle(string handle, CancellationToken cancellationToken = default)
+        public async Task<ChannelsRoot> GetChannelDetailsFromIds(List<string> channelIds, CancellationToken cancellationToken = default)
+        {
+            if (channelIds == null) throw new ArgumentNullException(nameof(channelIds));
+
+            var request = $"{RequestConstants.GetChannels}&id={Join(",", channelIds)}";
+            var channelDetails = await HttpClientExtensions.ExecuteRequest<ChannelsRoot>(request, cancellationToken);
+
+            if (channelDetails?.Items?.Count == 0)
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channels not found " + channelIds);
+
+            return channelDetails;
+        }
+
+        public async Task<ChannelsRoot> GetChannelDetailsFromHandle(string handle, CancellationToken cancellationToken = default)
         {
             if (IsNullOrWhiteSpace(handle))
                 throw new ArgumentException("Argument is null or whitespace", nameof(handle));
 
-            var request = RequestConstants.GetChannelIdByHandle.Replace("{0}", handle);
-            var channelDetails = await HttpClientExtensions.ExecuteRequest<GetChannelsRoot>(request, cancellationToken);
+            var request = RequestConstants.GetChannelByHandle.Replace("{0}", handle);
+            var channelDetails = await HttpClientExtensions.ExecuteRequest<ChannelsRoot>(request, cancellationToken);
             if (channelDetails.Items == null || channelDetails.Items.Count == 0)
                 throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, $"No channel found for handle '{handle}'");
 
@@ -41,9 +55,25 @@ namespace ExternalAPIs.Youtube
             var livestreamDetails = await HttpClientExtensions.ExecuteRequest<VideosRoot>(request, cancellationToken);
 
             if (livestreamDetails?.Items?.Count == 0)
-                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channel not found " + videoIds);
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Videos not found " + videoIds);
 
             return livestreamDetails;
+        }
+
+        public async Task<PlaylistItemsRoot> GetPlaylistItems(PlaylistItemsQuery query, CancellationToken cancellationToken = default)
+        {
+            if (query == null) throw new ArgumentNullException(nameof(query));
+
+            var request = RequestConstants.GetPlaylistItems.Replace("{0}", query.PlaylistId) + $"&maxResults={query.ItemsPerPage}";
+            if (query.PageToken != null) request += $"&pageToken={query.PageToken}";
+
+            var playlistItemsRoot = await HttpClientExtensions.ExecuteRequest<PlaylistItemsRoot>(request, cancellationToken);
+
+            if (playlistItemsRoot == null)
+                throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest,
+                    $"Playlist not found| Playlist: {query.PlaylistId}, Token: {query.PageToken}");
+
+            return playlistItemsRoot;
         }
     }
 }

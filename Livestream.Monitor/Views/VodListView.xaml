@@ -68,7 +68,18 @@
                                     <TextBlock Text="{Binding Game}" />
                                     <!-- Blank spacer -->
                                     <TextBlock />
-                                    <TextBlock Text="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}" />
+                                    <TextBlock>
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsUpcoming}" Value="True">
+                                                        <Setter Property="Text" Value="Upcoming"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <!-- Blank spacer -->
                                     <TextBlock />
                                     <TextBlock Text="{Binding RecordedAt, StringFormat={}{0:MMM} {0:dd}\, {0:yyyy}}" />
