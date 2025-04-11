@@ -67,9 +67,9 @@ namespace Livestream.Monitor.ViewModels
             {
                 if (value == chatCommandLine) return;
 
-                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
+                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.ChatUrlReplacementToken))
                     AddError(nameof(ChatCommandLine),
-                        $"Chat command line must include a {Settings.CHAT_URL_REPLACEMENT_TOKEN} token so the chat url can be passed to the command");
+                        $"Chat command line must include a {Settings.ChatUrlReplacementToken} token so the chat url can be passed to the command");
                 else
                     RemoveErrors(nameof(ChatCommandLine));
 
@@ -159,7 +159,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
                 if (!string.IsNullOrEmpty(ChatCommandLine) &&
-                    !ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN)) return false;
+                    !ChatCommandLine.Contains(Settings.ChatUrlReplacementToken)) return false;
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
                 return ChatCommandLine != settingsHandler.Settings.ChatCommandLine ||
@@ -211,7 +211,7 @@ namespace Livestream.Monitor.ViewModels
         {
             var startingPath = settingsHandler.Settings.LivestreamerFullPath;
             if (string.IsNullOrWhiteSpace(startingPath))
-                startingPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
+                startingPath = Settings.DefaultStreamlinkFullPath;
 
             var livestreamerFilePath = SelectFile("Streamlink|streamlink.exe|Livestreamer|livestreamer.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
@@ -222,28 +222,28 @@ namespace Livestream.Monitor.ViewModels
 
         public void Chrome()
         {
-            var startingPath = Settings.DEFAULT_CHROME_FULL_PATH;
+            var startingPath = Settings.DefaultChromeFullPath;
 
             var chromeFilePath = SelectFile("Chrome|*.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(chromeFilePath))
             {
-                ChatCommandLine = $"\"{chromeFilePath}\" {Settings.CHROME_ARGS}";
+                ChatCommandLine = $"\"{chromeFilePath}\" {Settings.ChromeArgs}";
             }
         }
 
         public void Edge()
         {
-            ChatCommandLine = $"start microsoft-edge:{Settings.CHAT_URL_REPLACEMENT_TOKEN}";
+            ChatCommandLine = $"start microsoft-edge:{Settings.ChatUrlReplacementToken}";
         }
 
         public void Firefox()
         {
-            var startingPath = Settings.DEFAULT_FIREFOX_FULL_PATH;
+            var startingPath = Settings.DefaultFirefoxFullPath;
 
             var firefoxFilePath = SelectFile("Firefox|*.exe", startingPath);
             if (!string.IsNullOrWhiteSpace(firefoxFilePath))
             {
-                ChatCommandLine = $"\"{firefoxFilePath}\" {Settings.FIREFOX_ARGS}";
+                ChatCommandLine = $"\"{firefoxFilePath}\" {Settings.FirefoxArgs}";
             }
         }
 

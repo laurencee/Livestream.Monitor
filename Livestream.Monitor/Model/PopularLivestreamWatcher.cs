@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading;
@@ -16,18 +15,16 @@ namespace Livestream.Monitor.Model
     /// <summary>  Watches for popular livestreams/special events and notifies the user that something might going on  </summary>
     public class PopularLivestreamWatcher
     {
-        private const int PollMs = 30000;
+        private const int PollMs = 60000;
         
         private readonly ISettingsHandler settingsHandler;
         private readonly INotificationHandler notificationHandler;
         private readonly IApiClientFactory apiClientFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
-        private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        private readonly CancellationTokenSource cancellationTokenSource = new();
 
-        private bool watching = true;
-        private bool stoppedWatching;
-        private int minimumEventViewers;
+        private bool watching;
         
         public PopularLivestreamWatcher(
             ISettingsHandler settingsHandler,
@@ -50,16 +47,11 @@ namespace Livestream.Monitor.Model
                     navigationService.NavigateTo<TopStreamsViewModel>(viewModel => viewModel.SelectedApiClient = notification.LivestreamModel.ApiClient);
             };
 
-            settingsHandler.Settings.PropertyChanged += (sender, args) =>
+            settingsHandler.Settings.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName == nameof(Settings.MinimumEventViewers))
                 {
-                    MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
-
-                    if (MinimumEventViewers == 0)
-                        watching = false;
-                    else if (stoppedWatching)
-                        StartWatching();
+                    if (!watching && PopularEventNotificationEnabled) StartWatching();
                 }
                 else if (args.PropertyName == nameof(Settings.DisableNotifications))
                 {
@@ -72,38 +64,22 @@ namespace Livestream.Monitor.Model
             };
         }
 
-        public ObservableCollection<string> ExcludedGames { get; } = new ObservableCollection<string>();
-
-        /// <summary> Minimum event viewers before notifications occur, set to 0 to disable notifications </summary>
-        public int MinimumEventViewers
-        {
-            get => minimumEventViewers;
-            private set
-            {
-                if (value < 0) value = 0;
-                minimumEventViewers = value;
-            }
-        }
+        private bool PopularEventNotificationEnabled => settingsHandler.Settings.MinimumEventViewers > 0;
 
         /// <summary> Start watching for popular livestreams/events </summary>
         public void StartWatching()
         {
+            if (!PopularEventNotificationEnabled) return;
+
             watching = true;
-            stoppedWatching = false;
-
-            MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
-            if (!watching || MinimumEventViewers == 0) return;
-
             Task.Run(async () =>
             {
-                while (watching)
+                while (watching && PopularEventNotificationEnabled)
                 {
                     await NotifyPopularStreams();
                     await Task.Delay(PollMs);
                 }
-
-                stoppedWatching = true;
-            }, cancellationTokenSource.Token).ContinueWith(task => {}, TaskContinuationOptions.OnlyOnCanceled); // ignore cancellations
+            }, cancellationTokenSource.Token).ContinueWith(_ => {}, TaskContinuationOptions.OnlyOnCanceled); // ignore cancellations
         }
 
         public void StopWatching()
@@ -114,27 +90,30 @@ namespace Livestream.Monitor.Model
 
         public async Task NotifyPopularStreams()
         {
-            if (MinimumEventViewers == 0) return;
+            if (!PopularEventNotificationEnabled)
+            {
+                watching = false;
+                return;
+            }
 
             var livestreamModels = await GetPopularStreams();
-
-            foreach (var stream in livestreamModels)
+            foreach (var livestreamModel in livestreamModels)
             {
                 // don't notify about the same event again within the next hour
-                if (notifiedEvents.Get(stream.UniqueStreamKey.ToString()) != null)
+                if (notifiedEvents.Get(livestreamModel.UniqueStreamKey.ToString()) != null)
                     continue;
 
-                notifiedEvents.Set(stream.UniqueStreamKey.ToString(), stream, DateTimeOffset.Now.AddHours(1));
+                notifiedEvents.Set(livestreamModel.UniqueStreamKey.ToString(), livestreamModel, DateTimeOffset.Now.AddHours(1));
 
-                stream.SetLivestreamNotifyState(settingsHandler.Settings);
+                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
                 notificationHandler.AddNotification(new LivestreamNotification()
                 {
-                    LivestreamModel = stream,
-                    ImageUrl = stream.ThumbnailUrls?.Small,
-                    Message = stream.Description,
-                    Title = $"[POPULAR {stream.Viewers.ToString("N0")} Viewers]\n{stream.DisplayName}",
+                    LivestreamModel = livestreamModel,
+                    ImageUrl = livestreamModel.ThumbnailUrls?.Small,
+                    Message = livestreamModel.Description,
+                    Title = $"[POPULAR {livestreamModel.Viewers:N0} Viewers]\n{livestreamModel.DisplayName}",
                     Duration = LivestreamNotification.MaxDuration,
-                    ClickAction = clickAction
+                    ClickAction = clickAction,
                 });
             }
         }
@@ -142,34 +121,49 @@ namespace Livestream.Monitor.Model
         private async Task<HashSet<LivestreamModel>> GetPopularStreams()
         {
             const int maxReturnCount = 5;
-
             var popularStreams = new HashSet<LivestreamModel>();
-            int requeries = 0;
+
+            var supportedApiClients = apiClientFactory.GetAll()
+                .Where(x => x.HasTopStreamsSupport && x.IsAuthorized)
+                .ToArray();
+            if (supportedApiClients.Length == 0) return popularStreams;
+
+            const int maxQueryCount = 3;
+            int queryCount = 0;
             try
             {
-                var supportApiClients = apiClientFactory.GetAll().Where(x => x.HasTopStreamsSupport).ToList();
-                while (popularStreams.Count < maxReturnCount && requeries < 3)
+                while (popularStreams.Count < maxReturnCount && queryCount < maxQueryCount)
                 {
-                    var topStreamsQuery = new TopStreamQuery() { Skip = requeries * maxReturnCount, Take = maxReturnCount};
+                    var topStreamsQuery = new TopStreamQuery()
+                    {
+                        Skip = queryCount * maxReturnCount,
+                        Take = maxReturnCount,
+                    };
 
-                    var possibleStreams = new List<LivestreamModel>();
-                    foreach (var apiClient in supportApiClients)
+                    var potentialStreams = new List<LivestreamModel>();
+                    foreach (var apiClient in supportedApiClients)
                     {
                         var queryResults = await apiClient.GetTopStreams(topStreamsQuery);
-                        possibleStreams.AddRange(queryResults.Where(x => x.IsSuccess).Select(x => x.LivestreamModel));
+                        potentialStreams.AddRange(queryResults.Where(x => x.IsSuccess).Select(x => x.LivestreamModel));
                     }
-                    
-                    // perform this check before further filtering since this is the most important check
-                    if (possibleStreams.All(x => x.Viewers < MinimumEventViewers)) break;
 
+                    // no future queries will ever return useful results
+                    if (potentialStreams.All(x => x.Viewers < settingsHandler.Settings.MinimumEventViewers)) break;
+
+                    // merge new entries with existing set
                     popularStreams.UnionWith(
-                        possibleStreams.Where(x =>
-                                              x.Viewers >= MinimumEventViewers &&
-                                              !ExcludedGames.Contains(x.Game) &&
-                                              !notifiedEvents.Contains(x.UniqueStreamKey.ToString()) 
-                            ));
+                        potentialStreams.Where(x =>
+                            x.Viewers >= settingsHandler.Settings.MinimumEventViewers &&
+                            !notifiedEvents.Contains(x.UniqueStreamKey.ToString()) &&
+                            !settingsHandler.Settings.ExcludeFromNotifying.Contains(x.UniqueStreamKey)
+                        ));
 
-                    requeries++;
+                    // we filtered out something but there are no more streams above the min threshold
+                    if (popularStreams.Count == 0 &&
+                        potentialStreams.Any(x => x.Viewers < settingsHandler.Settings.MinimumEventViewers))
+                        break;
+
+                    queryCount++;
                 }
             }
             catch

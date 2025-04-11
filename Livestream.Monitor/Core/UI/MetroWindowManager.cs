@@ -82,14 +82,8 @@ namespace Livestream.Monitor.Core.UI
                 window.Resources.MergedDictionaries.Add(dictionary);
             }
 
-            // get the accent and base colour from the last session (or set defaults)
-            var accentColour = settingsHandler.Settings.MetroThemeAccentColour.HasValue
-                                   ? settingsHandler.Settings.MetroThemeAccentColour
-                                   : MetroThemeAccentColour.Orange;
-
-            var baseColour = settingsHandler.Settings.MetroThemeBaseColour.HasValue
-                                   ? settingsHandler.Settings.MetroThemeBaseColour
-                                   : MetroThemeBaseColour.BaseDark;
+            var accentColour = settingsHandler.Settings.MetroThemeAccentColour;
+            var baseColour = settingsHandler.Settings.MetroThemeBaseColour;
 
             var accentColourPackUri = new Uri($"pack://application:,,,/MahApps.Metro;component/Styles/Accents/{accentColour}.xaml", UriKind.RelativeOrAbsolute);
             window.Resources.MergedDictionaries.Add(new ResourceDictionary() { Source = accentColourPackUri});

@@ -7,9 +7,12 @@ using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Core
 {
+    // TODO don't like this looking back at it, should just have load and save methods.
+    // Settings Load(); Save(Settings settings);
+    // A single settings instance created from this could just directly be passed around instead, except places that actually needed to save
     public class SettingsHandler : ISettingsHandler
     {
-        public const string SettingsFileName = "settings.json";
+        private const string SettingsFileName = "settings.json";
         private bool settingsLoaded;
         private Settings settings;
 
@@ -19,6 +22,18 @@ namespace Livestream.Monitor.Core
             {
                 if (!settingsLoaded) LoadSettings();
                 return settings;
+            }
+        }
+
+        public void SaveSettings()
+        {
+            try
+            {
+                File.WriteAllText(SettingsFileName, JsonConvert.SerializeObject(settings, Formatting.Indented));
+            }
+            catch (Exception)
+            {
+                // can't do much...
             }
         }
 
@@ -33,35 +48,30 @@ namespace Livestream.Monitor.Core
                     settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
                 }
 
-                if (settings == null)
+                if (settings == null) // init
                 {
-                    settings = new Settings() { SettingsVersion = Settings.CurrentSettingsVersion };
+                    settings = new Settings()
+                    {
+                        SettingsVersion = Settings.CurrentSettingsVersion,
+                        CheckForNewVersions = true,
+                        MinimumEventViewers = Settings.DefaultMinimumPopularEventViewers,
+                        ChatCommandLine = Settings.DefaultChromeCommandLine,
+                    };
+
+                    if (File.Exists(Settings.DefaultStreamlinkFullPath))
+                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
+                    else if (File.Exists(Settings.DefaultStreamlinkX86FullPath))
+                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkX86FullPath;
+                    else if (File.Exists(Settings.DefaultLivestreamerFullPath))
+                        settings.LivestreamerFullPath = Settings.DefaultLivestreamerFullPath;
+                    else
+                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
                     saveSettings = true;
                 }
                 else
                 {
                     saveSettings = ExcludeNotifyConverter.SaveRequired;
-                }
-
-                saveSettings = MigrateSettingsVersion(saveSettings);
-                
-                // try to set a nice default value for the chat command line
-                if (settings.ChatCommandLine == null)
-                {
-                    settings.ChatCommandLine = Settings.DEFAULT_CHROME_COMMAND_LINE;
-                    saveSettings = true;
-                }
-
-                if (string.IsNullOrWhiteSpace(settings.LivestreamerFullPath))
-                {
-                    if (File.Exists(Settings.DEFAULT_STREAMLINK_FULL_PATH))
-                        settings.LivestreamerFullPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
-                    else if (File.Exists(Settings.DEFAULT_LIVESTREAMER_FULL_PATH))
-                        settings.LivestreamerFullPath = Settings.DEFAULT_LIVESTREAMER_FULL_PATH;
-                    else
-                        settings.LivestreamerFullPath = Settings.DEFAULT_STREAMLINK_FULL_PATH;
-
-                    saveSettings = true;
+                    saveSettings = MigrateSettingsVersion(saveSettings);
                 }
 
                 if (saveSettings) SaveSettings();
@@ -73,7 +83,7 @@ namespace Livestream.Monitor.Core
             catch (Exception)
             {
                 settings = new Settings();
-                // log error
+                // probably should log error
             }
         }
 
@@ -89,6 +99,15 @@ namespace Livestream.Monitor.Core
                 case 1:
                     // twitch changed their scope requirements so we must force re-authentication
                     settings.TwitchAuthToken = null;
+                    break;
+                case 2:
+                    // we were storing null values in exclusions, this cleans any up
+                    for (var i = settings.ExcludeFromNotifying.Count - 1; i >= 0; i--)
+                    {
+                        var uniqueStreamKey = settings.ExcludeFromNotifying[i];
+                        if (uniqueStreamKey.StreamId == null || uniqueStreamKey.ApiClientName == null)
+                            settings.ExcludeFromNotifying.Remove(uniqueStreamKey);
+                    }
                     break;
             }
 
@@ -121,18 +140,6 @@ namespace Livestream.Monitor.Core
 
             // change the default theme for all future windows opened
             ThemeManager.ChangeAppStyle(Application.Current, accentColour, baseColour);
-        }
-
-        public void SaveSettings()
-        {
-            try
-            {
-                File.WriteAllText(SettingsFileName, JsonConvert.SerializeObject(settings, Formatting.Indented));
-            }
-            catch (Exception)
-            {
-                // can't do much...
-            }
         }
     }
 }

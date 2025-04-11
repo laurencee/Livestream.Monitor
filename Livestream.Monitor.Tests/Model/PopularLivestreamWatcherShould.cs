@@ -26,10 +26,12 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamQueryResults);
+            factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
 
             await sut.NotifyPopularStreams();
@@ -41,12 +43,14 @@ namespace Livestream.Monitor.Tests.Model
         public async Task NotNotifyWhenBelowMinimumViewers(
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IEnumerable<IApiClient> apiClients,
+            [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamQueryResults);
+            factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = 2000;
 
             await sut.NotifyPopularStreams();
@@ -62,12 +66,14 @@ namespace Livestream.Monitor.Tests.Model
             int expectedNotificationCount,
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IEnumerable<IApiClient> apiClients,
+            [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamQueryResults);
+            factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
 
             await sut.NotifyPopularStreams();
@@ -86,6 +92,7 @@ namespace Livestream.Monitor.Tests.Model
             SetViewerCount(livestreamQueryResults[1].LivestreamModel, 300);
             SetViewerCount(livestreamQueryResults[2].LivestreamModel, 0);
             apiClient.HasTopStreamsSupport.Returns(true);
+            apiClient.IsAuthorized.Returns(true);
             apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(Task.FromResult(livestreamQueryResults));
         }
 

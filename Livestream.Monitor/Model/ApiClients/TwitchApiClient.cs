@@ -101,6 +101,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
                     settingsHandler.SaveSettings();
                     twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
+                    await Initialize();
                     return;
                 }
             }
@@ -416,12 +417,9 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<InitializeApiClientResult> Initialize(CancellationToken cancellationToken = default)
         {
             var result = new InitializeApiClientResult();
+            if (string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken)) return result;
 
-            if (!string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken))
-            {
-                twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
-            }
-
+            twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
             try
             {
                 // sets up initial cache of game id/name maps

@@ -26,13 +26,12 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Filter your channel list to find and manage streams quickly
 * Change your colour theme using the theme button in settings
 
-
 **TIP**: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
 ## Twitch features
 * Import your already followed streams for live monitoring
 * Search for top streams and filter top streams by game (add for monitoring with 1 click)
-* Search for VODS by streamer (you can also just paste any valid vod url and launch that instead)
+* Search for VODs by streamer (you can also just paste any valid vod url and launch that instead)
 
 ## Suggested streamlink/livestreamer configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player

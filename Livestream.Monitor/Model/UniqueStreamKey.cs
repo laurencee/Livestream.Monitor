@@ -1,6 +1,7 @@
 using System;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
+using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model
 {
@@ -16,12 +17,11 @@ namespace Livestream.Monitor.Model
             }
         }
 
+        [JsonConstructor]
         public UniqueStreamKey(string apiClientName, string streamId)
         {
-            if (String.IsNullOrWhiteSpace(apiClientName))
-                throw new ArgumentException("Argument is null or whitespace", nameof(apiClientName));
-            if (String.IsNullOrWhiteSpace(streamId))
-                throw new ArgumentException("Argument is null or whitespace", nameof(streamId));
+            // would like to verify values here but deserialization of old data can have null values
+            // see Settings -> ExcludeNotifyConverter
 
             ApiClientName = apiClientName;
             StreamId = streamId;

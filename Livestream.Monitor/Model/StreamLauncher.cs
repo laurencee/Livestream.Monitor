@@ -57,15 +57,15 @@ namespace Livestream.Monitor.Model
             }
 
             // guard against chat command that contains no url token
-            if (!settingsHandler.Settings.ChatCommandLine.Contains(Settings.CHAT_URL_REPLACEMENT_TOKEN))
+            if (!settingsHandler.Settings.ChatCommandLine.Contains(Settings.ChatUrlReplacementToken))
             {
                 await fromScreen.ShowMessageAsync("Missing url token in chat command",
-                    $"Chat command is missing the url token {Settings.CHAT_URL_REPLACEMENT_TOKEN}.");
+                    $"Chat command is missing the url token {Settings.ChatUrlReplacementToken}.");
                 return;
             }
 
             var chatUrl = await livestreamModel.GetChatUrl;
-            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.CHAT_URL_REPLACEMENT_TOKEN, chatUrl);
+            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.ChatUrlReplacementToken, chatUrl);
             command = command.Replace("&", "^&");
 
             await Task.Run(async () =>

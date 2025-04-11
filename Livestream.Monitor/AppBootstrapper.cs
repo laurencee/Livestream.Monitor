@@ -55,10 +55,9 @@ namespace Livestream.Monitor
             // singleton instance of the navigation service - this relies on using the container so it needs special registration
             Core.INavigationService navigationService = null;
             container.RegisterHandler(typeof (Core.INavigationService), null,
-                simpleContainer => navigationService ?? (navigationService = new NavigationService(
-                                                                                simpleContainer,
-                                                                                simpleContainer.GetInstance<IEventAggregator>())
-                                                                                ));
+                simpleContainer => navigationService ??= new NavigationService(
+                    simpleContainer,
+                    simpleContainer.GetInstance<IEventAggregator>()));
 
 #if FAKE_DATA // comment out the define at the top of this file to launch debug mode with real data
             container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();
@@ -102,7 +101,7 @@ namespace Livestream.Monitor
             try
             {
                 const string logsFolder = "logs";
-                string errorLogFileName = $"{DateTime.Now.ToString("yyyy-MM-dd")}_error.log";
+                string errorLogFileName = $"{DateTime.Now:yyyy-MM-dd}_error.log";
                 string errorLogFilePath = Path.Combine(logsFolder, errorLogFileName);
                 if (!Directory.Exists(logsFolder))
                     Directory.CreateDirectory(logsFolder);
