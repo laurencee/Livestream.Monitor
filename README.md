@@ -1,37 +1,50 @@
 # Livestream Monitor
-A windows GUI for [streamlink](https://streamlink.github.io/) / [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) written in .NET
+A Windows GUI to monitor livestreams from multiple platforms written in .NET.
+Supports **Twitch**, **YouTube** and **Kick**.
 
-[Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)
+Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)  
+[![v](https://img.shields.io/github/v/release/laurencee/Livestream.Monitor?label=)](https://github.com/laurencee/Livestream.Monitor/releases/latest)
+
+Leverages [streamlink](https://streamlink.github.io/) / [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) to launch livestreams through your own video player (VLC, MPC-HC, etc.). 
 
 ![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
 
-The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a java GUI for livestreamer.
+The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer.
 
 ## Pre-requisites
 * [.NET 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) installed
 * [streamlink](https://github.com/streamlink/streamlink) or [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
 
 ## Usage
-1. Run Livestream.Monitor.exe
-2. Import Channels you have already followed using your stream site username (not all stream sites supported)
-3. Add other channels manually
-4. Double-click on live channels to open the stream or click on the quality button while having a stream row selected
+1. Download the latest release and extract anywhere you want.
+2. Run `Livestream.Monitor.exe`.
+3. If you already follow channels on Twitch, use Import to import any channels you already follow. (*)
+4. Add other channels manually. (*)
+5. Double-click on live channels to open the stream or click on the quality button while a stream row is selected.
+
+(*) For Twitch, you'll be required to authorize the app the first time you try to import/add/query 
 
 ## General Features
-* Add your favourite livestreams to be monitored from twitch or youtube
-* Custom command line option for launching twitch/youtube chat for the selected stream (presets include Chrome/Firefox/Edge)
-* Stream quality favorites stored per api in a priority order
+* Add your favourite livestreams to be monitored from **Twitch**, **YouTube** or **Kick** by their channel names (end part of the url)
+  * Import your existing Twitch follow list via the Import button to get up and running quickly.
+* View **Top Streams** for Twitch and Kick. Filter Twitch top streams by category (Kick support coming soon).
+* **VOD viewer** to see previously recorded broadcasts/uploads for supported platforms.
+  * You don't have to be monitoring channels to view their VODs.
+* Filter your channel list to find and manage streams quickly
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
-* Filter your channel list to find and manage streams quickly
-* Change your colour theme using the theme button in settings
 
 **TIP**: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
-## Twitch features
-* Import your already followed streams for live monitoring
-* Search for top streams and filter top streams by game (add for monitoring with 1 click)
-* Search for VODs by streamer (you can also just paste any valid vod url and launch that instead)
+### Customizations
+
+Tweak the app to your liking with some of the following settings
+
+* Disable notifications for individual streams, popular streams or everything
+* Custom command line option for launching livestream chats for the selected stream (presets include Chrome/Firefox/Edge).
+* Define your preferred stream qualities per api in a priority order
+* Change your colour theme using the theme button in settings
+* Copy or Open monitored stream URLs directly to your browser.
 
 ## Suggested streamlink/livestreamer configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player
@@ -46,19 +59,16 @@ hls-live-edge=1
 ```
 
 ### Why make another livestreamer GUI?
-I didn't like the large amount of memory used by java/web based GUIs for livestreamer and there were some features I wanted that the others didn't provide.
+I wanted a lighter weight GUI with additional features that supported more platforms.
 
 ### FAQ
-**Q. How do I add YouTube streams?**  
-A. You can either use the handle or the channelid.  
-`For handles the URL looks like this: https://www.youtube.com/{@handle}`  
-`For channelIds the URL looks like this: https://www.youtube.com/channel/{channelId}`  
 
-**Q. Why do some youtube stream chats show an error page when launched from Livestream Monitor?**  
-A. Some YouTube streams have chat disabled (you can see this by visiting the stream page in your browser).  
-I don't believe the Youtube API provides that information right now... hopefully it's something google can add in the future.
+#### How do I add YouTube channels for livestream monitoring?
 
-**Q. My twitch auth token is invalid, how can I fix this?**
+You can either use the handle or the channel id, handle is preferred.  
+- For handles, the URL looks like: `https://www.youtube.com/@handle` (e.g. `@MrBeast`)  
+- For channel IDs, the URL looks like: `https://www.youtube.com/channel/channel_id` (e.g. `UCX6OQ3DkcsbYNE6H8uQQuVA`)  
 
-The easiest thing to do is open `settings.json` and delete your token.  
-Relaunch the app and you'll be asked to authenticate again which will generate a fresh auth token.
+#### My <platform> auth token is invalid, how can I fix this?
+
+Open `settings.json` (located in the app’s directory), delete your token, and relaunch the app to reauthorize.
