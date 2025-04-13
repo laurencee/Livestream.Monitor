@@ -42,7 +42,7 @@
         <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
         <TextBox x:Name="StreamName" Margin="2" MinWidth="150" controls:TextBoxHelper.Watermark="add new livestream..."
                  cal:Message.Attach="[KeyDown] = [KeyPressed($eventArgs)]" />
-        <ComboBox x:Name="ApiClients" DisplayMemberPath="ApiName" Margin="2" />
+        <ComboBox x:Name="ApiClients" DisplayMemberPath="ApiName" Margin="2" Width="80" />
         <Button x:Name="AddStream" Content="+" FontWeight="ExtraBold" Margin="2" Padding="5,0" ToolTip="Add new livestream">
             <Button.ContentTemplate>
                 <DataTemplate>

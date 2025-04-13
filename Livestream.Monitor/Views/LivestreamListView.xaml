@@ -31,13 +31,19 @@
                     </DataGrid.Resources>
                     <DataGrid.RowStyle >
                         <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MetroDataGridRow}">
+                            <Style.Resources>
+                                <Style TargetType="ToolTip" BasedOn="{StaticResource MetroToolTip}">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                            </Style.Resources>
                             <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
                             <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [OpenStream()];
                                                                  [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
                             <Setter Property="ToolTip">
                                 <Setter.Value>
-                                    <Border BorderThickness="1" BorderBrush="Black">
-                                        <Image Margin="2" Source="{Binding ThumbnailUrls.Medium, IsAsync=True}" />
+                                    <Border BorderThickness="2" BorderBrush="Black">
+                                        <Image Margin="0" Source="{Binding ThumbnailUrls.Large, IsAsync=True}" MaxHeight="360" MaxWidth="640" />
                                     </Border>
                                 </Setter.Value>
                             </Setter>

@@ -300,7 +300,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return vods;
         }
 
-        public async Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
+        public async Task<TopStreamsResponse> GetTopStreams(TopStreamQuery topStreamQuery)
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
@@ -330,20 +330,22 @@ namespace Livestream.Monitor.Model.ApiClients
             };
             topStreamsPaginationKeyMap[nextPageKeyLookup] = topStreams.Pagination?.Cursor;
 
-            var queryResults = new List<LivestreamQueryResult>();
+            var livestreamModels = new List<LivestreamModel>();
             foreach (var stream in topStreams.Streams.Take(topStreamQuery.Take))
             {
                 var channelIdentifier = new ChannelIdentifier(this, stream.UserId) { DisplayName = stream.UserName };
-                var queryResult = new LivestreamQueryResult(channelIdentifier);
                 var livestreamModel = new LivestreamModel(stream.UserId, channelIdentifier);
                 livestreamModel.PopulateWithStreamDetails(stream);
                 livestreamModel.Game = await GetGameNameById(stream.GameId);
 
-                queryResult.LivestreamModel = livestreamModel;
-                queryResults.Add(queryResult);
+                livestreamModels.Add(livestreamModel);
             }
 
-            return queryResults;
+            return new TopStreamsResponse()
+            {
+                LivestreamModels = livestreamModels,
+                HasNextPage = topStreams.Pagination?.Cursor != null,
+            };
         }
 
         public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)

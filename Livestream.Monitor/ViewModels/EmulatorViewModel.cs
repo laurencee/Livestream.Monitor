@@ -6,6 +6,7 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.ViewModels
 {
+    // ReSharper disable once UnusedType.Global - Used in AppBootstrapper when FAKE_DATA defined
     public class EmulatorViewModel : Screen
     {
         private readonly IMonitorStreamsModel monitorStreamsModel;

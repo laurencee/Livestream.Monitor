@@ -41,7 +41,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Returns null if <see cref="HasChatSupport"/> is false </summary>
         Task<string> GetChatUrl(LivestreamModel livestreamModel);
 
-        // TODO - consider isolating the add/remove/query logic into some other "monitoring api client" class
+        // TODO - don't use ChannelIdentifier at this point as we don't know the actual channelid yet in most cases, we only know the url/slug
         /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called  and immediately queries the channel. </summary>
         /// <param name="newChannel">A <see cref="ChannelIdentifier"/> of the new channel to be added</param>
         Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel);
@@ -59,7 +59,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery);
 
-        Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery);
+        Task<TopStreamsResponse> GetTopStreams(TopStreamQuery topStreamQuery);
 
         /// <summary> Gets a list of known game names from the api with an optional game name filter</summary>
         /// <param name="filterGameName">Optional game name filter</param>
@@ -70,5 +70,12 @@ namespace Livestream.Monitor.Model.ApiClients
 
         /// <summary> Give the api client a chance to initialize/preload data if necessary. Call after adding channels to be monitored. </summary>
         Task<InitializeApiClientResult> Initialize(CancellationToken cancellationToken = default);
+    }
+
+    public class TopStreamsResponse
+    {
+        public List<LivestreamModel> LivestreamModels { get; set; }
+
+        public bool HasNextPage { get; set; }
     }
 }

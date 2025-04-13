@@ -1,0 +1,143 @@
+{
+  "aa": "dj",    // Afar to Djibouti
+  "af": "za",    // Afrikaans to South Africa
+  "ak": "gh",    // Akan to Ghana
+  "am": "et",    // Amharic to Ethiopia
+  "ar": "sa",    // Arabic to Saudi Arabia
+  "as": "in",    // Assamese to India
+  "az": "az",    // Azerbaijani to Azerbaijan
+  "ba": "ru",    // Bashkir to Russia
+  "be": "by",    // Belarusian to Belarus
+  "bg": "bg",    // Bulgarian to Bulgaria
+  "bm": "ml",    // Bambara to Mali
+  "bn": "bd",    // Bengali to Bangladesh
+  "bo": "cn",    // Tibetan to China
+  "br": "fr",    // Breton to France
+  "bs": "ba",    // Bosnian to Bosnia and Herzegovina
+  "ca": "es",    // Catalan to Spain
+  "co": "fr",    // Corsican to France
+  "cs": "cz",    // Czech to Czech Republic
+  "cy": "gb",    // Welsh to United Kingdom
+  "da": "dk",    // Danish to Denmark
+  "de": "de",    // German to Germany
+  "dv": "mv",    // Dhivehi to Maldives
+  "dz": "bt",    // Dzongkha to Bhutan
+  "ee": "gh",    // Ewe to Ghana
+  "el": "cy",    // Greek to Cyprus (also "gr" possible)
+  "es": "es",    // Spanish to Spain
+  "et": "ee",    // Estonian to Estonia
+  "eu": "es",    // Basque to Spain
+  "fa": "ir",    // Persian to Iran
+  "ff": "cm",    // Fula to Cameroon
+  "fi": "fi",    // Finnish to Finland
+  "fo": "fo",    // Faroese to Faroe Islands
+  "fr": "fr",    // French to France
+  "fy": "nl",    // Western Frisian to Netherlands
+  "ga": "ie",    // Irish to Ireland
+  "gd": "gb",    // Scottish Gaelic to United Kingdom
+  "gl": "es",    // Galician to Spain
+  "gn": "py",    // Guarani to Paraguay
+  "gu": "in",    // Gujarati to India
+  "gv": "im",    // Manx to Isle of Man
+  "ha": "gh",    // Hausa to Ghana (also "ng" possible)
+  "he": "il",    // Hebrew to Israel
+  "hi": "in",    // Hindi to India
+  "hr": "hr",    // Croatian to Croatia
+  "hu": "hu",    // Hungarian to Hungary
+  "hy": "am",    // Armenian to Armenia
+  "ia": "fr",    // Interlingua to France
+  "id": "id",    // Indonesian to Indonesia
+  "ig": "ng",    // Igbo to Nigeria
+  "ii": "cn",    // Sichuan Yi to China
+  "is": "is",    // Icelandic to Iceland
+  "it": "it",    // Italian to Italy
+  "iu": "ca",    // Inuktitut to Canada
+  "ja": "jp",    // Japanese to Japan
+  "jv": "id",    // Javanese to Indonesia
+  "ka": "ge",    // Georgian to Georgia
+  "ki": "ke",    // Kikuyu to Kenya
+  "kk": "kz",    // Kazakh to Kazakhstan
+  "kl": "gl",    // Kalaallisut to Greenland
+  "km": "km",    // Khmer to Cambodia
+  "kn": "in",    // Kannada to India
+  "ko": "kr",    // Korean to South Korea
+  "kr": "ng",    // Kanuri to Nigeria
+  "ks": "in",    // Kashmiri to India
+  "ku": "iq",    // Kurdish to Iraq
+  "kw": "gb",    // Cornish to United Kingdom
+  "ky": "ky",    // Kyrgyz to Kyrgyzstan
+  "la": "va",    // Latin to Vatican City
+  "lb": "lu",    // Luxembourgish to Luxembourg
+  "lg": "ug",    // Ganda to Uganda
+  "ln": "cd",    // Lingala to DR Congo
+  "lo": "la",    // Lao to Laos
+  "lt": "lt",    // Lithuanian to Lithuania
+  "lu": "cd",    // Luba-Katanga to DR Congo
+  "lv": "lv",    // Latvian to Latvia
+  "mg": "mg",    // Malagasy to Madagascar
+  "mi": "nz",    // Maori to New Zealand
+  "mk": "mk",    // Macedonian to North Macedonia
+  "ml": "in",    // Malayalam to India
+  "mn": "mn",    // Mongolian to Mongolia
+  "mr": "in",    // Marathi to India
+  "ms": "my",    // Malay to Malaysia
+  "mt": "mt",    // Maltese to Malta
+  "my": "my",    // Burmese to Myanmar
+  "nb": "no",    // Norwegian Bokmål to Norway
+  "nd": "zw",    // Northern Ndebele to Zimbabwe
+  "ne": "np",    // Nepali to Nepal
+  "nl": "nl",    // Dutch to Netherlands
+  "nn": "no",    // Norwegian Nynorsk to Norway
+  "nr": "za",    // Southern Ndebele to South Africa
+  "oc": "fr",    // Occitan to France
+  "om": "et",    // Oromo to Ethiopia
+  "or": "in",    // Odia to India
+  "os": "ge",    // Ossetic to Georgia
+  "pa": "in",    // Punjabi to India (also "pk" possible)
+  "pl": "pl",    // Polish to Poland
+  "ps": "af",    // Pashto to Afghanistan
+  "pt": "pt",    // Portuguese to Portugal
+  "rm": "ch",    // Romansh to Switzerland
+  "rn": "bi",    // Kirundi to Burundi
+  "ro": "ro",    // Romanian to Romania
+  "ru": "ru",    // Russian to Russia
+  "rw": "rw",    // Kinyarwanda to Rwanda
+  "sa": "in",    // Sanskrit to India
+  "sd": "pk",    // Sindhi to Pakistan
+  "se": "se",    // Northern Sami to Sweden
+  "sg": "cf",    // Sango to Central African Republic
+  "si": "lk",    // Sinhala to Sri Lanka
+  "sk": "sk",    // Slovak to Slovakia
+  "sl": "sl",    // Slovenian to Slovenia
+  "sn": "zw",    // Shona to Zimbabwe
+  "so": "so",    // Somali to Somalia
+  "sq": "al",    // Albanian to Albania
+  "sr": "rs",    // Serbian to Serbia
+  "ss": "sz",    // Swati to Eswatini
+  "st": "ls",    // Southern Sotho to Lesotho
+  "sv": "se",    // Swedish to Sweden
+  "sw": "cd",    // Swahili to DR Congo (also "tz" possible)
+  "ta": "in",    // Tamil to India
+  "te": "in",    // Telugu to India
+  "tg": "tg",    // Tajik to Tajikistan
+  "th": "th",    // Thai to Thailand
+  "ti": "er",    // Tigrinya to Eritrea
+  "tk": "tk",    // Turkmen to Turkmenistan
+  "tn": "bw",    // Tswana to Botswana
+  "to": "to",    // Tongan to Tonga
+  "tr": "tr",    // Turkish to Turkey
+  "ts": "za",    // Tsonga to South Africa
+  "tt": "ru",    // Tatar to Russia
+  "ug": "cn",    // Uyghur to China
+  "uk": "ua",    // Ukrainian to Ukraine
+  "ur": "in",    // Urdu to India (also "pk" possible)
+  "uz": "uz",    // Uzbek to Uzbekistan
+  "ve": "za",    // Venda to South Africa
+  "vi": "vn",    // Vietnamese to Vietnam
+  "wo": "sn",    // Wolof to Senegal
+  "xh": "za",    // Xhosa to South Africa
+  "yo": "bj",    // Yoruba to Benin (also "ng" possible)
+  "zh": "cn",    // Chinese to China
+  "zu": "za",    // Zulu to South Africa
+  "zh-HK": "cn"  // Chinese (Hong Kong) to China
+}

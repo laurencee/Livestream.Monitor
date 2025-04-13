@@ -17,14 +17,11 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         private const string FileName = "livestreams.json";
         private readonly IApiClientFactory apiClientFactory;
-        private readonly ITwitchTvHelixReadonlyClient twitchTvHelixReadonlyClient;
 
         public MonitoredStreamsFileHandler(
-            IApiClientFactory apiClientFactory,
-            ITwitchTvHelixReadonlyClient twitchTvHelixReadonlyClient)
+            IApiClientFactory apiClientFactory)
         {
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-            this.twitchTvHelixReadonlyClient = twitchTvHelixReadonlyClient ?? throw new ArgumentNullException(nameof(twitchTvHelixReadonlyClient));
         }
 
         public void SaveToDisk(IEnumerable<ChannelIdentifier> livestreams)
@@ -123,6 +120,7 @@ namespace Livestream.Monitor.Model.Monitoring
             var twitchUsers = new List<User>();
             var query = new GetUsersQuery();
             query.UserNames.AddRange(twitchStreams.Select(x => x.ChannelId));
+            var twitchTvHelixReadonlyClient = new TwitchTvHelixHelixReadonlyClient();
             var users = await twitchTvHelixReadonlyClient.GetUsers(query);
             twitchUsers.AddRange(users);
 

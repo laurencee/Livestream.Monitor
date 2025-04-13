@@ -60,7 +60,7 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
+        public Task<TopStreamsResponse> GetTopStreams(TopStreamQuery topStreamQuery)
         {
             throw new NotImplementedException();
         }

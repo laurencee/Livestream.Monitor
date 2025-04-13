@@ -112,7 +112,6 @@
     <Compile Include="TestFramework\AutoNSubstituteDataAttribute.cs" />
     <Compile Include="TestFramework\InlineAutoNSubstituteDataAttribute.cs" />
     <Compile Include="TestFramework\LivestreamModelCustomization.cs" />
-    <Compile Include="TestFramework\SettingsCustomization.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config">

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
@@ -204,14 +203,14 @@ namespace ExternalAPIs.TwitchTv.Helix
             _accessToken = accessToken;
         }
 
-        private Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
+        private async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
-            HttpClient httpClient = HttpClientExtensions.CreateCompressionHttpClient();
+            using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
             httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
             if (_accessToken != null)
                 httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);                
 
-            return httpClient.ExecuteRequest<T>(request, cancellationToken);
+            return await httpClient.ExecuteRequest<T>(request, cancellationToken);
         }
     }
 }

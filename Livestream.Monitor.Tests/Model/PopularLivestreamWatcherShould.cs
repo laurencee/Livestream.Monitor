@@ -14,6 +14,7 @@ using Xunit;
 
 namespace Livestream.Monitor.Tests.Model
 {
+    // these tests suck but are better than nothing, written back when I used to over mock stuff
     public class PopularLivestreamWatcherShould
     {
         [InlineAutoNSubstituteData(1, 2)]
@@ -25,12 +26,12 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] List<LivestreamModel> livestreamModels,
             [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamQueryResults);
+            SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
 
@@ -44,12 +45,12 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] List<LivestreamModel> livestreamModels,
             [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamQueryResults);
+            SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = 2000;
 
@@ -67,12 +68,12 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamQueryResult> livestreamQueryResults,
+            [Frozen] List<LivestreamModel> livestreamModels,
             [Frozen] IApiClientFactory factory,
             PopularLivestreamWatcher sut)
         {
             var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamQueryResults);
+            SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
 
@@ -82,18 +83,21 @@ namespace Livestream.Monitor.Tests.Model
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
         }
 
-        private void SetupApiClient(IApiClient apiClient, List<LivestreamQueryResult> livestreamQueryResults)
+        private void SetupApiClient(IApiClient apiClient, List<LivestreamModel> livestreamModels)
         {
-            if (livestreamQueryResults.Count < 3)
+            if (livestreamModels.Count < 3)
                 throw new InvalidOperationException("Require >= 3 livestream query results for test configuration");
 
-            livestreamQueryResults.ForEach(x => x.FailedQueryException = null); // make sure the queries are treated as successful queries
-            SetViewerCount(livestreamQueryResults[0].LivestreamModel, 1000);
-            SetViewerCount(livestreamQueryResults[1].LivestreamModel, 300);
-            SetViewerCount(livestreamQueryResults[2].LivestreamModel, 0);
+            SetViewerCount(livestreamModels[0], 1000);
+            SetViewerCount(livestreamModels[1], 300);
+            SetViewerCount(livestreamModels[2], 0);
             apiClient.HasTopStreamsSupport.Returns(true);
             apiClient.IsAuthorized.Returns(true);
-            apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(Task.FromResult(livestreamQueryResults));
+            apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(Task.FromResult(new TopStreamsResponse()
+            {
+                LivestreamModels = livestreamModels,
+                HasNextPage = false,
+            }));
         }
 
         private void SetViewerCount(LivestreamModel livestreamModel, int viewers)

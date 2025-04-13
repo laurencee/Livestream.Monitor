@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs.Youtube.Dto;
@@ -11,12 +12,14 @@ namespace ExternalAPIs.Youtube
 {
     public class YoutubeReadonlyClient : IYoutubeReadonlyClient
     {
+        private static readonly string ApiKey = Encoding.UTF8.GetString(Convert.FromBase64String(RequestConstants.API_KEY));
+
         public async Task<SearchLiveVideosRoot> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
             var request = RequestConstants.SearchChannelLiveVideos.Replace("{0}", channelId);
-            var searchChannelLiveVideos = await HttpClientExtensions.ExecuteRequest<SearchLiveVideosRoot>(request, cancellationToken);
+            var searchChannelLiveVideos = await ExecuteRequest<SearchLiveVideosRoot>(request, cancellationToken);
 
             return searchChannelLiveVideos;
         }
@@ -26,7 +29,7 @@ namespace ExternalAPIs.Youtube
             if (channelIds == null) throw new ArgumentNullException(nameof(channelIds));
 
             var request = $"{RequestConstants.GetChannels}&id={Join(",", channelIds)}";
-            var channelDetails = await HttpClientExtensions.ExecuteRequest<ChannelsRoot>(request, cancellationToken);
+            var channelDetails = await ExecuteRequest<ChannelsRoot>(request, cancellationToken);
 
             if (channelDetails?.Items?.Count == 0)
                 throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Channels not found " + channelIds);
@@ -40,7 +43,7 @@ namespace ExternalAPIs.Youtube
                 throw new ArgumentException("Argument is null or whitespace", nameof(handle));
 
             var request = RequestConstants.GetChannelByHandle.Replace("{0}", handle);
-            var channelDetails = await HttpClientExtensions.ExecuteRequest<ChannelsRoot>(request, cancellationToken);
+            var channelDetails = await ExecuteRequest<ChannelsRoot>(request, cancellationToken);
             if (channelDetails.Items == null || channelDetails.Items.Count == 0)
                 throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, $"No channel found for handle '{handle}'");
 
@@ -52,7 +55,7 @@ namespace ExternalAPIs.Youtube
             if (videoIds == null) throw new ArgumentNullException(nameof(videoIds));
 
             var request = $"{RequestConstants.VideoLivestreamDetails}&id={Join(",", videoIds)}";
-            var livestreamDetails = await HttpClientExtensions.ExecuteRequest<VideosRoot>(request, cancellationToken);
+            var livestreamDetails = await ExecuteRequest<VideosRoot>(request, cancellationToken);
 
             if (livestreamDetails?.Items?.Count == 0)
                 throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest, "Videos not found " + videoIds);
@@ -67,13 +70,19 @@ namespace ExternalAPIs.Youtube
             var request = RequestConstants.GetPlaylistItems.Replace("{0}", query.PlaylistId) + $"&maxResults={query.ItemsPerPage}";
             if (query.PageToken != null) request += $"&pageToken={query.PageToken}";
 
-            var playlistItemsRoot = await HttpClientExtensions.ExecuteRequest<PlaylistItemsRoot>(request, cancellationToken);
+            var playlistItemsRoot = await ExecuteRequest<PlaylistItemsRoot>(request, cancellationToken);
 
             if (playlistItemsRoot == null)
                 throw new HttpRequestWithStatusException(HttpStatusCode.BadRequest,
                     $"Playlist not found| Playlist: {query.PlaylistId}, Token: {query.PageToken}");
 
             return playlistItemsRoot;
+        }
+
+        private static Task<T> ExecuteRequest<T>(string url, CancellationToken cancellationToken)
+        {
+            url = $"{url}&key={ApiKey}";
+            return HttpClientExtensions.ExecuteRequest<T>(url, cancellationToken);
         }
     }
 }

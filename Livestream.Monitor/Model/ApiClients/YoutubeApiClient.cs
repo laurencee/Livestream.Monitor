@@ -164,7 +164,7 @@ namespace Livestream.Monitor.Model.ApiClients
             return vods;
         }
 
-        public Task<List<LivestreamQueryResult>> GetTopStreams(TopStreamQuery topStreamQuery)
+        public Task<TopStreamsResponse> GetTopStreams(TopStreamQuery topStreamQuery)
         {
             throw new NotImplementedException();
         }
@@ -302,9 +302,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 livestreamModel.Description = snippet.Title?.Trim();
                 livestreamModel.ThumbnailUrls = new ThumbnailUrls()
                 {
-                    Small = snippet.Thumbnails?.Standard?.Url,
-                    Large = snippet.Thumbnails?.High?.Url,
-                    Medium = snippet.Thumbnails?.Medium?.Url,
+                    Small = snippet.Thumbnails?.Default?.Url,
+                    Medium = snippet.Thumbnails?.Standard?.Url,
+                    Large = snippet.Thumbnails?.Maxres?.Url,
                 };
 
                 livestreamModel.Viewers = videoDetails.LiveStreamingDetails.ConcurrentViewers;

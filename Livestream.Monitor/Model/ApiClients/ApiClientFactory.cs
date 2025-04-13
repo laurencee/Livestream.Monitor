@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using ExternalAPIs.Kick;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.Youtube;
 using Livestream.Monitor.Core;
@@ -11,6 +12,7 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         private readonly TwitchApiClient twitchApiClient;
         private readonly YoutubeApiClient youtubeApiClient;
+        private readonly KickApiClient kickApiClient;
 
         private readonly List<IApiClient> apiClients = new List<IApiClient>();
 
@@ -20,9 +22,11 @@ namespace Livestream.Monitor.Model.ApiClients
 
             twitchApiClient = new TwitchApiClient(new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
             youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
+            kickApiClient = new KickApiClient(new KickReadonlyClient());
 
             apiClients.Add(twitchApiClient);
             apiClients.Add(youtubeApiClient);
+            apiClients.Add(kickApiClient);
         }
 
         public T Get<T>() where T : IApiClient
@@ -49,6 +53,8 @@ namespace Livestream.Monitor.Model.ApiClients
                     return youtubeApiClient;
                 case TwitchApiClient.API_NAME:
                     return twitchApiClient;
+                case KickApiClient.API_NAME:
+                    return kickApiClient;
                 default:
                     return null;
             }

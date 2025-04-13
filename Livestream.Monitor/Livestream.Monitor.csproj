@@ -114,6 +114,7 @@
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
     <Compile Include="Model\ApiClients\InitializeApiClientResult.cs" />
+    <Compile Include="Model\ApiClients\KickApiClient.cs" />
     <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />
     <Compile Include="Model\ApiClients\DesignTimeApiClient.cs" />
     <Compile Include="Model\ApiClients\FailedQueryException.cs" />
@@ -511,6 +512,9 @@
       <Project>{A9F4BC70-B71B-45C5-BEAD-CCC866794659}</Project>
       <Name>ExternalAPIs</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="countryIdIsoMappingsRef.jsonc" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

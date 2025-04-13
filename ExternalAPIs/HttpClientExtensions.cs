@@ -20,12 +20,12 @@ namespace ExternalAPIs
             }) { Timeout = QueryTimeout };
         }
 
-        public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
             return await ExecuteRequest<T>(CreateCompressionHttpClient(), request, cancellationToken);
         }
 
-        public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request, CancellationToken cancellationToken = default(CancellationToken))
+        public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request)) throw new ArgumentNullException(nameof(request));
             

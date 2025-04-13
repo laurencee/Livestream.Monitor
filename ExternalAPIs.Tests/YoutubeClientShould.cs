@@ -9,22 +9,22 @@ namespace ExternalAPIs.Tests
 {
     public class YoutubeClientShould
     {
-        private const string SKY_NEWS_VIDEO_ID = "siyW0GOBtbo";
-        private const string SKY_NEWS_CHANNEL_ID = "UCoMdktPbSTixAyNGwb-UYkQ";
-        private const string YOUTUBE_HANDLE = "@SkyNews";
+        private const string LOFIGIRL_LIVE_VIDEO_ID = "jfKfPfyJRdk"; // needs to be manually updated to a live video id
+        private const string LOFIGIRL_CHANNEL_ID = "UCSJ4gkVC6NrvII8umztf0Ow";
+        private const string YOUTUBE_HANDLE = "@LofiGirl";
         private readonly YoutubeReadonlyClient sut = new YoutubeReadonlyClient();
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task GetLivestreamDetails()
         {
-            var videoRoot = await sut.GetVideosDetails(new[] { SKY_NEWS_VIDEO_ID });
+            var videoRoot = await sut.GetVideosDetails([LOFIGIRL_LIVE_VIDEO_ID]);
 
             Assert.NotNull(videoRoot?.Items);
             Assert.NotNull(videoRoot.Items[0].Snippet);
             Assert.NotNull(videoRoot.Items[0].LiveStreamingDetails);
         }
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task ThrowNotFoudExceptionForInvalidVideoId()
         {
             try
@@ -38,7 +38,7 @@ namespace ExternalAPIs.Tests
             }
         }
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task GetChannelIdFromHandle()
         {
             var channelsRoot = await sut.GetChannelDetailsFromHandle(YOUTUBE_HANDLE);
@@ -47,7 +47,7 @@ namespace ExternalAPIs.Tests
             Assert.NotEmpty(channelsRoot.Items);
         }
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task GetVodsFromHandle()
         {
             var channelsRoot = await sut.GetChannelDetailsFromHandle(YOUTUBE_HANDLE);
@@ -64,10 +64,10 @@ namespace ExternalAPIs.Tests
             Assert.NotEmpty(videoDetails.Items);
         }
 
-        [Fact, Trait("Category", "LocalOnly")]
+        [Fact]
         public async Task GetLiveVideos()
         {
-            var onlineVideos = await sut.GetLivestreamVideos(SKY_NEWS_CHANNEL_ID);
+            var onlineVideos = await sut.GetLivestreamVideos(LOFIGIRL_CHANNEL_ID);
 
             Assert.NotNull(onlineVideos);
             Assert.NotNull(onlineVideos.Items);

@@ -49,8 +49,13 @@
       <Link>GlobalAssemblyInfo.cs</Link>
     </Compile>
     <Compile Include="Extensions.cs" />
-    <Compile Include="BooleanConverter.cs" />
     <Compile Include="HttpClientExtensions.cs" />
+    <Compile Include="Kick\Dto\ResponseRoot.cs" />
+    <Compile Include="Kick\IKickReadonlyClient.cs" />
+    <Compile Include="Kick\KickReadonlyClient.cs" />
+    <Compile Include="Kick\Query\GetLivestreamsQuery.cs" />
+    <Compile Include="Kick\Query\GetChannelsQuery.cs" />
+    <Compile Include="Kick\RequestConstants.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SimpleHttpResponseException.cs" />
     <Compile Include="TwitchTv\Helix\Dto\Games.cs" />

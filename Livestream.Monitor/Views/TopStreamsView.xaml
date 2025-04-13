@@ -113,8 +113,8 @@
                             <Popup IsOpen="{Binding ElementName=StreamTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
                                    AllowsTransparency="True" PopupAnimation="Slide"
                                    HorizontalOffset="-35" VerticalOffset="0">
-                                <Border BorderThickness="1" BorderBrush="Black">
-                                    <Image Margin="2" Source="{Binding LivestreamModel.ThumbnailUrls.Medium, IsAsync=True}" />
+                                <Border BorderThickness="2" BorderBrush="Black">
+                                    <Image Margin="0" Source="{Binding LivestreamModel.ThumbnailUrls.Large, IsAsync=True}" MaxHeight="360" MaxWidth="640" />
                                 </Border>
                             </Popup>
                             <controls:ProgressRing IsActive="{Binding IsBusy}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />

@@ -27,6 +27,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly IApiClientFactory apiClientFactory;
 
         private bool loadingItems;
+        private bool hasNextPage;
         private string gameName;
         private BindableCollection<string> possibleGameNames = new BindableCollection<string>();
         private bool expandPossibleGames;
@@ -71,7 +72,7 @@ namespace Livestream.Monitor.ViewModels
 
         public override bool CanPrevious => Page > 1 && !LoadingItems;
 
-        public override bool CanNext => !LoadingItems && Items.Count == STREAM_TILES_PER_PAGE;
+        public override bool CanNext => !LoadingItems && Items.Count == STREAM_TILES_PER_PAGE && hasNextPage;
 
         public bool CanRefreshItems => !LoadingItems;
 
@@ -252,6 +253,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (Execute.InDesignMode) return;
 
+            hasNextPage = false;
             await EnsureItems();
             if (!PossibleGameNames.Any()) InitializeKnownGames();
 
@@ -331,19 +333,20 @@ namespace Livestream.Monitor.ViewModels
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
-                var topStreams = await SelectedApiClient.GetTopStreams(topStreamsQuery);
+                var response = await SelectedApiClient.GetTopStreams(topStreamsQuery);
                 var monitoredStreams = monitorStreamsModel.Livestreams;
 
                 var topStreamResults = new List<TopStreamResult>();
-                foreach (var topLivestream in topStreams)
+                foreach (var livestreamModel in response.LivestreamModels)
                 {
-                    var topStreamResult = new TopStreamResult(topLivestream.LivestreamModel, topLivestream.ChannelIdentifier);
-                    topStreamResult.IsMonitored = monitoredStreams.Any(x => Equals(x, topLivestream.LivestreamModel));
+                    var topStreamResult = new TopStreamResult(livestreamModel, livestreamModel.ChannelIdentifier);
+                    topStreamResult.IsMonitored = monitoredStreams.Any(x => Equals(x, livestreamModel));
                     topStreamResult.LivestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
 
                     topStreamResults.Add(topStreamResult);
                 }
 
+                hasNextPage = response.HasNextPage;
                 Items.AddRange(topStreamResults);
             }
             catch (Exception ex)

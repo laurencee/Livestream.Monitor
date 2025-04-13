@@ -144,7 +144,7 @@ namespace Livestream.Monitor.Model
                     foreach (var apiClient in supportedApiClients)
                     {
                         var queryResults = await apiClient.GetTopStreams(topStreamsQuery);
-                        potentialStreams.AddRange(queryResults.Where(x => x.IsSuccess).Select(x => x.LivestreamModel));
+                        potentialStreams.AddRange(queryResults.LivestreamModels);
                     }
 
                     // no future queries will ever return useful results

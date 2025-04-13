@@ -10,10 +10,13 @@ namespace ExternalAPIs.Tests
 {
     public class TwitchTvHelixClientShould
     {
-        private const string GameIdLeagueOfLegends = "21779";
-        private const string GameIdWorldOfWarcraft = "18122";
-        private const string GameIdFortnite = "33214";
-        private const string GameIdJustChatting = "509658";
+        private static class GameIds
+        {
+            public const string LeagueOfLegends = "21779";
+            public const string WorldOfWarcraft = "18122";
+            public const string Fortnite = "33214";
+            public const string JustChatting = "509658";
+        }
 
         public const string UserIdMethod = "121649330";
         public const string UserIdThijs = "57025612";
@@ -40,11 +43,11 @@ namespace ExternalAPIs.Tests
             Assert.Equal(expectedUser, users[0].DisplayName, StringComparer.OrdinalIgnoreCase);
         }
 
-        [Fact]
+        [Fact(Skip = "As of 2020 must use user_id of oauth access token, used to be able to lookup anyone's follow list")]
         public async Task GetFollowsFromUser()
         {
-            // using thijs as he follows more than 100 channels which means the query must page
-            var followedStreams = await sut.GetFollowedChannels(UserIdThijs);
+            // previously used thijs as he follows more than 100 channels which means the query must page
+            var followedStreams = await sut.GetFollowedChannels("INSERT USER ID MATCHING OAUTH ACCESS TOKEN");
             Assert.NotNull(followedStreams);
             Assert.NotEmpty(followedStreams);
         }
@@ -74,10 +77,10 @@ namespace ExternalAPIs.Tests
             Assert.All(gamesResult, game => Assert.True(game.Name.Contains(expectedGameName), "game.Name.Contains(expectedGameName)"));
         }
 
-        [InlineData(GameIdWorldOfWarcraft)]
-        [InlineData(GameIdLeagueOfLegends)]
-        [InlineData(GameIdFortnite)]
-        [InlineData(GameIdJustChatting)]
+        [InlineData(GameIds.WorldOfWarcraft)]
+        [InlineData(GameIds.LeagueOfLegends)]
+        [InlineData(GameIds.Fortnite)]
+        [InlineData(GameIds.JustChatting)]
         [Theory]
         public async Task GetTopGameStreams(string gameId)
         {
