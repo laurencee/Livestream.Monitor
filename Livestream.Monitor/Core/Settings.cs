@@ -15,22 +15,25 @@ namespace Livestream.Monitor.Core
 {
     public class Settings : PropertyChangedBase
     {
-        public const string DefaultChromeFullPath = @"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe";
-        public const string DefaultFirefoxFullPath = @"C:\Program Files (x86)\Mozilla Firefox\firefox.exe";
-        public const string DefaultChromeCommandLine = "\"" + DefaultChromeFullPath + "\" " + ChromeArgs;
-        public const string DefaultLivestreamerFullPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
-        public const string DefaultStreamlinkX86FullPath = @"C:\Program Files (x86)\Streamlink\bin\streamlink.exe";
-        public const string DefaultStreamlinkFullPath = @"C:\Program Files\Streamlink\bin\streamlink.exe";
-        public const int DefaultMinimumPopularEventViewers = 50000;
         public const int CurrentSettingsVersion = 3;
         public const string ChatUrlReplacementToken = "{url}";
-        public const string ChromeArgs = "--app=" + ChatUrlReplacementToken + " --window-size=350,760";
-        public const string FirefoxArgs = "-url " + ChatUrlReplacementToken;
-        public const MetroThemeBaseColour DefaultThemeBaseColour = MetroThemeBaseColour.BaseDark;
-        public const MetroThemeAccentColour DefaultThemeAccentColour = MetroThemeAccentColour.Orange;
 
-        private MetroThemeBaseColour metroThemeBaseColour = DefaultThemeBaseColour;
-        private MetroThemeAccentColour metroThemeAccentColour = DefaultThemeAccentColour;
+        public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
+        public const string ChromeArgs = "--app=" + ChatUrlReplacementToken + " --window-size=350,760";
+        public const string DefaultChromeCommand = $"\"{DefaultChromeFullPath}\" {ChromeArgs}";
+
+        public const string DefaultFirefoxFullPath = @"C:\Program Files\Mozilla Firefox\firefox.exe";
+        public const string FirefoxArgs = $"-url {ChatUrlReplacementToken}";
+
+        public const string DefaultEdgeChatCommand = $"start microsoft-edge:{ChatUrlReplacementToken}";
+
+        public const string DefaultLivestreamerFullPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
+        public const string DefaultStreamlinkFullPath = @"C:\Program Files\Streamlink\bin\streamlink.exe";
+        public const string DefaultStreamlinkX86FullPath = @"C:\Program Files (x86)\Streamlink\bin\streamlink.exe";
+        public const int DefaultMinimumPopularEventViewers = 50000;
+
+        private MetroThemeBaseColour metroThemeBaseColour = MetroThemeBaseColour.BaseDark;
+        private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
         private int minimumEventViewers = DefaultMinimumPopularEventViewers;
         private string livestreamerFullPath, chatCommandLine, twitchAuthToken;
         private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
@@ -72,7 +75,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(DefaultThemeBaseColour)]
+        [DefaultValue(MetroThemeBaseColour.BaseDark)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour MetroThemeBaseColour
         {
@@ -85,7 +88,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(DefaultThemeAccentColour)]
+        [DefaultValue(MetroThemeAccentColour.Orange)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeAccentColour MetroThemeAccentColour
         {
@@ -111,7 +114,7 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        [DefaultValue(DefaultChromeCommandLine)]
+        [DefaultValue(DefaultChromeCommand)]
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
         public string ChatCommandLine
         {

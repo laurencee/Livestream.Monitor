@@ -233,7 +233,7 @@ namespace Livestream.Monitor.ViewModels
 
         public void Edge()
         {
-            ChatCommandLine = $"start microsoft-edge:{Settings.ChatUrlReplacementToken}";
+            ChatCommandLine = Settings.DefaultEdgeChatCommand;
         }
 
         public void Firefox()

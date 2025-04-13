@@ -55,7 +55,6 @@ namespace Livestream.Monitor.Core
                         SettingsVersion = Settings.CurrentSettingsVersion,
                         CheckForNewVersions = true,
                         MinimumEventViewers = Settings.DefaultMinimumPopularEventViewers,
-                        ChatCommandLine = Settings.DefaultChromeCommandLine,
                     };
 
                     if (File.Exists(Settings.DefaultStreamlinkFullPath))
@@ -66,6 +65,12 @@ namespace Livestream.Monitor.Core
                         settings.LivestreamerFullPath = Settings.DefaultLivestreamerFullPath;
                     else
                         settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
+
+                    if (File.Exists(Settings.DefaultChromeFullPath))
+                        settings.ChatCommandLine = Settings.DefaultChromeCommand;
+                    else
+                        settings.ChatCommandLine = Settings.DefaultEdgeChatCommand;
+
                     saveSettings = true;
                 }
                 else
