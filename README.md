@@ -1,5 +1,5 @@
 # Livestream Monitor
-A Windows GUI to monitor livestreams from multiple platforms written in .NET.
+A Windows GUI to monitor livestreams from multiple platforms written in .NET.  
 Supports **Twitch**, **YouTube** and **Kick**.
 
 Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)  
