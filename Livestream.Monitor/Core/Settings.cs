@@ -16,16 +16,16 @@ namespace Livestream.Monitor.Core
     public class Settings : PropertyChangedBase
     {
         public const int CurrentSettingsVersion = 3;
-        public const string ChatUrlReplacementToken = "{url}";
+        public const string UrlReplacementToken = "{url}";
 
         public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
-        public const string ChromeArgs = "--app=" + ChatUrlReplacementToken + " --window-size=350,760";
+        public const string ChromeArgs = "--app=" + UrlReplacementToken + " --window-size=350,760";
         public const string DefaultChromeCommand = $"\"{DefaultChromeFullPath}\" {ChromeArgs}";
 
         public const string DefaultFirefoxFullPath = @"C:\Program Files\Mozilla Firefox\firefox.exe";
-        public const string FirefoxArgs = $"-url {ChatUrlReplacementToken}";
+        public const string FirefoxArgs = $"-url {UrlReplacementToken}";
 
-        public const string DefaultEdgeChatCommand = $"start microsoft-edge:{ChatUrlReplacementToken}";
+        public const string DefaultEdgeChatCommand = $"start microsoft-edge:{UrlReplacementToken}";
 
         public const string DefaultLivestreamerFullPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
         public const string DefaultStreamlinkFullPath = @"C:\Program Files\Streamlink\bin\streamlink.exe";
@@ -38,6 +38,7 @@ namespace Livestream.Monitor.Core
         private string livestreamerFullPath, chatCommandLine, twitchAuthToken;
         private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
         private int settingsVersion;
+        private DataGridSortState livestreamListSortState;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
@@ -202,6 +203,18 @@ namespace Livestream.Monitor.Core
             }
         }
 
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public DataGridSortState LivestreamListSortState
+        {
+            get => livestreamListSortState;
+            set
+            {
+                if (Equals(value, livestreamListSortState)) return;
+                livestreamListSortState = value;
+                NotifyOfPropertyChange(() => LivestreamListSortState);
+            }
+        }
+
         /// <summary>
         /// Flag to indicate if the twitch oauth token has been defined either in livestream monitor settings
         /// or in the livestreamer/streamlink configuration file
@@ -293,5 +306,12 @@ namespace Livestream.Monitor.Core
             hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(FallbackQuality);
             return hashCode;
         }
+    }
+
+    public class DataGridSortState
+    {
+        public string Column { get; set; }
+
+        public ListSortDirection SortDirection { get; set; }
     }
 }

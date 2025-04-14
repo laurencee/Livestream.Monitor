@@ -1,21 +1,24 @@
 using System;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Caliburn.Micro;
-using Livestream.Monitor.Model;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.Views;
 using MahApps.Metro.Controls.Dialogs;
 using INavigationService = Livestream.Monitor.Core.INavigationService;
-using System.Diagnostics;
 
 namespace Livestream.Monitor.ViewModels
 {
@@ -237,8 +240,23 @@ namespace Livestream.Monitor.ViewModels
                 StreamsModel.PropertyChanged += StreamsModelOnPropertyChanged;
                 FilterModel.PropertyChanged += OnFilterModelOnPropertyChanged;
                 ViewSource.Source = StreamsModel.Livestreams;
-                ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
-                ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Viewers), ListSortDirection.Descending));
+
+                // load user sort preference
+                var customSort = settingsHandler.Settings.LivestreamListSortState;
+                if (customSort != null)
+                {
+                    // online streams can have 0 viewers, we want to treat these the same as other streams with viewers
+                    if (customSort.Column.IsEqualTo(nameof(LivestreamModel.Viewers)))
+                        ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
+
+                    ViewSource.SortDescriptions.Add(new SortDescription(customSort.Column, customSort.SortDirection));
+                }
+                else
+                {
+                    ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Live), ListSortDirection.Descending));
+                    ViewSource.SortDescriptions.Add(new SortDescription(nameof(LivestreamModel.Viewers), ListSortDirection.Descending));
+                }
+
                 ViewSource.Filter += ViewSourceOnFilter;
 
                 foreach (LivestreamModel livestream in StreamsModel.Livestreams)
@@ -261,6 +279,37 @@ namespace Livestream.Monitor.ViewModels
 
             Loading = false;
             base.OnActivate();
+        }
+
+        protected override void OnViewLoaded(object view)
+        {
+            // fix for DataGridColumn not showing sort icon on initial load
+            // CollectionViewSource bindings don't directly touch DataGridColumn.SortDirection for whatever reason
+            var livestreamListView = (LivestreamListView) GetView();
+            var layoutControl = livestreamListView.FindName("LayoutControl") as ContentControl;
+            var dataGrid = FindVisualChild<DataGrid>(layoutControl);
+
+            // if we sorted by viewers then we have 2 sort descriptions as we first sort by live
+            var sortDescription = ViewSource.SortDescriptions.Last();
+            var column = dataGrid.Columns.First(x => x.SortMemberPath.IsEqualTo(sortDescription.PropertyName));
+            column.SortDirection = sortDescription.Direction;
+
+            base.OnViewLoaded(view);
+        }
+
+        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T element)
+                    return element;
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                    return result;
+            }
+            return null;
         }
 
         private async void StreamsModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -386,6 +435,22 @@ namespace Livestream.Monitor.ViewModels
             await this.ShowMessageAsync(
                 "Error", $"{message.SourceException.ExtractErrorMessage()}{Environment.NewLine}{Environment.NewLine}" +
                          "(TIP: Remove the stream causing the error if it will never resolve itself, e.g. banned channels)");
+        }
+
+        public void OnDataGridSorting(DataGridSortingEventArgs e)
+        {
+            var sortDirection = e.Column.SortDirection == ListSortDirection.Ascending
+                ? ListSortDirection.Descending
+                : ListSortDirection.Ascending;
+            var bindingPath = e.Column.SortMemberPath;
+
+            var sortState = new DataGridSortState()
+            {
+                Column = bindingPath,
+                SortDirection = sortDirection,
+            };
+            settingsHandler.Settings.LivestreamListSortState = sortState;
+            settingsHandler.SaveSettings();
         }
     }
 }

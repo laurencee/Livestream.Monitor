@@ -67,9 +67,9 @@ namespace Livestream.Monitor.ViewModels
             {
                 if (value == chatCommandLine) return;
 
-                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.ChatUrlReplacementToken))
+                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.UrlReplacementToken))
                     AddError(nameof(ChatCommandLine),
-                        $"Chat command line must include a {Settings.ChatUrlReplacementToken} token so the chat url can be passed to the command");
+                        $"Chat command line must include a {Settings.UrlReplacementToken} token so the chat url can be passed to the command");
                 else
                     RemoveErrors(nameof(ChatCommandLine));
 
@@ -159,7 +159,7 @@ namespace Livestream.Monitor.ViewModels
             {
                 if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
                 if (!string.IsNullOrEmpty(ChatCommandLine) &&
-                    !ChatCommandLine.Contains(Settings.ChatUrlReplacementToken)) return false;
+                    !ChatCommandLine.Contains(Settings.UrlReplacementToken)) return false;
                 if (!File.Exists(LivestreamerFullPath)) return false;
 
                 return ChatCommandLine != settingsHandler.Settings.ChatCommandLine ||

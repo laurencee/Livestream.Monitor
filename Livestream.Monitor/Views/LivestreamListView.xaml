@@ -15,8 +15,8 @@
         <Grid.Resources>
             <DataTemplate x:Key="GridLayout">
                 <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
-                  AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single" VirtualizingStackPanel.IsVirtualizing="True"
-                          IsSynchronizedWithCurrentItem="False">
+                          cal:Message.Attach="[Sorting] = [OnDataGridSorting($eventArgs)]" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                          VirtualizingStackPanel.IsVirtualizing="True" IsSynchronizedWithCurrentItem="False">
                     <DataGrid.Resources>
                         <ContextMenu x:Key="ContextMenu" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
@@ -66,7 +66,7 @@
                         <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="130" MinWidth="80" />
                         <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="5*"/>
                         <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="2*" />
-                        <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" SortDirection="Descending"/>
+                        <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" />
                         <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, Converter={StaticResource TotalHoursTimespanConverter}}" MinWidth="75" />
                     </DataGrid.Columns>
                 </DataGrid>
