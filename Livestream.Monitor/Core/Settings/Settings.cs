@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
-using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
-using Livestream.Monitor.Model.ApiClients;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace Livestream.Monitor.Core
 {
@@ -188,7 +183,7 @@ namespace Livestream.Monitor.Core
         /// We store these in settings so it can apply to both monitored and popular streams.
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        [JsonConverter(typeof(ExcludeNotifyConverter))]
+        [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
         public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new BindableCollection<UniqueStreamKey>();
 
         [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
@@ -230,81 +225,6 @@ namespace Livestream.Monitor.Core
         {
             FavoriteApiQualities.TryGetValue(apiName, out var qualities);
             return qualities ?? new FavoriteQualities();
-        }
-    }
-
-    /// <summary>
-    /// Migrates from the old array of streamids format to the new format using <see cref="UniqueStreamKey"/> type
-    /// </summary>
-    public class ExcludeNotifyConverter : JsonConverter
-    {
-        public static bool SaveRequired;
-
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
-        {
-            var jsonObj = JArray.FromObject(value);
-            jsonObj.WriteTo(writer);
-        }
-
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
-        {
-            if (reader.TokenType == JsonToken.Null) return null;
-
-            var exclusions = (ObservableCollection<UniqueStreamKey>)existingValue;
-
-            while (reader.Read())
-            {
-                switch (reader.TokenType)
-                {
-                    case JsonToken.EndArray:
-                        return exclusions;
-                    case JsonToken.StartObject:
-                        var excludeNotify = serializer.Deserialize<UniqueStreamKey>(reader); // could have null property values
-                        exclusions.Add(excludeNotify);
-                        break;
-                    default: // convert old array of stream ids
-                        var streamId = reader.Value.ToString();
-                        SaveRequired = true; // if we ran conversions then we should save the new output file
-                        exclusions.Add(new UniqueStreamKey(TwitchApiClient.API_NAME, streamId));
-                        break;
-                }
-            }
-
-            return exclusions;
-        }
-
-        public override bool CanConvert(Type objectType)
-        {
-            return true;
-        }
-    }
-
-    public class FavoriteQualities
-    {
-        public static class FallbackQualityOption
-        {
-            public const string Worst = "Worst";
-            public const string Best = "Best";
-        }
-
-        public List<string> Qualities { get; set; } = new List<string>();
-
-        public string FallbackQuality { get; set; } = FallbackQualityOption.Best;
-
-        public override bool Equals(object obj)
-        {
-            var qualities = obj as FavoriteQualities;
-            return qualities != null &&
-                   Qualities.SequenceEqual(qualities.Qualities) &&
-                   FallbackQuality == qualities.FallbackQuality;
-        }
-
-        public override int GetHashCode()
-        {
-            var hashCode = 643755790;
-            hashCode = hashCode * -1521134295 + EqualityComparer<List<string>>.Default.GetHashCode(Qualities);
-            hashCode = hashCode * -1521134295 + EqualityComparer<string>.Default.GetHashCode(FallbackQuality);
-            return hashCode;
         }
     }
 

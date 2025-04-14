@@ -75,7 +75,7 @@ namespace Livestream.Monitor.Core
                 }
                 else
                 {
-                    saveSettings = ExcludeNotifyConverter.SaveRequired;
+                    saveSettings = ExcludeNotifyJsonConverter.SaveRequired;
                     saveSettings = MigrateSettingsVersion(saveSettings);
                 }
 
