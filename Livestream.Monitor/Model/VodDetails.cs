@@ -20,111 +20,61 @@ namespace Livestream.Monitor.Model
         public string Url
         {
             get { return url; }
-            set
-            {
-                if (value == url) return;
-                url = value;
-                NotifyOfPropertyChange(() => Url);
-            }
+            set => Set(ref url, value);
         }
 
         public TimeSpan Length
         {
             get { return length; }
-            set
-            {
-                if (value == length) return;
-                length = value;
-                NotifyOfPropertyChange(() => Length);
-            }
+            set => Set(ref length, value);
         }
 
         public long Views
         {
             get { return views; }
-            set
-            {
-                if (value == views) return;
-                views = value;
-                NotifyOfPropertyChange(() => Views);
-            }
+            set => Set(ref views, value);
         }
 
         public DateTimeOffset RecordedAt
         {
             get { return recordedAt; }
-            set
-            {
-                if (value.Equals(recordedAt)) return;
-                recordedAt = value;
-                NotifyOfPropertyChange(() => RecordedAt);
-            }
+            set => Set(ref recordedAt, value);
         }
 
         public string Title
         {
             get { return title; }
-            set
-            {
-                if (value == title) return;
-                title = value;
-                NotifyOfPropertyChange(() => Title);
-            }
+            set => Set(ref title, value);
         }
 
         public string Description
         {
             get { return description; }
-            set
-            {
-                if (value == description) return;
-                description = value;
-                NotifyOfPropertyChange(() => Description);
-            }
+            set => Set(ref description, value);
         }
 
         public string Game
         {
             get { return game; }
-            set
-            {
-                if (value == game) return;
-                game = value;
-                NotifyOfPropertyChange(() => Game);
-            }
+            set => Set(ref game, value);
         }
 
         public string PreviewImage
         {
             get { return previewImage; }
-            set
-            {
-                if (value == previewImage) return;
-                previewImage = value;
-                NotifyOfPropertyChange(() => PreviewImage);
-            }
+            set => Set(ref previewImage, value);
         }
 
         public bool IsUpcoming
         {
             get { return isUpcoming; }
-            set
-            {
-                if (value == isUpcoming) return;
-                isUpcoming = value;
-                NotifyOfPropertyChange(() => IsUpcoming);
-            }
+            set => Set(ref isUpcoming, value);
         }
 
         public IApiClient ApiClient
         {
             get { return apiClient; }
-            set
-            {
-                if (Equals(value, apiClient)) return;
-                apiClient = value;
-                NotifyOfPropertyChange(() => ApiClient);
-            }
+            set => Set(ref apiClient, value);
         }
     }
 }

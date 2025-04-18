@@ -73,12 +73,7 @@ namespace Livestream.Monitor.ViewModels
         public BindableCollection<LivestreamModel> KnownStreams
         {
             get { return knownStreams; }
-            set
-            {
-                if (Equals(value, knownStreams)) return;
-                knownStreams = value;
-                NotifyOfPropertyChange(() => KnownStreams);
-            }
+            set => Set(ref knownStreams, value);
         }
 
         public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();

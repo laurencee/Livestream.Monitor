@@ -83,34 +83,19 @@ namespace Livestream.Monitor.Model
         public string Description
         {
             get => description;
-            set
-            {
-                if (value == description) return;
-                description = value;
-                NotifyOfPropertyChange(() => Description);
-            }
+            set => Set(ref description, value);
         }
 
         public string Game
         {
             get => game;
-            set
-            {
-                if (value == game) return;
-                game = value;
-                NotifyOfPropertyChange(() => Game);
-            }
+            set => Set(ref game, value);
         }
 
         public long Viewers
         {
             get => viewers;
-            set
-            {
-                if (value == viewers) return;
-                viewers = value;
-                NotifyOfPropertyChange(() => Viewers);
-            }
+            set => Set(ref viewers, value);
         }
 
         public DateTimeOffset? StartTime
@@ -118,55 +103,32 @@ namespace Livestream.Monitor.Model
             get => startTime;
             set
             {
-                if (value.Equals(startTime)) return;
-                startTime = value;
-                NotifyOfPropertyChange(() => StartTime);
-                NotifyOfPropertyChange(() => Uptime);
+                if (Set(ref startTime, value)) NotifyOfPropertyChange(nameof(Uptime));
             }
         }
 
         public bool IsPartner
         {
             get => isPartner;
-            set
-            {
-                if (value == isPartner) return;
-                isPartner = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref isPartner, value);
         }
 
         public ThumbnailUrls ThumbnailUrls
         {
             get => thumbnailUrls;
-            set
-            {
-                if (Equals(value, thumbnailUrls)) return;
-                thumbnailUrls = value;
-                NotifyOfPropertyChange(() => ThumbnailUrls);
-            }
+            set => Set(ref thumbnailUrls, value);
         }
 
         public string BroadcasterLanguage
         {
             get => broadcasterLanguage;
-            set
-            {
-                if (value == broadcasterLanguage) return;
-                broadcasterLanguage = value;
-                NotifyOfPropertyChange(() => BroadcasterLanguage);
-            }
+            set => Set(ref broadcasterLanguage, value);
         }
 
         public string Language
         {
             get => language;
-            set
-            {
-                if (value == language) return;
-                language = value;
-                NotifyOfPropertyChange(() => Language);
-            }
+            set => Set(ref language, value);
         }
 
         public Task<string> GetStreamUrl => ApiClient?.GetStreamUrl(this);
@@ -193,23 +155,13 @@ namespace Livestream.Monitor.Model
         public bool DontNotify
         {
             get => dontNotify;
-            set
-            {
-                if (value == dontNotify) return;
-                dontNotify = value;
-                NotifyOfPropertyChange(() => DontNotify);
-            }
+            set => Set(ref dontNotify, value);
         }
 
         public bool IsChatDisabled
         {
             get => isChatDisabled;
-            set
-            {
-                if (value == isChatDisabled) return;
-                isChatDisabled = value;
-                NotifyOfPropertyChange(() => IsChatDisabled);
-            }
+            set => Set(ref isChatDisabled, value);
         }
 
         /// <summary> Sets the livestream to the offline state </summary>

@@ -27,23 +27,13 @@ namespace Livestream.Monitor.Model
         public bool IsMonitored
         {
             get { return isMonitored; }
-            set
-            {
-                if (value == isMonitored) return;
-                isMonitored = value;
-                NotifyOfPropertyChange(() => IsMonitored);
-            }
+            set => Set(ref isMonitored, value);
         }
 
         public bool IsBusy
         {
             get { return isBusy; }
-            set
-            {
-                if (value == isBusy) return;
-                isBusy = value;
-                NotifyOfPropertyChange(() => IsBusy);
-            }
+            set => Set(ref isBusy, value);
         }
 
         public LivestreamModel LivestreamModel { get; }

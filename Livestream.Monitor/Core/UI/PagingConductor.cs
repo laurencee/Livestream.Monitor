@@ -13,12 +13,7 @@ namespace Livestream.Monitor.Core.UI
         public int Page
         {
             get { return page; }
-            set
-            {
-                if (value == page) return;
-                page = value;
-                NotifyOfPropertyChange(() => Page);
-            }
+            set => Set(ref page, value);
         }
 
         public int TotalPages => Math.Min(Items.Count / ItemsPerPage, Items.Count);

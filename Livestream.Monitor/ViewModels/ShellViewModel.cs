@@ -91,12 +91,7 @@ namespace Livestream.Monitor.ViewModels
         public bool IsSettingsOpen
         {
             get { return isSettingsOpen; }
-            set
-            {
-                if (value == isSettingsOpen) return;
-                isSettingsOpen = value;
-                NotifyOfPropertyChange(() => IsSettingsOpen);
-            }
+            set => Set(ref isSettingsOpen, value);
         }
 
         public void ShowWindow()

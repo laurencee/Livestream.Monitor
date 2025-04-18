@@ -55,7 +55,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool HasFollowedChannelsQuerySupport => true;
 
-        public bool IsAuthorized => settingsHandler.Settings.TwitchAuthTokenSet || settingsHandler.Settings.PassthroughClientId;
+        public bool IsAuthorized => settingsHandler.Settings.Twitch.IsAuthTokenSet || settingsHandler.Settings.Twitch.PassthroughClientId;
 
         public List<string> VodTypes { get; } = new List<string>()
         {
@@ -98,9 +98,9 @@ namespace Livestream.Monitor.Model.ApiClients
                 var match = Regex.Match(input, "#access_token=(?<token>.*?)&");
                 if (match.Groups["token"].Success)
                 {
-                    settingsHandler.Settings.TwitchAuthToken = match.Groups["token"].Value;
+                    settingsHandler.Settings.Twitch.AuthToken = match.Groups["token"].Value;
                     settingsHandler.SaveSettings();
-                    twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
+                    twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.Twitch.AuthToken);
                     await Initialize();
                     return;
                 }
@@ -419,9 +419,9 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<InitializeApiClientResult> Initialize(CancellationToken cancellationToken = default)
         {
             var result = new InitializeApiClientResult();
-            if (string.IsNullOrWhiteSpace(settingsHandler.Settings.TwitchAuthToken)) return result;
+            if (string.IsNullOrWhiteSpace(settingsHandler.Settings.Twitch.AuthToken)) return result;
 
-            twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.TwitchAuthToken);
+            twitchTvHelixClient.SetAccessToken(settingsHandler.Settings.Twitch.AuthToken);
             try
             {
                 // sets up initial cache of game id/name maps

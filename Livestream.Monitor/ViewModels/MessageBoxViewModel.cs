@@ -21,12 +21,7 @@ namespace Livestream.Monitor.ViewModels
         public string MessageText
         {
             get { return messageText; }
-            set
-            {
-                if (value == messageText) return;
-                messageText = value;
-                NotifyOfPropertyChange(() => MessageText);
-            }
+            set => Set(ref messageText, value);
         }
 
         public bool HideOnLoad

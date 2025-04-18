@@ -100,6 +100,7 @@
     <Compile Include="Core\Constants.cs" />
     <Compile Include="Core\INavigationService.cs" />
     <Compile Include="Core\NavigationService.cs" />
+    <Compile Include="Core\Settings\ApiPlatformSettings.cs" />
     <Compile Include="Core\Settings\ExcludeNotifyJsonConverter.cs" />
     <Compile Include="Core\Settings\FavoriteQualities.cs" />
     <Compile Include="Core\Settings\ISettingsHandler.cs" />

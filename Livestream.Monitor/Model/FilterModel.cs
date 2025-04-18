@@ -20,45 +20,25 @@ namespace Livestream.Monitor.Model
         public bool ShowOnlineOnly
         {
             get { return showOnlineOnly; }
-            set
-            {
-                if (value == showOnlineOnly) return;
-                showOnlineOnly = value;
-                NotifyOfPropertyChange(() => ShowOnlineOnly);
-            }
+            set => Set(ref showOnlineOnly, value);
         }
 
         public string LivestreamNameFilter
         {
             get { return livestreamNameFilter; }
-            set
-            {
-                if (value == livestreamNameFilter) return;
-                livestreamNameFilter = value;
-                NotifyOfPropertyChange(() => LivestreamNameFilter);
-            }
+            set => Set(ref livestreamNameFilter, value);
         }
 
         public string SelectedApiClientName
         {
             get { return selectedApiClientName; }
-            set
-            {
-                if (Equals(value, selectedApiClientName)) return;
-                selectedApiClientName = value;
-                NotifyOfPropertyChange(() => SelectedApiClientName);
-            }
+            set => Set(ref selectedApiClientName, value);
         }
 
         public BindableCollection<string> ApiClientNames
         {
             get { return apiClientNames; }
-            set
-            {
-                if (Equals(value, apiClientNames)) return;
-                apiClientNames = value;
-                NotifyOfPropertyChange(() => ApiClientNames);
-            }
+            set => Set(ref apiClientNames, value);
         }
     }
 }

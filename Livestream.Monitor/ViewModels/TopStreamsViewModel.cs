@@ -106,23 +106,13 @@ namespace Livestream.Monitor.ViewModels
         public BindableCollection<string> PossibleGameNames
         {
             get => possibleGameNames;
-            set
-            {
-                if (Equals(value, possibleGameNames)) return;
-                possibleGameNames = value;
-                NotifyOfPropertyChange(() => PossibleGameNames);
-            }
+            set => Set(ref possibleGameNames, value);
         }
 
         public bool ExpandPossibleGames
         {
             get => expandPossibleGames;
-            set
-            {
-                if (value == expandPossibleGames) return;
-                expandPossibleGames = value;
-                NotifyOfPropertyChange(() => ExpandPossibleGames);
-            }
+            set => Set(ref expandPossibleGames, value);
         }
 
         public BindableCollection<IApiClient> ApiClients { get; set; }

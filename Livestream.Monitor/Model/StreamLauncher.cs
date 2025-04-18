@@ -109,14 +109,14 @@ namespace Livestream.Monitor.Model
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
             var favoriteQualities = settingsHandler.Settings.GetStreamQualities(livestreamModel.ApiClient.ApiName);
-            var qualities = favoriteQualities.Qualities.Union(new[] { favoriteQualities.FallbackQuality });
+            var qualities = favoriteQualities.Qualities.Union([favoriteQualities.FallbackQuality]);
 
             var streamUrl = await livestreamModel.GetStreamUrl;
             string livestreamerArgs = $"{streamUrl} {string.Join(",", qualities)}";
             var apiClient = livestreamModel.ApiClient;
 
             // hack to pass through the client id to livestreamer
-            if (settingsHandler.Settings.PassthroughClientId)
+            if (settingsHandler.Settings.Twitch.PassthroughClientId)
             {
                 if (apiClient is TwitchApiClient)
                 {
@@ -167,7 +167,7 @@ namespace Livestream.Monitor.Model
             string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} {string.Join(",", qualities)}";
 
             // hack to pass through the client id to livestreamer
-            if (settingsHandler.Settings.PassthroughClientId)
+            if (settingsHandler.Settings.Twitch.PassthroughClientId)
             {
                 // check domain name of url to see if this is a twitch.tv vod link
                 bool isTwitchStream = false;
@@ -225,9 +225,9 @@ namespace Livestream.Monitor.Model
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
                         CreateNoWindow = true,
-                        UseShellExecute = false
+                        UseShellExecute = false,
                     },
-                    EnableRaisingEvents = true
+                    EnableRaisingEvents = true,
                 };
 
                 bool preventClose = false;

@@ -29,12 +29,7 @@ namespace Livestream.Monitor.ViewModels
         public string FallbackQuality
         {
             get { return fallbackQuality; }
-            set
-            {
-                if (value == fallbackQuality) return;
-                fallbackQuality = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref fallbackQuality, value);
         }
 
         public bool FallbackQualityBestChecked

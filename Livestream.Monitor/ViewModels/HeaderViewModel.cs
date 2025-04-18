@@ -57,12 +57,7 @@ namespace Livestream.Monitor.ViewModels
         public bool CanAddStream
         {
             get { return canAddStream; }
-            set
-            {
-                if (value == canAddStream) return;
-                canAddStream = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref canAddStream, value);
         }
 
         public string StreamName
@@ -80,23 +75,13 @@ namespace Livestream.Monitor.ViewModels
         public bool CanRefreshLivestreams
         {
             get { return canRefreshLivestreams; }
-            set
-            {
-                if (value == canRefreshLivestreams) return;
-                canRefreshLivestreams = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref canRefreshLivestreams, value);
         }
 
         public bool CanOpenChat
         {
             get { return canOpenChat; }
-            set
-            {
-                if (value == canOpenChat) return;
-                canOpenChat = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref canOpenChat, value);
         }
 
         public IMonitorStreamsModel MonitorStreamsModel { get; }
@@ -106,12 +91,7 @@ namespace Livestream.Monitor.ViewModels
         public IApiClient SelectedApiClient
         {
             get { return selectedApiClient; }
-            set
-            {
-                if (Equals(value, selectedApiClient)) return;
-                selectedApiClient = value;
-                NotifyOfPropertyChange(() => SelectedApiClient);
-            }
+            set => Set(ref selectedApiClient, value);
         }
 
         public async Task AddStream()

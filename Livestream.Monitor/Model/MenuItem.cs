@@ -17,23 +17,13 @@ namespace Livestream.Monitor.Model
         public string Name
         {
             get { return name; }
-            set
-            {
-                if (value == name) return;
-                name = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref name, value);
         }
 
         public bool IsChecked
         {
             get { return isChecked; }
-            set
-            {
-                if (value == isChecked) return;
-                isChecked = value;
-                NotifyOfPropertyChange();
-            }
+            set => Set(ref isChecked, value);
         }
 
         public void Command()

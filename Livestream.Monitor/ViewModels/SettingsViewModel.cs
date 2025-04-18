@@ -167,7 +167,7 @@ namespace Livestream.Monitor.ViewModels
                        MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
-                       PassthroughClientId != settingsHandler.Settings.PassthroughClientId ||
+                       PassthroughClientId != settingsHandler.Settings.Twitch.PassthroughClientId ||
                        CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
                        DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs;
             }
@@ -197,7 +197,7 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
-            settingsHandler.Settings.PassthroughClientId = PassthroughClientId;
+            settingsHandler.Settings.Twitch.PassthroughClientId = PassthroughClientId;
             settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
             settingsHandler.Settings.DisableRefreshErrorDialogs = DisableRefreshErrorDialogs;
             settingsHandler.SaveSettings();
@@ -283,7 +283,7 @@ namespace Livestream.Monitor.ViewModels
             MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
-            PassthroughClientId = settingsHandler.Settings.PassthroughClientId;
+            PassthroughClientId = settingsHandler.Settings.Twitch.PassthroughClientId;
             CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
             DisableRefreshErrorDialogs = settingsHandler.Settings.DisableRefreshErrorDialogs;
 

@@ -4,6 +4,7 @@ using System.IO;
 using System.Windows;
 using MahApps.Metro;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Livestream.Monitor.Core
 {
@@ -29,7 +30,8 @@ namespace Livestream.Monitor.Core
         {
             try
             {
-                File.WriteAllText(SettingsFileName, JsonConvert.SerializeObject(settings, Formatting.Indented));
+                var json = JsonConvert.SerializeObject(settings, Formatting.Indented);
+                File.WriteAllText(SettingsFileName, json);
             }
             catch (Exception)
             {
@@ -42,10 +44,12 @@ namespace Livestream.Monitor.Core
             if (settingsLoaded) return;
             try
             {
+                var fullSettingsRaw = string.Empty;
                 bool saveSettings;
                 if (File.Exists(SettingsFileName))
                 {
-                    settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText(SettingsFileName));
+                    fullSettingsRaw = File.ReadAllText(SettingsFileName);
+                    settings = JsonConvert.DeserializeObject<Settings>(fullSettingsRaw);
                 }
 
                 if (settings == null) // init
@@ -66,17 +70,34 @@ namespace Livestream.Monitor.Core
                     else
                         settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
 
+                    string chatCommandFilePath;
+                    string chatCommandFileArgs;
                     if (File.Exists(Settings.DefaultChromeFullPath))
+                    {
                         settings.ChatCommandLine = Settings.DefaultChromeCommand;
+                        chatCommandFilePath = Settings.DefaultChromeFullPath;
+                        chatCommandFileArgs = Settings.DefaultChromeArgs;
+                    }
                     else
+                    {
                         settings.ChatCommandLine = Settings.DefaultEdgeChatCommand;
+                        chatCommandFilePath = Settings.DefaultEdgePath;
+                        chatCommandFileArgs = Settings.UrlReplacementToken;
+                    }
+
+                    settings.Twitch.ChatCommand.FilePath = chatCommandFilePath;
+                    settings.Twitch.ChatCommand.Args = chatCommandFileArgs;
+                    settings.Kick.ChatCommand.FilePath = chatCommandFilePath;
+                    settings.Kick.ChatCommand.Args = chatCommandFileArgs;
+                    settings.YouTube.ChatCommand.FilePath = chatCommandFilePath;
+                    settings.YouTube.ChatCommand.Args = chatCommandFileArgs;
 
                     saveSettings = true;
                 }
                 else
                 {
                     saveSettings = ExcludeNotifyJsonConverter.SaveRequired;
-                    saveSettings = MigrateSettingsVersion(saveSettings);
+                    saveSettings = MigrateSettingsVersion(fullSettingsRaw, saveSettings);
                 }
 
                 if (saveSettings) SaveSettings();
@@ -92,31 +113,72 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        private bool MigrateSettingsVersion(bool saveSettings)
+        /// <param name="fullSettingsRaw">If we changed the format we need the raw text to convert settings</param>
+        /// <param name="saveSettings">Current flag to passthrough if we don't change anything</param>
+        private bool MigrateSettingsVersion(string fullSettingsRaw, bool saveSettings)
         {
             if (settings.SettingsVersion >= Settings.CurrentSettingsVersion) return saveSettings;
 
-            switch (settings.SettingsVersion)
+            // apply migrations 1 version at a time
+            while (settings.SettingsVersion < Settings.CurrentSettingsVersion)
             {
-                case 0:
-                    settings.CheckForNewVersions = true;
-                    break;
-                case 1:
-                    // twitch changed their scope requirements so we must force re-authentication
-                    settings.TwitchAuthToken = null;
-                    break;
-                case 2:
-                    // we were storing null values in exclusions, this cleans any up
-                    for (var i = settings.ExcludeFromNotifying.Count - 1; i >= 0; i--)
-                    {
-                        var uniqueStreamKey = settings.ExcludeFromNotifying[i];
-                        if (uniqueStreamKey.StreamId == null || uniqueStreamKey.ApiClientName == null)
-                            settings.ExcludeFromNotifying.Remove(uniqueStreamKey);
-                    }
-                    break;
+                switch (settings.SettingsVersion)
+                {
+                    case 0:
+                        settings.CheckForNewVersions = true;
+                        break;
+                    case 1: // property that needed to be reset no longer exists, see commit history if you care enough
+                        break;
+                    case 2:
+                        // we were storing null values in exclusions, this cleans any up
+                        for (var i = settings.ExcludeFromNotifying.Count - 1; i >= 0; i--)
+                        {
+                            var uniqueStreamKey = settings.ExcludeFromNotifying[i];
+                            if (uniqueStreamKey.StreamId == null || uniqueStreamKey.ApiClientName == null)
+                                settings.ExcludeFromNotifying.Remove(uniqueStreamKey);
+                        }
+                        break;
+                    case 3:
+                        dynamic json = JObject.Parse(fullSettingsRaw);
+                        bool shouldPassthrough = json.PassthroughClientId;
+                        string authToken = json.TwitchAuthToken;
+                        string chatCommandLine = json.ChatCommandLine;
+
+                        settings.Twitch.PassthroughClientId = shouldPassthrough;
+                        settings.Twitch.AuthToken = authToken;
+
+                        if (!string.IsNullOrWhiteSpace(chatCommandLine))
+                        {
+                            bool filePathQuoted = chatCommandLine.StartsWith("\"");
+                            string filePathEnd = filePathQuoted ? ".exe\"" : ".exe";
+
+                            int endOfFilePathIndex = chatCommandLine.IndexOf(filePathEnd, StringComparison.Ordinal) + filePathEnd.Length;
+                            if (endOfFilePathIndex < 0) // might be using a custom command off the env path
+                            {
+                                if (!filePathQuoted) endOfFilePathIndex = chatCommandLine.IndexOf(' ');
+                                else
+                                {
+                                    var enclosingDoubleQuoteIndex = chatCommandLine.IndexOf('"', 1);
+                                    endOfFilePathIndex = chatCommandLine.IndexOf(' ', enclosingDoubleQuoteIndex);
+                                }
+                            }
+
+                            var filePath = chatCommandLine.Substring(0, endOfFilePathIndex).Trim();
+                            var args = chatCommandLine.Substring(endOfFilePathIndex).Trim();
+
+                            settings.Twitch.ChatCommand.FilePath = filePath;
+                            settings.Twitch.ChatCommand.Args = args;
+                            settings.YouTube.ChatCommand.FilePath = filePath;
+                            settings.YouTube.ChatCommand.Args = args;
+                            settings.Kick.ChatCommand.FilePath = filePath;
+                            settings.Kick.ChatCommand.Args = args;
+                        }
+                        break;
+                }
+
+                settings.SettingsVersion++;
             }
 
-            settings.SettingsVersion = Settings.CurrentSettingsVersion;
             return true;
         }
 

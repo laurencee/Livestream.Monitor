@@ -10,7 +10,7 @@ namespace Livestream.Monitor.Core
 {
     public class Settings : PropertyChangedBase
     {
-        public const int CurrentSettingsVersion = 3;
+        public const int CurrentSettingsVersion = 4;
         public const string UrlReplacementToken = "{url}";
 
         public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
@@ -30,45 +30,33 @@ namespace Livestream.Monitor.Core
         private MetroThemeBaseColour metroThemeBaseColour = MetroThemeBaseColour.BaseDark;
         private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
         private int minimumEventViewers = DefaultMinimumPopularEventViewers;
-        private string livestreamerFullPath, chatCommandLine, twitchAuthToken;
-        private bool disableNotifications, passthroughClientId, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
+        private string livestreamerFullPath, chatCommandLine;
+        private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
         private int settingsVersion;
         private DataGridSortState livestreamListSortState;
+        private TwitchSettings twitch = new();
+        private KickSettings kick = new();
+        private YouTubeSettings youTube = new();
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
         {
             get => settingsVersion;
-            set
-            {
-                if (value == settingsVersion) return;
-                settingsVersion = value;
-                NotifyOfPropertyChange(() => SettingsVersion);
-            }
+            set => Set(ref settingsVersion, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool CheckForNewVersions
         {
             get => checkForNewVersions;
-            set
-            {
-                if (value == checkForNewVersions) return;
-                checkForNewVersions = value;
-                NotifyOfPropertyChange(() => SettingsVersion);
-            }
+            set => Set(ref checkForNewVersions, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableRefreshErrorDialogs
         {
             get => disableRefreshErrorDialogs;
-            set
-            {
-                if (value == disableRefreshErrorDialogs) return;
-                disableRefreshErrorDialogs = value;
-                NotifyOfPropertyChange(() => DisableRefreshErrorDialogs);
-            }
+            set => Set(ref disableRefreshErrorDialogs, value);
         }
 
         [DefaultValue(MetroThemeBaseColour.BaseDark)]
@@ -76,12 +64,7 @@ namespace Livestream.Monitor.Core
         public MetroThemeBaseColour MetroThemeBaseColour
         {
             get => metroThemeBaseColour;
-            set
-            {
-                if (value == metroThemeBaseColour) return;
-                metroThemeBaseColour = value;
-                NotifyOfPropertyChange(() => MetroThemeBaseColour);
-            }
+            set => Set(ref metroThemeBaseColour, value);
         }
 
         [DefaultValue(MetroThemeAccentColour.Orange)]
@@ -89,12 +72,7 @@ namespace Livestream.Monitor.Core
         public MetroThemeAccentColour MetroThemeAccentColour
         {
             get => metroThemeAccentColour;
-            set
-            {
-                if (value == metroThemeAccentColour) return;
-                metroThemeAccentColour = value;
-                NotifyOfPropertyChange(() => MetroThemeAccentColour);
-            }
+            set => Set(ref metroThemeAccentColour, value);
         }
 
         [DefaultValue(DefaultStreamlinkFullPath)]
@@ -102,12 +80,7 @@ namespace Livestream.Monitor.Core
         public string LivestreamerFullPath
         {
             get => livestreamerFullPath;
-            set
-            {
-                if (value == livestreamerFullPath) return;
-                livestreamerFullPath = value;
-                NotifyOfPropertyChange(() => LivestreamerFullPath);
-            }
+            set => Set(ref livestreamerFullPath, value);
         }
 
         [DefaultValue(DefaultChromeCommand)]
@@ -115,12 +88,7 @@ namespace Livestream.Monitor.Core
         public string ChatCommandLine
         {
             get => chatCommandLine;
-            set
-            {
-                if (value == chatCommandLine) return;
-                chatCommandLine = value;
-                NotifyOfPropertyChange(() => ChatCommandLine);
-            }
+            set => Set(ref chatCommandLine, value);
         }
 
         /// <summary> Minimum event viewers before popular notifications occur, set to 0 to disable notifications </summary>
@@ -129,54 +97,26 @@ namespace Livestream.Monitor.Core
         public int MinimumEventViewers
         {
             get => minimumEventViewers;
-            set
-            {
-                if (value == minimumEventViewers) return;
-                minimumEventViewers = value;
-                NotifyOfPropertyChange(() => MinimumEventViewers);
-            }
+            set => Set(ref minimumEventViewers, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableNotifications
         {
             get => disableNotifications;
-            set
-            {
-                if (value == disableNotifications) return;
-                disableNotifications = value;
-                NotifyOfPropertyChange(() => DisableNotifications);
-            }
+            set => Set(ref disableNotifications, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool HideStreamOutputMessageBoxOnLoad
         {
             get => hideStreamOutputMessageBoxOnLoad;
-            set
-            {
-                if (value == hideStreamOutputMessageBoxOnLoad) return;
-                hideStreamOutputMessageBoxOnLoad = value;
-                NotifyOfPropertyChange(() => HideStreamOutputMessageBoxOnLoad);
-            }
-        }
-
-        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public bool PassthroughClientId
-        {
-            get => passthroughClientId;
-            set
-            {
-                if (value == passthroughClientId) return;
-                passthroughClientId = value;
-                NotifyOfPropertyChange(() => PassthroughClientId);
-            }
+            set => Set(ref hideStreamOutputMessageBoxOnLoad, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public Dictionary<string, FavoriteQualities> FavoriteApiQualities { get; } =
-            new Dictionary<string, FavoriteQualities>();
-
+            new();
 
         /// <summary>
         /// Channel names in this collection should not raise notifications. <para/>
@@ -184,37 +124,35 @@ namespace Livestream.Monitor.Core
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
-        public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new BindableCollection<UniqueStreamKey>();
-
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-        public string TwitchAuthToken
-        {
-            get => twitchAuthToken;
-            set
-            {
-                if (value == twitchAuthToken) return;
-                twitchAuthToken = value;
-                NotifyOfPropertyChange(() => TwitchAuthToken);
-            }
-        }
+        public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new();
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public DataGridSortState LivestreamListSortState
         {
             get => livestreamListSortState;
-            set
-            {
-                if (Equals(value, livestreamListSortState)) return;
-                livestreamListSortState = value;
-                NotifyOfPropertyChange(() => LivestreamListSortState);
-            }
+            set => Set(ref livestreamListSortState, value);
         }
 
-        /// <summary>
-        /// Flag to indicate if the twitch oauth token has been defined either in livestream monitor settings
-        /// or in the livestreamer/streamlink configuration file
-        /// </summary>
-        public bool TwitchAuthTokenSet => !string.IsNullOrWhiteSpace(TwitchAuthToken);
+        [JsonProperty]
+        public TwitchSettings Twitch
+        {
+            get => twitch;
+            set => Set(ref twitch, value);
+        }
+
+        [JsonProperty]
+        public KickSettings Kick
+        {
+            get => kick;
+            set => Set(ref kick, value);
+        }
+
+        [JsonProperty]
+        public YouTubeSettings YouTube
+        {
+            get => youTube;
+            set => Set(ref youTube, value);
+        }
 
         /// <summary>
         /// Name of the livestreamer/streamlink exe without the file extension

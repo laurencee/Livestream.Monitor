@@ -60,12 +60,7 @@ namespace Livestream.Monitor.ViewModels
         public bool Loading
         {
             get => loading;
-            set
-            {
-                if (value == loading) return;
-                loading = value;
-                NotifyOfPropertyChange(() => Loading);
-            }
+            set => Set(ref loading, value);
         }
 
         public IMonitorStreamsModel StreamsModel { get; }
@@ -75,12 +70,7 @@ namespace Livestream.Monitor.ViewModels
         public LivestreamsLayoutMode LayoutModeMode
         {
             get { return layoutModeMode; }
-            set
-            {
-                if (value == layoutModeMode) return;
-                layoutModeMode = value;
-                NotifyOfPropertyChange(() => LayoutModeMode);
-            }
+            set => Set(ref layoutModeMode, value);
         }
 
         public async Task RefreshLivestreams()

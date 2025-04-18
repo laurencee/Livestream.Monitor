@@ -68,12 +68,7 @@ namespace Livestream.Monitor.Model.Monitoring
         public LivestreamModel SelectedLivestream
         {
             get => selectedLivestream;
-            set
-            {
-                if (Equals(value, selectedLivestream)) return;
-                selectedLivestream = value;
-                NotifyOfPropertyChange(() => SelectedLivestream);
-            }
+            set => Set(ref selectedLivestream, value);
         }
 
         public bool Initialised => true;
