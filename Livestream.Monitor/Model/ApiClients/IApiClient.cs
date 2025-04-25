@@ -11,9 +11,6 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         string ApiName { get; }
 
-        /// <summary> The base url for the provider (always ending with a forward slash '/')  </summary>
-        string BaseUrl { get; }
-
         bool HasChatSupport { get; }
 
         bool HasVodViewerSupport { get; }
@@ -28,8 +25,6 @@ namespace Livestream.Monitor.Model.ApiClients
         bool IsAuthorized { get; }
 
         List<string> VodTypes { get; }
-
-        string LivestreamerAuthorizationArg { get; }
 
         /// <summary> Execute authorization process for api </summary>
         /// <param name="screen">Screen to activate any prompts/input required during authorization</param>

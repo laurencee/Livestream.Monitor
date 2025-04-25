@@ -151,7 +151,6 @@ namespace Livestream.Monitor.ViewModels
                 {
                     await dialogController.CloseAsync();
                     await this.ShowMessageAsync("Error importing channels", ex.ExtractErrorMessage());
-                    // TODO log import error
                 }
 
                 await dialogController.CloseAsync();

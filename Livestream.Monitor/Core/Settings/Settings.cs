@@ -1,9 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
 using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Core
@@ -14,13 +15,12 @@ namespace Livestream.Monitor.Core
         public const string UrlReplacementToken = "{url}";
 
         public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
-        public const string ChromeArgs = "--app=" + UrlReplacementToken + " --window-size=350,760";
-        public const string DefaultChromeCommand = $"\"{DefaultChromeFullPath}\" {ChromeArgs}";
+        public const string DefaultChromeArgs = "--app=" + UrlReplacementToken + " --window-size=350,760";
 
         public const string DefaultFirefoxFullPath = @"C:\Program Files\Mozilla Firefox\firefox.exe";
-        public const string FirefoxArgs = $"-url {UrlReplacementToken}";
+        public const string DefaultFirefoxArgs = $"-url {UrlReplacementToken}";
 
-        public const string DefaultEdgeChatCommand = $"start microsoft-edge:{UrlReplacementToken}";
+        public const string DefaultEdgePath = "msedge";
 
         public const string DefaultLivestreamerFullPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
         public const string DefaultStreamlinkFullPath = @"C:\Program Files\Streamlink\bin\streamlink.exe";
@@ -30,13 +30,14 @@ namespace Livestream.Monitor.Core
         private MetroThemeBaseColour metroThemeBaseColour = MetroThemeBaseColour.BaseDark;
         private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
         private int minimumEventViewers = DefaultMinimumPopularEventViewers;
-        private string livestreamerFullPath, chatCommandLine;
+        private string livestreamerFullPath;
         private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
         private int settingsVersion;
         private DataGridSortState livestreamListSortState;
         private TwitchSettings twitch = new();
         private KickSettings kick = new();
         private YouTubeSettings youTube = new();
+        private bool debugMode;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
@@ -50,6 +51,13 @@ namespace Livestream.Monitor.Core
         {
             get => checkForNewVersions;
             set => Set(ref checkForNewVersions, value);
+        }
+
+        [JsonProperty]
+        public bool DebugMode
+        {
+            get => debugMode;
+            set => Set(ref debugMode, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -83,14 +91,6 @@ namespace Livestream.Monitor.Core
             set => Set(ref livestreamerFullPath, value);
         }
 
-        [DefaultValue(DefaultChromeCommand)]
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-        public string ChatCommandLine
-        {
-            get => chatCommandLine;
-            set => Set(ref chatCommandLine, value);
-        }
-
         /// <summary> Minimum event viewers before popular notifications occur, set to 0 to disable notifications </summary>
         [DefaultValue(DefaultMinimumPopularEventViewers)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -115,8 +115,7 @@ namespace Livestream.Monitor.Core
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
-        public Dictionary<string, FavoriteQualities> FavoriteApiQualities { get; } =
-            new();
+        public Dictionary<string, FavoriteQualities> FavoriteApiQualities { get; } = new();
 
         /// <summary>
         /// Channel names in this collection should not raise notifications. <para/>
@@ -124,7 +123,7 @@ namespace Livestream.Monitor.Core
         /// </summary>
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
-        public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = new();
+        public BindableCollection<UniqueStreamKey> ExcludeFromNotifying { get; } = [];
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public DataGridSortState LivestreamListSortState
@@ -132,6 +131,8 @@ namespace Livestream.Monitor.Core
             get => livestreamListSortState;
             set => Set(ref livestreamListSortState, value);
         }
+
+
 
         [JsonProperty]
         public TwitchSettings Twitch
@@ -154,15 +155,21 @@ namespace Livestream.Monitor.Core
             set => Set(ref youTube, value);
         }
 
-        /// <summary>
-        /// Name of the livestreamer/streamlink exe without the file extension
-        /// </summary>
-        public string LivestreamExeDisplayName => Path.GetFileNameWithoutExtension(LivestreamerFullPath);
-
         public FavoriteQualities GetStreamQualities(string apiName)
         {
             FavoriteApiQualities.TryGetValue(apiName, out var qualities);
             return qualities ?? new FavoriteQualities();
+        }
+
+        public ApiPlatformSettings GetPlatformSettings(string apiName)
+        {
+            return apiName switch
+            {
+                TwitchApiClient.API_NAME => Twitch,
+                KickApiClient.API_NAME => Kick,
+                YoutubeApiClient.API_NAME => YouTube,
+                _ => throw new ArgumentException($"Unknown API platform: {apiName}"),
+            };
         }
     }
 

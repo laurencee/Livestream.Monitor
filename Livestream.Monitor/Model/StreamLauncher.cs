@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using Caliburn.Micro;
-using ExternalAPIs.TwitchTv.Helix;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Model.ApiClients;
@@ -14,19 +16,15 @@ using Action = System.Action;
 
 namespace Livestream.Monitor.Model
 {
-    public class StreamLauncher
+    public class StreamLauncher(ISettingsHandler settingsHandler, IWindowManager windowManager)
     {
-        private static readonly object WatchingStreamsLock = new object();
+        private static readonly object WatchingStreamsLock = new();
+        private static readonly ExpandoObject MessageBoxWindowsSettings =
+            new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create();
 
-        private readonly ISettingsHandler settingsHandler;
-        private readonly IWindowManager windowManager;
-        private readonly List<LivestreamModel> watchingStreams = new List<LivestreamModel>();
-
-        public StreamLauncher(ISettingsHandler settingsHandler, IWindowManager windowManager)
-        {
-            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
-            this.windowManager = windowManager ?? throw new ArgumentNullException(nameof(windowManager));
-        }
+        private readonly ISettingsHandler settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+        private readonly IWindowManager windowManager = windowManager ?? throw new ArgumentNullException(nameof(windowManager));
+        private readonly List<LivestreamModel> watchingStreams = [];
 
         public List<LivestreamModel> WatchingStreams
         {
@@ -42,7 +40,6 @@ namespace Livestream.Monitor.Model
 
         public async Task OpenChat(LivestreamModel livestreamModel, IViewAware fromScreen)
         {
-            // guard against stream provider with unknown chat support
             if (!livestreamModel.ApiClient.HasChatSupport)
             {
                 await fromScreen.ShowMessageAsync("Chat not supported",
@@ -50,104 +47,36 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(settingsHandler.Settings.ChatCommandLine))
-            {
-                await fromScreen.ShowMessageAsync("No chat command specified", "Chat command is not set in settings.");
-                return;
-            }
-
-            // guard against chat command that contains no url token
-            if (!settingsHandler.Settings.ChatCommandLine.Contains(Settings.UrlReplacementToken))
-            {
-                await fromScreen.ShowMessageAsync("Missing url token in chat command",
-                    $"Chat command is missing the url token {Settings.UrlReplacementToken}.");
-                return;
-            }
-
             var chatUrl = await livestreamModel.GetChatUrl;
-            var command = settingsHandler.Settings.ChatCommandLine.Replace(Settings.UrlReplacementToken, chatUrl);
-            command = command.Replace("&", "^&");
+            var messageBoxViewModel = CreateAppLoadMessageBox(
+                title: $"Chat '{livestreamModel.DisplayName}'",
+                initialMessageText: $"Launching chat for {livestreamModel.DisplayName}...");
 
-            await Task.Run(async () =>
-            {
-                try
-                {
-                    var proc = new Process
-                    {
-                        StartInfo =
-                        {
-                            FileName = "cmd.exe",
-                            Arguments = $"/c \"{command}\"",
-                            CreateNoWindow = true,
-                            UseShellExecute = false,
-                            RedirectStandardOutput = true,
-                            RedirectStandardError = true,
-                        },
-                    };
+            var platformSettings = settingsHandler.Settings.GetPlatformSettings(livestreamModel.ApiClient.ApiName);
+            var replacements = platformSettings.GetReplacements(chatUrl);
 
-                    proc.Start();
-                    string errorOutput = await proc.StandardError.ReadToEndAsync();
-                    proc.WaitForExit();
-
-                    // check for exit code as well because sometimes processes emit warnings in the error output stream
-                    if (proc.ExitCode != 0 && errorOutput != string.Empty)
-                    {
-                        var errorMessage = $"{errorOutput}{Environment.NewLine}Command executed: {command}";
-                        await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorMessage));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    var errorMessage = $"{ex.ExtractErrorMessage()}{Environment.NewLine}Command executed: {command}";
-                    await Execute.OnUIThreadAsync(async () => await fromScreen.ShowMessageAsync("Error launching chat", errorMessage));
-                }
-            });
+            LaunchApp(messageBoxViewModel, platformSettings.ChatCommand, replacements);
         }
 
-        public async Task OpenStream(LivestreamModel livestreamModel, IViewAware viewAware)
+        public async Task OpenStream(LivestreamModel livestreamModel, IViewAware fromScreen)
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
-            var favoriteQualities = settingsHandler.Settings.GetStreamQualities(livestreamModel.ApiClient.ApiName);
-            var qualities = favoriteQualities.Qualities.Union([favoriteQualities.FallbackQuality]);
-
             var streamUrl = await livestreamModel.GetStreamUrl;
-            string livestreamerArgs = $"{streamUrl} {string.Join(",", qualities)}";
-            var apiClient = livestreamModel.ApiClient;
-
-            // hack to pass through the client id to livestreamer
-            if (settingsHandler.Settings.Twitch.PassthroughClientId)
-            {
-                if (apiClient is TwitchApiClient)
-                {
-                    livestreamerArgs = $"--http-header {RequestConstants.ClientIdHeaderKey}={RequestConstants.ClientIdHeaderValue} {livestreamerArgs}";
-                }
-            }
-            else
-            {
-                if (!apiClient.IsAuthorized)
-                {
-                    await apiClient.Authorize(viewAware);
-                }
-
-                if (apiClient.IsAuthorized && !string.IsNullOrWhiteSpace(apiClient.LivestreamerAuthorizationArg))
-                {
-                    livestreamerArgs += " " + apiClient.LivestreamerAuthorizationArg;
-                }
-            }
-
-            var launcher = Path.GetFileName(settingsHandler.Settings.LivestreamerFullPath);
-
-            var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
+            var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
-                messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
+                initialMessageText: $"Launching {livestreamModel.ApiClient.ApiName} stream {livestreamModel.DisplayName}...");
+            ShowMessageBox(messageBoxViewModel);
+            
+            var platformSettings = settingsHandler.Settings.GetPlatformSettings(livestreamModel.ApiClient.ApiName);
+            var replacements = GetReplacementsWithQualities(livestreamModel.ApiClient, platformSettings, streamUrl);
 
             lock (WatchingStreamsLock)
             {
                 watchingStreams.Add(livestreamModel);
             }
 
-            StartLivestreamer(livestreamerArgs, messageBoxViewModel, onClose: () =>
+            LaunchApp(messageBoxViewModel, platformSettings.StreamCommand, replacements, () =>
             {
                 lock (WatchingStreamsLock)
                 {
@@ -156,62 +85,65 @@ namespace Livestream.Monitor.Model
             });
         }
 
-        public async Task OpenVod(VodDetails vodDetails, IViewAware viewAware)
+        public async Task OpenVod(VodDetails vodDetails, IViewAware fromScreen)
         {
             if (string.IsNullOrWhiteSpace(vodDetails.Url) ||
-                !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute)) return;
-
-            var favoriteQualities = settingsHandler.Settings.GetStreamQualities(vodDetails.ApiClient.ApiName);
-            var qualities = favoriteQualities.Qualities.Union(new[] { favoriteQualities.FallbackQuality });
-
-            string livestreamerArgs = $"--player-passthrough hls {vodDetails.Url} {string.Join(",", qualities)}";
-
-            // hack to pass through the client id to livestreamer
-            if (settingsHandler.Settings.Twitch.PassthroughClientId)
+                !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute))
             {
-                // check domain name of url to see if this is a twitch.tv vod link
-                bool isTwitchStream = false;
-                try
-                {
-                    var uri = new Uri(vodDetails.Url);
-                    isTwitchStream = uri.Host.Contains("twitch.tv");
-                }
-                catch { }
-
-                if (isTwitchStream)
-                {
-                    livestreamerArgs += $" --http-header {RequestConstants.ClientIdHeaderKey}={RequestConstants.ClientIdHeaderValue}";
-                }
-            }
-            else
-            {
-                var apiClient = vodDetails.ApiClient;
-                if (!apiClient.IsAuthorized)
-                {
-                    await apiClient.Authorize(viewAware);
-                }
-
-                if (apiClient.IsAuthorized && !string.IsNullOrWhiteSpace(apiClient.LivestreamerAuthorizationArg))
-                {
-                    livestreamerArgs += " " + apiClient.LivestreamerAuthorizationArg;
-                }
+                await fromScreen.ShowMessageAsync("VOD Url invalid", $"Invalid VOD url: '{vodDetails.Url}'");
+                return;
             }
 
             const int maxTitleLength = 70;
             var title = vodDetails.Title?.Length > maxTitleLength ? vodDetails.Title.Substring(0, maxTitleLength) + "..." : vodDetails.Title;
 
-            var launcher = Path.GetFileName(settingsHandler.Settings.LivestreamerFullPath);
-
-            var messageBoxViewModel = ShowLivestreamerLoadMessageBox(
+            var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: title,
-                messageText: $"Launching {settingsHandler.Settings.LivestreamExeDisplayName}....{Environment.NewLine}'{launcher} {livestreamerArgs}'");
+                initialMessageText: $"Launching VOD: {title}...");
+            ShowMessageBox(messageBoxViewModel);
 
-            StartLivestreamer(livestreamerArgs, messageBoxViewModel);
+            var platformSettings = settingsHandler.Settings.GetPlatformSettings(vodDetails.ApiClient.ApiName);
+            var replacements = GetReplacementsWithQualities(vodDetails.ApiClient, platformSettings, vodDetails.Url);
+
+            LaunchApp(messageBoxViewModel, platformSettings.VodCommand, replacements);
         }
 
-        private void StartLivestreamer(string livestreamerArgs, MessageBoxViewModel messageBoxViewModel, Action onClose = null)
+        public void LaunchApp(
+            MessageBoxViewModel messageBoxViewModel,
+            ExecCommand execCommand,
+            IReadOnlyDictionary<string, string> replacements,
+            Action onClose = null)
         {
-            if (!CheckLivestreamerExists()) return;
+            messageBoxViewModel.MessageText += $"{Environment.NewLine}{execCommand.FilePath} {execCommand.Args}";
+
+            var finalArgs = execCommand.Args;
+            foreach (var replacement in replacements)
+            {
+                finalArgs = finalArgs.Replace(replacement.Key, replacement.Value);
+            }
+
+            finalArgs = finalArgs.Trim();
+
+            if (settingsHandler.Settings.DebugMode)
+                messageBoxViewModel.MessageText += $"{Environment.NewLine}[DEBUG] {execCommand.FilePath} {finalArgs}";
+
+            var filename = execCommand.FilePath.Trim('"');
+            if (!IsValidFilePath(filename))
+            {
+                messageBoxViewModel.MessageText += $"{Environment.NewLine}[ERROR] Invalid FileName: {execCommand.FilePath}";
+                if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
+                return;
+            }
+
+            if (!Path.IsPathRooted(filename))
+            {
+                string fullPath = Shell.ResolveExecutableFromRegistry(filename);
+
+                // the exe might be on the PATH env var and in that case
+                // we don't need to change anything as it'll automatically resolve from process.start
+                if (fullPath != null)
+                    filename = fullPath;
+            }
 
             // the process needs to be launched from its own thread so it doesn't lockup the UI
             Task.Run(() =>
@@ -220,10 +152,10 @@ namespace Livestream.Monitor.Model
                 {
                     StartInfo =
                     {
-                        FileName = settingsHandler.Settings.LivestreamerFullPath,
-                        Arguments = livestreamerArgs,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
+                        FileName = filename,
+                        Arguments = finalArgs,
+                        RedirectStandardOutput = execCommand.CaptureStandardOutput,
+                        RedirectStandardError = execCommand.CaptureErrorOutput,
                         CreateNoWindow = true,
                         UseShellExecute = false,
                     },
@@ -241,6 +173,7 @@ namespace Livestream.Monitor.Model
                         preventClose = true;
                         messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
                     };
+
                 proc.OutputDataReceived +=
                     (sender, args) =>
                     {
@@ -259,8 +192,14 @@ namespace Livestream.Monitor.Model
                 {
                     proc.Start();
 
-                    proc.BeginErrorReadLine();
-                    proc.BeginOutputReadLine();
+                    if (execCommand.CaptureErrorOutput) proc.BeginErrorReadLine();
+                    if (execCommand.CaptureStandardOutput) proc.BeginOutputReadLine();
+
+                    if (!execCommand.CaptureStandardOutput && !execCommand.CaptureErrorOutput)
+                    {
+                        messageBoxViewModel.TryClose();
+                        onClose?.Invoke();
+                    }
 
                     proc.WaitForExit();
                     if (proc.ExitCode != 0)
@@ -279,54 +218,127 @@ namespace Livestream.Monitor.Model
                 if (preventClose)
                 {
                     messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       $"ERROR occurred in {settingsHandler.Settings.LivestreamExeDisplayName}: " +
-                                                       $"Manually close this window when you've finished reading the {settingsHandler.Settings.LivestreamExeDisplayName} output.";
+                                                       "ERROR: Manually close this window when you've finished reading output.";
 
                     // open the message box if it was somehow closed prior to the error being displayed
-                    if (!messageBoxViewModel.IsActive)
-                        windowManager.ShowWindow(messageBoxViewModel, null, new WindowSettingsBuilder().SizeToContent().NoResizeBorderless().Create());
+                    if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
                 }
                 else
                     messageBoxViewModel.TryClose();
             });
         }
 
-        private MessageBoxViewModel ShowLivestreamerLoadMessageBox(string title, string messageText)
+        private MessageBoxViewModel CreateAppLoadMessageBox(string title, string initialMessageText)
         {
             var messageBoxViewModel = new MessageBoxViewModel
             {
                 DisplayName = title,
-                MessageText = messageText
+                MessageText = initialMessageText,
             };
-            messageBoxViewModel.ShowHideOnLoadCheckbox(settingsHandler);
-
-            var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .NoResizeBorderless()
-                                                      .Create();
-
-            windowManager.ShowWindow(messageBoxViewModel, null, settings);
+            messageBoxViewModel.InitSettingsHandler(settingsHandler);
             return messageBoxViewModel;
         }
 
-        private bool CheckLivestreamerExists()
+        private void ShowMessageBox(MessageBoxViewModel messageBox) =>
+            windowManager.ShowWindow(messageBox, null, MessageBoxWindowsSettings);
+
+        private Dictionary<string, string> GetReplacementsWithQualities(
+            IApiClient apiClient,
+            ApiPlatformSettings platformSettings,
+            string url)
         {
-            if (File.Exists(settingsHandler.Settings.LivestreamerFullPath)) return true;
+            var favoriteQualities = settingsHandler.Settings.GetStreamQualities(apiClient.ApiName);
+            var qualities = favoriteQualities.Qualities.Union([favoriteQualities.FallbackQuality]);
 
-            var msgBox = new MessageBoxViewModel
-            {
-                DisplayName = "Livestreamer/Streamlink not found",
-                MessageText =
-                    $"Could not find livestreamer/streamlink @ '{settingsHandler.Settings.LivestreamerFullPath}'" + Environment.NewLine +
-                    "Please download and install streamlink from 'https://streamlink.github.io/install.html#windows-binaries'" + Environment.NewLine +
-                    "OR download and install livestreamer from 'http://docs.livestreamer.io/install.html#windows-binaries'"
-            };
-
-            var settings = new WindowSettingsBuilder().SizeToContent()
-                                                      .NoResizeBorderless()
-                                                      .Create();
-
-            windowManager.ShowWindow(msgBox, null, settings);
-            return false;
+            var replacements = platformSettings.GetReplacements(url).ToDictionary(x => x.Key, x => x.Value);
+            replacements["{qualities}"] = string.Join(",", qualities);
+            return replacements;
         }
+
+        private static bool IsValidFilePath(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return false;
+
+            try
+            {
+                if (input.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+                    return false;
+
+                string fileName = Path.GetFileName(input);
+                if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    return false;
+
+                // throws on malformed paths, can catch some stuff the previous stuff wont
+                _ = Path.GetFullPath(input);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+}
+
+// enums (only the members we need)
+[Flags]
+enum AssocF : uint
+{
+    OPEN_BYEXENAME = 0x2,   // identical to INIT_BYEXENAME
+    NOTRUNCATE     = 0x20,
+}
+
+enum AssocStr : uint
+{
+    EXECUTABLE = 2
+}
+
+// ReSharper disable once InconsistentNaming
+public enum HRESULT
+{
+    S_OK = 0x00000000,
+    S_FALSE = 0x00000001,
+    E_POINTER = unchecked((int)0x80004003),
+    ERROR_INSUFFICIENT_BUFFER = unchecked((int)0x8007007A),
+    ERROR_FILE_NOT_FOUND = unchecked((int)0x80070002),
+    ERROR_PATH_NOT_FOUND = unchecked((int)0x80070003),
+    ERROR_NO_ASSOCIATION = unchecked((int)0x80070483),
+}
+
+static class Shell
+{
+    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
+    static extern HRESULT AssocQueryString(
+        AssocF flags,
+        AssocStr str,
+        string pszAssoc,
+        string pszExtra,
+        [Out] StringBuilder pszOut,
+        ref uint pcchOut);
+
+    /// <summary> Resolves an executable path from "App Path" registrations </summary>
+    /// <remarks>
+    /// See the registry details from
+    /// https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-assocquerystringa
+    /// https://learn.microsoft.com/en-us/windows/win32/shell/app-registration#finding-an-application-executable
+    /// </remarks>
+    public static string ResolveExecutableFromRegistry(string alias)
+    {
+        if (!alias.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            alias += ".exe";
+
+        uint len = 0;
+        // First call gets the required buffer size.
+        var hr = AssocQueryString(AssocF.OPEN_BYEXENAME, AssocStr.EXECUTABLE,
+            alias, null, null, ref len);
+
+        if (hr != HRESULT.S_FALSE && hr != HRESULT.ERROR_INSUFFICIENT_BUFFER)
+            return null;
+
+        var sb = new StringBuilder((int)len);
+        hr = AssocQueryString(AssocF.OPEN_BYEXENAME | AssocF.NOTRUNCATE,
+            AssocStr.EXECUTABLE, alias, null, sb, ref len);
+
+        return hr == HRESULT.S_OK ? sb.ToString() : null;
     }
 }

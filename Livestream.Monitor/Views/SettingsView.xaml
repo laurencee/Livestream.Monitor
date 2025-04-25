@@ -32,39 +32,6 @@
 
                 <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
 
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Livestreamer/Streamlink Path" />
-                    <TextBox Grid.Row="1" Grid.Column="0" x:Name="LivestreamerFullPath" />
-                    <Button Grid.Row="1" Grid.Column="1" x:Name="SetLivestreamerFilePath" Content="..." Padding="5" Margin="5,0" Height="10" />
-
-                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Predefined Chat Commands (Optional)" />
-                    <StackPanel Grid.Row="3" Grid.Column="0" Orientation="Horizontal" >
-                        <Button x:Name="Chrome" Content="Chrome" Margin="5,0" />
-                        <Button x:Name="Edge" Content="Edge" Margin="5,0" />
-                        <Button x:Name="Firefox" Content="Firefox" Margin="5,0" />
-                    </StackPanel>
-
-                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2" 
-                           Text="Chat Command (Optional) - variable {url}"
-                           ToolTip="Command line argument to pass in a chat {url} - e.g. microsoft-edge:{url}" />
-                    <TextBox Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" 
-                         x:Name="ChatCommandLine"
-                         ToolTip="Command line argument to pass in a chat {url} - e.g. microsoft-edge:{url}" />
-                </Grid>
-
                 <TextBlock Text="Popular stream minimum viewers (0 for off)" Margin="0,20,0,0"
                        ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
                 <TextBox x:Name="MinimumEventViewers" MaxLength="7"
@@ -80,6 +47,7 @@
                       ToolTip="When checked, the stream output box will be hidden upon successful stream load" />
                 <CheckBox x:Name="PassthroughClientId" Content="Bypass OAuth to twitch"
                       ToolTip="When checked, a client id for Livestream Monitor will provided to twitch so an OAuth token is not required to launch streams." />
+                <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,10" />
             </StackPanel>
         </ScrollViewer>
 

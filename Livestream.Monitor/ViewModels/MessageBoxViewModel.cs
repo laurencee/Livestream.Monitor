@@ -20,13 +20,13 @@ namespace Livestream.Monitor.ViewModels
         
         public string MessageText
         {
-            get { return messageText; }
+            get => messageText;
             set => Set(ref messageText, value);
         }
 
         public bool HideOnLoad
         {
-            get { return hideOnLoad; }
+            get => hideOnLoad;
             set
             {
                 if (value == hideOnLoad) return;
@@ -40,8 +40,8 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        /// <summary> Shows the hide on load checkbox requiring a settings handler to bind the checkbox to </summary>
-        public void ShowHideOnLoadCheckbox(ISettingsHandler settingsHandler)
+        /// <summary> Enables visibility and persisting the HideOnLoad checkbox value</summary>
+        public void InitSettingsHandler(ISettingsHandler settingsHandler)
         {
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             hideOnLoadCheckboxVisible = true;

@@ -10,8 +10,7 @@ namespace Livestream.Monitor.Model.ApiClients
 {
     public class DesignTimeApiClient : IApiClient
     {
-        public string ApiName { get; } = "DesignTimeApiClient";
-        public string BaseUrl { get; }
+        public string ApiName => "DesignTimeApiClient";
         public bool HasChatSupport { get; }
         public bool HasVodViewerSupport { get; }
         public bool HasTopStreamsSupport { get; }
@@ -19,7 +18,7 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasFollowedChannelsQuerySupport { get; }
         public bool IsAuthorized { get; }
         public List<string> VodTypes { get; }
-        public string LivestreamerAuthorizationArg { get; }
+
         public Task Authorize(IViewAware screen)
         {
             throw new NotImplementedException();

@@ -46,8 +46,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public List<string> VodTypes { get; } = new List<string>();
 
-        public string LivestreamerAuthorizationArg => null;
-
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 
         public Task<string> GetStreamUrl(LivestreamModel livestreamModel)

@@ -2,8 +2,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Microsoft.Win32;
@@ -12,9 +14,8 @@ namespace Livestream.Monitor.ViewModels
 {
     public class SettingsViewModel : Screen, INotifyDataErrorInfo
     {
-        private readonly Dictionary<string, List<string>> errors = new Dictionary<string, List<string>>();
+        private readonly Dictionary<string, List<string>> errors = new();
         private readonly ISettingsHandler settingsHandler;
-        private string livestreamerFullPath, chatCommandLine;
         private int minimumEventViewers;
         private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions, disableRefreshErrorDialogs;
 
@@ -23,8 +24,6 @@ namespace Livestream.Monitor.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            LivestreamerFullPath = "Livestreamer/Streamlink path - design time";
-            ChatCommandLine = "Chat command - design time";
             MinimumEventViewers = 30000;
         }
 
@@ -39,45 +38,6 @@ namespace Livestream.Monitor.ViewModels
         }
 
         public ThemeSelectorViewModel ThemeSelector { get; set; }
-
-        public string LivestreamerFullPath
-        {
-            get => livestreamerFullPath;
-            set
-            {
-                if (value == livestreamerFullPath) return;
-
-                if (string.IsNullOrWhiteSpace(value))
-                    AddError(nameof(LivestreamerFullPath), "Livestreamer/Streamlink path must not be empty");
-                else if (!File.Exists(value))
-                    AddError(nameof(LivestreamerFullPath), "File not found");
-                else
-                    RemoveErrors(nameof(LivestreamerFullPath));
-
-                livestreamerFullPath = value;
-                NotifyOfPropertyChange(() => LivestreamerFullPath);
-                NotifyOfPropertyChange(() => CanSave);
-            }
-        }
-
-        public string ChatCommandLine
-        {
-            get => chatCommandLine;
-            set
-            {
-                if (value == chatCommandLine) return;
-
-                if (!string.IsNullOrEmpty(value) && !value.Contains(Settings.UrlReplacementToken))
-                    AddError(nameof(ChatCommandLine),
-                        $"Chat command line must include a {Settings.UrlReplacementToken} token so the chat url can be passed to the command");
-                else
-                    RemoveErrors(nameof(ChatCommandLine));
-
-                chatCommandLine = value;
-                NotifyOfPropertyChange(() => ChatCommandLine);
-                NotifyOfPropertyChange(() => CanSave);
-            }
-        }
 
         public int MinimumEventViewers
         {
@@ -157,14 +117,7 @@ namespace Livestream.Monitor.ViewModels
         {
             get
             {
-                if (string.IsNullOrWhiteSpace(LivestreamerFullPath)) return false;
-                if (!string.IsNullOrEmpty(ChatCommandLine) &&
-                    !ChatCommandLine.Contains(Settings.UrlReplacementToken)) return false;
-                if (!File.Exists(LivestreamerFullPath)) return false;
-
-                return ChatCommandLine != settingsHandler.Settings.ChatCommandLine ||
-                       LivestreamerFullPath != settingsHandler.Settings.LivestreamerFullPath ||
-                       MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
+                return MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
                        PassthroughClientId != settingsHandler.Settings.Twitch.PassthroughClientId ||
@@ -186,14 +139,25 @@ namespace Livestream.Monitor.ViewModels
 
         public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
 
+        public async Task OpenSettings()
+        {
+            try
+            {
+                Process.Start(SettingsHandler.SettingsFileName);
+            }
+            catch (Exception e)
+            {
+                await this.ShowMessageAsync("Error",
+                    $"Failed to open settings file '{SettingsHandler.SettingsFileName}' {Environment.NewLine}{e}");
+            }
+        }
+
         public void Save()
         {
             if (!CanSave) return;
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
 
-            settingsHandler.Settings.ChatCommandLine = ChatCommandLine;
-            settingsHandler.Settings.LivestreamerFullPath = LivestreamerFullPath;
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
@@ -205,46 +169,6 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
 
             NotifyOfPropertyChange(() => CanSave);
-        }
-
-        public void SetLivestreamerFilePath()
-        {
-            var startingPath = settingsHandler.Settings.LivestreamerFullPath;
-            if (string.IsNullOrWhiteSpace(startingPath))
-                startingPath = Settings.DefaultStreamlinkFullPath;
-
-            var livestreamerFilePath = SelectFile("Streamlink|streamlink.exe|Livestreamer|livestreamer.exe", startingPath);
-            if (!string.IsNullOrWhiteSpace(livestreamerFilePath))
-            {
-                LivestreamerFullPath = livestreamerFilePath;
-            }
-        }
-
-        public void Chrome()
-        {
-            var startingPath = Settings.DefaultChromeFullPath;
-
-            var chromeFilePath = SelectFile("Chrome|*.exe", startingPath);
-            if (!string.IsNullOrWhiteSpace(chromeFilePath))
-            {
-                ChatCommandLine = $"\"{chromeFilePath}\" {Settings.ChromeArgs}";
-            }
-        }
-
-        public void Edge()
-        {
-            ChatCommandLine = Settings.DefaultEdgeChatCommand;
-        }
-
-        public void Firefox()
-        {
-            var startingPath = Settings.DefaultFirefoxFullPath;
-
-            var firefoxFilePath = SelectFile("Firefox|*.exe", startingPath);
-            if (!string.IsNullOrWhiteSpace(firefoxFilePath))
-            {
-                ChatCommandLine = $"\"{firefoxFilePath}\" {Settings.FirefoxArgs}";
-            }
         }
 
         private string SelectFile(string filter, string startingPath)
@@ -277,9 +201,7 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
-            // We need to keep these as isolated properties so we can determine if a valid change has been made 
-            LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
-            ChatCommandLine = settingsHandler.Settings.ChatCommandLine;
+            // We need to keep these as isolated properties so we can determine if a valid change has been made
             MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
             DisableNotifications = settingsHandler.Settings.DisableNotifications;
             HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
@@ -293,11 +215,7 @@ namespace Livestream.Monitor.ViewModels
 
         private void SettingsOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(Settings.LivestreamerFullPath))
-                LivestreamerFullPath = settingsHandler.Settings.LivestreamerFullPath;
-            else if (e.PropertyName == nameof(Settings.ChatCommandLine))
-                ChatCommandLine = settingsHandler.Settings.ChatCommandLine;
-            else if (e.PropertyName == nameof(Settings.MinimumEventViewers))
+            if (e.PropertyName == nameof(Settings.MinimumEventViewers))
                 MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
         }
 

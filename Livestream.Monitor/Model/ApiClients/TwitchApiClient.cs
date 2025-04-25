@@ -23,10 +23,11 @@ namespace Livestream.Monitor.Model.ApiClients
         private const string BroadcastVodType = "Broadcasts";
         private const string HighlightVodType = "Highlights";
         private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
+        private const string BaseUrl = @"https://www.twitch.tv/";
 
         private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient;
         private readonly ISettingsHandler settingsHandler;
-        private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
+        private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
         private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
         private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
         private readonly Dictionary<string, User> streamDisplayNameToUserMap = new Dictionary<string, User>();
@@ -43,8 +44,6 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public string ApiName => API_NAME;
 
-        public string BaseUrl => @"https://www.twitch.tv/";
-
         public bool HasChatSupport => true;
 
         public bool HasVodViewerSupport => true;
@@ -57,13 +56,11 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool IsAuthorized => settingsHandler.Settings.Twitch.IsAuthTokenSet || settingsHandler.Settings.Twitch.PassthroughClientId;
 
-        public List<string> VodTypes { get; } = new List<string>()
-        {
+        public List<string> VodTypes { get; } =
+        [
             BroadcastVodType,
-            HighlightVodType
-        };
-
-        public string LivestreamerAuthorizationArg => null;
+            HighlightVodType,
+        ];
 
         public async Task Authorize(IViewAware screen)
         {
@@ -133,9 +130,9 @@ namespace Livestream.Monitor.Model.ApiClients
             // shorter implementation of QueryChannels
             var queryResults = new List<LivestreamQueryResult>();
             User user;
-            if (long.TryParse(newChannel.ChannelId, out var _))
+            if (long.TryParse(newChannel.ChannelId, out _))
             {
-                var users = await twitchTvHelixClient.GetUsers(new GetUsersQuery() { UserIds = new List<string>() { newChannel.ChannelId } });
+                var users = await twitchTvHelixClient.GetUsers(new GetUsersQuery() { UserIds = [newChannel.ChannelId] });
                 user = users.FirstOrDefault();
             }
             else
@@ -149,7 +146,7 @@ namespace Livestream.Monitor.Model.ApiClients
             newChannel.DisplayName = user.DisplayName;
             var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
 
-            var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = new List<string>() { user.Id } });
+            var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = [user.Id] });
             var onlineStream = streamsRoot.Streams.FirstOrDefault();
             if (onlineStream != null)
             {
@@ -187,7 +184,7 @@ namespace Livestream.Monitor.Model.ApiClients
             if (monitoredChannels.Count == 0) return queryResults;
 
             // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
-            List<Stream> onlineStreams = new List<Stream>();
+            List<Stream> onlineStreams = [];
 
             int retryCount = 0;
             bool success = false;
@@ -373,7 +370,7 @@ namespace Livestream.Monitor.Model.ApiClients
             }
 
             var twitchGames = await twitchTvHelixClient.SearchCategories(filterGameName);
-            if (twitchGames == null) return new List<KnownGame>();
+            if (twitchGames == null) return [];
 
             foreach (var game in twitchGames)
             {

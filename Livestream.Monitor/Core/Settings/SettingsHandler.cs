@@ -13,7 +13,8 @@ namespace Livestream.Monitor.Core
     // A single settings instance created from this could just directly be passed around instead, except places that actually needed to save
     public class SettingsHandler : ISettingsHandler
     {
-        private const string SettingsFileName = "settings.json";
+        public const string SettingsFileName = "settings.json";
+
         private bool settingsLoaded;
         private Settings settings;
 
@@ -74,13 +75,11 @@ namespace Livestream.Monitor.Core
                     string chatCommandFileArgs;
                     if (File.Exists(Settings.DefaultChromeFullPath))
                     {
-                        settings.ChatCommandLine = Settings.DefaultChromeCommand;
                         chatCommandFilePath = Settings.DefaultChromeFullPath;
                         chatCommandFileArgs = Settings.DefaultChromeArgs;
                     }
                     else
                     {
-                        settings.ChatCommandLine = Settings.DefaultEdgeChatCommand;
                         chatCommandFilePath = Settings.DefaultEdgePath;
                         chatCommandFileArgs = Settings.UrlReplacementToken;
                     }
@@ -118,6 +117,9 @@ namespace Livestream.Monitor.Core
         private bool MigrateSettingsVersion(string fullSettingsRaw, bool saveSettings)
         {
             if (settings.SettingsVersion >= Settings.CurrentSettingsVersion) return saveSettings;
+
+            // backup the current version
+            File.WriteAllText($"{SettingsFileName}.v{settings.SettingsVersion}.beforemigrate", fullSettingsRaw);
 
             // apply migrations 1 version at a time
             while (settings.SettingsVersion < Settings.CurrentSettingsVersion)
@@ -163,8 +165,8 @@ namespace Livestream.Monitor.Core
                                 }
                             }
 
-                            var filePath = chatCommandLine.Substring(0, endOfFilePathIndex).Trim();
-                            var args = chatCommandLine.Substring(endOfFilePathIndex).Trim();
+                            var filePath = chatCommandLine.Substring(0, endOfFilePathIndex).Trim().Trim('"');
+                            var args = chatCommandLine.Substring(endOfFilePathIndex).Trim().Trim('"');
 
                             settings.Twitch.ChatCommand.FilePath = filePath;
                             settings.Twitch.ChatCommand.Args = args;

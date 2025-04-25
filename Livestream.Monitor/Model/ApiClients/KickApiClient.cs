@@ -20,6 +20,8 @@ public class KickApiClient : IApiClient
 {
     public const string API_NAME = "kick";
 
+    private const string BaseUrl = @"https://www.kick.com/";
+
     private readonly IKickReadonlyClient client;
     private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
 
@@ -29,8 +31,6 @@ public class KickApiClient : IApiClient
     }
 
     public string ApiName => "kick";
-    public string BaseUrl => @"https://www.kick.com/";
-
     public bool HasChatSupport => true;
     public bool HasVodViewerSupport => false;
     public bool HasTopStreamsSupport => true;
@@ -38,7 +38,6 @@ public class KickApiClient : IApiClient
     public bool HasFollowedChannelsQuerySupport => false;
     public bool IsAuthorized { get; private set; }
     public List<string> VodTypes { get; } = [];
-    public string LivestreamerAuthorizationArg => string.Empty;
 
     public async Task Authorize(IViewAware screen)
     {
