@@ -26,7 +26,7 @@
 
     <mah:MetroWindow.Flyouts>
         <mah:FlyoutsControl>
-            <mah:Flyout Header="Settings" Position="Right" Width="300" IsOpen="{Binding IsSettingsOpen}">
+            <mah:Flyout Header="Settings" Position="Right" Width="300" IsOpen="{Binding IsSettingsOpen}" Theme="Adapt">
                 <ContentControl x:Name="Settings" cal:View.Model="{Binding Settings}" />
             </mah:Flyout>
         </mah:FlyoutsControl>
