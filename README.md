@@ -40,11 +40,11 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 
 Tweak the app to your liking with some of the following settings
 
+* Custom FilePath/Args independently for stream/vod/chat for every platform via `settings.json` (launch app 1 time to create file)
 * Disable notifications for individual streams, popular streams or everything
-* Custom command line option for launching livestream chats for the selected stream (presets include Chrome/Firefox/Edge).
 * Define your preferred stream qualities per api in a priority order
-* Change your colour theme using the theme button in settings
-* Copy or Open monitored stream URLs directly to your browser.
+* Change your colour theme using the theme buttons in settings
+* Copy to clipboard or Open stream URLs directly to your browser.
 
 ## Suggested streamlink/livestreamer configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player
@@ -68,6 +68,14 @@ I wanted a lighter weight GUI with additional features that supported more platf
 You can either use the handle or the channel id, handle is preferred.  
 - For handles, the URL looks like: `https://www.youtube.com/@handle` (e.g. `@MrBeast`)  
 - For channel IDs, the URL looks like: `https://www.youtube.com/channel/channel_id` (e.g. `UCX6OQ3DkcsbYNE6H8uQQuVA`)  
+
+#### How can I watch YouTube vods?
+
+As of `2025-04-25` you can use MPC-HC (such as from KLite Codec Pack) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases). 
+
+`yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC directory.
+
+VLC use to be able to play YouTube vods out of the box but does not as of `2025-04-25`.
 
 #### My <platform> auth token is invalid, how can I fix this?
 
