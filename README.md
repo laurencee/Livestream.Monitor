@@ -46,6 +46,18 @@ Tweak the app to your liking with some of the following settings
 * Change your colour theme using the theme buttons in settings
 * Copy to clipboard or Open stream URLs directly to your browser.
 
+#### settings.json details
+If you need to see the full FilePath + Args after replacement being launched, set `DebugMode` to true.
+
+The only other settings you may need to manually edit are the various [Platform configurations](#platform-configurations).
+
+##### Platform configurations
+All support platforms will have their own configuration sections for configuring their stream/vod/chat commands and any platform specific settings.
+
+The `FilePaths` entry allows both full paths and shortened paths, e.g. `C:\Program Files\Streamlink\bin\streamlink.exe` and `streamlink`, and should work with anything you can launch via Win+R (Run).
+
+FilePaths and Args support replacement tokens, all of them have `{url}`. Twitch specifically supports `{auth_token}`.
+
 ## Suggested streamlink/livestreamer configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player
 2. Change the number of threads when streaming HLS/HDS to 4
