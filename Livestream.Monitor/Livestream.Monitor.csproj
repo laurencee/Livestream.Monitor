@@ -108,6 +108,7 @@
     <Compile Include="Core\Settings\SettingsHandler.cs" />
     <Compile Include="Core\UI\BindableBehaviors.cs" />
     <Compile Include="Core\UI\CountryIdToFlagImageSourceConverter.cs" />
+    <Compile Include="Core\UI\DisableMetroDoubleClickBehavior.cs" />
     <Compile Include="Core\UI\InvertedBooleanConverter.cs" />
     <Compile Include="Core\UI\RestrictTextBoxInputBehavior.cs" />
     <Compile Include="Core\UI\TotalHoursTimespanConverter.cs" />
