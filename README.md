@@ -83,11 +83,22 @@ You can either use the handle or the channel id, handle is preferred.
 
 #### How can I watch YouTube vods?
 
-As of `2025-04-25` you can use MPC-HC (such as from KLite Codec Pack) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases). 
-
+As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).  
 `yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC directory.
 
-VLC use to be able to play YouTube vods out of the box but does not as of `2025-04-25`.
+After setting this up, your `settings.json` YouTube -> VodCommand section should look like this:
+```json
+"VodCommand": {
+  "FilePath": "mpc-hc64",
+  "Args": "{url}",
+  "CaptureStandardOutput": true,
+  "CaptureErrorOutput": true
+},
+```
+
+Now you should be able to use the VodViewer screen in the app to launch any YouTube channel vods.
+
+*VLC is unable to play YouTube vods out of the box as of `2025-04-25`. There maybe addons to fix this but I don't follow them*
 
 #### My <platform> auth token is invalid, how can I fix this?
 
