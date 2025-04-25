@@ -84,7 +84,7 @@ You can either use the handle or the channel id, handle is preferred.
 #### How can I watch YouTube vods?
 
 As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).  
-`yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC directory.
+`yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC directory. You may also need `ffmpeg.exe` available for highest quality [according to the MPC-HC readme](https://github.com/clsid2/mpc-hc?tab=readme-ov-file#overview-of-features).
 
 After setting this up, your `settings.json` YouTube -> VodCommand section should look like this:
 ```json
