@@ -1,6 +1,5 @@
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
@@ -12,7 +11,7 @@ using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.Views;
 using MahApps.Metro.Controls;
 using MahApps.Metro.Controls.Dialogs;
-using Octokit;
+using ExternalAPIs.GitHub;
 using Application = System.Windows.Application;
 using INavigationService = Livestream.Monitor.Core.INavigationService;
 
@@ -183,18 +182,11 @@ namespace Livestream.Monitor.ViewModels
 
         private async Task CheckForNewVersion()
         {
-            var githubClient =
-                new GitHubClient(new ProductHeaderValue("Livestream.Monitor",
-                    $"{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}"));
-
-            const string githubRepository = "Livestream.Monitor";
-            const string githubUsername = "laurencee";
-
+            var githubClient = new GitHubClient(); // no reason to store this, one time query
             var dialogController = await this.ShowProgressAsync("Update Check", "Checking for newer version...");
             try
             {
-                var releases = await githubClient.Repository.Release.GetAll(githubUsername, githubRepository);
-                var latestRelease = releases.FirstOrDefault();
+                var latestRelease = await githubClient.GetLatestRelease();
                 if (latestRelease != null)
                 {
                     if (IsNewerVersion(latestRelease))

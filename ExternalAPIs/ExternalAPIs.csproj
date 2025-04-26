@@ -88,6 +88,7 @@
     <Compile Include="Youtube\Query\PlaylistItemsQuery.cs" />
     <Compile Include="Youtube\RequestConstants.cs" />
     <Compile Include="Youtube\YoutubeReadonlyClient.cs" />
+    <Compile Include="GitHub\GitHubClient.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
