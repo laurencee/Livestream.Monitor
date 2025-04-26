@@ -24,7 +24,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly PopularLivestreamWatcher popularLivestreamWatcher;
-        public const string TrayIconControlName = "TrayIcon";
+        private const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
         private WindowState windowState = WindowState.Normal;
@@ -132,7 +132,7 @@ namespace Livestream.Monitor.ViewModels
             if (Execute.InDesignMode) return;
 
             taskbarIcon = Application.Current.MainWindow.FindChild<TaskbarIcon>(TrayIconControlName);
-            if (!Debugger.IsAttached && settingsHandler.Settings.CheckForNewVersions) await CheckForNewVersion();
+            if (!Debugger.IsAttached && settingsHandler.Settings.CheckForNewVersions) StartVersionCheck();
             await InitializeMonitorStreamsModel();
             popularLivestreamWatcher.StartWatching();
             base.OnViewLoaded(view);
@@ -180,36 +180,46 @@ namespace Livestream.Monitor.ViewModels
             if (dialogController.IsOpen) await dialogController.CloseAsync();
         }
 
-        private async Task CheckForNewVersion()
+        private void StartVersionCheck()
         {
-            var githubClient = new GitHubClient(); // no reason to store this, one time query
-            var dialogController = await this.ShowProgressAsync("Update Check", "Checking for newer version...");
-            try
+            Task.Run(async () =>
             {
-                var latestRelease = await githubClient.GetLatestRelease();
-                if (latestRelease != null)
+                try
                 {
+                    var githubClient = new GitHubClient();
+                    var latestRelease = await githubClient.GetLatestRelease();
+
+                    if (latestRelease == null || !Uri.IsWellFormedUriString(latestRelease.HtmlUrl, UriKind.Absolute))
+                        throw new Exception($"Invalid HtmlUrl provided by GitHub API for latest release: {latestRelease?.HtmlUrl ?? "<null>"}");
+
                     if (IsNewerVersion(latestRelease))
                     {
-                        await dialogController.CloseAsync();
-                        var dialogResult = await this.ShowMessageAsync("New version available",
-                            "There is a newer version available. Go to download page?",
-                            MessageDialogStyle.AffirmativeAndNegative);
-
-                        if (dialogResult == MessageDialogResult.Affirmative)
+                        // exceptions in here would crash the app, but we've validated all the normal stuff already
+                        // ReSharper disable AsyncVoidLambda
+                        await Execute.OnUIThreadAsync(async () =>
                         {
-                            Process.Start(latestRelease.HtmlUrl);
-                        }
+                            var dialogResult = await this.ShowMessageAsync("New version available",
+                                "There is a newer version available. Go to download page?",
+                                MessageDialogStyle.AffirmativeAndNegative);
+
+                            if (dialogResult == MessageDialogResult.Affirmative)
+                            {
+                                Process.Start(latestRelease.HtmlUrl);
+                            }
+                        });
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error", $"An error occurred while checking for a newer version.{Environment.NewLine}{ex.ExtractErrorMessage()}");
-            }
-
-            if (dialogController.IsOpen) await dialogController.CloseAsync();
+                catch(OperationCanceledException) { } // doesn't matter
+                catch(Exception ex)
+                {
+                    await Execute.OnUIThreadAsync(async () =>
+                    {
+                        await this.ShowMessageAsync("Error",
+                            $"An error occurred while checking for a newer version.{Environment.NewLine}{ex.ExtractErrorMessage()}");
+                    });
+                    // ReSharper restore AsyncVoidLambda
+                }
+            });
         }
 
         private bool IsNewerVersion(Release latestRelease)
