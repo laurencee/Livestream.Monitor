@@ -5,15 +5,15 @@ Supports **Twitch**, **YouTube** and **Kick**.
 Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)  
 [![v](https://img.shields.io/github/v/release/laurencee/Livestream.Monitor?label=)](https://github.com/laurencee/Livestream.Monitor/releases/latest)
 
-Leverages [streamlink](https://streamlink.github.io/) / [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) to launch livestreams through your own video player (VLC, MPC-HC, etc.). 
+Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.). 
 
 ![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
 
-The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer.
+The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
 ## Pre-requisites
 * [.NET 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) installed
-* [streamlink](https://github.com/streamlink/streamlink) or [livestreamer](http://docs.livestreamer.io/install.html#windows-binaries) installed and configured
+* [streamlink](https://github.com/streamlink/streamlink) installed and configured
 
 ## Usage
 1. Download the latest release and extract anywhere you want.
@@ -58,20 +58,17 @@ The `FilePaths` entry allows both full paths and shortened paths, e.g. `C:\Progr
 
 FilePaths and Args support replacement tokens, all of them have `{url}`. Twitch specifically supports `{auth_token}`.
 
-## Suggested streamlink/livestreamer configuration
+## Suggested streamlink configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player
 2. Change the number of threads when streaming HLS/HDS to 4
 ```
 # Number of threads to use when streaming HLS streams
-hls-segment-threads=4
+stream-segment-threads=4
 
 twitch-low-latency
 twitch-disable-ads
 hls-live-edge=1
 ```
-
-### Why make another livestreamer GUI?
-I wanted a lighter weight GUI with additional features that supported more platforms.
 
 ### FAQ
 
@@ -84,7 +81,7 @@ You can either use the handle or the channel id, handle is preferred.
 #### How can I watch YouTube vods?
 
 As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).  
-`yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC directory. You may also need `ffmpeg.exe` available for highest quality [according to the MPC-HC readme](https://github.com/clsid2/mpc-hc?tab=readme-ov-file#overview-of-features).
+`yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC executable directory. You may also need `ffmpeg.exe` available for highest quality [according to the MPC-HC readme](https://github.com/clsid2/mpc-hc?tab=readme-ov-file#overview-of-features).
 
 After setting this up, your `settings.json` YouTube -> VodCommand section should look like this already if you haven't customized it:
 ```json
