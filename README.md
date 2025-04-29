@@ -5,7 +5,8 @@ Supports **Twitch**, **YouTube** and **Kick**.
 Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)  
 [![v](https://img.shields.io/github/v/release/laurencee/Livestream.Monitor?label=)](https://github.com/laurencee/Livestream.Monitor/releases/latest)
 
-Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.). 
+Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.).  
+You can quickly install this on Win10/11 via cmd prompt or powershell `winget install Streamlink`
 
 ![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
 
