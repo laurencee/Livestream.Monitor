@@ -34,6 +34,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * Filter your channel list to find and manage streams quickly
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)
+* Right click context menu for various options on livestream list and top streams tiles
 
 **TIP**: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)
 
@@ -45,7 +46,7 @@ Tweak the app to your liking with some of the following settings
 * Disable notifications for individual streams, popular streams or everything
 * Define your preferred stream qualities per api in a priority order
 * Change your colour theme using the theme buttons in settings
-* Copy to clipboard or Open stream URLs directly to your browser.
+* Copy to clipboard or Open stream URLs directly to your browser from the right click context menu.
 
 #### settings.json details
 If you need to see the full FilePath + Args after replacement being launched, set `DebugMode` to true.
