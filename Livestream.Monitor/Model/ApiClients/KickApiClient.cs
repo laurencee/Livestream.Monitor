@@ -150,6 +150,8 @@ so we might as well just do machine-to-machine auth
 
     public async Task<TopStreamsResponse> GetTopStreams(TopStreamQuery topStreamQuery)
     {
+        if (!IsAuthorized) return new TopStreamsResponse();
+
         var query = new GetLivestreamsQuery()
         {
             Sort = LivestreamsSort.ViewerCount,
@@ -206,6 +208,7 @@ so we might as well just do machine-to-machine auth
         CancellationToken cancellationToken)
     {
         if (channelIdentifiers.Count == 0) return [];
+        if (!IsAuthorized) return [];
 
         var query = new GetChannelsQuery()
         {

@@ -135,23 +135,34 @@ namespace Livestream.Monitor.Model.Monitoring
                 livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
 
-            foreach (var apiClient in apiClientFactory.GetAll())
-            {
-                // allows for clearing auth tokens at startup and re-authentication during initialization
-                if (!apiClient.IsAuthorized && Livestreams.Any(x => x.ApiClient == apiClient))
-                    await apiClient.Authorize(viewAware);
-
-                var result = await apiClient.Initialize(cancellationToken);
-                if (result.ChannelIdentifierDataDirty)
-                {
-                    SaveLivestreams();
-                }
-            }
-
-            Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
-            CanRefreshLivestreams = Livestreams.Any();
             try
             {
+                foreach (var apiClient in apiClientFactory.GetAll())
+                {
+                    // allows for clearing auth tokens at startup and re-authentication during initialization
+                    if (!apiClient.IsAuthorized && Livestreams.Any(x => x.ApiClient == apiClient))
+                    {
+                        try
+                        {
+                            await apiClient.Authorize(viewAware);
+                        }
+                        catch (Exception e)
+                        {
+                            await viewAware.ShowMessageAsync("Error authorizing API client " + apiClient.ApiName,
+                                $"API Client {apiClient.ApiName} authorization failure: " + e.ExtractErrorMessage());
+                        }
+                    }
+
+                    var result = await apiClient.Initialize(cancellationToken);
+                    if (result.ChannelIdentifierDataDirty)
+                    {
+                        SaveLivestreams();
+                    }
+                }
+
+                Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
+                CanRefreshLivestreams = Livestreams.Any();
+
                 await RefreshLivestreams();
             }
             finally // don't stop initialization just due to something failing during stream refreshing

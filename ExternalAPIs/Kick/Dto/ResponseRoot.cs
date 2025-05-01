@@ -11,9 +11,15 @@ public class ResponseRoot<T>
     public string Message { get; set; }
 }
 
-public class LivestreamsRoot : ResponseRoot<List<Livestream>> { }
+public class LivestreamsRoot : ResponseRoot<List<Livestream>>
+{
+    public LivestreamsRoot() => Data = [];
+}
 
-public class ChannelsRoot : ResponseRoot<List<Channel>> { }
+public class ChannelsRoot : ResponseRoot<List<Channel>>
+{
+    public ChannelsRoot() => Data = [];
+}
 
 public class Livestream
 {

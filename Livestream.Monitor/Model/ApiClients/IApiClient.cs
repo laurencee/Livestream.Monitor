@@ -69,7 +69,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
     public class TopStreamsResponse
     {
-        public List<LivestreamModel> LivestreamModels { get; set; }
+        public List<LivestreamModel> LivestreamModels { get; set; } = [];
 
         public bool HasNextPage { get; set; }
     }
