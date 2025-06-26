@@ -182,8 +182,9 @@ namespace Livestream.Monitor.Model.Monitoring
             var livestreamQueryResults = await apiClient.AddChannel(channelIdentifier);
             livestreamQueryResults.EnsureAllQuerySuccess();
 
-            AddChannels(channelIdentifier);
             Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
+            AddChannels(channelIdentifier);
+            CanRefreshLivestreams = Livestreams.Any();
         }
 
         public async Task ImportFollows(string username, IApiClient apiClient, IViewAware viewAware)
@@ -327,7 +328,7 @@ namespace Livestream.Monitor.Model.Monitoring
             if (channelAdded)
             {
                 SaveLivestreams();
-                SelectedLivestream = Livestreams.FirstOrDefault();
+                SelectedLivestream = Livestreams.FirstOrDefault(x => x.ChannelIdentifier.Equals(newChannels[0]));
             }
         }
 
