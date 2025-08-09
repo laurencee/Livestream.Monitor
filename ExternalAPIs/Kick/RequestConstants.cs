@@ -8,5 +8,7 @@ namespace ExternalAPIs.Kick
         public const string ChannelsEndpoint = KickApiRoot + "/channels";
         public const string LivestreamsEndpoint = KickApiRoot + "/livestreams";
         public const string CategoriesEndpoint = KickApiRoot + "/categories";
+        
+        public const int MaxRequestLimit = 100;
     }
 }

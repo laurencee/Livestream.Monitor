@@ -1,16 +1,33 @@
-﻿namespace ExternalAPIs.Kick.Query;
+﻿using System;
+using System.Collections.Generic;
+
+namespace ExternalAPIs.Kick.Query;
 
 public class GetLivestreamsQuery
 {
-    /// <summary> Optional to filter by a single channel, usually you won't want to do this as <see cref="GetChannelsQuery"/> can the same data in batch requests </summary>
-    public string BroadcasterUserId { get; set; }
+    private int? limit;
+
+    /// <summary> Optional filter to specific channels </summary>
+    public List<int> BroadcasterUserIds { get; set; } = new List<int>();
 
     public int? CategoryId { get; set; }
 
     public string Language { get; set; }
 
-    /// <summary> Leaving this null defaults to 25, max limit is 100 from the API </summary>
-    public int? Limit { get; set; }
+    /// <summary> Max number of responses per request </summary>
+    /// <remarks> Null defaults to 25 from kick api, max limit is <see cref="RequestConstants.MaxRequestLimit"/> </remarks>
+    public int? Limit
+    {
+        get => limit;
+        set
+        {
+            if (limit > RequestConstants.MaxRequestLimit || limit < 1)
+                throw new ArgumentOutOfRangeException(
+                    nameof(value), $"Limit must be between 1 and {RequestConstants.MaxRequestLimit}. Value was {value}.");
+            
+            limit = value;
+        }
+    }
 
     /// <summary> Setting this to <see cref="LivestreamsSort.ViewerCount"/> gives the top streams </summary>
     public LivestreamsSort Sort { get; set; }

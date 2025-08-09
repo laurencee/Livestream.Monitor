@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
@@ -11,8 +12,6 @@ namespace ExternalAPIs.Kick;
 
 public class KickReadonlyClient : IKickReadonlyClient
 {
-    private const int MaxRequestLimit = 100;
-
     // ReSharper disable once InconsistentNaming
     private string _accessToken;
 
@@ -21,11 +20,11 @@ public class KickReadonlyClient : IKickReadonlyClient
         var urlBuilder = new StringBuilder(RequestConstants.LivestreamsEndpoint);
 
         var queryParams = new List<string>();
-        if (query.BroadcasterUserId != null)
-            queryParams.Add($"broadcaster_user_id={query.BroadcasterUserId}");
+        if (query.BroadcasterUserIds.Any()) 
+            queryParams.Add($"broadcaster_user_id={string.Join("&broadcaster_user_id=", query.BroadcasterUserIds)}");
 
-        if (query.Limit.HasValue)
-            queryParams.Add($"limit={query.Limit}");
+        if (query.Limit.HasValue) 
+            queryParams.Add($"limit={query.Limit.Value}");
 
         if (query.CategoryId.HasValue)
             queryParams.Add($"category_id={query.CategoryId}");
