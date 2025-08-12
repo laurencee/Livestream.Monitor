@@ -5,9 +5,11 @@ namespace ExternalAPIs.Kick.Query;
 
 public class GetLivestreamsQuery
 {
+    public const int MaxBroadcasterUserIds = 50;
     private int? limit;
 
-    /// <summary> Optional filter to specific channels </summary>
+    /// <summary> Optional filter to specific channels. </summary>
+    /// <remarks> Max supported user ids per request is <see cref="MaxBroadcasterUserIds"/> </remarks>
     public List<int> BroadcasterUserIds { get; set; } = new List<int>();
 
     public int? CategoryId { get; set; }
