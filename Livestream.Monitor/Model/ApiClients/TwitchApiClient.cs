@@ -260,7 +260,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             var nextPageKeyLookup = new VodQuery()
             {
-                StreamDisplayName = user.Id,
+                StreamDisplayName = user.DisplayName,
                 Skip = vodQuery.Skip + vodQuery.Take,
                 Take = vodQuery.Take,
                 VodTypes = vodQuery.VodTypes,
