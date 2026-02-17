@@ -20,8 +20,15 @@ namespace Livestream.Monitor.Model.ApiClients
     public class TwitchApiClient : IApiClient
     {
         public const string API_NAME = "twitchtv";
-        private const string BroadcastVodType = "Broadcasts";
-        private const string HighlightVodType = "Highlights";
+
+        private static class VodType
+        {
+            public const string Archive = "archive";
+            public const string Highlight = "highlight";
+            public const string Upload = "upload";
+            public const string All = "all";
+        }
+        
         private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
         private const string BaseUrl = @"https://www.twitch.tv/";
 
@@ -58,8 +65,9 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public List<string> VodTypes { get; } =
         [
-            BroadcastVodType,
-            HighlightVodType,
+            VodType.Archive,
+            VodType.Highlight,
+            VodType.Upload
         ];
 
         public async Task Authorize(IViewAware screen)
@@ -247,10 +255,12 @@ namespace Livestream.Monitor.Model.ApiClients
             if (user == null) return new List<VodDetails>();
 
             vodsPaginationKeyMap.TryGetValue(vodQuery, out var paginationKey);
+            var vodType = MapToHelixVodType(vodQuery.VodTypes);
             var getVideosQuery = new GetVideosQuery()
             {
                 UserId = user.Id,
                 First = vodQuery.Take,
+                Type = vodType,
                 CursorPagination = new CursorPagination()
                 {
                     After = paginationKey
@@ -520,12 +530,24 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private async Task<User> GetUserByUsername(string username)
         {
-            if (streamDisplayNameToUserMap.TryGetValue(username, out var user))
-                return user;
+            if (streamDisplayNameToUserMap.TryGetValue(username, out var user)) return user;
 
             user = await twitchTvHelixClient.GetUserByUsername(username);
             streamDisplayNameToUserMap[username] = user;
             return user;
+        }
+
+        private static string MapToHelixVodType(IEnumerable<string> vodTypes)
+        {
+            var selectedVodType = vodTypes?.FirstOrDefault();
+            if (string.IsNullOrWhiteSpace(selectedVodType)) return null;
+
+            if (selectedVodType.IsEqualTo(VodType.Archive)) return VodType.Archive;
+            if (selectedVodType.IsEqualTo(VodType.Highlight)) return VodType.Highlight;
+            if (selectedVodType.IsEqualTo(VodType.Upload)) return VodType.Upload;
+            if (selectedVodType.IsEqualTo(VodType.All)) return VodType.All;
+
+            return null;
         }
     }
 }

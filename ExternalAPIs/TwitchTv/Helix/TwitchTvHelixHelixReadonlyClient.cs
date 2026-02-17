@@ -183,6 +183,11 @@ namespace ExternalAPIs.TwitchTv.Helix
                 request += "&user_id=" + getVideosQuery.UserId;
             }
 
+            if (!string.IsNullOrWhiteSpace(getVideosQuery.Type))
+            {
+                request += "&type=" + getVideosQuery.Type;
+            }
+
             var channelVideosRoot = await ExecuteRequest<VideosRoot>(request, cancellationToken);
             return channelVideosRoot;
         }
