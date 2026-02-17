@@ -277,9 +277,24 @@ namespace Livestream.Monitor.Model.ApiClients
             };
             vodsPaginationKeyMap[nextPageKeyLookup] = videosRoot.Pagination.Cursor;
 
+            // fallback for active live streams that don't populate the current stream vod thumbnail correctly
+            string liveThumbnailTemplate = null;
+            if (videosRoot.Videos.Any(video => IsProcessingVodThumbnail(video.ThumbnailTemplateUrl)))
+            {
+                var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery()
+                {
+                    UserIds = [user.Id],
+                });
+                liveThumbnailTemplate = streamsRoot.Streams.FirstOrDefault()?.ThumbnailTemplateUrl;
+            }
+
             var vods = videosRoot.Videos.Select(video =>
             {
-                var largeThumbnail = video.ThumbnailTemplateUrl.Replace("%{width}", "640").Replace("%{height}", "360");
+                var thumbnailTemplate = video.ThumbnailTemplateUrl;
+                if (IsProcessingVodThumbnail(thumbnailTemplate) && !string.IsNullOrWhiteSpace(liveThumbnailTemplate))
+                    thumbnailTemplate = liveThumbnailTemplate;
+
+                var largeThumbnail = ResolveLargeThumbnailUrl(thumbnailTemplate);
                 // stupid fucking new duration format from twitch instead of just returning seconds or some other sensible value
                 var match = Regex.Match(video.Duration, @"((?<hours>\d+)?h)?((?<mins>\d+)?)m?(?<secs>\d+)s");
                 var hours = match.Groups["hours"].Value;
@@ -548,6 +563,23 @@ namespace Livestream.Monitor.Model.ApiClients
             if (selectedVodType.IsEqualTo(VodType.All)) return VodType.All;
 
             return null;
+        }
+
+        private static bool IsProcessingVodThumbnail(string thumbnailTemplateUrl)
+        {
+            if (string.IsNullOrWhiteSpace(thumbnailTemplateUrl)) return false;
+            return thumbnailTemplateUrl.IndexOf("404_processing_", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static string ResolveLargeThumbnailUrl(string thumbnailTemplateUrl)
+        {
+            if (string.IsNullOrWhiteSpace(thumbnailTemplateUrl)) return null;
+
+            return thumbnailTemplateUrl
+                .Replace("%{width}", "640")
+                .Replace("%{height}", "360")
+                .Replace("{width}", "640")
+                .Replace("{height}", "360");
         }
     }
 }
