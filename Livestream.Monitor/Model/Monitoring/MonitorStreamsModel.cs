@@ -181,6 +181,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
             var livestreamQueryResults = await apiClient.AddChannel(channelIdentifier);
             livestreamQueryResults.EnsureAllQuerySuccess();
+            if (channelIdentifiers.Contains(channelIdentifier)) return;
 
             Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
             AddChannels(channelIdentifier);

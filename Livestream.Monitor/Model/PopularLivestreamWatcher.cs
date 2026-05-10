@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Caching;
@@ -22,9 +22,9 @@ namespace Livestream.Monitor.Model
         private readonly IApiClientFactory apiClientFactory;
         private readonly MemoryCache notifiedEvents = MemoryCache.Default;
         private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
-        private readonly CancellationTokenSource cancellationTokenSource = new();
+        private readonly object watchLock = new();
 
-        private bool watching;
+        private CancellationTokenSource cancellationTokenSource;
         
         public PopularLivestreamWatcher(
             ISettingsHandler settingsHandler,
@@ -51,7 +51,10 @@ namespace Livestream.Monitor.Model
             {
                 if (args.PropertyName == nameof(Settings.MinimumEventViewers))
                 {
-                    if (!watching && PopularEventNotificationEnabled) StartWatching();
+                    if (PopularEventNotificationEnabled)
+                        StartWatching();
+                    else
+                        StopWatching();
                 }
                 else if (args.PropertyName == nameof(Settings.DisableNotifications))
                 {
@@ -71,28 +74,58 @@ namespace Livestream.Monitor.Model
         {
             if (!PopularEventNotificationEnabled) return;
 
-            watching = true;
+            CancellationTokenSource localCancellationTokenSource;
+            lock (watchLock)
+            {
+                if (cancellationTokenSource != null) return;
+
+                localCancellationTokenSource = new CancellationTokenSource();
+                cancellationTokenSource = localCancellationTokenSource;
+            }
+
             Task.Run(async () =>
             {
-                while (watching && PopularEventNotificationEnabled)
+                try
                 {
-                    await NotifyPopularStreams();
-                    await Task.Delay(PollMs);
+                    while (!localCancellationTokenSource.IsCancellationRequested)
+                    {
+                        await NotifyPopularStreams();
+                        await Task.Delay(PollMs, localCancellationTokenSource.Token);
+                    }
                 }
-            }, cancellationTokenSource.Token).ContinueWith(_ => {}, TaskContinuationOptions.OnlyOnCanceled); // ignore cancellations
+                catch (OperationCanceledException) { } // ignore
+                finally
+                {
+                    lock (watchLock)
+                    {
+                        if (ReferenceEquals(cancellationTokenSource, localCancellationTokenSource))
+                        {
+                            cancellationTokenSource = null;
+                        }
+                    }
+
+                    localCancellationTokenSource.Dispose();
+                }
+            }, localCancellationTokenSource.Token);
         }
 
         public void StopWatching()
         {
-            watching = false;
-            cancellationTokenSource.Cancel();
+            CancellationTokenSource localCancellationTokenSource;
+            lock (watchLock)
+            {
+                if (cancellationTokenSource == null) return;
+                localCancellationTokenSource = cancellationTokenSource;
+                cancellationTokenSource = null;
+            }
+
+            localCancellationTokenSource?.Cancel();
         }
 
         public async Task NotifyPopularStreams()
         {
             if (!PopularEventNotificationEnabled)
             {
-                watching = false;
                 return;
             }
 

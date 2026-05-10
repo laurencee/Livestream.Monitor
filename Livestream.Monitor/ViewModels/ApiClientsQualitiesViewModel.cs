@@ -105,6 +105,8 @@ namespace Livestream.Monitor.ViewModels
 
         protected override void OnActivate()
         {
+            Items.Clear();
+
             var settingsStreamQualities = settingsHandler.Settings.FavoriteApiQualities;
             var apiClients = apiClientFactory.GetAll().ToList();
 
@@ -124,6 +126,9 @@ namespace Livestream.Monitor.ViewModels
                 apiClientQualities.Qualities.CollectionChanged += (sender, args) => { NotifySaveRevert(); };
                 Items.Add(apiClientQualities);
             }
+
+            ActivateItem(Items.FirstOrDefault());
+            base.OnActivate();
         }
 
         private void NotifySaveRevert()

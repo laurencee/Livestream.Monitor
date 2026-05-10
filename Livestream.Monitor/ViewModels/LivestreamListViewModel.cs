@@ -122,6 +122,7 @@ namespace Livestream.Monitor.ViewModels
                 refreshErrorCount++;
 
                 await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
+                refreshTimer.Start();
             }
 
             refreshCount++;

@@ -149,7 +149,7 @@ namespace Livestream.Monitor.Model
         {
             if (removedLivestream == null) throw new ArgumentNullException(nameof(removedLivestream));
 
-            removedLivestream.PropertyChanged += LivestreamOnPropertyChanged;
+            removedLivestream.PropertyChanged -= LivestreamOnPropertyChanged;
         }
 
         private void HookLivestreamChangeEvents(LivestreamModel newLivestream)

@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -12,10 +12,9 @@ namespace Livestream.Monitor.Tests.TestFramework
         {
             fixture.Register(() =>
             {
-                var generator = fixture.Create<Generator<int>>();
-                var generatorValue = generator.Take(1);
-                string livestreamId = "Livestream " + generatorValue;
-                string channelId = "Channel " + generatorValue;
+                var identifier = fixture.Create<Guid>().ToString("N");
+                string livestreamId = "Livestream " + identifier;
+                string channelId = "Channel " + identifier;
                 var apiClient = fixture.Create<IApiClient>();
                 return new LivestreamModel(livestreamId, new ChannelIdentifier(apiClient, channelId));
             });
