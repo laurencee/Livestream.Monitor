@@ -30,7 +30,9 @@ namespace Livestream.Monitor.ViewModels
         private readonly DispatcherTimer refreshTimer;
 
         private bool loading;
+        private bool pendingViewRefresh;
         private int refreshErrorCount, refreshCount;
+        private int suspendViewRefreshCount;
         private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
@@ -76,6 +78,7 @@ namespace Livestream.Monitor.ViewModels
         public async Task RefreshLivestreams()
         {
             refreshTimer.Stop();
+            BeginViewRefreshBatch();
             try
             {
                 await StreamsModel.RefreshLivestreams();
@@ -123,6 +126,10 @@ namespace Livestream.Monitor.ViewModels
 
                 await this.ShowMessageAsync("Error refreshing livestreams", ex.ExtractErrorMessage());
                 refreshTimer.Start();
+            }
+            finally
+            {
+                EndViewRefreshBatch();
             }
 
             refreshCount++;
@@ -353,7 +360,7 @@ namespace Livestream.Monitor.ViewModels
                 }
             }
 
-            ViewSource.View.Refresh();
+            RequestViewRefresh();
         }
 
         private void HookLiveStreamEvents(LivestreamModel livestream)
@@ -371,7 +378,7 @@ namespace Livestream.Monitor.ViewModels
             if (ViewSource.SortDescriptions.Any(x => x.PropertyName == e.PropertyName))
             {
                 // make sure streams going online/offline cause the view sort descriptions to be applied immediately
-                ViewSource.View.Refresh();
+                RequestViewRefresh();
             }
         }
 
@@ -413,12 +420,39 @@ namespace Livestream.Monitor.ViewModels
         private void OnLivestreamsRefreshComplete(object sender, EventArgs eventArgs)
         {
             // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately
-            ViewSource.View.Refresh();
+            RequestViewRefresh();
         }
 
         private void OnFilterModelOnPropertyChanged(object sender, PropertyChangedEventArgs args)
         {
-            ViewSource.View.Refresh();
+            RequestViewRefresh();
+        }
+
+        private void BeginViewRefreshBatch()
+        {
+            suspendViewRefreshCount++;
+        }
+
+        private void EndViewRefreshBatch()
+        {
+            if (suspendViewRefreshCount == 0) return;
+
+            suspendViewRefreshCount--;
+            if (suspendViewRefreshCount != 0 || !pendingViewRefresh) return;
+            
+            pendingViewRefresh = false;
+            ViewSource.View?.Refresh();
+        }
+
+        private void RequestViewRefresh()
+        {
+            if (suspendViewRefreshCount > 0)
+            {
+                pendingViewRefresh = true;
+                return;
+            }
+
+            ViewSource.View?.Refresh();
         }
 
         public async Task Handle(ExceptionDispatchInfo message)

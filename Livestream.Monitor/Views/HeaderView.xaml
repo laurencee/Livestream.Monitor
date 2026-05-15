@@ -12,7 +12,8 @@
     <StackPanel Orientation="Horizontal">
         <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox x:Name="FilterModel_LivestreamNameFilter" controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100"
+        <TextBox x:Name="FilterModel_LivestreamNameFilter" Text="{Binding FilterModel.LivestreamNameFilter, UpdateSourceTrigger=PropertyChanged, Delay=50}" 
+                 controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100"
                  controls:TextBoxHelper.ClearTextButton="True" />
         <ComboBox x:Name="FilterModel_ApiClientNames" Margin="2" />
         <ToggleButton x:Name="ToggleShowOnlineOnly" Margin="2"
