@@ -157,11 +157,10 @@ namespace Livestream.Monitor.ViewModels
                 notificationWindow?.Show();
             }
 
-            if (firstMinimize) // only show the notification one time
-            {
+            var showMinimizeNotification = firstMinimize && !settingsHandler.Settings.DisableMinimizeToTrayNotification;
+            firstMinimize = false; // only show the notification max one time
+            if (showMinimizeNotification)
                 taskbarIcon.ShowBalloonTip("Livestream Monitor", "Livestream Monitor minimized to tray", BalloonIcon.Info);
-                firstMinimize = false;
-            }
         }
 
         private async Task InitializeMonitorStreamsModel()

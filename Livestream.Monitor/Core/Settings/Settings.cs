@@ -31,7 +31,7 @@ namespace Livestream.Monitor.Core
         private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
         private int minimumEventViewers = DefaultMinimumPopularEventViewers;
         private string livestreamerFullPath;
-        private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs;
+        private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs, disableMinimizeToTrayNotification;
         private int settingsVersion;
         private DataGridSortState livestreamListSortState;
         private TwitchSettings twitch = new();
@@ -65,6 +65,13 @@ namespace Livestream.Monitor.Core
         {
             get => disableRefreshErrorDialogs;
             set => Set(ref disableRefreshErrorDialogs, value);
+        }
+
+        [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
+        public bool DisableMinimizeToTrayNotification
+        {
+            get => disableMinimizeToTrayNotification;
+            set => Set(ref disableMinimizeToTrayNotification, value);
         }
 
         [DefaultValue(MetroThemeBaseColour.BaseDark)]

@@ -43,6 +43,8 @@
                       ToolTip="When unchecked, will disable all notifications (including online notifications) from displaying" />
                 <CheckBox x:Name="DisableRefreshErrorDialogs" Content="Disable refresh error dialogs"
                       ToolTip="When checked, will disable error dialogs from being displayed due to stream refresh failures" />
+                <CheckBox x:Name="DisableMinimizeToTrayNotification" Content="Disable minimize to tray popup"
+                      ToolTip="When checked, will disable the tray popup shown the first time the app is minimized after launch" />
                 <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide Stream Output On Load"
                       ToolTip="When checked, the stream output box will be hidden upon successful stream load" />
                 <CheckBox x:Name="PassthroughClientId" Content="Bypass OAuth to twitch"

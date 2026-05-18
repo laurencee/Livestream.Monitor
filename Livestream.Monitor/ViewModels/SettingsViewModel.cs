@@ -17,7 +17,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly Dictionary<string, List<string>> errors = new();
         private readonly ISettingsHandler settingsHandler;
         private int minimumEventViewers;
-        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions, disableRefreshErrorDialogs;
+        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions, disableRefreshErrorDialogs, disableMinimizeToTrayNotification;
 
         public SettingsViewModel()
         {
@@ -113,6 +113,18 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool DisableMinimizeToTrayNotification
+        {
+            get => disableMinimizeToTrayNotification;
+            set
+            {
+                if (value == disableMinimizeToTrayNotification) return;
+                disableMinimizeToTrayNotification = value;
+                NotifyOfPropertyChange(() => DisableMinimizeToTrayNotification);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         public bool CanSave
         {
             get
@@ -122,7 +134,8 @@ namespace Livestream.Monitor.ViewModels
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
                        PassthroughClientId != settingsHandler.Settings.Twitch.PassthroughClientId ||
                        CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
-                       DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs;
+                       DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs ||
+                       DisableMinimizeToTrayNotification != settingsHandler.Settings.DisableMinimizeToTrayNotification;
             }
         }
 
@@ -164,6 +177,7 @@ namespace Livestream.Monitor.ViewModels
             settingsHandler.Settings.Twitch.PassthroughClientId = PassthroughClientId;
             settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
             settingsHandler.Settings.DisableRefreshErrorDialogs = DisableRefreshErrorDialogs;
+            settingsHandler.Settings.DisableMinimizeToTrayNotification = DisableMinimizeToTrayNotification;
             settingsHandler.SaveSettings();
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
@@ -208,6 +222,7 @@ namespace Livestream.Monitor.ViewModels
             PassthroughClientId = settingsHandler.Settings.Twitch.PassthroughClientId;
             CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
             DisableRefreshErrorDialogs = settingsHandler.Settings.DisableRefreshErrorDialogs;
+            DisableMinimizeToTrayNotification = settingsHandler.Settings.DisableMinimizeToTrayNotification;
 
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();
