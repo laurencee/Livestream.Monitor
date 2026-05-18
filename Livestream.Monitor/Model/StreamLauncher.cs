@@ -47,7 +47,18 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
-            var chatUrl = await livestreamModel.GetChatUrl;
+            string chatUrl;
+            try
+            {
+                chatUrl = await livestreamModel.GetChatUrl();
+            }
+            catch (Exception ex)
+            {
+                await fromScreen.ShowMessageAsync("Error opening chat",
+                    $"An error occurred attempting to open the chat: {ex.ExtractErrorMessage()}");
+                return;
+            }
+
             var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: $"Chat '{livestreamModel.DisplayName}'",
                 initialMessageText: $"Launching chat for {livestreamModel.DisplayName}...");
@@ -62,7 +73,18 @@ namespace Livestream.Monitor.Model
         {
             if (livestreamModel?.ApiClient == null || !livestreamModel.Live) return;
 
-            var streamUrl = await livestreamModel.GetStreamUrl;
+            string streamUrl;
+            try
+            {
+                streamUrl = await livestreamModel.GetStreamUrl();
+            }
+            catch (Exception ex)
+            {
+                await fromScreen.ShowMessageAsync("Error opening stream",
+                    $"An error occurred attempting to open the stream: {ex.ExtractErrorMessage()}");
+                return;
+            }
+
             var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 initialMessageText: $"Launching {livestreamModel.ApiClient.ApiName} stream {livestreamModel.DisplayName}...");

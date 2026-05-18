@@ -148,7 +148,7 @@ namespace Livestream.Monitor.ViewModels
         {
             if (stream == null) return;
 
-            var streamUrl = await stream.LivestreamModel.GetStreamUrl;
+            var streamUrl = await stream.LivestreamModel.GetStreamUrl();
             Process.Start(streamUrl);
         }
 
@@ -175,13 +175,12 @@ namespace Livestream.Monitor.ViewModels
             // clipboard.SetDataObject can sometimes fail due to a WPF bug, at least don't crash the app if this happens
             try
             {
-                var streamUrl = await stream.LivestreamModel.GetStreamUrl;
+                var streamUrl = await stream.LivestreamModel.GetStreamUrl();
                 Clipboard.SetDataObject(streamUrl);
             }
             catch (Exception e)
             {
-                await this.ShowMessageAsync("Error copying url",
-                    $"An error occurred attempting to copy the url, please try again: {e.ExtractErrorMessage()}");
+                await this.ShowMessageAsync("Error copying url", $"An error occurred attempting to copy the url: {e.ExtractErrorMessage()}");
             }
         }
 

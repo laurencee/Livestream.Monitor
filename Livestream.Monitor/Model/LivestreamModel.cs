@@ -131,9 +131,9 @@ namespace Livestream.Monitor.Model
             set => Set(ref language, value);
         }
 
-        public Task<string> GetStreamUrl => ApiClient?.GetStreamUrl(this);
+        public Task<string> GetStreamUrl() => ApiClient?.GetStreamUrl(this);
 
-        public Task<string> GetChatUrl => ApiClient?.GetChatUrl(this);
+        public Task<string> GetChatUrl() => ApiClient?.GetChatUrl(this);
 
         /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
         public string ImportedBy { get; set; }

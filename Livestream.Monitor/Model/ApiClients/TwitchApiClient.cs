@@ -489,6 +489,8 @@ namespace Livestream.Monitor.Model.ApiClients
             var query = new GetUsersQuery();
             query.UserIds.Add(channelId.ChannelId);
             var users = await twitchTvHelixClient.GetUsers(query);
+            if (users.Count == 0) throw new InvalidOperationException($"Channel {channelId.DisplayName} does not exist (likely suspended or deleted)");
+            
             streamDisplayNameToUserMap[channelId.DisplayName] = users[0];
             return users[0].Login;
         }
