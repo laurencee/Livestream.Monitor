@@ -16,19 +16,14 @@ using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model.ApiClients;
 
-public class KickApiClient : IApiClient
+public class KickApiClient(IKickReadonlyClient client) : IApiClient
 {
     public const string API_NAME = "kick";
 
     private const string BaseUrl = @"https://www.kick.com/";
 
-    private readonly IKickReadonlyClient client;
+    private readonly IKickReadonlyClient client = client ?? throw new ArgumentNullException(nameof(client));
     private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
-
-    public KickApiClient(IKickReadonlyClient client)
-    {
-        this.client = client ?? throw new ArgumentNullException(nameof(client));
-    }
 
     public string ApiName => "kick";
     public bool HasChatSupport => true;
@@ -207,8 +202,7 @@ so we might as well just do machine-to-machine auth
         IReadOnlyCollection<ChannelIdentifier> channelIdentifiers,
         CancellationToken cancellationToken)
     {
-        if (channelIdentifiers.Count == 0) return [];
-        if (!IsAuthorized) return [];
+        if (channelIdentifiers.Count == 0 || !IsAuthorized) return [];
 
         var query = new GetChannelsQuery()
         {

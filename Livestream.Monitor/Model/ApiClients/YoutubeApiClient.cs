@@ -15,18 +15,13 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
-    public class YoutubeApiClient : IApiClient
+    public class YoutubeApiClient(IYoutubeReadonlyClient youtubeClient) : IApiClient
     {
         public const string API_NAME = "youtube";
 
-        private readonly IYoutubeReadonlyClient youtubeClient;
-        private readonly HashSet<ChannelIdentifier> monitoredChannels = new HashSet<ChannelIdentifier>();
-        private readonly Dictionary<VodQuery, string> vodsPageTokenMap = new Dictionary<VodQuery, string>();
-
-        public YoutubeApiClient(IYoutubeReadonlyClient youtubeClient)
-        {
-            this.youtubeClient = youtubeClient ?? throw new ArgumentNullException(nameof(youtubeClient));
-        }
+        private readonly IYoutubeReadonlyClient youtubeClient = youtubeClient ?? throw new ArgumentNullException(nameof(youtubeClient));
+        private readonly HashSet<ChannelIdentifier> monitoredChannels = new();
+        private readonly Dictionary<VodQuery, string> vodsPageTokenMap = new();
 
         public string ApiName => API_NAME;
 
@@ -44,7 +39,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public bool IsAuthorized => true;
 
-        public List<string> VodTypes { get; } = new List<string>();
+        public List<string> VodTypes { get; } = new();
 
         public Task Authorize(IViewAware screen) => Task.FromResult(true);
 

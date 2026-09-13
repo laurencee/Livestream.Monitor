@@ -10,15 +10,15 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
         public int First { get; set; } = TwitchTvHelixHelixReadonlyClient.DefaultItemsPerQuery;
 
 
-        public List<string> Languages { get; set; } = new List<string>();
+        public List<string> Languages { get; set; } = new();
 
         /// <summary> Can specify up to 100 game ids </summary>
-        public List<string> GameIds { get; set; } = new List<string>();
+        public List<string> GameIds { get; set; } = new();
         
-        public List<string> UserIds { get; set; } = new List<string>();
+        public List<string> UserIds { get; set; } = new();
 
-        public List<string> UserLogins { get; set; } = new List<string>();
+        public List<string> UserLogins { get; set; } = new();
 
-        public CursorPagination Pagination { get; set; } = new CursorPagination();
+        public CursorPagination Pagination { get; set; } = new();
     }
 }

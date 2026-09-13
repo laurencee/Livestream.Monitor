@@ -7,9 +7,6 @@ namespace Livestream.Monitor.Model
     /// <summary> Composite class for searched top stream data </summary>
     public class TopStreamResult : PropertyChangedBase
     {
-        private bool isMonitored;
-        private bool isBusy;
-
         public TopStreamResult()
         {
             if (!Execute.InDesignMode) throw new InvalidOperationException("Design time only constructor");
@@ -26,14 +23,14 @@ namespace Livestream.Monitor.Model
 
         public bool IsMonitored
         {
-            get { return isMonitored; }
-            set => Set(ref isMonitored, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool IsBusy
         {
-            get { return isBusy; }
-            set => Set(ref isBusy, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public LivestreamModel LivestreamModel { get; }

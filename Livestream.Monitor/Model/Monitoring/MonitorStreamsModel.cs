@@ -16,13 +16,10 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
         private readonly IApiClientFactory apiClientFactory;
-        private readonly HashSet<ChannelIdentifier> channelIdentifiers = new HashSet<ChannelIdentifier>();
-        private readonly List<string> ignoredQueryFailures = new List<string>();
+        private readonly HashSet<ChannelIdentifier> channelIdentifiers = new();
+        private readonly List<string> ignoredQueryFailures = new();
 
-        private bool initialised;
-        private bool canRefreshLivestreams;
         private LivestreamModel selectedLivestream;
-        private DateTimeOffset lastRefreshTime;
 
         #region Design Time Constructor
 
@@ -60,7 +57,7 @@ namespace Livestream.Monitor.Model.Monitoring
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
         }
 
-        public BindableCollection<LivestreamModel> Livestreams { get; } = new BindableCollection<LivestreamModel>();
+        public BindableCollection<LivestreamModel> Livestreams { get; } = new();
 
         public LivestreamModel SelectedLivestream
         {
@@ -78,33 +75,33 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public bool Initialised
         {
-            get => initialised;
+            get;
             private set
             {
-                if (value == initialised) return;
-                initialised = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange();
             }
         }
 
         public bool CanRefreshLivestreams
         {
-            get => canRefreshLivestreams;
+            get;
             private set
             {
-                if (value == canRefreshLivestreams) return;
-                canRefreshLivestreams = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange();
             }
         }
 
         public DateTimeOffset LastRefreshTime
         {
-            get => lastRefreshTime;
+            get;
             private set
             {
-                if (value.Equals(lastRefreshTime)) return;
-                lastRefreshTime = value;
+                if (value.Equals(field)) return;
+                field = value;
                 NotifyOfPropertyChange(() => LastRefreshTime);
             }
         }

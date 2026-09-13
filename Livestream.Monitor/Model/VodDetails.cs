@@ -6,75 +6,64 @@ namespace Livestream.Monitor.Model
 {
     public class VodDetails : PropertyChangedBase
     {
-        private string url;
-        private TimeSpan length;
-        private long views;
-        private DateTimeOffset recordedAt;
-        private string game;
-        private string description;
-        private string title;
-        private string previewImage;
-        private IApiClient apiClient;
-        private bool isUpcoming;
-
         public string Url
         {
-            get { return url; }
-            set => Set(ref url, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public TimeSpan Length
         {
-            get { return length; }
-            set => Set(ref length, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public long Views
         {
-            get { return views; }
-            set => Set(ref views, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public DateTimeOffset RecordedAt
         {
-            get { return recordedAt; }
-            set => Set(ref recordedAt, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string Title
         {
-            get { return title; }
-            set => Set(ref title, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string Description
         {
-            get { return description; }
-            set => Set(ref description, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string Game
         {
-            get { return game; }
-            set => Set(ref game, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string PreviewImage
         {
-            get { return previewImage; }
-            set => Set(ref previewImage, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool IsUpcoming
         {
-            get { return isUpcoming; }
-            set => Set(ref isUpcoming, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public IApiClient ApiClient
         {
-            get { return apiClient; }
-            set => Set(ref apiClient, value);
+            get;
+            set => Set(ref field, value);
         }
     }
 }

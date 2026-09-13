@@ -25,8 +25,8 @@ namespace Livestream.Monitor.Model
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
         private readonly StreamLauncher streamLauncher;
-        private readonly List<LivestreamNotification> buffer = new List<LivestreamNotification>();
-        private readonly List<LivestreamNotification> notifications = new List<LivestreamNotification>();
+        private readonly List<LivestreamNotification> buffer = new();
+        private readonly List<LivestreamNotification> notifications = new();
 
         private bool hasRefreshed;
 

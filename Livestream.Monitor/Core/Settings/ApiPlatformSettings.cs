@@ -29,45 +29,37 @@ public abstract class ApiPlatformSettings : PropertyChangedBase
 
 public class ExecCommand : PropertyChangedBase
 {
-    private string filePath;
-    private string args;
-    private bool captureStandardOutput;
-    private bool captureErrorOutput;
-
     [JsonProperty]
     public string FilePath
     {
-        get => filePath;
-        set => Set(ref filePath, value);
+        get;
+        set => Set(ref field, value);
     }
 
     [JsonProperty]
     public string Args
     {
-        get => args;
-        set => Set(ref args, value);
+        get;
+        set => Set(ref field, value);
     }
 
     [JsonProperty]
     public bool CaptureStandardOutput
     {
-        get => captureStandardOutput;
-        set => Set(ref captureStandardOutput, value);
+        get;
+        set => Set(ref field, value);
     }
 
     [JsonProperty]
     public bool CaptureErrorOutput
     {
-        get => captureErrorOutput;
-        set => Set(ref captureErrorOutput, value);
+        get;
+        set => Set(ref field, value);
     }
 }
 
 public class TwitchSettings : ApiPlatformSettings
 {
-    private string authToken;
-    private bool passthroughClientId;
-
     public override IReadOnlyDictionary<string, string> GetReplacements(string url)
     {
         var map = new Dictionary<string, string>
@@ -89,18 +81,18 @@ public class TwitchSettings : ApiPlatformSettings
     [JsonProperty]
     public string AuthToken
     {
-        get => authToken;
+        get;
         set
         {
-            if (Set(ref authToken, value)) NotifyOfPropertyChange(nameof(IsAuthTokenSet));
+            if (Set(ref field, value)) NotifyOfPropertyChange(nameof(IsAuthTokenSet));
         }
     }
 
     [JsonProperty]
     public bool PassthroughClientId
     {
-        get => passthroughClientId;
-        set => Set(ref passthroughClientId, value);
+        get;
+        set => Set(ref field, value);
     }
 
     /// <summary>

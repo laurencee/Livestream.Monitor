@@ -8,7 +8,6 @@ namespace Livestream.Monitor.ViewModels
 {
     public class ApiClientQualitiesViewModel : Screen
     {
-        private string fallbackQuality;
         private string newQuality;
 
         public ApiClientQualitiesViewModel()
@@ -24,12 +23,12 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public BindableCollection<string> Qualities { get; set; } = new BindableCollection<string>();
+        public BindableCollection<string> Qualities { get; set; } = new();
 
         public string FallbackQuality
         {
-            get { return fallbackQuality; }
-            set => Set(ref fallbackQuality, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool FallbackQualityBestChecked

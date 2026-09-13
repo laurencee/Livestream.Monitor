@@ -53,9 +53,9 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public List<MenuItem> BaseThemes { get; } = new List<MenuItem>();
+        public List<MenuItem> BaseThemes { get; } = new();
 
-        public List<MenuItem> AccentColours { get; } = new List<MenuItem>();
+        public List<MenuItem> AccentColours { get; } = new();
 
         protected override void OnActivate()
         {

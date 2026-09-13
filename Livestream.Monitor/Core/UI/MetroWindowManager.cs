@@ -5,15 +5,10 @@ using MahApps.Metro.Controls;
 
 namespace Livestream.Monitor.Core.UI
 {
-    public class MetroWindowManager : WindowManager
+    public class MetroWindowManager(ISettingsHandler settingsHandler) : WindowManager
     {
-        private readonly ISettingsHandler settingsHandler;
+        private readonly ISettingsHandler settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         private ResourceDictionary[] resourceDictionaries;
-
-        public MetroWindowManager(ISettingsHandler settingsHandler)
-        {
-            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
-        }
 
         protected override Window EnsureWindow(object model, object view, bool isDialog)
         {

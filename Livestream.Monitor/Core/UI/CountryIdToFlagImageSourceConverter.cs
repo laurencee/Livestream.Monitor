@@ -42,7 +42,7 @@ namespace Livestream.Monitor.Core.UI
         /// <summary>
         /// A mapping of the language iso format provided by twitch (ISO 639) converted into the iso format of the country flag images on disk (ISO-3166-alpha 2).
         /// </summary>
-        private static readonly Dictionary<string, string> Iso639To3166 = new Dictionary<string, string>();
+        private static readonly Dictionary<string, string> Iso639To3166 = new();
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

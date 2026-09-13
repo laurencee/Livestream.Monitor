@@ -26,9 +26,6 @@ namespace Livestream.Monitor.ViewModels
         private readonly IApiClientFactory apiClientFactory;
         private readonly IWindowManager windowManager;
         private readonly ApiClientsQualitiesViewModel apiClientsQualitiesViewModel;
-        private string streamName;
-        private bool canRefreshLivestreams, canOpenChat, canAddStream;
-        private IApiClient selectedApiClient;
 
         public HeaderViewModel()
         {
@@ -56,42 +53,42 @@ namespace Livestream.Monitor.ViewModels
 
         public bool CanAddStream
         {
-            get { return canAddStream; }
-            set => Set(ref canAddStream, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string StreamName
         {
-            get { return streamName; }
+            get;
             set
             {
-                if (value == streamName) return;
-                streamName = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => StreamName);
-                CanAddStream = !IsNullOrWhiteSpace(streamName);
+                CanAddStream = !IsNullOrWhiteSpace(field);
             }
         }
 
         public bool CanRefreshLivestreams
         {
-            get { return canRefreshLivestreams; }
-            set => Set(ref canRefreshLivestreams, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool CanOpenChat
         {
-            get { return canOpenChat; }
-            set => Set(ref canOpenChat, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public IMonitorStreamsModel MonitorStreamsModel { get; }
 
-        public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
+        public BindableCollection<IApiClient> ApiClients { get; set; } = new();
 
         public IApiClient SelectedApiClient
         {
-            get { return selectedApiClient; }
-            set => Set(ref selectedApiClient, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public async Task AddStream()

@@ -26,12 +26,7 @@ namespace Livestream.Monitor.ViewModels
         private readonly INavigationService navigationService;
         private readonly IApiClientFactory apiClientFactory;
 
-        private bool loadingItems;
         private bool hasNextPage;
-        private string gameName;
-        private BindableCollection<string> possibleGameNames = new BindableCollection<string>();
-        private bool expandPossibleGames;
-        private IApiClient selectedApiClient;
 
         #region Design time constructor
 
@@ -78,11 +73,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool LoadingItems
         {
-            get => loadingItems;
+            get;
             set
             {
-                if (value == loadingItems) return;
-                loadingItems = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => LoadingItems);
                 NotifyOfPropertyChange(() => CanPrevious);
                 NotifyOfPropertyChange(() => CanNext);
@@ -92,38 +87,38 @@ namespace Livestream.Monitor.ViewModels
 
         public string GameName
         {
-            get => gameName;
+            get;
             set
             {
-                if (value == gameName) return;
-                gameName = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => GameName);
-                if (!PossibleGameNames.Any(x => x.IsEqualTo(gameName))) UpdatePossibleGameNames();
+                if (!PossibleGameNames.Any(x => x.IsEqualTo(field))) UpdatePossibleGameNames();
                 MovePage();
             }
         }
 
         public BindableCollection<string> PossibleGameNames
         {
-            get => possibleGameNames;
-            set => Set(ref possibleGameNames, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = new();
 
         public bool ExpandPossibleGames
         {
-            get => expandPossibleGames;
-            set => Set(ref expandPossibleGames, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public BindableCollection<IApiClient> ApiClients { get; set; }
 
         public IApiClient SelectedApiClient
         {
-            get => selectedApiClient;
+            get;
             set
             {
-                if (Equals(value, selectedApiClient)) return;
-                selectedApiClient = value;
+                if (Equals(value, field)) return;
+                field = value;
                 NotifyOfPropertyChange(() => SelectedApiClient);
                 MovePage();
                 InitializeKnownGames();

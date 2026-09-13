@@ -3,14 +3,9 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
-    public class LivestreamQueryResult
+    public class LivestreamQueryResult(ChannelIdentifier channelIdentifier)
     {
-        public LivestreamQueryResult(ChannelIdentifier channelIdentifier)
-        {
-            ChannelIdentifier = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
-        }
-
-        public ChannelIdentifier ChannelIdentifier { get; }
+        public ChannelIdentifier ChannelIdentifier { get; } = channelIdentifier ?? throw new ArgumentNullException(nameof(channelIdentifier));
 
         public LivestreamModel LivestreamModel { get; set; }
 

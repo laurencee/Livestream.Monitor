@@ -18,40 +18,35 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         };
 
-        private string imageUrl;
-        private string message;
-        private string title;
-        private TimeSpan duration = DefaultDuration; // set a good default value
-
         public string Message
         {
-            get { return message; }
+            get;
             set
             {
-                if (message == value) return;
-                message = value;
+                if (field == value) return;
+                field = value;
                 NotifyOfPropertyChange();
             }
         }
 
         public string ImageUrl
         {
-            get { return imageUrl; }
+            get;
             set
             {
-                if (imageUrl == value) return;
-                imageUrl = value;
+                if (field == value) return;
+                field = value;
                 NotifyOfPropertyChange();
             }
         }
 
         public string Title
         {
-            get { return title; }
+            get;
             set
             {
-                if (title == value) return;
-                title = value;
+                if (field == value) return;
+                field = value;
                 NotifyOfPropertyChange();
             }
         }
@@ -59,17 +54,17 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> Set to <see cref="DefaultDuration"/> by default </summary>
         public TimeSpan Duration
         {
-            get { return duration; }
+            get;
             set
             {
-                if (value.Equals(duration)) return;
+                if (value.Equals(field)) return;
                 if (value.TotalSeconds < 0) value = TimeSpan.Zero;
                 if (value > MaxDuration) value = MaxDuration;
 
-                duration = value;
+                field = value;
                 NotifyOfPropertyChange(() => Duration);
             }
-        }
+        } = DefaultDuration;
 
         public Action<IMonitorStreamsModel, LivestreamNotification> ClickAction { get; set; } = DefaultClickAction;
 

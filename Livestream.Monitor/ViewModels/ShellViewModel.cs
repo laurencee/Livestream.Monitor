@@ -27,10 +27,8 @@ namespace Livestream.Monitor.ViewModels
         private const string TrayIconControlName = "TrayIcon";
 
         private readonly Version currentAppVersion;
-        private WindowState windowState = WindowState.Normal;
         private TaskbarIcon taskbarIcon;
         private bool firstMinimize = true;
-        private bool isSettingsOpen;
 
         public ShellViewModel()
         {
@@ -76,21 +74,21 @@ namespace Livestream.Monitor.ViewModels
 
         public WindowState WindowState
         {
-            get { return windowState; }
+            get;
             set
             {
-                if (value == windowState) return;
-                windowState = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => WindowState);
-                if (windowState == WindowState.Minimized)
+                if (field == WindowState.Minimized)
                     WindowMinimized();
             }
-        }
+        } = WindowState.Normal;
 
         public bool IsSettingsOpen
         {
-            get { return isSettingsOpen; }
-            set => Set(ref isSettingsOpen, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public void ShowWindow()

@@ -17,7 +17,10 @@ using RequestConstants = ExternalAPIs.TwitchTv.Helix.RequestConstants;
 
 namespace Livestream.Monitor.Model.ApiClients
 {
-    public class TwitchApiClient : IApiClient
+    public class TwitchApiClient(
+        ITwitchTvHelixReadonlyClient twitchTvHelixClient,
+        ISettingsHandler settingsHandler)
+        : IApiClient
     {
         public const string API_NAME = "twitchtv";
 
@@ -32,22 +35,14 @@ namespace Livestream.Monitor.Model.ApiClients
         private const string RedirectUri = @"https://github.com/laurencee/Livestream.Monitor";
         private const string BaseUrl = @"https://www.twitch.tv/";
 
-        private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient;
-        private readonly ISettingsHandler settingsHandler;
+        private readonly ITwitchTvHelixReadonlyClient twitchTvHelixClient = twitchTvHelixClient ?? throw new ArgumentNullException(nameof(twitchTvHelixClient));
+        private readonly ISettingsHandler settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
-        private readonly Dictionary<string, string> gameNameToIdMap = new Dictionary<string, string>();
-        private readonly Dictionary<string, string> gameIdToNameMap = new Dictionary<string, string>();
-        private readonly Dictionary<string, User> streamDisplayNameToUserMap = new Dictionary<string, User>();
-        private readonly Dictionary<TopStreamQuery, string> topStreamsPaginationKeyMap = new Dictionary<TopStreamQuery, string>();
-        private readonly Dictionary<VodQuery, string> vodsPaginationKeyMap = new Dictionary<VodQuery, string>();
-
-        public TwitchApiClient(
-            ITwitchTvHelixReadonlyClient twitchTvHelixClient,
-            ISettingsHandler settingsHandler)
-        {
-            this.twitchTvHelixClient = twitchTvHelixClient ?? throw new ArgumentNullException(nameof(twitchTvHelixClient));
-            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
-        }
+        private readonly Dictionary<string, string> gameNameToIdMap = new();
+        private readonly Dictionary<string, string> gameIdToNameMap = new();
+        private readonly Dictionary<string, User> streamDisplayNameToUserMap = new();
+        private readonly Dictionary<TopStreamQuery, string> topStreamsPaginationKeyMap = new();
+        private readonly Dictionary<VodQuery, string> vodsPaginationKeyMap = new();
 
         public string ApiName => API_NAME;
 

@@ -7,17 +7,11 @@ using Livestream.Monitor.Model.Monitoring;
 namespace Livestream.Monitor.ViewModels
 {
     // ReSharper disable once UnusedType.Global - Used in AppBootstrapper when FAKE_DATA defined
-    public class EmulatorViewModel : Screen
+    public class EmulatorViewModel(IMonitorStreamsModel monitorStreamsModel) : Screen
     {
-        private readonly IMonitorStreamsModel monitorStreamsModel;
+        private readonly IMonitorStreamsModel monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
 
         private LivestreamModel toggleModel;
-
-        public EmulatorViewModel(
-            IMonitorStreamsModel monitorStreamsModel)
-        {
-            this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
-        }
 
         public override string DisplayName { get; set; } = "EMULATOR";
 

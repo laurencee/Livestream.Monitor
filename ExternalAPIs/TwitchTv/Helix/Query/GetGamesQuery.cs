@@ -8,8 +8,8 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
 {
     public class GetGamesQuery
     {
-        public List<string> GameIds { get; set; } = new List<string>();
+        public List<string> GameIds { get; set; } = new();
 
-        public List<string> GameNames { get; set; } = new List<string>();
+        public List<string> GameNames { get; set; } = new();
     }
 }

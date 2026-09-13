@@ -11,12 +11,6 @@ namespace Livestream.Monitor.ViewModels
     public class SettingsViewModel : Screen
     {
         private readonly ISettingsHandler settingsHandler;
-        private int minimumEventViewers;
-        private bool disableNotifications;
-        private bool hideStreamOutputOnLoad;
-        private bool checkForNewVersions;
-        private bool disableRefreshErrorDialogs;
-        private bool disableMinimizeToTrayNotification;
 
         public SettingsViewModel()
         {
@@ -62,13 +56,13 @@ namespace Livestream.Monitor.ViewModels
 
         public int MinimumEventViewers
         {
-            get => minimumEventViewers;
+            get;
             set
             {
-                if (value == minimumEventViewers) return;
+                if (value == field) return;
                 if (value < 0) value = 0;
 
-                minimumEventViewers = value;
+                field = value;
                 NotifyOfPropertyChange(() => MinimumEventViewers);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -76,11 +70,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool DisableNotifications
         {
-            get => disableNotifications;
+            get;
             set
             {
-                if (value == disableNotifications) return;
-                disableNotifications = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => DisableNotifications);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -88,11 +82,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool HideStreamOutputOnLoad
         {
-            get => hideStreamOutputOnLoad;
+            get;
             set
             {
-                if (value == hideStreamOutputOnLoad) return;
-                hideStreamOutputOnLoad = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => HideStreamOutputOnLoad);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -100,11 +94,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool CheckForNewVersions
         {
-            get => checkForNewVersions;
+            get;
             set
             {
-                if (value == checkForNewVersions) return;
-                checkForNewVersions = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => CheckForNewVersions);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -112,11 +106,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool DisableRefreshErrorDialogs
         {
-            get => disableRefreshErrorDialogs;
+            get;
             set
             {
-                if (value == disableRefreshErrorDialogs) return;
-                disableRefreshErrorDialogs = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => DisableRefreshErrorDialogs);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -124,11 +118,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool DisableMinimizeToTrayNotification
         {
-            get => disableMinimizeToTrayNotification;
+            get;
             set
             {
-                if (value == disableMinimizeToTrayNotification) return;
-                disableMinimizeToTrayNotification = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => DisableMinimizeToTrayNotification);
                 NotifyOfPropertyChange(() => CanSave);
             }
@@ -286,23 +280,15 @@ namespace Livestream.Monitor.ViewModels
         }
     }
 
-    public class ApiPlatformSettingsEditor : PropertyChangedBase
+    public class ApiPlatformSettingsEditor(string displayName) : PropertyChangedBase
     {
-        public ApiPlatformSettingsEditor(string displayName)
-        {
-            DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
-            StreamCommand = new ExecCommandEditor("Stream command");
-            VodCommand = new ExecCommandEditor("VOD command");
-            ChatCommand = new ExecCommandEditor("Chat command");
-        }
+        public string DisplayName { get; } = displayName ?? throw new ArgumentNullException(nameof(displayName));
 
-        public string DisplayName { get; }
+        public ExecCommandEditor StreamCommand { get; } = new("Stream command");
 
-        public ExecCommandEditor StreamCommand { get; }
+        public ExecCommandEditor VodCommand { get; } = new("VOD command");
 
-        public ExecCommandEditor VodCommand { get; }
-
-        public ExecCommandEditor ChatCommand { get; }
+        public ExecCommandEditor ChatCommand { get; } = new("Chat command");
 
         public virtual bool HasErrors => StreamCommand.HasErrors || VodCommand.HasErrors || ChatCommand.HasErrors;
 
@@ -338,25 +324,18 @@ namespace Livestream.Monitor.ViewModels
         }
     }
 
-    public sealed class TwitchSettingsEditor : ApiPlatformSettingsEditor
+    public sealed class TwitchSettingsEditor() : ApiPlatformSettingsEditor("Twitch")
     {
-        private string authToken;
-        private bool passthroughClientId;
-
-        public TwitchSettingsEditor() : base("Twitch")
-        {
-        }
-
         public string AuthToken
         {
-            get => authToken;
-            set => Set(ref authToken, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool PassthroughClientId
         {
-            get => passthroughClientId;
-            set => Set(ref passthroughClientId, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public void LoadFrom(TwitchSettings settings)
@@ -404,14 +383,6 @@ namespace Livestream.Monitor.ViewModels
 
     public sealed class ExecCommandEditor : PropertyChangedBase
     {
-        private string filePath;
-        private string args;
-        private bool captureStandardOutput;
-        private bool captureErrorOutput;
-        private string resolvedFilePath;
-        private string filePathStatusText;
-        private bool hasValidFilePath;
-
         public ExecCommandEditor(string displayName)
         {
             DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
@@ -422,50 +393,50 @@ namespace Livestream.Monitor.ViewModels
 
         public string FilePath
         {
-            get => filePath;
+            get;
             set
             {
-                if (!Set(ref filePath, value)) return;
+                if (!Set(ref field, value)) return;
                 RefreshFilePathState();
             }
         }
 
         public string Args
         {
-            get => args;
-            set => Set(ref args, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool CaptureStandardOutput
         {
-            get => captureStandardOutput;
-            set => Set(ref captureStandardOutput, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool CaptureErrorOutput
         {
-            get => captureErrorOutput;
-            set => Set(ref captureErrorOutput, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string ResolvedFilePath
         {
-            get => resolvedFilePath;
-            private set => Set(ref resolvedFilePath, value);
+            get;
+            private set => Set(ref field, value);
         }
 
         public string FilePathStatusText
         {
-            get => filePathStatusText;
-            private set => Set(ref filePathStatusText, value);
+            get;
+            private set => Set(ref field, value);
         }
 
         public bool HasValidFilePath
         {
-            get => hasValidFilePath;
+            get;
             private set
             {
-                if (!Set(ref hasValidFilePath, value)) return;
+                if (!Set(ref field, value)) return;
                 NotifyOfPropertyChange(() => HasErrors);
             }
         }

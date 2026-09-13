@@ -9,9 +9,7 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class FakeMonitorStreamsModel : PropertyChangedBase, IMonitorStreamsModel
     {
-        private static readonly Random Random = new Random();
-        private LivestreamModel selectedLivestream;
-        private DateTimeOffset lastRefreshTime;
+        private static readonly Random Random = new();
 
         public FakeMonitorStreamsModel()
         {
@@ -67,8 +65,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public LivestreamModel SelectedLivestream
         {
-            get => selectedLivestream;
-            set => Set(ref selectedLivestream, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool Initialised => true;
@@ -77,11 +75,11 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public DateTimeOffset LastRefreshTime
         {
-            get => lastRefreshTime;
+            get;
             private set
             {
-                if (value.Equals(lastRefreshTime)) return;
-                lastRefreshTime = value;
+                if (value.Equals(field)) return;
+                field = value;
                 NotifyOfPropertyChange(() => LastRefreshTime);
             }
         }

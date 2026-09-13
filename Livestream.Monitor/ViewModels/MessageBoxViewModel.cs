@@ -6,7 +6,6 @@ namespace Livestream.Monitor.ViewModels
 {
     public class MessageBoxViewModel : Screen
     {
-        private string messageText;
         private bool hideOnLoadCheckboxVisible;
         private bool hideOnLoad;
         private ISettingsHandler settingsHandler;
@@ -17,11 +16,11 @@ namespace Livestream.Monitor.ViewModels
         }
         
         public bool HideOnLoadCheckboxVisibleVisible => hideOnLoadCheckboxVisible;
-        
+
         public string MessageText
         {
-            get => messageText;
-            set => Set(ref messageText, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool HideOnLoad

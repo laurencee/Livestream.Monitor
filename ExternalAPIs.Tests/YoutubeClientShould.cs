@@ -12,7 +12,7 @@ namespace ExternalAPIs.Tests
         private const string LOFIGIRL_LIVE_VIDEO_ID = "jfKfPfyJRdk"; // needs to be manually updated to a live video id
         private const string LOFIGIRL_CHANNEL_ID = "UCSJ4gkVC6NrvII8umztf0Ow";
         private const string YOUTUBE_HANDLE = "@LofiGirl";
-        private readonly YoutubeReadonlyClient sut = new YoutubeReadonlyClient();
+        private readonly YoutubeReadonlyClient sut = new();
 
         [Fact]
         public async Task GetLivestreamDetails()

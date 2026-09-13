@@ -3,27 +3,18 @@ using Action = System.Action;
 
 namespace Livestream.Monitor.Model
 {
-    public class MenuItem : PropertyChangedBase
+    public class MenuItem(Action action) : PropertyChangedBase
     {
-        private readonly Action action;
-        private string name;
-        private bool isChecked;
-
-        public MenuItem(Action action)
-        {
-            this.action = action;
-        }
-
         public string Name
         {
-            get { return name; }
-            set => Set(ref name, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool IsChecked
         {
-            get { return isChecked; }
-            set => Set(ref isChecked, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public void Command()

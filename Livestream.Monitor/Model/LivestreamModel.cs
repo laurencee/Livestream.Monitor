@@ -8,19 +8,8 @@ namespace Livestream.Monitor.Model
 {
     public class LivestreamModel : PropertyChangedBase
     {
-        private DateTimeOffset? startTime;
         private long viewers;
-        private string game;
-        private string description;
         private string displayName;
-        private bool live;
-        private bool isPartner;
-        private ThumbnailUrls thumbnailUrls;
-        private bool dontNotify;
-        private DateTimeOffset? lastLiveTime;
-        private string broadcasterLanguage;
-        private string language;
-        private bool isChatDisabled;
 
         public LivestreamModel()
         {
@@ -54,16 +43,16 @@ namespace Livestream.Monitor.Model
 
         public bool Live
         {
-            get => live;
+            get;
             set
             {
-                if (value == live) return;
-                live = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => Live);
                 NotifyOfPropertyChange(() => Uptime);
 
                 // must update after notifying property change to give time to inspect LastLiveTime property before live state changed
-                if (live)
+                if (field)
                     LastLiveTime = DateTimeOffset.Now;
             }
         }
@@ -82,14 +71,14 @@ namespace Livestream.Monitor.Model
 
         public string Description
         {
-            get => description;
-            set => Set(ref description, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string Game
         {
-            get => game;
-            set => Set(ref game, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public long Viewers
@@ -100,35 +89,35 @@ namespace Livestream.Monitor.Model
 
         public DateTimeOffset? StartTime
         {
-            get => startTime;
+            get;
             set
             {
-                if (Set(ref startTime, value)) NotifyOfPropertyChange(nameof(Uptime));
+                if (Set(ref field, value)) NotifyOfPropertyChange(nameof(Uptime));
             }
         }
 
         public bool IsPartner
         {
-            get => isPartner;
-            set => Set(ref isPartner, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public ThumbnailUrls ThumbnailUrls
         {
-            get => thumbnailUrls;
-            set => Set(ref thumbnailUrls, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string BroadcasterLanguage
         {
-            get => broadcasterLanguage;
-            set => Set(ref broadcasterLanguage, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public string Language
         {
-            get => language;
-            set => Set(ref language, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public Task<string> GetStreamUrl() => ApiClient?.GetStreamUrl(this);
@@ -142,11 +131,11 @@ namespace Livestream.Monitor.Model
 
         public DateTimeOffset? LastLiveTime
         {
-            get => lastLiveTime;
+            get;
             private set
             {
-                if (value.Equals(lastLiveTime)) return;
-                lastLiveTime = value;
+                if (value.Equals(field)) return;
+                field = value;
                 NotifyOfPropertyChange(() => LastLiveTime);
             }
         }
@@ -154,14 +143,14 @@ namespace Livestream.Monitor.Model
         /// <summary> Exclude this livestream from raising popup notifications </summary>
         public bool DontNotify
         {
-            get => dontNotify;
-            set => Set(ref dontNotify, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public bool IsChatDisabled
         {
-            get => isChatDisabled;
-            set => Set(ref isChatDisabled, value);
+            get;
+            set => Set(ref field, value);
         }
 
         /// <summary> Sets the livestream to the offline state </summary>

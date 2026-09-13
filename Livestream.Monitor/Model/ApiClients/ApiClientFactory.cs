@@ -14,7 +14,7 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly YoutubeApiClient youtubeApiClient;
         private readonly KickApiClient kickApiClient;
 
-        private readonly List<IApiClient> apiClients = new List<IApiClient>();
+        private readonly List<IApiClient> apiClients = new();
 
         public ApiClientFactory(ISettingsHandler settingsHandler)
         {

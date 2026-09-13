@@ -4,7 +4,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
 {
     public class GetVideosQuery
     {
-        public List<string> VideoIds { get; set; } = new List<string>();
+        public List<string> VideoIds { get; set; } = new();
 
         public string UserId { get; set; }
 
@@ -14,6 +14,6 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
 
         public int First { get; set; } = 15;
 
-        public CursorPagination CursorPagination { get; set; } = new CursorPagination();
+        public CursorPagination CursorPagination { get; set; } = new();
     }
 }

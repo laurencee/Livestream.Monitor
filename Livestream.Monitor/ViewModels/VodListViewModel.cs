@@ -20,13 +20,9 @@ namespace Livestream.Monitor.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly IApiClientFactory apiClientFactory;
 
-        private string streamDisplayName;
         private string vodUrl;
         private VodDetails selectedItem;
-        private BindableCollection<LivestreamModel> knownStreams = new BindableCollection<LivestreamModel>();
-        private bool loadingItems;
         private IApiClient selectedApiClient;
-        private string selectedVodType;
 
         #region Design time constructor
 
@@ -56,13 +52,13 @@ namespace Livestream.Monitor.ViewModels
 
         public string StreamDisplayName
         {
-            get { return streamDisplayName; }
+            get;
             set
             {
-                if (value == streamDisplayName) return;
-                streamDisplayName = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => StreamDisplayName);
-                if (!string.IsNullOrWhiteSpace(streamDisplayName))
+                if (!string.IsNullOrWhiteSpace(field))
                     MovePage();                
                 else                
                     Items.Clear();                
@@ -72,11 +68,11 @@ namespace Livestream.Monitor.ViewModels
         /// <summary> Known stream names to use for auto-completion </summary>
         public BindableCollection<LivestreamModel> KnownStreams
         {
-            get { return knownStreams; }
-            set => Set(ref knownStreams, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = new();
 
-        public BindableCollection<IApiClient> ApiClients { get; set; } = new BindableCollection<IApiClient>();
+        public BindableCollection<IApiClient> ApiClients { get; set; } = new();
 
         /// <summary> Should be set before setting the StreamId since the stream id is unique to each api </summary>
         public IApiClient SelectedApiClient
@@ -116,11 +112,11 @@ namespace Livestream.Monitor.ViewModels
 
         public string SelectedVodType
         {
-            get { return selectedVodType; }
+            get;
             set
             {
-                if (value == selectedVodType) return;
-                selectedVodType = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => SelectedVodType);
                 MovePage();
             }
@@ -140,11 +136,11 @@ namespace Livestream.Monitor.ViewModels
 
         public bool LoadingItems
         {
-            get { return loadingItems; }
+            get;
             set
             {
-                if (value == loadingItems) return;
-                loadingItems = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => LoadingItems);
                 NotifyOfPropertyChange(() => CanPrevious);
                 NotifyOfPropertyChange(() => CanNext);

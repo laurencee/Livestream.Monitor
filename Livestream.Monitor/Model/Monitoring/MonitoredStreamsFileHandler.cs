@@ -13,16 +13,10 @@ using Newtonsoft.Json;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
-    public class MonitoredStreamsFileHandler : IMonitoredStreamsFileHandler
+    public class MonitoredStreamsFileHandler(IApiClientFactory apiClientFactory) : IMonitoredStreamsFileHandler
     {
         private const string FileName = "livestreams.json";
-        private readonly IApiClientFactory apiClientFactory;
-
-        public MonitoredStreamsFileHandler(
-            IApiClientFactory apiClientFactory)
-        {
-            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-        }
+        private readonly IApiClientFactory apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
 
         public void SaveToDisk(IEnumerable<ChannelIdentifier> livestreams)
         {

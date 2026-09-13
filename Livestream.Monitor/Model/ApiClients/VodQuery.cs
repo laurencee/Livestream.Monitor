@@ -27,7 +27,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> 
         /// Arbitrary filtering for vod types. The available types are defined in the <see cref="IApiClient.VodTypes"/> property 
         /// </summary>
-        public List<string> VodTypes { get; set; } = new List<string>();
+        public List<string> VodTypes { get; set; } = new();
 
         public bool Equals(VodQuery other)
         {

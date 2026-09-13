@@ -29,11 +29,9 @@ namespace Livestream.Monitor.ViewModels
         private readonly ISettingsHandler settingsHandler;
         private readonly DispatcherTimer refreshTimer;
 
-        private bool loading;
         private bool pendingViewRefresh;
         private int refreshErrorCount, refreshCount;
         private int suspendViewRefreshCount;
-        private LivestreamsLayoutMode layoutModeMode = LivestreamsLayoutMode.Grid;
 
         public LivestreamListViewModel()
         {
@@ -61,8 +59,8 @@ namespace Livestream.Monitor.ViewModels
 
         public bool Loading
         {
-            get => loading;
-            set => Set(ref loading, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public IMonitorStreamsModel StreamsModel { get; }
@@ -71,9 +69,9 @@ namespace Livestream.Monitor.ViewModels
 
         public LivestreamsLayoutMode LayoutModeMode
         {
-            get { return layoutModeMode; }
-            set => Set(ref layoutModeMode, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = LivestreamsLayoutMode.Grid;
 
         public async Task RefreshLivestreams()
         {
@@ -381,7 +379,7 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
-        public CollectionViewSource ViewSource { get; set; } = new CollectionViewSource();
+        public CollectionViewSource ViewSource { get; set; } = new();
 
         private void ViewSourceOnFilter(object sender, FilterEventArgs e)
         {

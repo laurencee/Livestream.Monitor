@@ -6,26 +6,23 @@ namespace Livestream.Monitor.Core.UI
 {
     public abstract class PagingConductor<T> : Conductor<T>.Collection.OneActive where T : class
     {
-        private int page = 1;
-        private int itemsPerPage;
-
         /// <summary> The current page (starts at 1) </summary>
         public int Page
         {
-            get { return page; }
-            set => Set(ref page, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = 1;
 
         public int TotalPages => Math.Min(Items.Count / ItemsPerPage, Items.Count);
 
         public int ItemsPerPage
         {
-            get { return itemsPerPage; }
+            get;
             set
             {
                 if (value <= 0) throw new ArgumentOutOfRangeException(nameof(value), "Items Per Page can not be less than 1");
-                if (value == itemsPerPage) return;
-                itemsPerPage = value;
+                if (value == field) return;
+                field = value;
                 NotifyOfPropertyChange(() => ItemsPerPage);
                 NotifyOfPropertyChange(() => TotalPages);
             }

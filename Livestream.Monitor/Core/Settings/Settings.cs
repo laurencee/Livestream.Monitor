@@ -17,99 +17,82 @@ namespace Livestream.Monitor.Core
         public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
         public const string DefaultChromeArgs = "--app=" + UrlReplacementToken + " --window-size=350,760";
 
-        public const string DefaultFirefoxFullPath = @"C:\Program Files\Mozilla Firefox\firefox.exe";
-        public const string DefaultFirefoxArgs = $"-url {UrlReplacementToken}";
-
         public const string DefaultEdgePath = "msedge";
 
-        public const string DefaultLivestreamerFullPath = @"C:\Program Files (x86)\Livestreamer\livestreamer.exe";
-        public const string DefaultStreamlinkFullPath = @"C:\Program Files\Streamlink\bin\streamlink.exe";
-        public const string DefaultStreamlinkX86FullPath = @"C:\Program Files (x86)\Streamlink\bin\streamlink.exe";
         public const int DefaultMinimumPopularEventViewers = 50000;
-
-        private MetroThemeBaseColour metroThemeBaseColour = MetroThemeBaseColour.BaseDark;
-        private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
-        private int minimumEventViewers = DefaultMinimumPopularEventViewers;
-        private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs, disableMinimizeToTrayNotification;
-        private int settingsVersion;
-        private DataGridSortState livestreamListSortState;
-        private TwitchSettings twitch = new();
-        private KickSettings kick = new();
-        private YouTubeSettings youTube = new();
-        private bool debugMode;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public int SettingsVersion
         {
-            get => settingsVersion;
-            set => Set(ref settingsVersion, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool CheckForNewVersions
         {
-            get => checkForNewVersions;
-            set => Set(ref checkForNewVersions, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty]
         public bool DebugMode
         {
-            get => debugMode;
-            set => Set(ref debugMode, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableRefreshErrorDialogs
         {
-            get => disableRefreshErrorDialogs;
-            set => Set(ref disableRefreshErrorDialogs, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableMinimizeToTrayNotification
         {
-            get => disableMinimizeToTrayNotification;
-            set => Set(ref disableMinimizeToTrayNotification, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [DefaultValue(MetroThemeBaseColour.BaseDark)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeBaseColour MetroThemeBaseColour
         {
-            get => metroThemeBaseColour;
-            set => Set(ref metroThemeBaseColour, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = MetroThemeBaseColour.BaseDark;
 
         [DefaultValue(MetroThemeAccentColour.Orange)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public MetroThemeAccentColour MetroThemeAccentColour
         {
-            get => metroThemeAccentColour;
-            set => Set(ref metroThemeAccentColour, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = MetroThemeAccentColour.Orange;
 
         /// <summary> Minimum event viewers before popular notifications occur, set to 0 to disable notifications </summary>
         [DefaultValue(DefaultMinimumPopularEventViewers)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore)]
         public int MinimumEventViewers
         {
-            get => minimumEventViewers;
-            set => Set(ref minimumEventViewers, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = DefaultMinimumPopularEventViewers;
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool DisableNotifications
         {
-            get => disableNotifications;
-            set => Set(ref disableNotifications, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public bool HideStreamOutputMessageBoxOnLoad
         {
-            get => hideStreamOutputMessageBoxOnLoad;
-            set => Set(ref hideStreamOutputMessageBoxOnLoad, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
@@ -126,30 +109,30 @@ namespace Livestream.Monitor.Core
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore)]
         public DataGridSortState LivestreamListSortState
         {
-            get => livestreamListSortState;
-            set => Set(ref livestreamListSortState, value);
+            get;
+            set => Set(ref field, value);
         }
 
         [JsonProperty]
         public TwitchSettings Twitch
         {
-            get => twitch;
-            set => Set(ref twitch, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = new();
 
         [JsonProperty]
         public KickSettings Kick
         {
-            get => kick;
-            set => Set(ref kick, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = new();
 
         [JsonProperty]
         public YouTubeSettings YouTube
         {
-            get => youTube;
-            set => Set(ref youTube, value);
-        }
+            get;
+            set => Set(ref field, value);
+        } = new();
 
         public FavoriteQualities GetStreamQualities(string apiName)
         {
