@@ -1,12 +1,13 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Utility;
@@ -25,6 +26,8 @@ namespace Livestream.Monitor.Model
         private readonly ISettingsHandler settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
         private readonly IWindowManager windowManager = windowManager ?? throw new ArgumentNullException(nameof(windowManager));
         private readonly List<LivestreamModel> watchingStreams = [];
+
+        internal IProcessWindowSource ProcessWindows { get; set; } = new WindowsProcessWindowSource();
 
         public List<LivestreamModel> WatchingStreams
         {
@@ -85,11 +88,12 @@ namespace Livestream.Monitor.Model
                 return;
             }
 
+            var initialMessage = $"Launching {livestreamModel.ApiClient.ApiName} stream {livestreamModel.DisplayName}...";
             var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
-                initialMessageText: $"Launching {livestreamModel.ApiClient.ApiName} stream {livestreamModel.DisplayName}...");
+                initialMessageText: initialMessage);
             ShowMessageBox(messageBoxViewModel);
-            
+
             var platformSettings = settingsHandler.Settings.GetPlatformSettings(livestreamModel.ApiClient.ApiName);
             var replacements = GetReplacementsWithQualities(livestreamModel.ApiClient, platformSettings, streamUrl);
 
@@ -117,7 +121,9 @@ namespace Livestream.Monitor.Model
             }
 
             const int maxTitleLength = 70;
-            var title = vodDetails.Title?.Length > maxTitleLength ? vodDetails.Title.Substring(0, maxTitleLength) + "..." : vodDetails.Title;
+            var title = vodDetails.Title?.Length > maxTitleLength
+                ? vodDetails.Title.Substring(0, maxTitleLength) + "..."
+                : vodDetails.Title;
 
             var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: title,
@@ -136,7 +142,7 @@ namespace Livestream.Monitor.Model
             IReadOnlyDictionary<string, string> replacements,
             Action onClose = null)
         {
-            messageBoxViewModel.MessageText += $"{Environment.NewLine}{execCommand.FilePath} {execCommand.Args}";
+            AppendOutput(messageBoxViewModel, $"{execCommand.FilePath} {execCommand.Args}");
 
             var finalArgs = execCommand.Args;
             foreach (var replacement in replacements)
@@ -147,68 +153,45 @@ namespace Livestream.Monitor.Model
             finalArgs = finalArgs.Trim();
 
             if (settingsHandler.Settings.DebugMode)
-                messageBoxViewModel.MessageText += $"{Environment.NewLine}[DEBUG] {execCommand.FilePath} {finalArgs}";
+                AppendOutput(messageBoxViewModel, $"[DEBUG] {execCommand.FilePath} {finalArgs}");
 
             var filename = execCommand.FilePath.Trim('"');
             if (!IsValidFilePath(filename))
             {
-                messageBoxViewModel.MessageText += $"{Environment.NewLine}[ERROR] Invalid FileName: {execCommand.FilePath}";
-                if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
+                AppendOutput(messageBoxViewModel, $"[ERROR] Invalid FileName: {execCommand.FilePath}");
+                OnUIThread(() =>
+                {
+                    if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
+                });
+
                 return;
             }
 
-            if (!Path.IsPathRooted(filename))
-            {
-                string fullPath = Shell.ResolveExecutableFromRegistry(filename);
+            if (WindowsCommandResolver.TryResolveExecutable(filename, out var resolvedPath))
+                filename = resolvedPath;
 
-                // the exe might be on the PATH env var and in that case
-                // we don't need to change anything as it'll automatically resolve from process.start
-                if (fullPath != null)
-                    filename = fullPath;
-            }
-
-            // the process needs to be launched from its own thread so it doesn't lockup the UI
-            Task.Run(() =>
+            // Process exit and redirected-stream draining must not block the dispatcher.
+            Task.Run(async () =>
             {
-                var proc = new Process
+                using var proc = new Process();
+                proc.StartInfo = new ProcessStartInfo
                 {
-                    StartInfo =
-                    {
-                        FileName = filename,
-                        Arguments = finalArgs,
-                        RedirectStandardOutput = execCommand.CaptureStandardOutput,
-                        RedirectStandardError = execCommand.CaptureErrorOutput,
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                    },
-                    EnableRaisingEvents = true,
+                    FileName = filename,
+                    Arguments = finalArgs,
+                    RedirectStandardOutput = execCommand.CaptureStandardOutput,
+                    RedirectStandardError = execCommand.CaptureErrorOutput,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
                 };
+                proc.EnableRaisingEvents = true;
 
-                bool preventClose = false;
+                var failed = false;
 
-                // see below for output handler
-                proc.ErrorDataReceived +=
-                    (sender, args) =>
-                    {
-                        if (args.Data == null) return;
+                using var observationCancellation = new CancellationTokenSource();
+                var observation = Task.CompletedTask;
 
-                        preventClose = true;
-                        messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
-                    };
-
-                proc.OutputDataReceived +=
-                    (sender, args) =>
-                    {
-                        if (args.Data == null) return;
-                        if (args.Data.Contains("Starting player") &&
-                            settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad)
-                        {
-                            messageBoxViewModel.TryClose();
-                            // can continue adding messages, the view model still exists so it doesn't really matter
-                        }
-
-                        messageBoxViewModel.MessageText += Environment.NewLine + args.Data;
-                    };
+                proc.ErrorDataReceived += (_, args) => AppendOutput(messageBoxViewModel, args.Data);
+                proc.OutputDataReceived += (_, args) => AppendOutput(messageBoxViewModel, args.Data);
 
                 try
                 {
@@ -219,34 +202,103 @@ namespace Livestream.Monitor.Model
 
                     if (!execCommand.CaptureStandardOutput && !execCommand.CaptureErrorOutput)
                     {
-                        messageBoxViewModel.TryClose();
+                        OnUIThread(() => messageBoxViewModel.TryClose());
                         onClose?.Invoke();
+                    }
+                    else
+                    {
+                        observation = ObserveWindow(proc, messageBoxViewModel, observationCancellation.Token);
                     }
 
                     proc.WaitForExit();
                     if (proc.ExitCode != 0)
                     {
-                        preventClose = true;
+                        failed = true;
+                        var exitCode = proc.ExitCode.ToString(CultureInfo.InvariantCulture);
+                        AppendOutput(messageBoxViewModel, $"ERROR: Process exited with code {exitCode}.");
                     }
 
                     onClose?.Invoke();
                 }
                 catch (Exception ex)
                 {
-                    preventClose = true;
-                    messageBoxViewModel.MessageText += Environment.NewLine + ex;
+                    failed = true;
+                    AppendOutput(messageBoxViewModel, ex.ToString());
                 }
-
-                if (preventClose)
+                finally
                 {
-                    messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
-                                                       "ERROR: Manually close this window when you've finished reading output.";
-
-                    // open the message box if it was somehow closed prior to the error being displayed
-                    if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
+                    observationCancellation.Cancel();
+                    // Join the observer before final UI state, so readiness cannot hide a failure window.
+                    await observation.ConfigureAwait(false);
                 }
-                else
-                    messageBoxViewModel.TryClose();
+
+                OnUIThread(() =>
+                {
+                    if (failed)
+                    {
+                        messageBoxViewModel.MessageText += Environment.NewLine + Environment.NewLine +
+                            "ERROR: Manually close this window when you've finished reading output.";
+                        if (!messageBoxViewModel.IsActive) ShowMessageBox(messageBoxViewModel);
+                    }
+                    else
+                    {
+                        messageBoxViewModel.TryClose();
+                    }
+                });
+            });
+        }
+
+        private async Task ObserveWindow(
+            Process process,
+            MessageBoxViewModel output,
+            CancellationToken cancellationToken)
+        {
+            long creationTime;
+            try
+            {
+                creationTime = process.StartTime.ToUniversalTime().ToFileTimeUtc();
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                return;
+            }
+
+            var observer = new ProcessWindowObserver(ProcessWindows, process.Id, creationTime);
+            var dispatcher = Application.Current?.Dispatcher;
+            var found = await observer
+                .WaitForWindow(cancellationToken, () => dispatcher?.HasShutdownStarted == true)
+                .ConfigureAwait(false);
+            if (!found) return;
+
+            OnUIThread(() =>
+            {
+                if (!cancellationToken.IsCancellationRequested &&
+                    settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad)
+                {
+                    output.TryClose();
+                }
+            });
+        }
+
+        private static void AppendOutput(MessageBoxViewModel output, string text)
+        {
+            if (text == null) return;
+
+            OnUIThread(() => output.MessageText += Environment.NewLine + text);
+        }
+
+        private static void OnUIThread(Action action)
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher?.HasShutdownStarted == true) return;
+
+            Execute.OnUIThread(() =>
+            {
+                if (dispatcher?.HasShutdownStarted != true) action();
             });
         }
 
@@ -262,7 +314,7 @@ namespace Livestream.Monitor.Model
         }
 
         private void ShowMessageBox(MessageBoxViewModel messageBox) =>
-            windowManager.ShowWindow(messageBox, null, MessageBoxWindowsSettings);
+            OnUIThread(() => windowManager.ShowWindow(messageBox, null, MessageBoxWindowsSettings));
 
         private Dictionary<string, string> GetReplacementsWithQualities(
             IApiClient apiClient,
@@ -283,12 +335,10 @@ namespace Livestream.Monitor.Model
 
             try
             {
-                if (input.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
-                    return false;
+                if (input.IndexOfAny(Path.GetInvalidPathChars()) >= 0) return false;
 
                 string fileName = Path.GetFileName(input);
-                if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-                    return false;
+                if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0) return false;
 
                 // throws on malformed paths, can catch some stuff the previous stuff wont
                 _ = Path.GetFullPath(input);
@@ -299,68 +349,5 @@ namespace Livestream.Monitor.Model
                 return false;
             }
         }
-    }
-}
-
-// enums (only the members we need)
-[Flags]
-enum AssocF : uint
-{
-    OPEN_BYEXENAME = 0x2,   // identical to INIT_BYEXENAME
-    NOTRUNCATE     = 0x20,
-}
-
-enum AssocStr : uint
-{
-    EXECUTABLE = 2
-}
-
-// ReSharper disable once InconsistentNaming
-public enum HRESULT
-{
-    S_OK = 0x00000000,
-    S_FALSE = 0x00000001,
-    E_POINTER = unchecked((int)0x80004003),
-    ERROR_INSUFFICIENT_BUFFER = unchecked((int)0x8007007A),
-    ERROR_FILE_NOT_FOUND = unchecked((int)0x80070002),
-    ERROR_PATH_NOT_FOUND = unchecked((int)0x80070003),
-    ERROR_NO_ASSOCIATION = unchecked((int)0x80070483),
-}
-
-static class Shell
-{
-    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
-    static extern HRESULT AssocQueryString(
-        AssocF flags,
-        AssocStr str,
-        string pszAssoc,
-        string pszExtra,
-        [Out] StringBuilder pszOut,
-        ref uint pcchOut);
-
-    /// <summary> Resolves an executable path from "App Path" registrations </summary>
-    /// <remarks>
-    /// See the registry details from
-    /// https://learn.microsoft.com/en-us/windows/win32/api/shlwapi/nf-shlwapi-assocquerystringa
-    /// https://learn.microsoft.com/en-us/windows/win32/shell/app-registration#finding-an-application-executable
-    /// </remarks>
-    public static string ResolveExecutableFromRegistry(string alias)
-    {
-        if (!alias.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-            alias += ".exe";
-
-        uint len = 0;
-        // First call gets the required buffer size.
-        var hr = AssocQueryString(AssocF.OPEN_BYEXENAME, AssocStr.EXECUTABLE,
-            alias, null, null, ref len);
-
-        if (hr != HRESULT.S_FALSE && hr != HRESULT.ERROR_INSUFFICIENT_BUFFER)
-            return null;
-
-        var sb = new StringBuilder((int)len);
-        hr = AssocQueryString(AssocF.OPEN_BYEXENAME | AssocF.NOTRUNCATE,
-            AssocStr.EXECUTABLE, alias, null, sb, ref len);
-
-        return hr == HRESULT.S_OK ? sb.ToString() : null;
     }
 }

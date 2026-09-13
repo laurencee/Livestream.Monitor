@@ -6,9 +6,47 @@ using Xunit;
 
 namespace Livestream.Monitor.Tests
 {
+    [Collection(nameof(WindowsCommandResolverShould))]
     public class WindowsCommandResolverShould
     {
         private static string CmdFullPath => Path.Combine(Environment.SystemDirectory, "cmd.exe");
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public void Resolve_ExecutableInApplicationOrCurrentDirectory(bool inApplicationDirectory, bool includeExtension)
+        {
+            var commandName = "livestream-monitor-test-" + Guid.NewGuid().ToString("N");
+            var originalDirectory = Environment.CurrentDirectory;
+            var currentDirectory = Path.Combine(Path.GetTempPath(), commandName);
+            var currentPath = Path.Combine(currentDirectory, commandName + ".exe");
+            var expectedPath = inApplicationDirectory
+                ? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, commandName + ".exe")
+                : currentPath;
+            var input = includeExtension ? commandName + ".exe" : commandName;
+            Directory.CreateDirectory(currentDirectory);
+
+            try
+            {
+                Environment.CurrentDirectory = currentDirectory;
+                File.Copy(CmdFullPath, currentPath);
+                if (inApplicationDirectory) File.Copy(CmdFullPath, expectedPath);
+
+                var resolved = WindowsCommandResolver.TryResolveExecutable(input, out var resolvedPath);
+
+                Assert.True(resolved);
+                Assert.Equal(expectedPath, resolvedPath, ignoreCase: true);
+            }
+            finally
+            {
+                Environment.CurrentDirectory = originalDirectory;
+                if (inApplicationDirectory) File.Delete(expectedPath);
+                File.Delete(currentPath);
+                Directory.Delete(currentDirectory);
+            }
+        }
 
         [Fact]
         public void Resolve_CommonWindowsCommand_FromSearchPath()
@@ -116,4 +154,8 @@ namespace Livestream.Monitor.Tests
                 StringComparison.OrdinalIgnoreCase);
         }
     }
+
+    // Changing the process-wide working directory must not race other test collections.
+    [CollectionDefinition(nameof(WindowsCommandResolverShould), DisableParallelization = true)]
+    public class WindowsCommandResolverCollection;
 }

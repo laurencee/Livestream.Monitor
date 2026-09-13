@@ -17,7 +17,8 @@ public static class WindowsCommandResolver
         var candidateText = Environment.ExpandEnvironmentVariables(inputText.Trim().Trim('"'));
         if (LooksLikePath(candidateText)) return TryResolvePathCandidate(candidateText, out resolvedPath);
 
-        return TryResolveFromRegistry(ref resolvedPath, candidateText) || 
+        return TryResolveFromRegistry(ref resolvedPath, candidateText) ||
+               TryResolveFromLocalDirectories(candidateText, out resolvedPath) ||
                TryResolveFromSearchPath(candidateText, out resolvedPath);
     }
 
@@ -66,6 +67,15 @@ public static class WindowsCommandResolver
         }
 
         return false;
+    }
+
+    private static bool TryResolveFromLocalDirectories(string fileName, out string resolvedPath)
+    {
+        var applicationPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+        if (TryResolvePathCandidate(applicationPath, out resolvedPath)) return true;
+
+        var currentPath = Path.Combine(Environment.CurrentDirectory, fileName);
+        return TryResolvePathCandidate(currentPath, out resolvedPath);
     }
 
     private static bool TryResolveFromSearchPath(string fileName, out string resolvedPath)
