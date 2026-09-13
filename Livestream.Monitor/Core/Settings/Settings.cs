@@ -30,7 +30,6 @@ namespace Livestream.Monitor.Core
         private MetroThemeBaseColour metroThemeBaseColour = MetroThemeBaseColour.BaseDark;
         private MetroThemeAccentColour metroThemeAccentColour = MetroThemeAccentColour.Orange;
         private int minimumEventViewers = DefaultMinimumPopularEventViewers;
-        private string livestreamerFullPath;
         private bool disableNotifications, hideStreamOutputMessageBoxOnLoad, checkForNewVersions, disableRefreshErrorDialogs, disableMinimizeToTrayNotification;
         private int settingsVersion;
         private DataGridSortState livestreamListSortState;
@@ -90,14 +89,6 @@ namespace Livestream.Monitor.Core
             set => Set(ref metroThemeAccentColour, value);
         }
 
-        [DefaultValue(DefaultStreamlinkFullPath)]
-        [JsonProperty(DefaultValueHandling = DefaultValueHandling.Populate)]
-        public string LivestreamerFullPath
-        {
-            get => livestreamerFullPath;
-            set => Set(ref livestreamerFullPath, value);
-        }
-
         /// <summary> Minimum event viewers before popular notifications occur, set to 0 to disable notifications </summary>
         [DefaultValue(DefaultMinimumPopularEventViewers)]
         [JsonProperty(NullValueHandling = NullValueHandling.Ignore, DefaultValueHandling = DefaultValueHandling.Ignore)]
@@ -138,8 +129,6 @@ namespace Livestream.Monitor.Core
             get => livestreamListSortState;
             set => Set(ref livestreamListSortState, value);
         }
-
-
 
         [JsonProperty]
         public TwitchSettings Twitch

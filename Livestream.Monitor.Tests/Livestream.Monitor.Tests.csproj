@@ -108,6 +108,7 @@
   <ItemGroup>
     <Compile Include="Model\PopularLivestreamWatcherShould.cs" />
     <Compile Include="SettingsShould.cs" />
+    <Compile Include="WindowsCommandResolverShould.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestFramework\AutoNSubstituteDataAttribute.cs" />
     <Compile Include="TestFramework\InlineAutoNSubstituteDataAttribute.cs" />

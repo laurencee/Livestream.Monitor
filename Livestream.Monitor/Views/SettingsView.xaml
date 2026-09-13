@@ -1,14 +1,14 @@
-﻿<UserControl x:Class="Livestream.Monitor.Views.SettingsView"
+<UserControl x:Class="Livestream.Monitor.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.ViewModels"
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:ui="clr-namespace:Livestream.Monitor.Core.UI"
              mc:Ignorable="d"
              d:DataContext="{d:DesignInstance Type=viewModels:SettingsViewModel, IsDesignTimeCreatable=True}"
-             cal:Bind.AtDesignTime="True" 
+             cal:Bind.AtDesignTime="True"
              d:DesignWidth="300">
     <Grid Margin="10,0">
         <Grid.RowDefinitions>
@@ -16,40 +16,108 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" >
-            <StackPanel Orientation="Vertical" Grid.Row="0">
-                <StackPanel.Resources>
-                    <ResourceDictionary>
-                        <Style TargetType="TextBlock" BasedOn="{StaticResource MetroTextBlock}">
-                            <Setter Property="VerticalAlignment" Value="Center" />
-                            <Setter Property="Margin" Value="0,5" />
-                        </Style>
-                        <Style TargetType="TextBox" BasedOn="{StaticResource MetroTextBox}">
-                            <Setter Property="Margin" Value="0,5" />
-                        </Style>
-                    </ResourceDictionary>
-                </StackPanel.Resources>
+        <Grid.Resources>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource MetroTextBlock}">
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="Margin" Value="0,5" />
+            </Style>
+            <Style TargetType="TextBox" BasedOn="{StaticResource MetroTextBox}">
+                <Setter Property="Margin" Value="0,5" />
+            </Style>
+            <Style TargetType="CheckBox">
+                <Setter Property="Margin" Value="0,5" />
+            </Style>
+            <Style TargetType="Expander">
+                <Setter Property="Margin" Value="0,10,0,0" />
+            </Style>
 
-                <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
+            <DataTemplate x:Key="CommandSettingsTemplate" DataType="{x:Type viewModels:ExecCommandEditor}">
+                <Border Margin="0,8,0,0" Padding="0,0,0,8" BorderBrush="#33000000" BorderThickness="0,0,0,1">
+                    <StackPanel>
+                        <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Margin="0,0,0,2" />
+                        <TextBlock Text="File path" />
+                        <TextBox Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Enter a command name on PATH or a full executable path." />
+                        <TextBlock Text="{Binding FilePathStatusText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource MetroTextBlock}">
+                                    <Setter Property="Foreground" Value="DimGray" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasValidFilePath}" Value="True">
+                                            <Setter Property="Foreground" Value="DarkGreen" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding HasValidFilePath}" Value="False">
+                                            <Setter Property="Foreground" Value="IndianRed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="Arguments" />
+                        <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type Expander}}}"
+                                   FontSize="11" Foreground="DimGray" TextWrapping="Wrap" Margin="0,0,0,5" />
+                        <TextBox Text="{Binding Args, UpdateSourceTrigger=PropertyChanged}" />
+                        <CheckBox Content="Capture stdout" IsChecked="{Binding CaptureStandardOutput}" />
+                        <CheckBox Content="Capture stderr" IsChecked="{Binding CaptureErrorOutput}" />
+                    </StackPanel>
+                </Border>
+            </DataTemplate>
+        </Grid.Resources>
 
-                <TextBlock Text="Popular stream minimum viewers (0 for off)" Margin="0,20,0,0"
-                       ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
-                <TextBox x:Name="MinimumEventViewers" MaxLength="7"
-                     ui:BindableBehaviors.Behaviors="{StaticResource NumericRestriction}"
-                     ToolTip="Minimum nuber of viewers for a stream to be shown in a notification as a popular/event stream.&#10;This helps you not miss out on special events/popular streams." />
-                <CheckBox x:Name="CheckForNewVersions" Content="Check for new app versions"
-                      ToolTip="When unchecked, will disable checking for new versions on app startup" />
-                <CheckBox x:Name="DisableNotifications" Content="Disable Notifications"
-                      ToolTip="When unchecked, will disable all notifications (including online notifications) from displaying" />
-                <CheckBox x:Name="DisableRefreshErrorDialogs" Content="Disable refresh error dialogs"
-                      ToolTip="When checked, will disable error dialogs from being displayed due to stream refresh failures" />
-                <CheckBox x:Name="DisableMinimizeToTrayNotification" Content="Disable minimize to tray popup"
-                      ToolTip="When checked, will disable the tray popup shown the first time the app is minimized after launch" />
-                <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide Stream Output On Load"
-                      ToolTip="When checked, the stream output box will be hidden upon successful stream load" />
-                <CheckBox x:Name="PassthroughClientId" Content="Bypass OAuth to twitch"
-                      ToolTip="When checked, a client id for Livestream Monitor will provided to twitch so an OAuth token is not required to launch streams." />
-                <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,10" />
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Orientation="Vertical">
+                <Expander Header="General settings" IsExpanded="True" Margin="0,0,0,0">
+                    <StackPanel Margin="0,5,0,0">
+                        <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
+
+                        <TextBlock Text="Popular stream minimum viewers (0 for off)" Margin="0,10,0,0"
+                                   ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams." />
+                        <TextBox x:Name="MinimumEventViewers" MaxLength="7"
+                                 ui:BindableBehaviors.Behaviors="{StaticResource NumericRestriction}"
+                                 ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams." />
+                        <CheckBox x:Name="CheckForNewVersions" Content="Check for new app versions"
+                                  ToolTip="When unchecked, app version checks on startup are disabled." />
+                        <CheckBox x:Name="DisableNotifications" Content="Disable notifications"
+                                  ToolTip="When checked, all notifications are disabled." />
+                        <CheckBox x:Name="DisableRefreshErrorDialogs" Content="Disable refresh error dialogs"
+                                  ToolTip="When checked, refresh failure dialogs are disabled." />
+                        <CheckBox x:Name="DisableMinimizeToTrayNotification" Content="Disable minimize to tray popup"
+                                  ToolTip="When checked, the first minimize-to-tray popup after launch is disabled." />
+                        <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide stream output on load"
+                                  ToolTip="When checked, the stream output box is hidden after a successful launch." />
+                        <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,0" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Twitch" IsExpanded="False" Tag="Args support {url} and {auth_token}.">
+                    <StackPanel Margin="0,5,0,0">
+                        <TextBlock Text="Auth token" />
+                        <TextBox Text="{Binding Twitch.AuthToken, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Optional Twitch OAuth token. Delete it from settings.json and relaunch the app to reauthorize." />
+                        <CheckBox Content="Bypass OAuth to Twitch"
+                                  IsChecked="{Binding Twitch.PassthroughClientId}"
+                                  ToolTip="When checked, Livestream Monitor sends its Twitch client id so an OAuth token is not required to launch streams." />
+                        <ContentControl Content="{Binding Twitch.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding Twitch.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding Twitch.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="Kick" IsExpanded="False" Tag="Args support {url}.">
+                    <StackPanel Margin="0,5,0,0">
+                        <ContentControl Content="{Binding Kick.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding Kick.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding Kick.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                    </StackPanel>
+                </Expander>
+
+                <Expander Header="YouTube" IsExpanded="False" Tag="Args support {url}.">
+                    <StackPanel Margin="0,5,0,0">
+                        <ContentControl Content="{Binding YouTube.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding YouTube.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <ContentControl Content="{Binding YouTube.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                    </StackPanel>
+                </Expander>
             </StackPanel>
         </ScrollViewer>
 

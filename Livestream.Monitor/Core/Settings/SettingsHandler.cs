@@ -62,15 +62,6 @@ namespace Livestream.Monitor.Core
                         MinimumEventViewers = Settings.DefaultMinimumPopularEventViewers,
                     };
 
-                    if (File.Exists(Settings.DefaultStreamlinkFullPath))
-                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
-                    else if (File.Exists(Settings.DefaultStreamlinkX86FullPath))
-                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkX86FullPath;
-                    else if (File.Exists(Settings.DefaultLivestreamerFullPath))
-                        settings.LivestreamerFullPath = Settings.DefaultLivestreamerFullPath;
-                    else
-                        settings.LivestreamerFullPath = Settings.DefaultStreamlinkFullPath;
-
                     string chatCommandFilePath;
                     string chatCommandFileArgs;
                     if (File.Exists(Settings.DefaultChromeFullPath))

@@ -114,6 +114,7 @@
     <Compile Include="Core\Utility\SingleInstance.cs" />
     <Compile Include="Core\Extensions.cs" />
     <Compile Include="Core\UI\ActivateScreen.cs" />
+    <Compile Include="Core\Utility\WindowsCommandResolver.cs" />
     <Compile Include="Model\ApiClients\InitializeApiClientResult.cs" />
     <Compile Include="Model\ApiClients\KickApiClient.cs" />
     <Compile Include="ViewModels\ApiClientQualitiesViewModel.cs" />

@@ -1,30 +1,40 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using System.ComponentModel;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
-using Microsoft.Win32;
+using Livestream.Monitor.Core.Utility;
 
 namespace Livestream.Monitor.ViewModels
 {
-    public class SettingsViewModel : Screen, INotifyDataErrorInfo
+    public class SettingsViewModel : Screen
     {
-        private readonly Dictionary<string, List<string>> errors = new();
         private readonly ISettingsHandler settingsHandler;
         private int minimumEventViewers;
-        private bool disableNotifications, hideStreamOutputOnLoad, passthroughClientId, checkForNewVersions, disableRefreshErrorDialogs, disableMinimizeToTrayNotification;
+        private bool disableNotifications;
+        private bool hideStreamOutputOnLoad;
+        private bool checkForNewVersions;
+        private bool disableRefreshErrorDialogs;
+        private bool disableMinimizeToTrayNotification;
 
         public SettingsViewModel()
         {
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
+            ThemeSelector = new ThemeSelectorViewModel();
+            Twitch = new TwitchSettingsEditor();
+            Kick = new ApiPlatformSettingsEditor("Kick");
+            YouTube = new ApiPlatformSettingsEditor("YouTube");
+
+            HookPlatformEditors();
+
             MinimumEventViewers = 30000;
+            CheckForNewVersions = true;
+            Twitch.LoadFrom(new TwitchSettings());
+            Kick.LoadFrom(new KickSettings());
+            YouTube.LoadFrom(new YouTubeSettings());
         }
 
         public SettingsViewModel(
@@ -34,10 +44,21 @@ namespace Livestream.Monitor.ViewModels
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             ThemeSelector = themeSelectorViewModel ?? throw new ArgumentNullException(nameof(themeSelectorViewModel));
 
+            Twitch = new TwitchSettingsEditor();
+            Kick = new ApiPlatformSettingsEditor("Kick");
+            YouTube = new ApiPlatformSettingsEditor("YouTube");
+
+            HookPlatformEditors();
             ThemeSelector.ActivateWith(this);
         }
 
-        public ThemeSelectorViewModel ThemeSelector { get; set; }
+        public ThemeSelectorViewModel ThemeSelector { get; }
+
+        public TwitchSettingsEditor Twitch { get; }
+
+        public ApiPlatformSettingsEditor Kick { get; }
+
+        public ApiPlatformSettingsEditor YouTube { get; }
 
         public int MinimumEventViewers
         {
@@ -73,18 +94,6 @@ namespace Livestream.Monitor.ViewModels
                 if (value == hideStreamOutputOnLoad) return;
                 hideStreamOutputOnLoad = value;
                 NotifyOfPropertyChange(() => HideStreamOutputOnLoad);
-                NotifyOfPropertyChange(() => CanSave);
-            }
-        }
-
-        public bool PassthroughClientId
-        {
-            get => passthroughClientId;
-            set
-            {
-                if (value == passthroughClientId) return;
-                passthroughClientId = value;
-                NotifyOfPropertyChange(() => PassthroughClientId);
                 NotifyOfPropertyChange(() => CanSave);
             }
         }
@@ -125,32 +134,25 @@ namespace Livestream.Monitor.ViewModels
             }
         }
 
+        public bool HasValidationErrors => Twitch.HasErrors || Kick.HasErrors || YouTube.HasErrors;
+
         public bool CanSave
         {
             get
             {
+                if (settingsHandler == null || HasValidationErrors) return false;
+
                 return MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
-                       PassthroughClientId != settingsHandler.Settings.Twitch.PassthroughClientId ||
                        CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
                        DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs ||
-                       DisableMinimizeToTrayNotification != settingsHandler.Settings.DisableMinimizeToTrayNotification;
+                       DisableMinimizeToTrayNotification != settingsHandler.Settings.DisableMinimizeToTrayNotification ||
+                       !Twitch.Matches(settingsHandler.Settings.Twitch) ||
+                       !Kick.Matches(settingsHandler.Settings.Kick) ||
+                       !YouTube.Matches(settingsHandler.Settings.YouTube);
             }
         }
-
-        public IEnumerable GetErrors(string propertyName)
-        {
-            List<string> fails;
-            if (errors.TryGetValue(propertyName, out fails))
-                return fails;
-
-            return Enumerable.Empty<string>();
-        }
-
-        public bool HasErrors => errors.Any();
-
-        public event EventHandler<DataErrorsChangedEventArgs> ErrorsChanged;
 
         public async Task OpenSettings()
         {
@@ -171,109 +173,356 @@ namespace Livestream.Monitor.ViewModels
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
 
+            if (settingsHandler.Settings.Twitch == null) settingsHandler.Settings.Twitch = new TwitchSettings();
+            if (settingsHandler.Settings.Kick == null) settingsHandler.Settings.Kick = new KickSettings();
+            if (settingsHandler.Settings.YouTube == null) settingsHandler.Settings.YouTube = new YouTubeSettings();
+
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
-            settingsHandler.Settings.Twitch.PassthroughClientId = PassthroughClientId;
             settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
             settingsHandler.Settings.DisableRefreshErrorDialogs = DisableRefreshErrorDialogs;
             settingsHandler.Settings.DisableMinimizeToTrayNotification = DisableMinimizeToTrayNotification;
-            settingsHandler.SaveSettings();
 
+            Twitch.CopyTo(settingsHandler.Settings.Twitch);
+            Kick.CopyTo(settingsHandler.Settings.Kick);
+            YouTube.CopyTo(settingsHandler.Settings.YouTube);
+
+            settingsHandler.SaveSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
 
             NotifyOfPropertyChange(() => CanSave);
         }
 
-        private string SelectFile(string filter, string startingPath)
-        {
-            if (filter == null) throw new ArgumentNullException(nameof(filter));
-            if (startingPath == null) throw new ArgumentNullException(nameof(startingPath));
-
-            var openFileDialog = new OpenFileDialog { Filter = filter };
-
-            string initialDir = null;
-            try
-            {
-                var directoryInfo = new DirectoryInfo(Path.GetDirectoryName(startingPath));
-                while (directoryInfo.Parent != null && !directoryInfo.Exists)
-                {
-                    directoryInfo = directoryInfo.Parent;
-                }
-                initialDir = directoryInfo.FullName;
-            }
-            // most likely invalid path defined as starting path, can't do anything about that
-            catch
-            {
-            }
-
-            if (initialDir != null) openFileDialog.InitialDirectory = initialDir;
-            var showDialog = openFileDialog.ShowDialog();
-
-            return showDialog == true ? openFileDialog.FileName : null;
-        }
-
         protected override void OnActivate()
         {
-            // We need to keep these as isolated properties so we can determine if a valid change has been made
-            MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
-            DisableNotifications = settingsHandler.Settings.DisableNotifications;
-            HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
-            PassthroughClientId = settingsHandler.Settings.Twitch.PassthroughClientId;
-            CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
-            DisableRefreshErrorDialogs = settingsHandler.Settings.DisableRefreshErrorDialogs;
-            DisableMinimizeToTrayNotification = settingsHandler.Settings.DisableMinimizeToTrayNotification;
+            if (settingsHandler == null)
+            {
+                base.OnActivate();
+                return;
+            }
 
+            LoadFromSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
             base.OnActivate();
         }
 
+        protected override void OnDeactivate(bool close)
+        {
+            if (settingsHandler != null)
+                settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
+
+            base.OnDeactivate(close);
+        }
+
+        private void HookPlatformEditors()
+        {
+            HookPlatformEditor(Twitch);
+            HookPlatformEditor(Kick);
+            HookPlatformEditor(YouTube);
+        }
+
+        private void HookPlatformEditor(ApiPlatformSettingsEditor editor)
+        {
+            editor.PropertyChanged += ChildEditorOnPropertyChanged;
+            editor.StreamCommand.PropertyChanged += ChildEditorOnPropertyChanged;
+            editor.VodCommand.PropertyChanged += ChildEditorOnPropertyChanged;
+            editor.ChatCommand.PropertyChanged += ChildEditorOnPropertyChanged;
+        }
+
+        private void ChildEditorOnPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            NotifyOfPropertyChange(() => HasValidationErrors);
+            NotifyOfPropertyChange(() => CanSave);
+        }
+
+        private void LoadFromSettings()
+        {
+            var settings = settingsHandler.Settings;
+            var twitchSettings = settings.Twitch ?? new TwitchSettings();
+            var kickSettings = settings.Kick ?? new KickSettings();
+            var youTubeSettings = settings.YouTube ?? new YouTubeSettings();
+
+            MinimumEventViewers = settings.MinimumEventViewers;
+            DisableNotifications = settings.DisableNotifications;
+            HideStreamOutputOnLoad = settings.HideStreamOutputMessageBoxOnLoad;
+            CheckForNewVersions = settings.CheckForNewVersions;
+            DisableRefreshErrorDialogs = settings.DisableRefreshErrorDialogs;
+            DisableMinimizeToTrayNotification = settings.DisableMinimizeToTrayNotification;
+
+            Twitch.LoadFrom(twitchSettings);
+            Kick.LoadFrom(kickSettings);
+            YouTube.LoadFrom(youTubeSettings);
+
+            NotifyOfPropertyChange(() => HasValidationErrors);
+            NotifyOfPropertyChange(() => CanSave);
+        }
+
         private void SettingsOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(Settings.MinimumEventViewers))
-                MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
+            if (settingsHandler == null) return;
+
+            switch (e.PropertyName)
+            {
+                case nameof(Settings.MinimumEventViewers):
+                    MinimumEventViewers = settingsHandler.Settings.MinimumEventViewers;
+                    break;
+                case nameof(Settings.DisableNotifications):
+                    DisableNotifications = settingsHandler.Settings.DisableNotifications;
+                    break;
+                case nameof(Settings.HideStreamOutputMessageBoxOnLoad):
+                    HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;
+                    break;
+                case nameof(Settings.CheckForNewVersions):
+                    CheckForNewVersions = settingsHandler.Settings.CheckForNewVersions;
+                    break;
+                case nameof(Settings.DisableRefreshErrorDialogs):
+                    DisableRefreshErrorDialogs = settingsHandler.Settings.DisableRefreshErrorDialogs;
+                    break;
+                case nameof(Settings.DisableMinimizeToTrayNotification):
+                    DisableMinimizeToTrayNotification = settingsHandler.Settings.DisableMinimizeToTrayNotification;
+                    break;
+            }
+        }
+    }
+
+    public class ApiPlatformSettingsEditor : PropertyChangedBase
+    {
+        public ApiPlatformSettingsEditor(string displayName)
+        {
+            DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
+            StreamCommand = new ExecCommandEditor("Stream command");
+            VodCommand = new ExecCommandEditor("VOD command");
+            ChatCommand = new ExecCommandEditor("Chat command");
         }
 
-        private void AddError(string propertyName, string error)
-        {
-            if (!errors.ContainsKey(propertyName))
-                errors[propertyName] = new List<string>();
+        public string DisplayName { get; }
 
-            if (!errors[propertyName].Contains(error))
+        public ExecCommandEditor StreamCommand { get; }
+
+        public ExecCommandEditor VodCommand { get; }
+
+        public ExecCommandEditor ChatCommand { get; }
+
+        public virtual bool HasErrors => StreamCommand.HasErrors || VodCommand.HasErrors || ChatCommand.HasErrors;
+
+        public virtual void LoadFrom(ApiPlatformSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            StreamCommand.LoadFrom(settings.StreamCommand ?? new ExecCommand());
+            VodCommand.LoadFrom(settings.VodCommand ?? new ExecCommand());
+            ChatCommand.LoadFrom(settings.ChatCommand ?? new ExecCommand());
+        }
+
+        public virtual void CopyTo(ApiPlatformSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            if (settings.StreamCommand == null) settings.StreamCommand = new ExecCommand();
+            if (settings.VodCommand == null) settings.VodCommand = new ExecCommand();
+            if (settings.ChatCommand == null) settings.ChatCommand = new ExecCommand();
+
+            StreamCommand.CopyTo(settings.StreamCommand);
+            VodCommand.CopyTo(settings.VodCommand);
+            ChatCommand.CopyTo(settings.ChatCommand);
+        }
+
+        public virtual bool Matches(ApiPlatformSettings settings)
+        {
+            if (settings == null) return false;
+
+            return StreamCommand.Matches(settings.StreamCommand) &&
+                   VodCommand.Matches(settings.VodCommand) &&
+                   ChatCommand.Matches(settings.ChatCommand);
+        }
+    }
+
+    public sealed class TwitchSettingsEditor : ApiPlatformSettingsEditor
+    {
+        private string authToken;
+        private bool passthroughClientId;
+
+        public TwitchSettingsEditor() : base("Twitch")
+        {
+        }
+
+        public string AuthToken
+        {
+            get => authToken;
+            set => Set(ref authToken, value);
+        }
+
+        public bool PassthroughClientId
+        {
+            get => passthroughClientId;
+            set => Set(ref passthroughClientId, value);
+        }
+
+        public void LoadFrom(TwitchSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            base.LoadFrom(settings);
+            AuthToken = settings.AuthToken;
+            PassthroughClientId = settings.PassthroughClientId;
+        }
+
+        public override void LoadFrom(ApiPlatformSettings settings)
+        {
+            LoadFrom((TwitchSettings)settings);
+        }
+
+        public void CopyTo(TwitchSettings settings)
+        {
+            if (settings == null) throw new ArgumentNullException(nameof(settings));
+
+            base.CopyTo(settings);
+            settings.AuthToken = AuthToken;
+            settings.PassthroughClientId = PassthroughClientId;
+        }
+
+        public override void CopyTo(ApiPlatformSettings settings)
+        {
+            CopyTo((TwitchSettings)settings);
+        }
+
+        public bool Matches(TwitchSettings settings)
+        {
+            if (settings == null) return false;
+
+            return base.Matches(settings) &&
+                   string.Equals(AuthToken, settings.AuthToken, StringComparison.Ordinal) &&
+                   PassthroughClientId == settings.PassthroughClientId;
+        }
+
+        public override bool Matches(ApiPlatformSettings settings)
+        {
+            return Matches((TwitchSettings)settings);
+        }
+    }
+
+    public sealed class ExecCommandEditor : PropertyChangedBase
+    {
+        private string filePath;
+        private string args;
+        private bool captureStandardOutput;
+        private bool captureErrorOutput;
+        private string resolvedFilePath;
+        private string filePathStatusText;
+        private bool hasValidFilePath;
+
+        public ExecCommandEditor(string displayName)
+        {
+            DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
+            RefreshFilePathState();
+        }
+
+        public string DisplayName { get; }
+
+        public string FilePath
+        {
+            get => filePath;
+            set
             {
-                errors[propertyName].Add(error);
-                OnErrorsChanged(propertyName);
+                if (!Set(ref filePath, value)) return;
+                RefreshFilePathState();
             }
         }
 
-        private void RemoveErrors(string propertyName)
+        public string Args
         {
-            if (!errors.ContainsKey(propertyName)) return;
+            get => args;
+            set => Set(ref args, value);
+        }
 
-            var propertyErrors = errors[propertyName].ToList();
-            foreach (var error in propertyErrors)
+        public bool CaptureStandardOutput
+        {
+            get => captureStandardOutput;
+            set => Set(ref captureStandardOutput, value);
+        }
+
+        public bool CaptureErrorOutput
+        {
+            get => captureErrorOutput;
+            set => Set(ref captureErrorOutput, value);
+        }
+
+        public string ResolvedFilePath
+        {
+            get => resolvedFilePath;
+            private set => Set(ref resolvedFilePath, value);
+        }
+
+        public string FilePathStatusText
+        {
+            get => filePathStatusText;
+            private set => Set(ref filePathStatusText, value);
+        }
+
+        public bool HasValidFilePath
+        {
+            get => hasValidFilePath;
+            private set
             {
-                RemoveError(propertyName, error);
+                if (!Set(ref hasValidFilePath, value)) return;
+                NotifyOfPropertyChange(() => HasErrors);
             }
         }
 
-        private void RemoveError(string propertyName, string error)
+        public bool HasErrors => !HasValidFilePath;
+
+        public void LoadFrom(ExecCommand command)
         {
-            if (errors.ContainsKey(propertyName) &&
-                errors[propertyName].Contains(error))
-            {
-                errors[propertyName].Remove(error);
-                if (errors[propertyName].Count == 0) errors.Remove(propertyName);
-                OnErrorsChanged(propertyName);
-            }
+            if (command == null) throw new ArgumentNullException(nameof(command));
+
+            FilePath = command.FilePath;
+            Args = command.Args;
+            CaptureStandardOutput = command.CaptureStandardOutput;
+            CaptureErrorOutput = command.CaptureErrorOutput;
         }
 
-        protected virtual void OnErrorsChanged(string propertyName)
+        public void CopyTo(ExecCommand command)
         {
-            if (string.IsNullOrWhiteSpace(propertyName))
-                throw new ArgumentNullException(nameof(propertyName));
+            if (command == null) throw new ArgumentNullException(nameof(command));
 
-            ErrorsChanged?.Invoke(this, new DataErrorsChangedEventArgs(propertyName));
+            command.FilePath = FilePath;
+            command.Args = Args;
+            command.CaptureStandardOutput = CaptureStandardOutput;
+            command.CaptureErrorOutput = CaptureErrorOutput;
+        }
+
+        public bool Matches(ExecCommand command)
+        {
+            if (command == null) return false;
+
+            return string.Equals(FilePath, command.FilePath, StringComparison.Ordinal) &&
+                   string.Equals(Args, command.Args, StringComparison.Ordinal) &&
+                   CaptureStandardOutput == command.CaptureStandardOutput &&
+                   CaptureErrorOutput == command.CaptureErrorOutput;
+        }
+
+        private void RefreshFilePathState()
+        {
+            if (string.IsNullOrWhiteSpace(FilePath))
+            {
+                ResolvedFilePath = null;
+                FilePathStatusText = "Enter a command name or full executable path.";
+                HasValidFilePath = false;
+                return;
+            }
+
+            if (WindowsCommandResolver.TryResolveExecutable(FilePath, out string resolvedPath))
+            {
+                ResolvedFilePath = resolvedPath;
+                FilePathStatusText = $"Resolved: {resolvedPath}";
+                HasValidFilePath = true;
+                return;
+            }
+
+            ResolvedFilePath = null;
+            FilePathStatusText = "Unable to resolve this command or executable path.";
+            HasValidFilePath = false;
         }
     }
 }
