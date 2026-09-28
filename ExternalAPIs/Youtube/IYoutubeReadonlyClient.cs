@@ -9,7 +9,7 @@ namespace ExternalAPIs.Youtube
     public interface IYoutubeReadonlyClient
     {
         /// <summary> A channel in youtube can have multiple livestreams running at one time </summary>
-        Task<SearchLiveVideosRoot> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default);
+        Task<List<Video>> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default);
 
         /// <summary> Lookup channel details channel ids </summary>
         Task<ChannelsRoot> GetChannelDetailsFromIds(List<string> channelIds, CancellationToken cancellationToken = default);

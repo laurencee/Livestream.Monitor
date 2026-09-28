@@ -195,11 +195,11 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 try
                 {
-                    var videoIds = await GetVideoIdsByChannelId(channelIdentifier, cancellationToken);
+                    var videos = await GetLivestreamVideos(channelIdentifier.ChannelId, cancellationToken);
+                    var livestreamModels = MapLivestreamModels(channelIdentifier, videos);
 
-                    // video ids are only returned for online streams, we need to show something to the user
-                    // so create a placeholder livestream model object for the offline channel.
-                    if (videoIds.Count == 0)
+                    // Keep an offline placeholder when the playlist contains no active broadcasts.
+                    if (livestreamModels.Count == 0)
                     {
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
@@ -213,8 +213,6 @@ namespace Livestream.Monitor.Model.ApiClients
                         return queryResults;
                     }
 
-                    var videosRoot = await GetVideosDetails(videoIds, cancellationToken);
-                    var livestreamModels = MapLivestreamModels(channelIdentifier, videosRoot);
                     queryResults.AddRange(livestreamModels.Select(x => new LivestreamQueryResult(channelIdentifier)
                     {
                         LivestreamModel = x,
@@ -234,50 +232,43 @@ namespace Livestream.Monitor.Model.ApiClients
             return list.SelectMany(x => x).ToList();
         }
 
-        private async Task<List<string>> GetVideoIdsByChannelId(ChannelIdentifier channelIdentifier, CancellationToken cancellationToken)
+        private async Task<List<Video>> GetLivestreamVideos(string channelId, CancellationToken cancellationToken)
         {
-            var searchLiveVideosRoot = await youtubeClient.GetLivestreamVideos(channelIdentifier.ChannelId, cancellationToken);
-            var videoIds = searchLiveVideosRoot.Items?.Select(x => x.Id.VideoId).ToList();
+            const int maxAttempts = 3;
+            const int retryDelayMilliseconds = 2000;
+            List<Video> videos = null;
+            var retryCount = 0;
 
-            return videoIds ?? new List<string>();
-        }
-
-        private async Task<VideosRoot> GetVideosDetails(List<string> videoIds, CancellationToken cancellationToken)
-        {
-            if (videoIds.Count == 0) return null;
-
-            VideosRoot videosRoot = null;
-            int retryCount = 0;
-            while (retryCount < 3 && videosRoot == null)
+            while (retryCount < maxAttempts && videos == null)
             {
                 if (cancellationToken.IsCancellationRequested) return null;
 
                 try
                 {
-                    videosRoot = await youtubeClient.GetVideosDetails(videoIds, cancellationToken);
+                    videos = await youtubeClient.GetLivestreamVideos(channelId, cancellationToken);
                 }
                 catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.ServiceUnavailable)
                 {
-                    await Task.Delay(2000, cancellationToken);
+                    await Task.Delay(retryDelayMilliseconds, cancellationToken);
                 }
-                catch (HttpRequestWithStatusException)
+                catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
                 {
-                    // can happen in the case of the video being removed
-                    // the youtube api will report the videoid as live but looking up the videoid will fail with BadRequest
-                    break;
+                    // Channels with no livestream playlist are offline.
+                    return new List<Video>();
                 }
+
                 retryCount++;
             }
 
-            return videosRoot;
+            return videos;
         }
 
-        private List<LivestreamModel> MapLivestreamModels(ChannelIdentifier channelIdentifier, VideosRoot videosRoot)
+        private List<LivestreamModel> MapLivestreamModels(ChannelIdentifier channelIdentifier, List<Video> videos)
         {
             var livestreamModels = new List<LivestreamModel>();
-            if (videosRoot == null) return livestreamModels;
+            if (videos == null) return livestreamModels;
 
-            foreach (var videoDetails in videosRoot.Items)
+            foreach (var videoDetails in videos)
             {
                 if (videoDetails.LiveStreamingDetails?.ActualStartTime == null) continue;
 

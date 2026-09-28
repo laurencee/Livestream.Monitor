@@ -70,8 +70,7 @@ namespace ExternalAPIs.Tests
             var onlineVideos = await sut.GetLivestreamVideos(LOFIGIRL_CHANNEL_ID);
 
             Assert.NotNull(onlineVideos);
-            Assert.NotNull(onlineVideos.Items);
-            Assert.NotEmpty(onlineVideos.Items);
+            Assert.NotEmpty(onlineVideos);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -14,14 +15,28 @@ namespace ExternalAPIs.Youtube
     {
         private static readonly string ApiKey = Encoding.UTF8.GetString(Convert.FromBase64String(RequestConstants.API_KEY));
 
-        public async Task<SearchLiveVideosRoot> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default)
+        public async Task<List<Video>> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
-            var request = RequestConstants.SearchChannelLiveVideos.Replace("{0}", channelId);
-            var searchChannelLiveVideos = await ExecuteRequest<SearchLiveVideosRoot>(request, cancellationToken);
+            const string channelIdPrefix = "UC";
+            const string livestreamPlaylistPrefix = "UULV";
 
-            return searchChannelLiveVideos;
+            // Search can omit active broadcasts. UULV is YouTube's undocumented livestream-only playlist,
+            // including past broadcasts; video details distinguish those currently live.
+            // https://github.com/DialmasterOrg/Youtarr/blob/main/server/modules/youtubeApi/constants.js
+            var playlistId = livestreamPlaylistPrefix + channelId.Substring(channelIdPrefix.Length);
+
+            // Limit discovery to the first page: scanning archived streams can exceed the refresh timeout.
+            const int maxLivestreamCandidates = 50;
+            var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = maxLivestreamCandidates };
+            var playlistItems = await GetPlaylistItems(query, cancellationToken);
+            var videoIds = playlistItems.Items.Select(x => x.ContentDetails.VideoId).ToList();
+
+            if (videoIds.Count == 0) return new List<Video>();
+
+            var videos = await GetVideosDetails(videoIds, cancellationToken);
+            return videos.Items.Where(x => x.Snippet?.LiveBroadcastContent == "live").ToList();
         }
 
         public async Task<ChannelsRoot> GetChannelDetailsFromIds(List<string> channelIds, CancellationToken cancellationToken = default)
