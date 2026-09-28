@@ -443,7 +443,8 @@ namespace Livestream.Monitor.ViewModels
 
         private void RequestViewRefresh()
         {
-            if (suspendViewRefreshCount > 0)
+            // Initialised triggers the existing refresh batch after startup rows have been populated.
+            if (!StreamsModel.Initialised || suspendViewRefreshCount > 0)
             {
                 pendingViewRefresh = true;
                 return;
