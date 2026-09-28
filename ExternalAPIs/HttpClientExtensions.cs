@@ -11,13 +11,19 @@ namespace ExternalAPIs
     {
         public static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
 
-        /// <summary> Creates a new HttpClient with compression enabled </summary>
+        // Keep the Framework connection pool alive across short-lived request clients.
+        private const int MaxConnectionsPerServer = 8;
+        private static readonly HttpClientHandler SharedHandler = new()
+        {
+            AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
+            MaxConnectionsPerServer = MaxConnectionsPerServer,
+            UseCookies = false,
+        };
+
+        /// <summary> Creates a request client sharing the application's connection pool. </summary>
         public static HttpClient CreateCompressionHttpClient()
         {
-            return new HttpClient(new HttpClientHandler()
-            {
-                AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
-            }) { Timeout = QueryTimeout };
+            return new HttpClient(SharedHandler, disposeHandler: false) { Timeout = QueryTimeout };
         }
 
         public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
@@ -28,17 +34,19 @@ namespace ExternalAPIs
         public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request)) throw new ArgumentNullException(nameof(request));
-            
+
             using (httpClient)
             {
                 try
                 {
-                    var httpResponseMessage = await httpClient.GetAsync(request, cancellationToken);
-                    await httpResponseMessage.EnsureSuccessStatusCodeAsync();
-                    var response = await httpResponseMessage.Content.ReadAsStringAsync();
+                    var responseTask = httpClient.GetAsync(request, cancellationToken);
+
+                    using var httpResponseMessage = await responseTask.ConfigureAwait(false);
+                    await httpResponseMessage.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+                    var response = await httpResponseMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
                     return JsonConvert.DeserializeObject<T>(response);
                 }
-                catch (TaskCanceledException e)
+                catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
                 {
                     throw new TimeoutException("Timed out executing web request", e);
                 }

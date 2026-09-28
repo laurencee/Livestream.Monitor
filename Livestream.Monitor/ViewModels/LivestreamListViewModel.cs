@@ -168,7 +168,7 @@ namespace Livestream.Monitor.ViewModels
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
                 vm.SelectedApiClient = stream.ApiClient;
-                vm.StreamDisplayName = stream.ChannelIdentifier.DisplayName;
+                vm.StreamDisplayName = stream.ChannelIdentifier.DisplayName ?? stream.ChannelIdentifier.ChannelId;
             });
         }
 
@@ -436,7 +436,7 @@ namespace Livestream.Monitor.ViewModels
 
             suspendViewRefreshCount--;
             if (suspendViewRefreshCount != 0 || !pendingViewRefresh) return;
-            
+
             pendingViewRefresh = false;
             ViewSource.View?.Refresh();
         }

@@ -27,6 +27,9 @@ namespace ExternalAPIs.TwitchTv.Helix.Dto
         [JsonProperty("game_id")]
         public string GameId { get; set; }
 
+        [JsonProperty("game_name")]
+        public string GameName { get; set; }
+
         [JsonProperty("community_ids")]
         public List<Guid> CommunityIds { get; set; }
 

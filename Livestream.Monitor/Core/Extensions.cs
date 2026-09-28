@@ -138,50 +138,6 @@ namespace Livestream.Monitor.Core
             }
         }
 
-        /// <summary>
-        /// For each <param name="enumerable"/> value execute the query in parallel
-        /// within the <see cref="Constants.HalfRefreshPollingTime"/> timeout.
-        /// </summary>
-        /// <typeparam name="T">Type of the enumerable values</typeparam>
-        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
-        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
-        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public static async Task ExecuteInParallel<T>(
-            this IEnumerable<T> enumerable,
-            Func<T, Task> query,
-            TimeSpan timeout,
-            CancellationToken cancellationToken)
-        {
-            var queryTasks = enumerable.Select(query);
-            await Task.WhenAny(Task.WhenAll(queryTasks), Task.Delay(timeout, cancellationToken));
-        }
-
-        /// <summary>
-        /// For each <param name="enumerable"/> value execute the query in parallel
-        /// within the <see cref="Constants.HalfRefreshPollingTime"/> timeout.
-        /// </summary>
-        /// <typeparam name="T">Type of the enumerable values</typeparam>
-        /// <typeparam name="TResult">Type of the returned collection objects</typeparam>
-        /// <param name="enumerable">Collection of <typeparam name="T" /></param>
-        /// <param name="query">A task to run on the <typeparam name="T" /> values</param>
-        /// <param name="timeout">Maximum time allowed for these tasks to execute in.</param>
-        /// <param name="cancellationToken"></param>
-        /// <returns>A collection of TResult produced from the <param name="query" /></returns>
-        public static async Task<List<TResult>> ExecuteInParallel<T, TResult>(
-            this IEnumerable<T> enumerable,
-            Func<T, Task<TResult>> query,
-            TimeSpan timeout,
-            CancellationToken cancellationToken)
-        {
-            var queryTasks = enumerable.Select(query);
-            var resultsTask = Task.WhenAll(queryTasks);
-            var timeoutTask = Task.Delay(timeout, cancellationToken);
-            var completedTask = await Task.WhenAny(resultsTask, timeoutTask);
-            return completedTask == timeoutTask ? new List<TResult>() : resultsTask.Result.ToList();
-        }
-
         /// <summary> Rethrows any failed query exceptions or does nothing if no failed queries exist </summary>
         public static void EnsureAllQuerySuccess(
             this IReadOnlyCollection<LivestreamQueryResult> livestreamQueryResults,

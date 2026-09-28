@@ -13,6 +13,10 @@ namespace ExternalAPIs.TwitchTv.Helix
     {
         public const int DefaultItemsPerQuery = MaxItemsPerQuery; // 20 is default, 100 is maximum
         public const int MaxItemsPerQuery = 100; // 100 is maximum
+        private const int MaxConcurrentRequests = 4;
+        // Private fields intentionally follow the application's no-prefix naming convention.
+        // ReSharper disable once InconsistentNaming
+        private readonly SemaphoreSlim requestSlots = new(MaxConcurrentRequests);
         private string _accessToken = null;
 
         public async Task<List<FollowedChannel>> GetFollowedChannels(string userId, CancellationToken cancellationToken = default)
@@ -58,18 +62,15 @@ namespace ExternalAPIs.TwitchTv.Helix
             var streamsRoot = new StreamsRoot() { Streams = new List<Stream>() };
             if (getStreamsQuery.UserIds?.Any() == true)
             {
-                var nonPagedRequest = request;
-                int taken = 0;
-                while (taken < getStreamsQuery.UserIds.Count)
+                var responses = await ExecuteBatches<StreamsRoot>(
+                    request,
+                    "user_id",
+                    getStreamsQuery.UserIds,
+                    cancellationToken);
+                foreach (var response in responses)
                 {
-                    var take = Math.Min(DefaultItemsPerQuery, getStreamsQuery.UserIds.Count - taken);
-                    var pagedIds = getStreamsQuery.UserIds.Skip(taken).Take(take);
-                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("user_id", pagedIds, isFirstParam: false);
-
-                    var response = await ExecuteRequest<StreamsRoot>(pagedRequest, cancellationToken);
                     streamsRoot.Pagination = response.Pagination;
                     streamsRoot.Streams.AddRange(response.Streams);
-                    taken += take;
                 }
             }
             else
@@ -127,34 +128,22 @@ namespace ExternalAPIs.TwitchTv.Helix
             var request = RequestConstants.Users;
             if (getUsersQuery.UserIds?.Any() == true)
             {
-                var nonPagedRequest = request;
-                int taken = 0;
-                while (taken < getUsersQuery.UserIds.Count)
-                {
-                    var take = Math.Min(DefaultItemsPerQuery, getUsersQuery.UserIds.Count - taken);
-                    var pagedIds = getUsersQuery.UserIds.Skip(taken).Take(take);
-                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("id", pagedIds);
-
-                    var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
-                    users.AddRange(usersRoot.Users);
-                    taken += take;
-                }
+                var responses = await ExecuteBatches<UsersRoot>(
+                    request,
+                    "id",
+                    getUsersQuery.UserIds,
+                    cancellationToken);
+                foreach (var response in responses) users.AddRange(response.Users);
             }
 
             if (getUsersQuery.UserNames?.Any() == true)
             {
-                var nonPagedRequest = request;
-                int taken = 0;
-                while (taken < getUsersQuery.UserNames.Count)
-                {
-                    var take = Math.Min(DefaultItemsPerQuery, getUsersQuery.UserNames.Count - taken);
-                    var pagedUserNames = getUsersQuery.UserNames.Skip(taken).Take(take);
-                    var pagedRequest = nonPagedRequest.AppendQueryStringValues("login", pagedUserNames);
-
-                    var usersRoot = await ExecuteRequest<UsersRoot>(pagedRequest, cancellationToken);
-                    users.AddRange(usersRoot.Users);
-                    taken += take;
-                }
+                var responses = await ExecuteBatches<UsersRoot>(
+                    request,
+                    "login",
+                    getUsersQuery.UserNames,
+                    cancellationToken);
+                foreach (var response in responses) users.AddRange(response.Users);
             }
 
             return users;
@@ -196,9 +185,9 @@ namespace ExternalAPIs.TwitchTv.Helix
         {
             if (string.IsNullOrEmpty(searchCategory))
                 throw new ArgumentException("Value cannot be null or empty.", nameof(searchCategory));
-            
+
             var request = RequestConstants.SearchCategories + "?query=" + searchCategory;
-            
+
             var topCategoriesRoot = await ExecuteRequest<TopCategoriesRoot>(request, cancellationToken);
             return topCategoriesRoot.TopCategories;
         }
@@ -208,14 +197,40 @@ namespace ExternalAPIs.TwitchTv.Helix
             _accessToken = accessToken;
         }
 
+        private async Task<T[]> ExecuteBatches<T>(
+            string request,
+            string parameter,
+            List<string> values,
+            CancellationToken cancellationToken)
+        {
+            var tasks = new List<Task<T>>();
+            for (var i = 0; i < values.Count; i += MaxItemsPerQuery)
+            {
+                var batch = values.Skip(i).Take(MaxItemsPerQuery);
+                var isFirstParameter = !request.Contains("?");
+                var batchRequest = request.AppendQueryStringValues(parameter, batch, isFirstParam: isFirstParameter);
+                tasks.Add(ExecuteRequest<T>(batchRequest, cancellationToken));
+            }
+
+            return await Task.WhenAll(tasks);
+        }
+
         private async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
-            using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
-            httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
-            if (_accessToken != null)
-                httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);                
+            await requestSlots.WaitAsync(cancellationToken);
+            try
+            {
+                using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
+                httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
+                if (_accessToken != null)
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-            return await httpClient.ExecuteRequest<T>(request, cancellationToken);
+                return await httpClient.ExecuteRequest<T>(request, cancellationToken);
+            }
+            finally
+            {
+                requestSlots.Release();
+            }
         }
     }
 }

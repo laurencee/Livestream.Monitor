@@ -12,6 +12,11 @@ namespace ExternalAPIs.Kick;
 
 public class KickReadonlyClient : IKickReadonlyClient
 {
+    private const int MaxConcurrentRequests = 4;
+    // Private fields intentionally follow the application's no-prefix naming convention.
+    // ReSharper disable once InconsistentNaming
+    private readonly SemaphoreSlim requestSlots = new(MaxConcurrentRequests);
+
     // ReSharper disable once InconsistentNaming
     private string _accessToken;
 
@@ -20,10 +25,10 @@ public class KickReadonlyClient : IKickReadonlyClient
         var urlBuilder = new StringBuilder(RequestConstants.LivestreamsEndpoint);
 
         var queryParams = new List<string>();
-        if (query.BroadcasterUserIds.Any()) 
+        if (query.BroadcasterUserIds.Any())
             queryParams.Add($"broadcaster_user_id={string.Join("&broadcaster_user_id=", query.BroadcasterUserIds)}");
 
-        if (query.Limit.HasValue) 
+        if (query.Limit.HasValue)
             queryParams.Add($"limit={query.Limit.Value}");
 
         if (query.CategoryId.HasValue)
@@ -62,17 +67,41 @@ public class KickReadonlyClient : IKickReadonlyClient
 
     public async Task<ChannelsRoot> GetChannels(GetChannelsQuery query, CancellationToken cancellationToken = default)
     {
-        // TODO - split requests on MaxRequestLimit
-        string requestUrl;
+        string parameter;
+        List<string> values;
         if (query.Slugs.Count > 0)
-            requestUrl = $"{RequestConstants.ChannelsEndpoint}?slug={string.Join("&slug=", query.Slugs)}";
+        {
+            parameter = "slug";
+            values = query.Slugs;
+        }
         else if (query.BroadcasterUserIds.Count > 0)
-            requestUrl = $"{RequestConstants.ChannelsEndpoint}?broadcaster_user_id={string.Join("&broadcaster_user_id=", query.BroadcasterUserIds)}";
+        {
+            parameter = "broadcaster_user_id";
+            values = query.BroadcasterUserIds.Select(x => x.ToString()).ToList();
+        }
         else
+        {
             throw new ArgumentException($"Either {nameof(query.Slugs)} or {nameof(query.BroadcasterUserIds)} must be set");
+        }
 
-        var response = await ExecuteRequest<ChannelsRoot>(requestUrl, cancellationToken);
-        return response;
+        // Channels accepts at most 50 IDs or slugs, independently of the livestream result limit.
+        // https://api.kick.com/swagger/doc.json
+        const int maxChannelsPerRequest = 50;
+        var tasks = new List<Task<ChannelsRoot>>();
+        for (var i = 0; i < values.Count; i += maxChannelsPerRequest)
+        {
+            var batch = values.Skip(i).Take(maxChannelsPerRequest).Select(Uri.EscapeDataString);
+            var parameters = string.Join($"&{parameter}=", batch);
+            var requestUrl = $"{RequestConstants.ChannelsEndpoint}?{parameter}={parameters}";
+            tasks.Add(ExecuteRequest<ChannelsRoot>(requestUrl, cancellationToken));
+        }
+
+        var responses = await Task.WhenAll(tasks);
+        return new ChannelsRoot
+        {
+            Data = responses.SelectMany(x => x.Data).ToList(),
+            Message = responses[0].Message,
+        };
     }
 
     public void SetAccessToken(string accessToken)
@@ -84,9 +113,17 @@ public class KickReadonlyClient : IKickReadonlyClient
     {
         if (string.IsNullOrEmpty(_accessToken)) throw new InvalidOperationException("Access token is not set.");
 
-        using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
-        httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+        await requestSlots.WaitAsync(cancellationToken);
+        try
+        {
+            using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
 
-        return await httpClient.ExecuteRequest<T>(request, cancellationToken);
+            return await httpClient.ExecuteRequest<T>(request, cancellationToken);
+        }
+        finally
+        {
+            requestSlots.Release();
+        }
     }
 }

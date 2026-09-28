@@ -214,7 +214,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public async Task RefreshLivestreams()
         {
-            if (!CanRefreshLivestreams || 
+            if (!CanRefreshLivestreams ||
                 (LastRefreshTime > DateTimeOffset.MinValue && LastRefreshTime.AddSeconds(10) >= DateTimeOffset.Now))
             {
                 return;
@@ -224,37 +224,44 @@ namespace Livestream.Monitor.Model.Monitoring
 
             try
             {
-                // query different apis in parallel
-                var timeoutTokenSource = new CancellationTokenSource();
-                var livestreamQueryResults = (await apiClientFactory.GetAll().ExecuteInParallel(
-                    query: apiClient => apiClient.QueryChannels(timeoutTokenSource.Token),
-                    timeout: Constants.HalfRefreshPollingTime,
-                    cancellationToken: timeoutTokenSource.Token)).SelectMany(x => x).ToList();
+                var savedNames = channelIdentifiers.ToDictionary(x => x, x => x.DisplayName);
 
-                // don't clear out existing results if we get no query results back, that tends to indicate a full query timeout
-                if (livestreamQueryResults.Any())
+                // A single deadline cancels every provider request; successful channels still update.
+                using var timeoutTokenSource = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
+                var cancellationToken = timeoutTokenSource.Token;
+                var queryTasks = apiClientFactory.GetAll().Select(QueryProvider);
+                var providerResults = await Task.WhenAll(queryTasks);
+                var livestreamQueryResults = providerResults.SelectMany(x => x)
+                    .Where(x => channelIdentifiers.Contains(x.ChannelIdentifier)).ToList();
+                var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess).ToList();
+                var refreshedChannels = new HashSet<ChannelIdentifier>(successfulQueries.Select(x => x.ChannelIdentifier));
+                var livestreams = successfulQueries.Select(x => x.LivestreamModel).ToList();
+
+                // Failed channels retain their previous state instead of disappearing or becoming offline.
+                livestreams.AddRange(Livestreams.Where(x => !refreshedChannels.Contains(x.ChannelIdentifier)));
+                PopulateLivestreams(livestreams);
+                // Publish successful state changes even when another channel failed.
+                NotifyOfPropertyChange(() => CanOpenStream);
+
+                if (channelIdentifiers.Any(x => savedNames.TryGetValue(x, out var name) && name != x.DisplayName))
+                    SaveLivestreams();
+
+                livestreamQueryResults.EnsureAllQuerySuccess(ignoredQueryFailures);
+
+                async Task<List<LivestreamQueryResult>> QueryProvider(IApiClient apiClient)
                 {
-                    var successfulQueries = livestreamQueryResults.Where(x => x.IsSuccess);
-                    var failedQueries = livestreamQueryResults.Where(x => !x.IsSuccess);
-
-                    // special identification for failed livestream queries
-                    var failedLivestreams = failedQueries.Select(x =>
+                    var channels = channelIdentifiers.Where(x => x.ApiClient == apiClient).ToList();
+                    try
                     {
-                        x.LivestreamModel = new LivestreamModel(x.ChannelIdentifier.ChannelId, x.ChannelIdentifier);
-                        x.LivestreamModel.DisplayName = "[ERROR] " + x.ChannelIdentifier.ChannelId;
-                        x.LivestreamModel.Description = x.FailedQueryException.Message;
-                        return x.LivestreamModel;
-                    });
-
-                    var livestreams = successfulQueries.Select(x => x.LivestreamModel).Union(failedLivestreams).ToList();
-
-                    PopulateLivestreams(livestreams);
-                    livestreamQueryResults.EnsureAllQuerySuccess(ignoredQueryFailures);
-
-                    // before the first refresh (or after some network error) all the channels are offline
-                    // but we would already have a channel selected
-                    // if the selected channel is now online we have to try and update the selected stream quality/allow the user to open the stream
-                    NotifyOfPropertyChange(() => CanOpenStream);
+                        return await apiClient.QueryChannels(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        return channels.Select(channel => new LivestreamQueryResult(channel)
+                        {
+                            FailedQueryException = new FailedQueryException(channel, ex),
+                        }).ToList();
+                    }
                 }
             }
             finally
@@ -296,7 +303,7 @@ namespace Livestream.Monitor.Model.Monitoring
             foreach (var livestream in livestreamModels)
             {
                 var livestreamModel = Livestreams.FirstOrDefault(x => Equals(livestream, x));
-                livestreamModel?.PopulateSelf(livestream);
+                if (!ReferenceEquals(livestreamModel, livestream)) livestreamModel?.PopulateSelf(livestream);
             }
 
             var newStreams = livestreamModels.Except(Livestreams).ToList();

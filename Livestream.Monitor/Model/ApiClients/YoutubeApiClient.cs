@@ -93,7 +93,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public async Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {
             ChannelsRoot channelsRoot;
-            var channelIdentifier = monitoredChannels.FirstOrDefault(x => x.DisplayName.IsEqualTo(vodQuery.StreamDisplayName));
+            var channelIdentifier = monitoredChannels.FirstOrDefault(x =>
+                x.ChannelId == vodQuery.StreamDisplayName || x.DisplayName.IsEqualTo(vodQuery.StreamDisplayName));
             if (channelIdentifier != null)
             {
                 channelsRoot = await youtubeClient.GetChannelDetailsFromIds([channelIdentifier.ChannelId]);
@@ -189,7 +190,7 @@ namespace Livestream.Monitor.Model.ApiClients
             IReadOnlyCollection<ChannelIdentifier> identifiers,
             CancellationToken cancellationToken = default)
         {
-            var list = await identifiers.ExecuteInParallel(async channelIdentifier =>
+            var tasks = identifiers.Select(async channelIdentifier =>
             {
                 var queryResults = new List<LivestreamQueryResult>();
 
@@ -227,7 +228,8 @@ namespace Livestream.Monitor.Model.ApiClients
                 }
 
                 return queryResults;
-            }, Constants.HalfRefreshPollingTime, cancellationToken);
+            });
+            var list = await Task.WhenAll(tasks);
 
             return list.SelectMany(x => x).ToList();
         }
@@ -241,7 +243,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             while (retryCount < maxAttempts && videos == null)
             {
-                if (cancellationToken.IsCancellationRequested) return null;
+                cancellationToken.ThrowIfCancellationRequested();
 
                 try
                 {
@@ -259,6 +261,9 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 retryCount++;
             }
+
+            if (videos == null)
+                throw new HttpRequestWithStatusException(HttpStatusCode.ServiceUnavailable, "YouTube remained unavailable after retries.");
 
             return videos;
         }
