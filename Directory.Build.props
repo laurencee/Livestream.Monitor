@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <!-- Keep runtime companion files and symbols, but do not copy referenced XML documentation. -->
+    <AllowedReferenceRelatedFileExtensions>.pdb;.pri;.dll.config;.exe.config</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+</Project>
