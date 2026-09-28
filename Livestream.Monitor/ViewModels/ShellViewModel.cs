@@ -2,6 +2,8 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Caliburn.Micro;
 using Hardcodet.Wpf.TaskbarNotification;
 using Livestream.Monitor.Core;
@@ -163,18 +165,54 @@ namespace Livestream.Monitor.ViewModels
 
         private async Task InitializeMonitorStreamsModel()
         {
-            var dialogController = await this.ShowProgressAsync("Initializing", "Initializing App...");
+            await Dispatcher.Yield(DispatcherPriority.Background);
+
+            const int startupFadeMilliseconds = 50;
+            var fade = new Storyboard();
+            var animation = new DoubleAnimation(0, TimeSpan.FromMilliseconds(startupFadeMilliseconds));
+            Storyboard.SetTargetProperty(animation, new PropertyPath(UIElement.OpacityProperty));
+            fade.Children.Add(animation);
+            // MahApps 1.6.5 looks up this resource when closing a dialog.
+            // https://github.com/MahApps/MahApps.Metro/blob/1.6.5/src/MahApps.Metro/Controls/Dialogs/BaseMetroDialog.cs
+            var dialogSettings = new MetroDialogSettings
+            {
+                CustomResourceDictionary = new ResourceDictionary { ["DialogCloseStoryboard"] = fade },
+            };
+            var window = (MetroWindow)GetView();
+            var originalFadeIn = window.OverlayFadeIn;
+            var originalFadeOut = window.OverlayFadeOut;
+            Exception initializationError = null;
             try
             {
-                await monitorStreamsModel.Initialize(this);
-            }
-            catch (Exception ex)
-            {
+                window.OverlayFadeIn = fade;
+                window.OverlayFadeOut = fade;
+                var dialogController = await this.ShowProgressAsync(
+                    "Initializing", "Initializing App...", dialogSettings: dialogSettings);
+                await Dispatcher.Yield(DispatcherPriority.Background);
+
+                try
+                {
+                    await monitorStreamsModel.Initialize(this);
+                }
+                catch (Exception ex)
+                {
+                    initializationError = ex;
+                }
+
                 if (dialogController.IsOpen) await dialogController.CloseAsync();
-                await this.ShowMessageAsync("Error", $"An error occurred initializing the app.{Environment.NewLine}{ex.ExtractErrorMessage()}");
+            }
+            finally
+            {
+                // The faster fades apply only to initialization, including when it fails.
+                window.OverlayFadeIn = originalFadeIn;
+                window.OverlayFadeOut = originalFadeOut;
             }
 
-            if (dialogController.IsOpen) await dialogController.CloseAsync();
+            if (initializationError != null)
+            {
+                await this.ShowMessageAsync("Error",
+                    $"An error occurred initializing the app.{Environment.NewLine}{initializationError.ExtractErrorMessage()}");
+            }
         }
 
         private void StartVersionCheck()

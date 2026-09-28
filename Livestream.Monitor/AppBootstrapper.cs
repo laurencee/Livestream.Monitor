@@ -85,6 +85,9 @@ namespace Livestream.Monitor
 
         protected override void OnStartup(object sender, System.Windows.StartupEventArgs e)
         {
+            // start querying before we even try to display the UI to improve startup time for the standard case
+            if (container.GetInstance<IMonitorStreamsModel>() is MonitorStreamsModel monitor) monitor.BeginInitialQuery();
+
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             DisplayRootViewFor<ShellViewModel>();
 
