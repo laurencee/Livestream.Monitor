@@ -1,55 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace ExternalAPIs.TwitchTv.Helix.Dto
 {
     public class StreamsRoot
     {
-        [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public List<Stream> Streams { get; set; }
 
-        [JsonProperty("pagination")]
+        [JsonPropertyName("pagination")]
         public Pagination Pagination { get; set; }
     }
 
     public class Stream
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public string Id { get; set; }
 
-        [JsonProperty("user_id")]
+        [JsonPropertyName("user_id")]
         public string UserId { get; set; }
 
-        [JsonProperty("user_name")]
+        [JsonPropertyName("user_name")]
         public string UserName { get; set; }
 
-        [JsonProperty("game_id")]
+        [JsonPropertyName("game_id")]
         public string GameId { get; set; }
 
-        [JsonProperty("game_name")]
+        [JsonPropertyName("game_name")]
         public string GameName { get; set; }
 
-        [JsonProperty("community_ids")]
+        [JsonPropertyName("community_ids")]
         public List<Guid> CommunityIds { get; set; }
 
-        [JsonProperty("type")]
+        [JsonPropertyName("type")]
         public string Type { get; set; }
 
-        [JsonProperty("title")]
+        [JsonPropertyName("title")]
         public string Title { get; set; }
 
-        [JsonProperty("viewer_count")]
+        [JsonPropertyName("viewer_count")]
         public long ViewerCount { get; set; }
 
-        [JsonProperty("started_at")]
+        [JsonPropertyName("started_at")]
         public DateTimeOffset? StartedAt { get; set; }
 
-        [JsonProperty("language")]
+        [JsonPropertyName("language")]
         public string Language { get; set; }
 
         /// <summary> Contains a {width} and {height} property that must be replaced to get the actual url </summary>
-        [JsonProperty("thumbnail_url")]
+        [JsonPropertyName("thumbnail_url")]
         public string ThumbnailTemplateUrl { get; set; }
     }
 }

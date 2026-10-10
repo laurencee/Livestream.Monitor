@@ -1,0 +1,130 @@
+using System;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Livestream.Monitor.Core;
+using Livestream.Monitor.Model.ApiClients;
+
+namespace Livestream.Monitor.Model.Monitoring
+{
+    public class FakeMonitorStreamsModel : ObservableModel, IMonitorStreamsModel
+    {
+        private static readonly Random Random = new();
+
+        public FakeMonitorStreamsModel()
+        {
+            Livestreams = new ObservableList<LivestreamModel>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                var livestream = new LivestreamModel();
+                livestream.DisplayName = "Livestream " + i;
+
+                if (i < 3)
+                    SetStreamOnline(livestream);
+                else
+                    SetStreamOffline(livestream);
+
+                Livestreams.Add(livestream);
+            }
+        }
+
+        public static void SetStreamOnline(LivestreamModel livestreamModel)
+        {
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
+
+            livestreamModel.Live = true;
+            livestreamModel.Viewers = GetRandomViewerCount();
+            livestreamModel.StartTime = GetRandomStreamStartTime();
+            livestreamModel.Game = "Online Game";
+            livestreamModel.Description = "Doing something online right now!";
+        }
+
+        public static void SetStreamOffline(LivestreamModel livestreamModel)
+        {
+            if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
+
+            livestreamModel.Live = false;
+            livestreamModel.Viewers = 0;
+            livestreamModel.StartTime = DateTimeOffset.MinValue;
+            livestreamModel.Game = "Offline Game";
+            livestreamModel.Description = "Time for bed";
+        }
+
+        private static int GetRandomViewerCount()
+        {
+            return Random.Next(minValue: 100, maxValue: 20000);
+        }
+
+        private static DateTimeOffset GetRandomStreamStartTime()
+        {
+            return DateTimeOffset.Now.AddSeconds(-Random.Next(minValue: 5, maxValue: 50000));
+        }
+
+        public ObservableList<LivestreamModel> Livestreams { get; }
+
+        public LivestreamModel SelectedLivestream
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
+        public bool Initialised => true;
+
+        public bool CanRefreshLivestreams => true;
+
+        public DateTimeOffset LastRefreshTime
+        {
+            get;
+            private set
+            {
+                if (value.Equals(field)) return;
+                field = value;
+                NotifyOfPropertyChange(() => LastRefreshTime);
+            }
+        }
+
+        public bool CanOpenStream => true;
+
+        public event EventHandler LivestreamsRefreshComplete;
+
+        public Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)
+        {
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+            Livestreams.Add(new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier));
+
+            return Task.CompletedTask;
+        }
+
+        public Task ImportFollows(string username, IApiClient apiClient, IUserDialogs viewAware)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task RefreshLivestreams()
+        {
+            OnOnlineLivestreamsRefreshComplete();
+            LastRefreshTime = DateTimeOffset.Now;
+            return Task.CompletedTask;
+        }
+
+        public void IgnoreQueryFailure(string errorToIgnore)
+        {
+        }
+
+        public Task Initialize(IUserDialogs viewAware, CancellationToken cancellationToken = default) => Task.CompletedTask;
+
+        public Task RemoveLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)
+        {
+            if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
+            var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
+            Livestreams.RemoveRange(matchingLivestreams);
+            return Task.CompletedTask;
+        }
+
+        protected virtual void OnOnlineLivestreamsRefreshComplete()
+        {
+            LivestreamsRefreshComplete?.Invoke(this, EventArgs.Empty);
+        }
+    }
+}

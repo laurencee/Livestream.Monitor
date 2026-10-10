@@ -5,8 +5,8 @@ namespace ExternalAPIs
 {
     /// <summary>  A <see cref="HttpRequestException"/> with the <see cref="HttpStatusCode"/> preserved </summary>
     public class HttpRequestWithStatusException(HttpStatusCode statusCode, string message)
-        : HttpRequestException(message)
+        : HttpRequestException(message, null, statusCode)
     {
-        public HttpStatusCode StatusCode { get; private set; } = statusCode;
+        public new HttpStatusCode StatusCode => base.StatusCode.GetValueOrDefault();
     }
 }

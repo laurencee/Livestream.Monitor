@@ -1,33 +1,33 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace ExternalAPIs.TwitchTv.Helix.Dto
 {
     public class FollowedChannelsRoot
     {
-        [JsonProperty("total")]
+        [JsonPropertyName("total")]
         public long Total { get; set; }
 
-        [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public List<FollowedChannel> FollowedChannels { get; set; }
 
-        [JsonProperty("pagination")]
+        [JsonPropertyName("pagination")]
         public Pagination Pagination { get; set; }
     }
 
     public class FollowedChannel
     {
-        [JsonProperty("broadcaster_id")]
+        [JsonPropertyName("broadcaster_id")]
         public string BroadcasterId { get; set; }
 
-        [JsonProperty("broadcaster_login")]
+        [JsonPropertyName("broadcaster_login")]
         public string BroadcasterLogin { get; set; }
 
-        [JsonProperty("broadcaster_name")]
+        [JsonPropertyName("broadcaster_name")]
         public string BroadcasterName { get; set; }
 
-        [JsonProperty("followed_at")]
+        [JsonPropertyName("followed_at")]
         public DateTime FollowedAt { get; set; }
     }
 }

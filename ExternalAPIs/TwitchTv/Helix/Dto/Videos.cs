@@ -1,61 +1,61 @@
 ﻿using System;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace ExternalAPIs.TwitchTv.Helix.Dto
 {
     public class VideosRoot
     {
-        [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public List<Video> Videos { get; set; }
 
-        [JsonProperty("pagination")]
+        [JsonPropertyName("pagination")]
         public Pagination Pagination { get; set; }
     }
 
     public class Video
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public string Id { get; set; }
 
-        [JsonProperty("user_id")]
+        [JsonPropertyName("user_id")]
         public string UserId { get; set; }
 
-        [JsonProperty("user_name")]
+        [JsonPropertyName("user_name")]
         public string UserName { get; set; }
 
-        [JsonProperty("title")]
+        [JsonPropertyName("title")]
         public string Title { get; set; }
 
-        [JsonProperty("description")]
+        [JsonPropertyName("description")]
         public string Description { get; set; }
 
-        [JsonProperty("created_at")]
+        [JsonPropertyName("created_at")]
         public DateTimeOffset CreatedAt { get; set; }
 
-        [JsonProperty("published_at")]
+        [JsonPropertyName("published_at")]
         public DateTimeOffset PublishedAt { get; set; }
 
-        [JsonProperty("url")]
+        [JsonPropertyName("url")]
         public string Url { get; set; }
 
         /// <summary> Contains a {width} and {height} property that must be replaced to get the actual url </summary>
-        [JsonProperty("thumbnail_url")]
+        [JsonPropertyName("thumbnail_url")]
         public string ThumbnailTemplateUrl { get; set; }
 
-        [JsonProperty("viewable")]
+        [JsonPropertyName("viewable")]
         public string Viewable { get; set; }
 
-        [JsonProperty("view_count")]
+        [JsonPropertyName("view_count")]
         public long ViewCount { get; set; }
 
-        [JsonProperty("language")]
+        [JsonPropertyName("language")]
         public string Language { get; set; }
 
-        [JsonProperty("type")]
+        [JsonPropertyName("type")]
         public string Type { get; set; }
 
-        [JsonProperty("duration")]
+        [JsonPropertyName("duration")]
         public string Duration { get; set; }
     }
 }

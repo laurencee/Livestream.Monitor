@@ -3,7 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.Text.Json;
 
 namespace ExternalAPIs
 {
@@ -28,28 +28,28 @@ namespace ExternalAPIs
 
         public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
         {
-            return await ExecuteRequest<T>(CreateCompressionHttpClient(), request, cancellationToken);
+            using var httpClient = CreateCompressionHttpClient();
+            return await httpClient.ExecuteRequest<T>(request, cancellationToken);
         }
 
+        /// <summary> Gets and deserializes a JSON response; the caller owns and disposes the client. </summary>
         public static async Task<T> ExecuteRequest<T>(this HttpClient httpClient, string request, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(request)) throw new ArgumentNullException(nameof(request));
 
-            using (httpClient)
+            try
             {
-                try
-                {
-                    var responseTask = httpClient.GetAsync(request, cancellationToken);
+                var responseTask = httpClient.GetAsync(request, cancellationToken);
 
-                    using var httpResponseMessage = await responseTask.ConfigureAwait(false);
-                    await httpResponseMessage.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
-                    var response = await httpResponseMessage.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    return JsonConvert.DeserializeObject<T>(response);
-                }
-                catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
-                {
-                    throw new TimeoutException("Timed out executing web request", e);
-                }
+                using var httpResponseMessage = await responseTask.ConfigureAwait(false);
+                await httpResponseMessage.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
+                var content = httpResponseMessage.Content;
+                var response = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                return JsonSerializer.Deserialize<T>(response, JsonDefaults.Options);
+            }
+            catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
+            {
+                throw new TimeoutException("Timed out executing web request", e);
             }
         }
 
@@ -57,11 +57,14 @@ namespace ExternalAPIs
         {
             if (response.IsSuccessStatusCode) return;
 
-            // preserve the original content as the error message
+            // preserve the original content as the error message, after the status so an empty body still shows a cause
             var content = await response.Content.ReadAsStringAsync();
 
             response.Content?.Dispose();
-            throw new HttpRequestWithStatusException(response.StatusCode, content);
+
+            var status = $"{(int)response.StatusCode} {response.ReasonPhrase}".TrimEnd();
+            var message = string.IsNullOrWhiteSpace(content) ? status : $"{status}: {content}";
+            throw new HttpRequestWithStatusException(response.StatusCode, message);
         }
     }
 }

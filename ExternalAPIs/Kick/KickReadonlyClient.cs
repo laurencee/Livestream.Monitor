@@ -13,12 +13,8 @@ namespace ExternalAPIs.Kick;
 public class KickReadonlyClient : IKickReadonlyClient
 {
     private const int MaxConcurrentRequests = 4;
-    // Private fields intentionally follow the application's no-prefix naming convention.
-    // ReSharper disable once InconsistentNaming
     private readonly SemaphoreSlim requestSlots = new(MaxConcurrentRequests);
-
-    // ReSharper disable once InconsistentNaming
-    private string _accessToken;
+    private string accessToken;
 
     public async Task<LivestreamsRoot> GetLivestreams(GetLivestreamsQuery query, CancellationToken cancellationToken = default)
     {
@@ -86,11 +82,11 @@ public class KickReadonlyClient : IKickReadonlyClient
 
         // Channels accepts at most 50 IDs or slugs, independently of the livestream result limit.
         // https://api.kick.com/swagger/doc.json
-        const int maxChannelsPerRequest = 50;
+        const int MaxChannelsPerRequest = 50;
         var tasks = new List<Task<ChannelsRoot>>();
-        for (var i = 0; i < values.Count; i += maxChannelsPerRequest)
+        for (var i = 0; i < values.Count; i += MaxChannelsPerRequest)
         {
-            var batch = values.Skip(i).Take(maxChannelsPerRequest).Select(Uri.EscapeDataString);
+            var batch = values.Skip(i).Take(MaxChannelsPerRequest).Select(Uri.EscapeDataString);
             var parameters = string.Join($"&{parameter}=", batch);
             var requestUrl = $"{RequestConstants.ChannelsEndpoint}?{parameter}={parameters}";
             tasks.Add(ExecuteRequest<ChannelsRoot>(requestUrl, cancellationToken));
@@ -104,20 +100,20 @@ public class KickReadonlyClient : IKickReadonlyClient
         };
     }
 
-    public void SetAccessToken(string accessToken)
+    public void SetAccessToken(string token)
     {
-        _accessToken = accessToken;
+        accessToken = token;
     }
 
     private async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(_accessToken)) throw new InvalidOperationException("Access token is not set.");
+        if (string.IsNullOrEmpty(accessToken)) throw new InvalidOperationException("Access token is not set.");
 
         await requestSlots.WaitAsync(cancellationToken);
         try
         {
             using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
-            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
             return await httpClient.ExecuteRequest<T>(request, cancellationToken);
         }

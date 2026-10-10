@@ -1,0 +1,96 @@
+﻿<UserControl x:Class="Livestream.Monitor.WPF.Views.LivestreamListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d"
+             xmlns:cal="http://www.caliburnproject.org"
+             xmlns:viewModels="clr-namespace:Livestream.Monitor.WPF.ViewModels"
+             xmlns:ui="clr-namespace:Livestream.Monitor.WPF.Core.UI"
+             xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:model="clr-namespace:Livestream.Monitor.Model;assembly=Livestream.Monitor.Core"
+             d:DataContext="{d:DesignInstance Type=viewModels:LivestreamListViewModel, IsDesignTimeCreatable=True}"
+             cal:Bind.AtDesignTime="True"
+             d:DesignHeight="300" d:DesignWidth="600">
+    <Grid>
+        <Grid.Resources>
+            <DataTemplate x:Key="GridLayout">
+                <DataGrid x:Name="LivestreamListDataGrid" ItemsSource="{Binding ViewSource.View}" SelectedItem="{Binding StreamsModel.SelectedLivestream}"
+                          cal:Message.Attach="[Sorting] = [OnDataGridSorting($eventArgs)]" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                          VirtualizingStackPanel.IsVirtualizing="True" IsSynchronizedWithCurrentItem="False">
+                    <DataGrid.Resources>
+                        <ContextMenu x:Key="ContextMenu" x:Shared="False" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
+                            <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
+                            <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
+                            <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser]" />
+                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}"
+                                      cal:Message.Attach="[Click] = [GotoVodViewer]" />
+                            <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]"
+                                      IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
+                                      ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
+                        </ContextMenu>
+                    </DataGrid.Resources>
+                    <DataGrid.RowStyle >
+                        <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MahApps.Styles.DataGridRow}">
+                            <Style.Resources>
+                                <Style TargetType="ToolTip" BasedOn="{StaticResource MahApps.Styles.ToolTip}">
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Background" Value="Transparent" />
+                                </Style>
+                            </Style.Resources>
+                            <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
+                            <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [OpenStream()];
+                                                                 [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
+                            <Setter Property="ToolTip">
+                                <Setter.Value>
+                                    <Border BorderThickness="2" BorderBrush="Black">
+                                        <Image Margin="0" Source="{Binding ThumbnailUrls.Large, IsAsync=True}" MaxHeight="360" MaxWidth="640" />
+                                    </Border>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="Live">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Image Name="IsLiveImage" Source="{x:Static ui:EmbeddedImageSources.Live}" Width="15"
+                                   RenderOptions.BitmapScalingMode="HighQuality" RenderOptions.EdgeMode="Aliased" />
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding Live}" Value="False">
+                                            <Setter TargetName="IsLiveImage" Property="Source" Value="{x:Static ui:EmbeddedImageSources.Offline}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Name" Binding="{Binding DisplayName}" Width="130" MinWidth="80" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding Description}" Width="5*"/>
+                        <DataGridTextColumn Header="Game" Binding="{Binding Game}" MinWidth="50" Width="2*" />
+                        <DataGridTextColumn Header="Viewers" Binding="{Binding Viewers}" MinWidth="80" />
+                        <DataGridTextColumn Header="Uptime" Binding="{Binding Uptime, Converter={StaticResource TotalHoursTimespanConverter}}" MinWidth="85" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </DataTemplate>
+            <DataTemplate x:Key="TileLayout">
+                <!-- TODO nice tile layout with the tiles containing the image and the text to the right of the tile -->
+            </DataTemplate>
+        </Grid.Resources>
+
+        <ContentControl x:Name="LayoutControl"  Content="{Binding}">
+            <ContentControl.Style>
+                <Style TargetType="ContentControl">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding LayoutModeMode}" Value="{x:Static model:LivestreamsLayoutMode.Grid}">
+                            <Setter Property="ContentTemplate" Value="{StaticResource GridLayout}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding LayoutModeMode}" Value="{x:Static model:LivestreamsLayoutMode.Tiles}">
+                            <Setter Property="ContentTemplate" Value="{StaticResource TileLayout}" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </ContentControl.Style>
+        </ContentControl>
+        <controls:ProgressRing IsActive="{Binding Loading}" IsLarge="True" VerticalAlignment="Center" HorizontalAlignment="Center" />
+    </Grid>
+</UserControl>

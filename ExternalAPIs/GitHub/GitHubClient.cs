@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace ExternalAPIs.GitHub
 {
@@ -30,10 +30,10 @@ namespace ExternalAPIs.GitHub
 
     public class Release
     {
-        [JsonProperty("tag_name")]
+        [JsonPropertyName("tag_name")]
         public string TagName { get; set; }
 
-        [JsonProperty("html_url")]
+        [JsonPropertyName("html_url")]
         public string HtmlUrl { get; set; }
     }
-} 
+}

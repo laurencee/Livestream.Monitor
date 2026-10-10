@@ -1,0 +1,3 @@
+[ViewModels/*.cs]
+# Caliburn.Micro binds view-model members to the views by name, so ReSharper does not see their use.
+resharper_unused_member_global_highlighting = none

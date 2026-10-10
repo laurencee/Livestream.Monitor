@@ -1,26 +1,26 @@
 ﻿using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace ExternalAPIs.TwitchTv.Helix.Dto
 {
     public class TopCategoriesRoot
     {
-        [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public List<TwitchCategory> TopCategories { get; set; }
 
-        [JsonProperty("pagination")]
+        [JsonPropertyName("pagination")]
         public Pagination Pagination { get; set; }
     }
 
     public class TwitchCategory
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public string Id { get; set; }
 
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; }
 
-        [JsonProperty("box_art_url")]
+        [JsonPropertyName("box_art_url")]
         public string BoxArtUrl { get; set; }
     }
 }

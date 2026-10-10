@@ -1,0 +1,19 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="ARM" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/SolutionItems/">
+    <File Path=".gitignore" />
+    <File Path="Directory.Build.props" />
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="ExternalAPIs.Tests/ExternalAPIs.Tests.csproj" />
+  <Project Path="ExternalAPIs/ExternalAPIs.csproj" />
+  <Project Path="Livestream.Monitor.Core/Livestream.Monitor.Core.csproj" />
+  <Project Path="Livestream.Monitor.Direct2D/Livestream.Monitor.Direct2D.csproj" />
+  <Project Path="Livestream.Monitor.Tests/Livestream.Monitor.Tests.csproj" />
+  <Project Path="Livestream.Monitor.WPF/Livestream.Monitor.WPF.csproj" />
+</Solution>

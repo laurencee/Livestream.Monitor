@@ -1,5 +1,9 @@
 <Project>
   <PropertyGroup>
+    <!-- Version and product information for every assembly that generates its assembly attributes. -->
+    <Version>3.0.0</Version>
+    <Product>Livestream.Monitor</Product>
+    <Copyright>Copyright © laurencee 2015</Copyright>
     <!-- Keep runtime companion files and symbols, but do not copy referenced XML documentation. -->
     <AllowedReferenceRelatedFileExtensions>.pdb;.pri;.dll.config;.exe.config</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>

@@ -1,0 +1,6 @@
+[Native/*.cs]
+# Native ABI structures contain fields read/written by Windows; imported bindings retain that ABI surface.
+resharper_unused_member_global_highlighting = none
+resharper_not_accessed_field_global_highlighting = none
+# Native acronyms and static GUID identifiers preserve Windows SDK/reference-renderer names.
+resharper_inconsistent_naming_highlighting = none

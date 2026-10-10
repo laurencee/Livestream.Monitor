@@ -24,6 +24,6 @@ namespace ExternalAPIs.TwitchTv.Helix
 
         Task<List<TwitchCategory>> SearchCategories(string searchCategory, CancellationToken cancellationToken = default);
         
-        void SetAccessToken(string accessToken);
+        void SetAccessToken(string token);
     }
 }

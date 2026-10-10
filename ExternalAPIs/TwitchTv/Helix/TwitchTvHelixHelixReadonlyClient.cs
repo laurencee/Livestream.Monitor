@@ -14,10 +14,8 @@ namespace ExternalAPIs.TwitchTv.Helix
         public const int DefaultItemsPerQuery = MaxItemsPerQuery; // 20 is default, 100 is maximum
         public const int MaxItemsPerQuery = 100; // 100 is maximum
         private const int MaxConcurrentRequests = 4;
-        // Private fields intentionally follow the application's no-prefix naming convention.
-        // ReSharper disable once InconsistentNaming
         private readonly SemaphoreSlim requestSlots = new(MaxConcurrentRequests);
-        private string _accessToken = null;
+        private string accessToken;
 
         public async Task<List<FollowedChannel>> GetFollowedChannels(string userId, CancellationToken cancellationToken = default)
         {
@@ -192,9 +190,9 @@ namespace ExternalAPIs.TwitchTv.Helix
             return topCategoriesRoot.TopCategories;
         }
 
-        public void SetAccessToken(string accessToken)
+        public void SetAccessToken(string token)
         {
-            _accessToken = accessToken;
+            accessToken = token;
         }
 
         private async Task<T[]> ExecuteBatches<T>(
@@ -222,8 +220,8 @@ namespace ExternalAPIs.TwitchTv.Helix
             {
                 using var httpClient = HttpClientExtensions.CreateCompressionHttpClient();
                 httpClient.DefaultRequestHeaders.Add(RequestConstants.ClientIdHeaderKey, RequestConstants.ClientIdHeaderValue);
-                if (_accessToken != null)
-                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _accessToken);
+                if (accessToken != null)
+                    httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 return await httpClient.ExecuteRequest<T>(request, cancellationToken);
             }

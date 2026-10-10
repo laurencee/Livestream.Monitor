@@ -69,12 +69,12 @@ namespace ExternalAPIs.Tests
         [Fact]
         public async Task FindGameWoW()
         {
-            const string expectedGameName = "World of Warcraft";
-            var query = new GetGamesQuery { GameNames = new List<string>() { expectedGameName } };
+            const string ExpectedGameName = "World of Warcraft";
+            var query = new GetGamesQuery { GameNames = [ExpectedGameName] };
             var gamesResult = await sut.GetGames(query);
             Assert.NotNull(gamesResult);
             Assert.NotEmpty(gamesResult);
-            Assert.All(gamesResult, game => Assert.True(game.Name.Contains(expectedGameName), "game.Name.Contains(expectedGameName)"));
+            Assert.All(gamesResult, game => Assert.True(game.Name.Contains(ExpectedGameName), "game.Name.Contains(ExpectedGameName)"));
         }
 
         [InlineData(GameIds.WorldOfWarcraft)]

@@ -1,0 +1,147 @@
+#if DEBUG
+//#define FAKE_DATA // uncomment this line to use fake data in debug mode
+#endif
+
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Windows.Threading;
+using Caliburn.Micro;
+using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Settings;
+using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.ApiClients;
+using Livestream.Monitor.Model.Monitoring;
+using Livestream.Monitor.WPF.Core;
+using Livestream.Monitor.WPF.Core.UI;
+using Livestream.Monitor.WPF.Model;
+using Livestream.Monitor.WPF.ViewModels;
+
+namespace Livestream.Monitor.WPF
+{
+    public class AppBootstrapper : BootstrapperBase
+    {
+        private SimpleContainer container;
+
+        public AppBootstrapper()
+        {
+            Initialize();
+        }
+
+        protected override void Configure()
+        {
+            container = new SimpleContainer();
+            ModelEnvironment.IsDesignMode = Execute.InDesignMode;
+
+            container.Singleton<IEventAggregator, EventAggregator>();
+            container.Singleton<IWindowManager, MetroWindowManager>();
+            container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
+            container.Singleton<ISettingsHandler, SettingsHandler>();
+            container.Singleton<IApiClientFactory, ApiClientFactory>();
+            container.Singleton<FilterModel>();
+            container.Singleton<INotificationHandler, NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
+            // single instance: each watcher polls separately and keeps its own notified-stream cache
+            PopularLivestreamWatcher popularLivestreamWatcher = null;
+            container.RegisterHandler(typeof(PopularLivestreamWatcher), null, context =>
+                popularLivestreamWatcher ??= new PopularLivestreamWatcher(
+                    settingsHandler: context.GetInstance<ISettingsHandler>(),
+                    notificationHandler: context.GetInstance<INotificationHandler>(),
+                    openStream: stream => context.GetInstance<Core.INavigationService>().NavigateTo<TopStreamsViewModel>(
+                        viewModel => viewModel.SelectedApiClient = stream.ApiClient),
+                    apiClientFactory: context.GetInstance<IApiClientFactory>()
+                ));
+            container.Singleton<StreamLauncher>();
+
+            container.PerRequest<ShellViewModel>();
+            container.PerRequest<ThemeSelectorViewModel>();
+            container.PerRequest<HeaderViewModel>();
+            container.PerRequest<MainViewModel>();
+            container.PerRequest<SettingsViewModel>();
+            container.PerRequest<LivestreamListViewModel>();
+            container.PerRequest<TopStreamsViewModel>();
+            container.PerRequest<VodListViewModel>();
+            container.PerRequest<ApiClientsQualitiesViewModel>();
+
+            // singleton instance of the navigation service - this relies on using the container so it needs special registration
+            Core.INavigationService navigationService = null;
+            container.RegisterHandler(typeof(Core.INavigationService), null,
+                simpleContainer => navigationService ??= new NavigationService(
+                    simpleContainer,
+                    simpleContainer.GetInstance<IEventAggregator>()));
+
+#if FAKE_DATA // comment out the define at the top of this file to launch debug mode with real data
+            container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();
+#else
+            container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
+#endif
+        }
+
+        protected override object GetInstance(Type service, string key)
+        {
+            var instance = container.GetInstance(service, key);
+            if (instance != null)
+                return instance;
+
+            throw new InvalidOperationException("Could not locate any instances.");
+        }
+
+        protected override IEnumerable<object> GetAllInstances(Type service)
+        {
+            return container.GetAllInstances(service);
+        }
+
+        protected override void BuildUp(object instance)
+        {
+            container.BuildUp(instance);
+        }
+
+        protected override async void OnStartup(object sender, System.Windows.StartupEventArgs e)
+        {
+            // start querying before we even try to display the UI to improve startup time for the standard case
+            if (container.GetInstance<IMonitorStreamsModel>() is MonitorStreamsModel monitor) monitor.BeginInitialQuery();
+
+            container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
+            await DisplayRootViewForAsync<ShellViewModel>();
+            container.GetInstance<ISettingsHandler>().Settings.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName != nameof(Settings.MetroThemeBaseColour) &&
+                    args.PropertyName != nameof(Settings.MetroThemeAccentColour))
+                {
+                    return;
+                }
+
+                var settings = container.GetInstance<ISettingsHandler>().Settings;
+                var baseColour = settings.MetroThemeBaseColour.ToString().Replace("Base", "");
+                var themeName = $"{baseColour}.{settings.MetroThemeAccentColour}";
+                ControlzEx.Theming.ThemeManager.Current.ChangeTheme(System.Windows.Application.Current, themeName);
+                foreach (System.Windows.Window window in System.Windows.Application.Current.Windows)
+                    ControlzEx.Theming.ThemeManager.Current.ChangeTheme(window, themeName);
+            };
+
+#if FAKE_DATA
+            var windowManager = container.GetInstance<IWindowManager>();
+            windowManager.ShowWindowAsync(new EmulatorViewModel(container.GetInstance<IMonitorStreamsModel>()));
+#endif
+        }
+
+        protected override void OnUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            try
+            {
+                const string LogsFolder = "logs";
+                string errorLogFileName = $"{DateTime.Now:yyyy-MM-dd}_error.log";
+                string errorLogFilePath = Path.Combine(LogsFolder, errorLogFileName);
+                if (!Directory.Exists(LogsFolder))
+                    Directory.CreateDirectory(LogsFolder);
+
+                File.AppendAllText(errorLogFilePath, $"{DateTime.Now.ToString("HH:mm:ss.ffff")}| {e.Exception}"); // global exception logging
+            }
+            catch
+            {
+                // can't do anything if we fail to write the exception
+            }
+
+            base.OnUnhandledException(sender, e);
+        }
+    }
+}

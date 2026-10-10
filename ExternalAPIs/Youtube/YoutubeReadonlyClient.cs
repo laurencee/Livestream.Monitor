@@ -19,17 +19,17 @@ namespace ExternalAPIs.Youtube
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
-            const string channelIdPrefix = "UC";
-            const string livestreamPlaylistPrefix = "UULV";
+            const string ChannelIdPrefix = "UC";
+            const string LivestreamPlaylistPrefix = "UULV";
 
             // Search can omit active broadcasts. UULV is YouTube's undocumented livestream-only playlist,
             // including past broadcasts; video details distinguish those currently live.
             // https://github.com/DialmasterOrg/Youtarr/blob/main/server/modules/youtubeApi/constants.js
-            var playlistId = livestreamPlaylistPrefix + channelId.Substring(channelIdPrefix.Length);
+            var playlistId = LivestreamPlaylistPrefix + channelId.Substring(ChannelIdPrefix.Length);
 
             // Limit discovery to the first page: scanning archived streams can exceed the refresh timeout.
-            const int maxLivestreamCandidates = 50;
-            var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = maxLivestreamCandidates };
+            const int MaxLivestreamCandidates = 50;
+            var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = MaxLivestreamCandidates };
             var playlistItems = await GetPlaylistItems(query, cancellationToken);
             var videoIds = playlistItems.Items.Select(x => x.ContentDetails.VideoId).ToList();
 

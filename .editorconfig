@@ -1,0 +1,16 @@
+root = true
+
+[*.cs]
+# Private fields have no underscore prefix; private static readonly fields and constants, including local constants,
+# are PascalCase. ReSharper's defaults differ. Fields use ReSharper's own keys, since a dotnet_naming_rule for private
+# fields also covers the static readonly ones and cannot exclude them.
+resharper_csharp_naming_rule.private_instance_fields = aaBb
+resharper_csharp_naming_rule.private_static_fields = aaBb
+resharper_csharp_naming_rule.private_static_readonly = AaBb
+
+dotnet_naming_rule.constants.symbols = constants
+dotnet_naming_rule.constants.style = pascal_case
+dotnet_naming_rule.constants.severity = suggestion
+dotnet_naming_symbols.constants.applicable_kinds = field, local
+dotnet_naming_symbols.constants.required_modifiers = const
+dotnet_naming_style.pascal_case.capitalization = pascal_case

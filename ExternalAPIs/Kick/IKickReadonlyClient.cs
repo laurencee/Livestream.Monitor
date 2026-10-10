@@ -11,5 +11,5 @@ public interface IKickReadonlyClient
 
     Task<ChannelsRoot> GetChannels(GetChannelsQuery query, CancellationToken cancellationToken = default);
 
-    void SetAccessToken(string accessToken);
+    void SetAccessToken(string token);
 }

@@ -1,11 +1,11 @@
 # Livestream Monitor
-A Windows GUI to monitor livestreams from multiple platforms written in .NET.  
+A Windows GUI to monitor livestreams from multiple platforms written in .NET.\
 Supports **Twitch**, **YouTube** and **Kick**.
 
-Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)  
+Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/releases/latest)\
 [![v](https://img.shields.io/github/v/release/laurencee/Livestream.Monitor?label=)](https://github.com/laurencee/Livestream.Monitor/releases/latest)
 
-Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.).  
+Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.).\
 You can quickly install this on Win10/11 via cmd prompt or powershell `winget install Streamlink`
 
 ![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
@@ -13,17 +13,30 @@ You can quickly install this on Win10/11 via cmd prompt or powershell `winget in
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
 ## Pre-requisites
-* [.NET 4.7.2](https://dotnet.microsoft.com/download/dotnet-framework/net472) installed
+* Windows 10 or later and the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0). The WPF frontend requires the **Desktop Runtime**; Direct2D requires only the regular **.NET Runtime** (x64).
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
+
+## WPF and Direct2D versions
+Livestream Monitor comes in two versions that share the same features, settings and stream list:
+
+| | Direct2D (`Livestream.Monitor.Direct2D.exe`) | WPF (`Livestream.Monitor.WPF.exe`) |
+| --- | --- | --- |
+| Interface | A lighter rewrite that draws its own interface | The original app |
+| Download size | 1.2 MB | 5.2 MB |
+| Memory use | ~120 MB | ~290 MB |
+| CPU use | Lowest | ~5× Direct2D |
+| Requires | .NET Runtime | .NET Desktop Runtime |
+
+Memory and CPU were measured with about 380 followed streams during a short session of browsing Top Streams and the stream list.
 
 ## Usage
 1. Download the latest release and extract anywhere you want.
-2. Run `Livestream.Monitor.exe`.
+2. Run `Livestream.Monitor.Direct2D.exe` or `Livestream.Monitor.WPF.exe` (see [WPF and Direct2D versions](#wpf-and-direct2d-versions)).
 3. If you already follow channels on Twitch, use Import to import any channels you already follow. (*)
 4. Add other channels manually. (*)
 5. Double-click on live channels to open the stream or click on the quality button while a stream row is selected.
 
-(*) For Twitch, you'll be required to authorize the app the first time you try to import/add/query 
+(*) For Twitch, you'll be required to authorize the app the first time you try to import/add/query
 
 ## General Features
 * Add your favourite livestreams to be monitored from **Twitch**, **YouTube** or **Kick** by their channel names (end part of the url)
@@ -76,13 +89,13 @@ hls-live-edge=1
 
 #### How do I add YouTube channels for livestream monitoring?
 
-You can either use the handle or the channel id, handle is preferred.  
-- For handles, the URL looks like: `https://www.youtube.com/@handle` (e.g. `@MrBeast`)  
-- For channel IDs, the URL looks like: `https://www.youtube.com/channel/channel_id` (e.g. `UCX6OQ3DkcsbYNE6H8uQQuVA`)  
+You can either use the handle or the channel id, handle is preferred.
+- For handles, the URL looks like: `https://www.youtube.com/@handle` (e.g. `@MrBeast`)
+- For channel IDs, the URL looks like: `https://www.youtube.com/channel/channel_id` (e.g. `UCX6OQ3DkcsbYNE6H8uQQuVA`)
 
 #### How can I watch YouTube vods?
 
-As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).  
+As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).\
 `yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC executable directory. You may also need `ffmpeg.exe` available for highest quality [according to the MPC-HC readme](https://github.com/clsid2/mpc-hc?tab=readme-ov-file#overview-of-features).
 
 After setting this up, your `settings.json` YouTube -> VodCommand section should look like this already if you haven't customized it:

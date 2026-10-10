@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Livestream.Monitor.Core;
+using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -28,14 +28,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             await sut.NotifyPopularStreams();
 
@@ -48,14 +47,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = 2000;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             await sut.NotifyPopularStreams();
 
@@ -72,14 +70,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = minimumViewers;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             await sut.NotifyPopularStreams();
             await sut.NotifyPopularStreams();
@@ -93,15 +90,14 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] List<IApiClient> apiClients,
             [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             var apiClient = apiClients.First();
             SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = 1;
             settingsHandler.Settings.ExcludeFromNotifying.Add(livestreamModels[0].ToExcludeNotify());
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             await sut.NotifyPopularStreams();
 
@@ -116,14 +112,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             int queryCount = 0;
             SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
             factory.GetAll().Returns([apiClient]);
             settingsHandler.Settings.MinimumEventViewers = 0;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             try
             {
@@ -141,14 +136,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             int queryCount = 0;
             SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
             factory.GetAll().Returns([apiClient]);
             settingsHandler.Settings.MinimumEventViewers = 1;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             try
             {
@@ -169,14 +163,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             int queryCount = 0;
             SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
             factory.GetAll().Returns([apiClient]);
             settingsHandler.Settings.MinimumEventViewers = 1;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             try
             {
@@ -199,14 +192,13 @@ namespace Livestream.Monitor.Tests.Model
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory,
-            [Frozen] INavigationService navigationService)
+            [Frozen] IApiClientFactory factory)
         {
             int queryCount = 0;
             SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
             factory.GetAll().Returns([apiClient]);
             settingsHandler.Settings.MinimumEventViewers = 0;
-            var sut = new PopularLivestreamWatcher(settingsHandler, notificationHandler, navigationService, factory);
+            var sut = Create(settingsHandler, notificationHandler, factory);
 
             try
             {
@@ -222,6 +214,19 @@ namespace Livestream.Monitor.Tests.Model
             {
                 sut.StopWatching();
             }
+        }
+
+        private static PopularLivestreamWatcher Create(
+            ISettingsHandler settingsHandler,
+            INotificationHandler notificationHandler,
+            IApiClientFactory factory)
+        {
+            return new PopularLivestreamWatcher(
+                settingsHandler: settingsHandler,
+                notificationHandler: notificationHandler,
+                openStream: _ => { },
+                apiClientFactory: factory
+            );
         }
 
         private void SetupApiClient(IApiClient apiClient, List<LivestreamModel> livestreamModels)

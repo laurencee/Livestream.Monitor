@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <!-- Folders mirror the existing Livestream.Monitor.Core.* and Livestream.Monitor.Model.* namespaces. -->
+    <RootNamespace>Livestream.Monitor</RootNamespace>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ExternalAPIs\ExternalAPIs.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Read through EmbeddedImages by these logical names; the annotated .jsonc mapping reference is not shipped. -->
+    <EmbeddedResource Include="Images\*.png;Images\*.ico;Images\*.json" LogicalName="Images.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="Images\CountryFlags\*.png" LogicalName="Images.CountryFlags.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
