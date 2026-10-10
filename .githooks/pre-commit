@@ -1,0 +1,16 @@
+#!/bin/sh
+# Rejects a commit that adds a line containing "nocheckin" or "nocommit" (any case). Mark local-only edits, such as a
+# personal API key, with a "// nocheckin" or "// nocommit" comment so they cannot be committed by accident. Matches are
+# reported by file and line only, so the marked text (often a secret) is not echoed.
+matches=$(git diff --cached --no-color --no-ext-diff --src-prefix=a/ --dst-prefix=b/ -U0 --diff-filter=d -- . ':(exclude).githooks/pre-commit' | awk '
+    /^\+\+\+ / { file = substr($0, 7); next }
+    /^@@/ { split($3, start, ","); line = substr(start[1], 2) + 0; next }
+    /^\+/ { if (tolower($0) ~ /nocheckin|nocommit/) print "  " file ":" line; line++ }
+')
+
+if [ -n "$matches" ]; then
+    echo "Commit rejected: these staged lines are marked nocheckin or nocommit:" >&2
+    echo "$matches" >&2
+    echo "Unstage them (git restore --staged -p <file>) or remove the marker." >&2
+    exit 1
+fi
