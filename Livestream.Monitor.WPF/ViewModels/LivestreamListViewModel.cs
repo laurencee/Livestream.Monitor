@@ -35,6 +35,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         private readonly DispatcherTimer refreshTimer;
 
         private bool pendingViewRefresh;
+        private bool firstRefreshBatched;
         private int refreshErrorCount, refreshCount;
         private int suspendViewRefreshCount;
 
@@ -311,6 +312,14 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (e.PropertyName == nameof(StreamsModel.Initialised) && StreamsModel.Initialised)
             {
                 await RefreshLivestreams();
+
+                // The rows are now shown sorted, but the model's first refresh can still be applying complete results, which it
+                // ends by raising LivestreamsRefreshComplete; their view refreshes wait for that.
+                if (!StreamsModel.CanRefreshLivestreams && StreamsModel.Livestreams.Any())
+                {
+                    BeginViewRefreshBatch();
+                    firstRefreshBatched = true;
+                }
             }
         }
 
@@ -321,6 +330,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             StreamsModel.LivestreamsRefreshComplete -= OnLivestreamsRefreshComplete;
             StreamsModel.PropertyChanged -= StreamsModelOnPropertyChanged;
             FilterModel.PropertyChanged -= OnFilterModelOnPropertyChanged;
+            EndFirstRefreshBatch();
             ViewSource.Filter -= ViewSourceOnFilter;
             ViewSource.SortDescriptions.Clear();
 
@@ -389,6 +399,15 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             // We only really care about sorting online livestreams so this causes the sort descriptions to be applied immediately
             RequestViewRefresh();
+            EndFirstRefreshBatch();
+        }
+
+        private void EndFirstRefreshBatch()
+        {
+            if (!firstRefreshBatched) return;
+
+            firstRefreshBatched = false;
+            EndViewRefreshBatch();
         }
 
         private void OnFilterModelOnPropertyChanged(object sender, PropertyChangedEventArgs args)

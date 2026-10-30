@@ -33,6 +33,31 @@ public class MonitorWindowStateShould
         Assert.False(model.IsContentLoading);
     }
 
+    [Fact]
+    public async Task ShowRowsOnceTheFirstProviderRefreshesWhileStayingBusyUntilInitializationCompletes()
+    {
+        var progressClosed = false;
+        var model = Create(showProgress: (_, _) =>
+        {
+            var progress = Substitute.For<IDisposable>();
+            progress.When(x => x.Dispose()).Do(_ => progressClosed = true);
+            return progress;
+        });
+        var pending = new TaskCompletionSource();
+        model.StreamsModel.Initialize(Arg.Any<IUserDialogs>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
+
+        var initialization = model.Initialize();
+        Assert.False(progressClosed);
+        model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
+        Assert.True(progressClosed);
+        Assert.False(model.IsContentLoading);
+        Assert.True(model.Busy);
+
+        pending.SetResult();
+        await initialization;
+        Assert.False(model.Busy);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(1)]

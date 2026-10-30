@@ -8,8 +8,18 @@ namespace ExternalAPIs.Youtube
 {
     public interface IYoutubeReadonlyClient
     {
-        /// <summary> A channel in youtube can have multiple livestreams running at one time </summary>
-        Task<List<Video>> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default);
+        /// <summary>
+        /// Gets the video IDs of the first <paramref name="maxEntries"/> entries of a channel's livestream playlist, newest
+        /// first, leaving out entries without one.
+        /// </summary>
+        Task<List<string>> GetLivestreamPlaylistVideoIds(string channelId, int maxEntries, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets those of at most 50 <paramref name="videoIds"/> that are live broadcasts now, with only the ID, title, channel
+        /// title, broadcast state, default, standard and maxres thumbnail URLs, actual start time, live chat ID and viewer
+        /// count; a channel in youtube can have multiple livestreams running at one time.
+        /// </summary>
+        Task<List<Video>> GetLiveVideos(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default);
 
         /// <summary> Lookup channel details channel ids </summary>
         Task<ChannelsRoot> GetChannelDetailsFromIds(List<string> channelIds, CancellationToken cancellationToken = default);

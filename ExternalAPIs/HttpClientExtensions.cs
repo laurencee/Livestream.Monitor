@@ -20,10 +20,49 @@ namespace ExternalAPIs
             UseCookies = false,
         };
 
+        // Stream provider API origins, connected before their first query.
+        private static readonly string[] ProviderOrigins = ["https://api.twitch.tv/", "https://www.googleapis.com/"];
+
         /// <summary> Creates a request client sharing the application's connection pool. </summary>
         public static HttpClient CreateCompressionHttpClient()
         {
-            return new HttpClient(SharedHandler, disposeHandler: false) { Timeout = QueryTimeout };
+            // HTTP/2 lets a provider's parallel requests share one connection instead of each paying its own TLS handshake.
+            return new HttpClient(SharedHandler, disposeHandler: false)
+            {
+                Timeout = QueryTimeout,
+                DefaultRequestVersion = HttpVersion.Version20,
+                DefaultVersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+            };
+        }
+
+        /// <summary>
+        /// Opens pooled connections to the stream provider APIs in the background, so the first queries do not wait for
+        /// connection setup.
+        /// </summary>
+        public static void PreconnectProviderApis()
+        {
+            foreach (var origin in ProviderOrigins)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        // The API root needs no key and counts against no quota; only the connection is wanted.
+                        using var httpClient = CreateCompressionHttpClient();
+                        using var request = new HttpRequestMessage(HttpMethod.Head, origin);
+
+                        // A sent message keeps its own HTTP/1.1 default, whose connection the HTTP/2 queries would not share.
+                        request.Version = httpClient.DefaultRequestVersion;
+                        request.VersionPolicy = httpClient.DefaultVersionPolicy;
+
+                        using var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead);
+                    }
+                    catch (Exception)
+                    {
+                        // A failed preconnect only means the first query connects as before, and reports any failure itself.
+                    }
+                });
+            }
         }
 
         public static async Task<T> ExecuteRequest<T>(string request, CancellationToken cancellationToken = default)

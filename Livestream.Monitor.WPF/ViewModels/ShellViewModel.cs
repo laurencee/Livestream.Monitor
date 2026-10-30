@@ -170,6 +170,21 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             await Dispatcher.Yield(DispatcherPriority.Background);
 
+            // The progress dialog would only open and close again when the initial query has already finished.
+            if (monitorStreamsModel is MonitorStreamsModel { IsInitialQueryComplete: true })
+            {
+                try
+                {
+                    await monitorStreamsModel.Initialize(new WpfDialogs(this));
+                }
+                catch (Exception ex)
+                {
+                    await ShowInitializationError(ex);
+                }
+
+                return;
+            }
+
             const int StartupFadeMilliseconds = 50;
             var fade = new Storyboard();
             var animation = new DoubleAnimation(0, TimeSpan.FromMilliseconds(StartupFadeMilliseconds));
@@ -211,12 +226,11 @@ namespace Livestream.Monitor.WPF.ViewModels
                 window.OverlayFadeOut = originalFadeOut;
             }
 
-            if (initializationError != null)
-            {
-                await this.ShowMessageAsync("Error",
-                    $"An error occurred initializing the app.{Environment.NewLine}{initializationError.ExtractErrorMessage()}");
-            }
+            if (initializationError != null) await ShowInitializationError(initializationError);
         }
+
+        private Task ShowInitializationError(Exception exception) =>
+            this.ShowMessageAsync("Error", $"An error occurred initializing the app.{Environment.NewLine}{exception.ExtractErrorMessage()}");
 
         private void StartVersionCheck()
         {

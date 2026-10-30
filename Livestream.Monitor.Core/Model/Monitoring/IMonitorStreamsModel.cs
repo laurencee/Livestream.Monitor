@@ -23,7 +23,19 @@ namespace Livestream.Monitor.Model.Monitoring
 
         event EventHandler LivestreamsRefreshComplete;
 
-        /// <summary> Allows for loading of livestreams and any other initialization tasks before refreshes can take place </summary>
+        /// <summary>
+        /// Raised during a refresh after the results of each provider with followed channels are applied, before
+        /// <see cref="LivestreamsRefreshComplete"/>; raised again for a provider whose complete results follow its quick ones
+        /// in the first refresh
+        /// </summary>
+        event EventHandler ProviderRefreshComplete;
+
+        /// <summary>
+        /// Allows for loading of livestreams and any other initialization tasks before refreshes can take place. Returns once
+        /// each provider's first results are applied; complete results that follow a quick provider query can still be applied
+        /// after it returns, before <see cref="LivestreamsRefreshComplete"/> is raised for the first refresh. Failures from then
+        /// on are not reported.
+        /// </summary>
         Task Initialize(IUserDialogs viewAware, CancellationToken cancellationToken = default);
 
         Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware);

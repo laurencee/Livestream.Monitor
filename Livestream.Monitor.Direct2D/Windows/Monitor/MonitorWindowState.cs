@@ -70,13 +70,8 @@ internal sealed class MonitorWindowState : ObservableModel
             Changed?.Invoke();
         };
 
-        StreamsModel.LivestreamsRefreshComplete += (_, _) =>
-        {
-            foreach (var stream in StreamsModel.Livestreams)
-                displayedUptimes[stream] = stream.Uptime.ToTotalHoursText();
-
-            Changed?.Invoke();
-        };
+        StreamsModel.ProviderRefreshComplete += (_, _) => UpdateDisplayedUptimes();
+        StreamsModel.LivestreamsRefreshComplete += (_, _) => UpdateDisplayedUptimes();
 
         SettingsHandler.Settings.PropertyChanged += (_, _) => Changed?.Invoke();
     }
@@ -146,14 +141,43 @@ internal sealed class MonitorWindowState : ObservableModel
         if (StreamsModel is MonitorStreamsModel monitor) monitor.BeginInitialQuery();
     }
 
+    /// <summary>
+    /// Loads the followed channels and runs their first refresh. The rows replace the progress dialog once the first
+    /// provider's results are applied; the state stays busy until every provider's first results are in.
+    /// </summary>
     public async Task Initialize()
     {
-        var progress = new ProgressDialog("Initializing", "Initializing App...");
-        await RunContentQuery(DescribeError, progress, async () =>
+        await RunContentQuery(DescribeError, progress: null, async () =>
         {
-            BeginInitialQuery();
-            await StreamsModel.Initialize(dialogs);
-            ScheduleRefresh();
+            var progress = showProgress?.Invoke("Initializing", "Initializing App...");
+            StreamsModel.ProviderRefreshComplete += ShowRows;
+            try
+            {
+                BeginInitialQuery();
+                await StreamsModel.Initialize(dialogs);
+                ScheduleRefresh();
+            }
+            finally
+            {
+                StreamsModel.ProviderRefreshComplete -= ShowRows;
+                // Closed before a failure is reported.
+                CloseProgress();
+            }
+
+            void ShowRows(object? sender, EventArgs args)
+            {
+                StreamsModel.ProviderRefreshComplete -= ShowRows;
+                CloseProgress();
+                IsContentLoading = false;
+                Changed?.Invoke();
+            }
+
+            void CloseProgress()
+            {
+                // ReSharper disable once AccessToModifiedClosure -- cleared so the first provider and the finally close it once
+                progress?.Dispose();
+                progress = null;
+            }
         });
 
         static ErrorDialog DescribeError(Exception exception) =>
@@ -444,6 +468,14 @@ internal sealed class MonitorWindowState : ObservableModel
             IsContentLoading = false;
             Changed?.Invoke();
         }
+    }
+
+    private void UpdateDisplayedUptimes()
+    {
+        foreach (var stream in StreamsModel.Livestreams)
+            displayedUptimes[stream] = stream.Uptime.ToTotalHoursText();
+
+        Changed?.Invoke();
     }
 
     private void OnStreamChanged(object? sender, PropertyChangedEventArgs args)

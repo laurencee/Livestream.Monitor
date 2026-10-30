@@ -65,6 +65,8 @@ internal static class Program
         using var instance = SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()));
         if (instance == null) return 0;
 
+        ExternalAPIs.HttpClientExtensions.PreconnectProviderApis();
+
         SynchronizationContext.SetSynchronizationContext(Dispatcher);
 
         // As in WPF, loading and querying the followed channels starts before the window and its graphics device are created.
@@ -94,7 +96,9 @@ internal static class Program
             DesktopWindow.ThrowIfFailed();
             DesktopWindow.TickAll();
 
-            if (!savedSnapshot && snapshot != null && window.State.StreamsModel.Initialised && !window.State.Busy)
+            // The first refresh can still be applying complete results after initialization; it ends by re-enabling refreshes.
+            var settled = window.State.StreamsModel.CanRefreshLivestreams || window.State.StreamsModel.Livestreams.Count == 0;
+            if (!savedSnapshot && snapshot != null && window.State.StreamsModel.Initialised && !window.State.Busy && settled)
             {
                 window.Snapshot(snapshot);
                 var state = new

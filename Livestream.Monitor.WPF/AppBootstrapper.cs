@@ -33,11 +33,14 @@ namespace Livestream.Monitor.WPF
             container = new SimpleContainer();
             ModelEnvironment.IsDesignMode = Execute.InDesignMode;
 
+            // The XAML designer configures the bootstrapper without running App.Main, which creates these services.
+            if (Execute.InDesignMode) App.CreateServices();
+
             container.Singleton<IEventAggregator, EventAggregator>();
             container.Singleton<IWindowManager, MetroWindowManager>();
-            container.Singleton<IMonitoredStreamsFileHandler, MonitoredStreamsFileHandler>();
-            container.Singleton<ISettingsHandler, SettingsHandler>();
-            container.Singleton<IApiClientFactory, ApiClientFactory>();
+            container.Instance<IMonitoredStreamsFileHandler>(App.FileHandler);
+            container.Instance<ISettingsHandler>(App.SettingsHandler);
+            container.Instance<IApiClientFactory>(App.ApiClientFactory);
             container.Singleton<FilterModel>();
             container.Singleton<INotificationHandler, NotificationHandler>(); // needs to be a single instance so we can add notifications from anywhere
             // single instance: each watcher polls separately and keeps its own notified-stream cache
@@ -72,7 +75,7 @@ namespace Livestream.Monitor.WPF
 #if FAKE_DATA // comment out the define at the top of this file to launch debug mode with real data
             container.Singleton<IMonitorStreamsModel, FakeMonitorStreamsModel>();
 #else
-            container.Singleton<IMonitorStreamsModel, MonitorStreamsModel>();
+            container.Instance<IMonitorStreamsModel>(App.StreamsModel);
 #endif
         }
 
@@ -97,9 +100,6 @@ namespace Livestream.Monitor.WPF
 
         protected override async void OnStartup(object sender, System.Windows.StartupEventArgs e)
         {
-            // start querying before we even try to display the UI to improve startup time for the standard case
-            if (container.GetInstance<IMonitorStreamsModel>() is MonitorStreamsModel monitor) monitor.BeginInitialQuery();
-
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             await DisplayRootViewForAsync<ShellViewModel>();
             container.GetInstance<ISettingsHandler>().Settings.PropertyChanged += (_, args) =>

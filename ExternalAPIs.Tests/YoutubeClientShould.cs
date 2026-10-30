@@ -67,10 +67,18 @@ namespace ExternalAPIs.Tests
         [Fact]
         public async Task GetLiveVideos()
         {
-            var onlineVideos = await sut.GetLivestreamVideos(LOFIGIRL_CHANNEL_ID);
+            var playlistVideoIds = await sut.GetLivestreamPlaylistVideoIds(LOFIGIRL_CHANNEL_ID, maxEntries: 50);
+            var onlineVideos = await sut.GetLiveVideos(playlistVideoIds);
 
-            Assert.NotNull(onlineVideos);
             Assert.NotEmpty(onlineVideos);
+
+            // The fields filter keeps the fields every shown livestream has.
+            var video = onlineVideos[0];
+            Assert.NotNull(video.Id);
+            Assert.NotNull(video.Snippet.Title);
+            Assert.NotNull(video.Snippet.ChannelTitle);
+            Assert.NotNull(video.Snippet.Thumbnails.Default.Url);
+            Assert.NotNull(video.LiveStreamingDetails.ActualStartTime);
         }
     }
 }

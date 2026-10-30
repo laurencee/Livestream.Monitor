@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 
+// ReSharper disable PropertyCanBeMadeInitOnly.Global -- response DTOs keep settable properties, like the other API DTOs.
 namespace ExternalAPIs.Youtube.Dto
 {
     public class PagedRoot<T>

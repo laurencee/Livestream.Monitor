@@ -17,6 +17,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasTopStreamGameFilterSupport { get; }
         public bool HasFollowedChannelsQuerySupport { get; }
         public bool IsAuthorized { get; }
+        public bool CanAuthorizeWithoutUserInput => true;
+        public bool HasQuickQuerySupport => false;
         public List<string> VodTypes { get; }
 
         public Task Authorize(IUserDialogs screen)
@@ -53,6 +55,8 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             throw new NotImplementedException();
         }
+
+        public Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken) => QueryChannels(cancellationToken);
 
         public Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {

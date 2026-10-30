@@ -55,6 +55,8 @@ namespace Livestream.Monitor.Model.ApiClients
         public bool HasFollowedChannelsQuerySupport => true;
 
         public bool IsAuthorized => settingsHandler.Settings.Twitch.IsAuthTokenSet || settingsHandler.Settings.Twitch.PassthroughClientId;
+        public bool CanAuthorizeWithoutUserInput => false;
+        public bool HasQuickQuerySupport => false;
 
         public List<string> VodTypes { get; } =
         [
@@ -235,6 +237,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
             return queryResults;
         }
+
+        public Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken) => QueryChannels(cancellationToken);
 
         public async Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery)
         {

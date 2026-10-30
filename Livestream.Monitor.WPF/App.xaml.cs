@@ -2,7 +2,10 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Threading;
+using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Model.ApiClients;
+using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.WPF
 {
@@ -12,6 +15,12 @@ namespace Livestream.Monitor.WPF
     public partial class App
     {
         internal const string Unique = "Livestream Monitor";
+
+        // Created in Main, or by the bootstrapper at design time, which registers these instances.
+        internal static SettingsHandler SettingsHandler { get; private set; }
+        internal static ApiClientFactory ApiClientFactory { get; private set; }
+        internal static MonitoredStreamsFileHandler FileHandler { get; private set; }
+        internal static MonitorStreamsModel StreamsModel { get; private set; }
 
         [STAThread]
         public static void Main(string[] args)
@@ -28,9 +37,22 @@ namespace Livestream.Monitor.WPF
             using var instance = SingleInstance.Claim(Unique, () => dispatcher.BeginInvoke(ShowWindows));
             if (instance == null) return;
 
+            // The followed channels are loaded and queried while the application's resources and first view load.
+            ExternalAPIs.HttpClientExtensions.PreconnectProviderApis();
+            CreateServices();
+            StreamsModel.BeginInitialQuery();
+
             var application = new App();
             application.InitializeComponent();
             application.Run();
+        }
+
+        internal static void CreateServices()
+        {
+            SettingsHandler = new SettingsHandler();
+            ApiClientFactory = new ApiClientFactory(SettingsHandler);
+            FileHandler = new MonitoredStreamsFileHandler(ApiClientFactory);
+            StreamsModel = new MonitorStreamsModel(FileHandler, SettingsHandler, ApiClientFactory);
         }
 
         // A later launch brings the running windows to the foreground.

@@ -4,6 +4,7 @@ using System.Linq;
 using ExternalAPIs.Kick;
 using ExternalAPIs.TwitchTv.Helix;
 using ExternalAPIs.Youtube;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 
 namespace Livestream.Monitor.Model.ApiClients
@@ -21,8 +22,9 @@ namespace Livestream.Monitor.Model.ApiClients
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
             twitchApiClient = new TwitchApiClient(new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
-            youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient());
-            kickApiClient = new KickApiClient(new KickReadonlyClient());
+            var cacheHandler = new CacheHandler();
+            youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient(), cacheHandler);
+            kickApiClient = new KickApiClient(new KickReadonlyClient(), cacheHandler);
 
             apiClients.Add(twitchApiClient);
             apiClients.Add(youtubeApiClient);

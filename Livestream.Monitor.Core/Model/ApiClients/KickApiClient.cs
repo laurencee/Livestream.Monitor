@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -16,14 +18,29 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model.ApiClients;
 
-public class KickApiClient(IKickReadonlyClient client) : IApiClient
+public class KickApiClient : IApiClient
 {
     public const string API_NAME = "kick";
 
     private const string BaseUrl = @"https://www.kick.com/";
 
-    private readonly IKickReadonlyClient client = client ?? throw new ArgumentNullException(nameof(client));
+    private readonly IKickReadonlyClient client;
+    private readonly ICacheHandler cacheHandler;
+    private readonly Func<Task<AuthResponse>> requestAccessToken;
     private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
+
+    public KickApiClient(IKickReadonlyClient client, ICacheHandler cacheHandler)
+        : this(client, cacheHandler, RequestAccessToken)
+    {
+    }
+
+    /// <summary>Lets tests replace the request to Kick's token endpoint.</summary>
+    internal KickApiClient(IKickReadonlyClient client, ICacheHandler cacheHandler, Func<Task<AuthResponse>> requestAccessToken)
+    {
+        this.client = client ?? throw new ArgumentNullException(nameof(client));
+        this.cacheHandler = cacheHandler ?? throw new ArgumentNullException(nameof(cacheHandler));
+        this.requestAccessToken = requestAccessToken ?? throw new ArgumentNullException(nameof(requestAccessToken));
+    }
 
     public string ApiName => "kick";
     public bool HasChatSupport => true;
@@ -32,6 +49,8 @@ public class KickApiClient(IKickReadonlyClient client) : IApiClient
     public bool HasTopStreamGameFilterSupport => false;
     public bool HasFollowedChannelsQuerySupport => false;
     public bool IsAuthorized { get; private set; }
+    public bool CanAuthorizeWithoutUserInput => true;
+    public bool HasQuickQuerySupport => false;
     public List<string> VodTypes { get; } = [];
 
     public async Task Authorize(IUserDialogs screen)
@@ -80,6 +99,33 @@ so we might as well just do machine-to-machine auth
 
         if (IsAuthorized) return;
 
+        // The token lasts about 60 days, so one saved by an earlier session is reused until shortly before it expires.
+        var renewalMargin = TimeSpan.FromDays(1);
+        var saved = cacheHandler.Cache.KickAppAccessToken;
+        if (!string.IsNullOrWhiteSpace(saved?.Token) && saved.ExpiresAt > DateTimeOffset.UtcNow + renewalMargin)
+        {
+            client.SetAccessToken(saved.Token);
+            IsAuthorized = true;
+            return;
+        }
+
+        await RenewAccessToken();
+    }
+
+    private async Task RenewAccessToken()
+    {
+        var authResponse = await requestAccessToken();
+        if (string.IsNullOrWhiteSpace(authResponse.AccessToken)) throw new InvalidDataException("Kick returned no app access token.");
+
+        client.SetAccessToken(authResponse.AccessToken);
+        IsAuthorized = true;
+
+        var token = new KickAppAccessToken(authResponse.AccessToken, DateTimeOffset.UtcNow.AddSeconds(authResponse.ExpiresIn));
+        cacheHandler.Update(cache => cache with { KickAppAccessToken = token });
+    }
+
+    private static async Task<AuthResponse> RequestAccessToken()
+    {
         var requestUri = "https://id.kick.com/oauth/token";
         byte[] data = Convert.FromBase64String("N2MzNDQyMWYzNTc2N2M5OWM3YzEyMjdlY2NjODRiYzgyNmYwYWNhNjBkMzkyNDFhZTYxZmJhZjIwYjMwNjdiNg==");
         string decodedString = Encoding.UTF8.GetString(data);
@@ -94,11 +140,21 @@ so we might as well just do machine-to-machine auth
         var response = await httpClient.PostAsync(requestUri, formData);
         response.EnsureSuccessStatusCode();
         string content = await response.Content.ReadAsStringAsync();
-        var authResponse = JsonSerializer.Deserialize<AuthResponse>(content, JsonDefaults.Options);
+        return JsonSerializer.Deserialize<AuthResponse>(content, JsonDefaults.Options);
+    }
 
-        client.SetAccessToken(authResponse.AccessToken);
-
-        IsAuthorized = true;
+    // A saved token can be revoked before it expires; Kick then rejects it, so a new one is requested and the call retried once.
+    private async Task<T> WithTokenRenewal<T>(Func<Task<T>> request)
+    {
+        try
+        {
+            return await request();
+        }
+        catch (HttpRequestWithStatusException e) when (e.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            await RenewAccessToken();
+            return await request();
+        }
     }
 
     public Task<string> GetStreamUrl(LivestreamModel livestreamModel) =>
@@ -115,7 +171,7 @@ so we might as well just do machine-to-machine auth
         else
             query.BroadcasterUserIds = [newChannel.ChannelId.ToInt()];
 
-        var channelRoot = await client.GetChannels(query);
+        var channelRoot = await WithTokenRenewal(() => client.GetChannels(query));
 
         var channel = channelRoot.Data[0];
         newChannel.OverrideChannelId(channel.BroadcasterUserId.ToString());
@@ -140,6 +196,8 @@ so we might as well just do machine-to-machine auth
     public Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken) =>
         QueryChannels(monitoredChannels, cancellationToken);
 
+    public Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken) => QueryChannels(cancellationToken);
+
     public Task<IReadOnlyCollection<VodDetails>> GetVods(VodQuery vodQuery) =>
         throw new NotImplementedException();
 
@@ -153,7 +211,7 @@ so we might as well just do machine-to-machine auth
             Limit = topStreamQuery.Take,
             // todo categoryid lookup from topStreamQuery.GameName
         };
-        var livestreamsRoot = await client.GetLivestreams(query);
+        var livestreamsRoot = await WithTokenRenewal(() => client.GetLivestreams(query));
 
         var livestreamModels = livestreamsRoot.Data.Select(x =>
         {
@@ -202,13 +260,16 @@ so we might as well just do machine-to-machine auth
         IReadOnlyCollection<ChannelIdentifier> channelIdentifiers,
         CancellationToken cancellationToken)
     {
-        if (channelIdentifiers.Count == 0 || !IsAuthorized) return [];
+        if (channelIdentifiers.Count == 0) return [];
+
+        // An authorization that failed earlier, e.g. at startup, is retried so Kick recovers without a restart.
+        if (!IsAuthorized) await Authorize(screen: null);
 
         var query = new GetChannelsQuery()
         {
             BroadcasterUserIds = channelIdentifiers.Select(x => x.ChannelId.ToInt()).ToList(),
         };
-        var channelsRoot = await client.GetChannels(query, cancellationToken);
+        var channelsRoot = await WithTokenRenewal(() => client.GetChannels(query, cancellationToken));
 
         var queryResults = new List<LivestreamQueryResult>();
         foreach (var channel in channelsRoot.Data)

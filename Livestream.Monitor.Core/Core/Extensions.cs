@@ -79,6 +79,14 @@ namespace Livestream.Monitor.Core
             this IReadOnlyCollection<LivestreamQueryResult> livestreamQueryResults,
             List<string> ignoredQueryFailures = null)
         {
+            if (livestreamQueryResults.FindQueryFailure(ignoredQueryFailures) is { } failure) throw failure;
+        }
+
+        /// <summary> Combines any failed query exceptions into one, or returns null if no failed queries exist </summary>
+        public static AggregateException FindQueryFailure(
+            this IReadOnlyCollection<LivestreamQueryResult> livestreamQueryResults,
+            List<string> ignoredQueryFailures = null)
+        {
             if (ignoredQueryFailures == null) ignoredQueryFailures = new List<string>();
 
             var exceptions = livestreamQueryResults
@@ -88,7 +96,7 @@ namespace Livestream.Monitor.Core
                 .Distinct() // a failed provider request shares one exception across its channels
                 .ToList();
 
-            if (exceptions.Any()) throw new AggregateException($"{exceptions.Count} failed query(s)", exceptions);
+            return exceptions.Any() ? new AggregateException($"{exceptions.Count} failed query(s)", exceptions) : null;
         }
 
         /// <summary>

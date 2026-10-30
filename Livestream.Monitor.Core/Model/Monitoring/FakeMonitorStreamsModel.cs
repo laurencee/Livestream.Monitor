@@ -88,6 +88,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
+        public event EventHandler ProviderRefreshComplete;
+
         public Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
@@ -103,6 +105,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public Task RefreshLivestreams()
         {
+            ProviderRefreshComplete?.Invoke(this, EventArgs.Empty);
             OnOnlineLivestreamsRefreshComplete();
             LastRefreshTime = DateTimeOffset.Now;
             return Task.CompletedTask;

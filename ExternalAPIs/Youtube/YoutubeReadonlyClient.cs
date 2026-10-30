@@ -15,7 +15,7 @@ namespace ExternalAPIs.Youtube
     {
         private static readonly string ApiKey = Encoding.UTF8.GetString(Convert.FromBase64String(RequestConstants.API_KEY));
 
-        public async Task<List<Video>> GetLivestreamVideos(string channelId, CancellationToken cancellationToken = default)
+        public async Task<List<string>> GetLivestreamPlaylistVideoIds(string channelId, int maxEntries, CancellationToken cancellationToken = default)
         {
             if (IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));
 
@@ -27,15 +27,25 @@ namespace ExternalAPIs.Youtube
             // https://github.com/DialmasterOrg/Youtarr/blob/main/server/modules/youtubeApi/constants.js
             var playlistId = LivestreamPlaylistPrefix + channelId.Substring(ChannelIdPrefix.Length);
 
-            // Limit discovery to the first page: scanning archived streams can exceed the refresh timeout.
-            const int MaxLivestreamCandidates = 50;
-            var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = MaxLivestreamCandidates };
+            var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = maxEntries };
             var playlistItems = await GetPlaylistItems(query, cancellationToken);
-            var videoIds = playlistItems.Items.Select(x => x.ContentDetails.VideoId).ToList();
 
-            if (videoIds.Count == 0) return new List<Video>();
+            // An entry without a video ID can be neither looked up nor kept for the next check.
+            return playlistItems.Items.Select(x => x.ContentDetails.VideoId).Where(id => id != null).ToList();
+        }
 
-            var videos = await GetVideosDetails(videoIds, cancellationToken);
+        public async Task<List<Video>> GetLiveVideos(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default)
+        {
+            ArgumentNullException.ThrowIfNull(videoIds);
+
+            // A partial response with only the fields a livestream is shown from arrives sooner.
+            // https://developers.google.com/youtube/v3/getting-started#fields
+            const string LiveVideoFields =
+                "items(id,snippet(channelTitle,title,liveBroadcastContent,thumbnails(default/url,standard/url,maxres/url)),liveStreamingDetails(actualStartTime,activeLiveChatId,concurrentViewers))";
+            var request = $"{RequestConstants.VideoLiveStatus}&fields={LiveVideoFields}&id={Join(",", videoIds)}";
+            var videos = await ExecuteRequest<VideosRoot>(request, cancellationToken);
+
+            // Deleted and private videos are left out, so the response can have no items.
             return videos.Items.Where(x => x.Snippet?.LiveBroadcastContent == "live").ToList();
         }
 
@@ -65,11 +75,14 @@ namespace ExternalAPIs.Youtube
             return channelDetails;
         }
 
-        public async Task<VideosRoot> GetVideosDetails(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default)
+        public Task<VideosRoot> GetVideosDetails(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default) =>
+            GetVideos(RequestConstants.VideoLivestreamDetails, videoIds, cancellationToken);
+
+        private static async Task<VideosRoot> GetVideos(string videosUrl, IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken)
         {
             if (videoIds == null) throw new ArgumentNullException(nameof(videoIds));
 
-            var request = $"{RequestConstants.VideoLivestreamDetails}&id={Join(",", videoIds)}";
+            var request = $"{videosUrl}&id={Join(",", videoIds)}";
             var livestreamDetails = await ExecuteRequest<VideosRoot>(request, cancellationToken);
 
             if (livestreamDetails?.Items?.Count == 0)
