@@ -696,7 +696,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         input.ShowPlaceholder = input.Value.Length == 0 && placeholder.Length != 0 &&
                                 Win32.GetFocus() != input.Handle;
 
-        Add(id, textBounds, action: () => FocusInput(input), enabled);
+        // Focusing a clipped input would show its native control outside the clip.
+        Add(id, textBounds, action: () => FocusInput(input), enabled: enabled && input.Visible);
         if (enabled) ToolTip(id, bounds, toolTip);
         var inputFocus = Win32.GetFocus() == input.Handle ? AutomationStates.Focused : AutomationStates.None;
         AddNode(
@@ -732,6 +733,23 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             var clearId = id + ".clear";
             Add(clearId, clearBounds, action: () => SetValue(id, ""), enabled);
             AddNode(clearId, AutomationRole.Button, name: "Clear", clearBounds, activate: () => InvokeWidget(clearId));
+        }
+
+        // The native control covers this text, but is hidden while clipped or under a menu, and the frame without it can
+        // show before the next one is presented; drawing the text keeps the value in view throughout.
+        if (!input.ShowPlaceholder && input.Value.Length != 0)
+        {
+            var area = owner.ControlArea(InputBounds(input.Bounds));
+
+            // The line is centred in its box, so trimming the box from one side moves the text by half the trim, onto
+            // the control's own baseline, while keeping it inside the control's area.
+            var centredAscent = (area.Height - Painter.LineHeight(FontSize)) / 2 + Painter.Ascent(FontSize);
+            var shift = owner.MeasureControlAscent() - centredAscent;
+            var valueBounds = shift > 0
+                ? area with { Y = area.Y + shift * 2, Height = area.Height - shift * 2 }
+                : area with { Height = area.Height + shift * 2 };
+
+            Label(input.Value, valueBounds, Palette.Text, trim: false);
         }
     }
 

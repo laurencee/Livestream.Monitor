@@ -280,7 +280,7 @@ internal sealed class DialogPane(
     public void Suspend()
     {
         ScrollBar.MouseUp();
-        Win32.ShowWindow(messageText, Win32.SwHide);
+        owner.HideControl(messageText);
     }
 
     public bool Key(int key)

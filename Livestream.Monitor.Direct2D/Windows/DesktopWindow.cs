@@ -36,6 +36,13 @@ internal abstract class DesktopWindow : IDisposable
 
     // Edit controls kept without inner margins, which setting a font restores.
     private readonly HashSet<nint> marginlessControls = [];
+
+    // Controls placed visible but not yet shown, and controls to hide or destroy; UpdatePlacedControls applies these once the
+    // frame drawn for them is on screen, since a child control drawn over the previous frame, or missing from it, reaches
+    // the screen one compositor pass ahead of that frame.
+    private readonly HashSet<nint> controlsToShow = [];
+    private readonly HashSet<nint> controlsToHide = [];
+    private readonly HashSet<nint> controlsToDestroy = [];
     private int nextControlId = 100;
     private nint inputBrush;
     private nint backgroundBrush;
@@ -247,12 +254,22 @@ internal abstract class DesktopWindow : IDisposable
         return control;
     }
 
+    /// <summary>Hides the control once the next frame is on screen; placing it visible before then keeps it shown.</summary>
+    internal void HideControl(nint control)
+    {
+        controlsToShow.Remove(control);
+        controlsToHide.Add(control);
+    }
+
+    /// <summary>Destroys the control once the next frame is on screen.</summary>
     internal void DestroyControl(nint control)
     {
-        controls.RemoveAll(entry => entry.Handle == control);
-        readOnlyTexts.Remove(control);
-        marginlessControls.Remove(control);
-        Win32.DestroyWindow(control);
+        // Until it is destroyed, a focused control would keep receiving keys.
+        if (Win32.GetFocus() == control) Win32.SetFocus(Handle);
+
+        controlsToShow.Remove(control);
+        controlsToHide.Remove(control);
+        controlsToDestroy.Add(control);
     }
 
     private void RemoveMargins(nint control)
@@ -272,21 +289,67 @@ internal abstract class DesktopWindow : IDisposable
         if (index >= 0 && controls[index].Bounds != bounds)
         {
             controls[index] = controls[index] with { Bounds = bounds };
+            var pixels = ControlPixels(bounds);
             Win32.SetWindowPos(
                 window: input,
                 insertAfter: 0,
-                x: (int)(bounds.X * Scale),
-                y: (int)(bounds.Y * Scale),
-                width: Math.Max(1, (int)(bounds.Width * Scale)),
-                height: Math.Max(1, (int)(bounds.Height * Scale)),
+                x: pixels.X,
+                y: pixels.Y,
+                width: pixels.Width,
+                height: pixels.Height,
                 flags: Win32.SwpNoZOrder | Win32.SwpNoActivate);
         }
 
-        if (Win32.IsWindowVisible(input) != visible)
-            Win32.ShowWindow(input, visible ? Win32.SwShowNoActivate : Win32.SwHide);
-
         Win32.EnableWindow(input, enabled);
+        controlsToHide.Remove(input);
+
+        // Child controls draw over the composed frame. Shown now, a control could reach the screen before the frame drawn
+        // for it, over what the previous frame showed there, such as a menu that has since closed; hidden now, it
+        // reveals the previous frame, which draws an input's text beneath it.
+        var shown = (Win32.GetWindowLongPtr(input, Win32.GwlStyle) & Win32.WsVisible) != 0;
+        if (visible && !shown) controlsToShow.Add(input);
+        if (visible) return;
+
+        controlsToShow.Remove(input);
+        if (shown) Win32.ShowWindow(input, Win32.SwHide);
     }
+
+    /// <summary>Applies the shows, hides and destroys queued since the last call, once the frame presented for them is on screen.</summary>
+    internal void UpdatePlacedControls()
+    {
+        if (controlsToShow.Count == 0 && controlsToHide.Count == 0 && controlsToDestroy.Count == 0) return;
+
+        // A failed flush only skips that wait.
+        Win32.DwmFlush();
+
+        foreach (var control in controlsToShow) Win32.ShowWindow(control, Win32.SwShowNoActivate);
+        foreach (var control in controlsToHide) Win32.ShowWindow(control, Win32.SwHide);
+
+        foreach (var control in controlsToDestroy)
+        {
+            controls.RemoveAll(entry => entry.Handle == control);
+            readOnlyTexts.Remove(control);
+            marginlessControls.Remove(control);
+            Win32.DestroyWindow(control);
+        }
+
+        controlsToShow.Clear();
+        controlsToHide.Clear();
+        controlsToDestroy.Clear();
+    }
+
+    /// <summary>The area that <see cref="PlaceInput"/> covers for the bounds, after rounding to whole device pixels.</summary>
+    internal RectangleF ControlArea(RectangleF bounds)
+    {
+        var pixels = ControlPixels(bounds);
+        return new RectangleF(x: pixels.X / Scale, y: pixels.Y / Scale, width: pixels.Width / Scale, height: pixels.Height / Scale);
+    }
+
+    private Rectangle ControlPixels(RectangleF bounds) => new(
+        x: (int)(bounds.X * Scale),
+        y: (int)(bounds.Y * Scale),
+        width: Math.Max(1, (int)(bounds.Width * Scale)),
+        height: Math.Max(1, (int)(bounds.Height * Scale)));
 
     protected void CenterOnOwner(nint owner)
     {
@@ -314,12 +377,16 @@ internal abstract class DesktopWindow : IDisposable
         Action<int>? command = null,
         float fontSize = ControlFontSize)
     {
+        // A Rich Edit created hidden keeps wrapping at its creation width after it is resized, even once shown. Until the
+        // window is shown, a visible control cannot reach the screen ahead of its frame.
+        var visibility = IsVisible ? 0 : Win32.WsVisible;
+
         var id = nextControlId++;
         var control = Win32.CreateWindowEx(
             extendedStyle: 0,
             className: className,
             windowName: text,
-            style: Win32.WsChild | Win32.WsVisible | style,
+            style: Win32.WsChild | visibility | style,
             x: (int)(bounds.X * Scale),
             y: (int)(bounds.Y * Scale),
             width: (int)(bounds.Width * Scale),
@@ -374,6 +441,23 @@ internal abstract class DesktopWindow : IDisposable
         Win32.SelectObject(context, previous);
         Win32.ReleaseDC(Handle, context);
         return extent.Y / Scale;
+    }
+
+    /// <summary>
+    /// Distance from the top of a single-line control to the baseline of its text, in logical units. GDI rounds the font's
+    /// ascent to whole device pixels, so this can differ by a pixel from Direct2D's at the same size.
+    /// </summary>
+    internal float MeasureControlAscent()
+    {
+        var context = Win32.GetDC(Handle);
+        var previous = Win32.SelectObject(context, GetFont(ControlFontSize));
+
+        Win32.GetTextMetrics(context, out var metrics);
+
+        Win32.SelectObject(context, previous);
+        Win32.ReleaseDC(Handle, context);
+
+        return metrics.Ascent / Scale;
     }
 
     protected virtual void OnClosed() { }

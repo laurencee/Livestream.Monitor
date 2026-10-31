@@ -50,6 +50,17 @@ internal static unsafe partial class Win32
         public fixed char FontFamily[FontFamilyLength];
     }
 
+    // TEXTMETRICW; only its leading height fields are read.
+    [StructLayout(LayoutKind.Sequential)]
+    public struct TextMetrics
+    {
+        private const int RemainingBytes = 48;
+        public int Height;
+        public int Ascent;
+        public int Descent;
+        private fixed byte remaining[RemainingBytes];
+    }
+
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool InvalidateRect(nint window, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
@@ -111,6 +122,10 @@ internal static unsafe partial class Win32
         char* text,
         int length,
         out Point size);
+
+    [LibraryImport("gdi32.dll", EntryPoint = "GetTextMetricsW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetTextMetrics(nint context, out TextMetrics metrics);
 
     [LibraryImport("user32.dll")]
     public static partial nint CreatePopupMenu();

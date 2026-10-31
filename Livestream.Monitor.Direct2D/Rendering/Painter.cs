@@ -96,6 +96,9 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
     // Segoe UI's design line spacing (ascent + descent over em).
     private const float SegoeUiLineSpacing = 1.33f;
 
+    // Segoe UI's design ascent over em (2210 / 2048 font units).
+    private const float SegoeUiAscent = 1.0791f;
+
     private const long LayoutRetentionMilliseconds = 2_000;
     private const long TrimIntervalMilliseconds = 1_000;
 
@@ -110,6 +113,9 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
 
     /// <summary>Line height of the font in logical units.</summary>
     public static float LineHeight(float size) => size * SegoeUiLineSpacing;
+
+    /// <summary>Distance from the top of a line to its baseline in logical units.</summary>
+    public static float Ascent(float size) => size * SegoeUiAscent;
 
     /// <summary>Starts a frame; about once a second it releases laid-out text that recent frames did not use.</summary>
     public void BeginFrame(long nowMilliseconds)

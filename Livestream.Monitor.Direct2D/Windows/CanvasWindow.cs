@@ -247,6 +247,7 @@ internal abstract class CanvasWindow : DesktopWindow
             presentedCommands.AddRange(drawCommands);
         }
 
+        UpdatePlacedControls();
         OnPresented();
     }
 

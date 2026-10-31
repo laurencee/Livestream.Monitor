@@ -426,17 +426,7 @@ internal sealed class SettingsPane
         var bounds = Row(body, ref y, InputHeight);
         y += spacing;
         if (seededInputs.Add(id)) ui.SetValue(id, value ?? "");
-
-        // A clipped native child must not retain a focusable hit target outside the scrolling body.
-        if (body.Contains(bounds))
-        {
-            ui.Input(id, placeholder, bounds, changed, toolTip: toolTip);
-        }
-        else
-        {
-            ui.Fill(bounds, ui.Palette.Input);
-            ui.Border(bounds, ui.Palette.Border);
-        }
+        ui.Input(id, placeholder, bounds, changed, toolTip: toolTip);
     }
 
     private static void DrawCheck(
