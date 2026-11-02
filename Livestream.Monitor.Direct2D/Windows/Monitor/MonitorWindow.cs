@@ -289,7 +289,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
         else
         {
-            DrawPageToolbar(size.Width);
+            DrawPageToolbar();
             DrawTiles(size);
             DrawFooter(size);
         }
@@ -431,7 +431,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Ui.Fill(bounds, Theme.Blend(Ui.TitleBarColor, palette.TitleText, Opacity));
     }
 
-    private void DrawPageToolbar(float width)
+    private void DrawPageToolbar()
     {
         // Control positions follow the WPF page headers, whose controls have 3-pixel margins; the VOD header's own
         // margin is 5 pixels narrower than the top streams header's.
@@ -556,24 +556,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 _ = Query();
             },
             !state.Busy && types.Count != 0
-        );
-        Ui.Text("VOD URL", new RectangleF(x: 427, y: Y, width: 48, height: Height));
-        var urlBounds = new RectangleF(x: 480, y: Y, width: Math.Max(80, width - 566), height: Height);
-        const string UrlToolTip =
-            "Paste a VOD URL for the selected platform, or select a video below.";
-
-        Ui.Input("vod.url", placeholder: "", urlBounds, toolTip: UrlToolTip, name: "VOD URL");
-
-        // Wider than the WPF button, whose bold upper-case text is narrower than this text.
-        var openBounds = new RectangleF(x: width - 79, y: Y, width: 70, height: Height);
-        var canOpen = IsVodUrl(Ui.Value("vod.url"));
-        Ui.Button(
-            id: "vod.open",
-            text: "Open VOD",
-            openBounds,
-            action: () => _ = OpenVodUrl(),
-            enabled: canOpen,
-            toolTip: "Open the selected video in your configured player."
         );
     }
 
@@ -1032,7 +1014,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (state.Page == MonitorPage.Vods && page != MonitorPage.Vods)
         {
             Ui.SetValue("vod.channel", "");
-            Ui.SetValue("vod.url", "");
             vodTypeIndex = 0;
             state.Vods.Clear();
         }
@@ -1164,32 +1145,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         );
     }
 
-    private async Task OpenVodUrl()
-    {
-        var url = Ui.Value("vod.url").Trim();
-        if (!IsVodUrl(url)) return;
-
-        try
-        {
-            var index = state.SelectedIndex;
-            var selected = index >= 0 && index < state.Vods.Count ? state.Vods[index] : null;
-
-            // As in WPF, the selected tile's VOD opens when the box holds its URL, so the output window shows its title. A
-            // typed URL names its window, where WPF leaves the title blank.
-            var vod = selected != null && selected.Url == url
-                ? selected
-                : new VodDetails { Url = url, Title = url, ApiClient = SelectedProvider };
-
-            launcher.OpenVod(vod);
-        }
-        catch (Exception exception)
-        {
-            await ShowVodLaunchError(exception);
-        }
-    }
-
-    private static bool IsVodUrl(string url) => Uri.IsWellFormedUriString(url.Trim(), UriKind.Absolute);
-
     protected override void OnPointerDown(PointF point)
     {
         if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return;
@@ -1229,9 +1184,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         var index = HitRow(point);
-        if (index < 0 || index != state.SelectedIndex || state.Busy) return;
-        if (state.Page == MonitorPage.Vods) Ui.SetValue("vod.url", state.Vods[index].Url);
-        if (state.Page == MonitorPage.TopStreams) _ = ToggleFollow();
+        if (index < 0 || index != state.SelectedIndex) return;
+        if (state.Page == MonitorPage.Vods) _ = OpenSelected();
+        if (state is { Page: MonitorPage.TopStreams, Busy: false }) _ = ToggleFollow();
     }
 
     protected override void OnDoubleClick(PointF point)
@@ -1406,7 +1361,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             NeedsPaint = true;
         }
 
-        if (message == Win32.WmContextMenu && !state.Busy)
+        if (message == Win32.WmContextMenu && (state.Page == MonitorPage.Vods || !state.Busy))
         {
             ShowContextMenu();
             return 0;
@@ -1618,10 +1573,19 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         NeedsPaint = true;
     }
 
-    // The items, text and order of the WPF frontend's stream list and top stream tile menus; VOD tiles have none.
+    // The items, text and order of the WPF frontend's context menus.
     private void ShowContextMenu()
     {
-        if (state.Page == MonitorPage.Vods || state.SelectedStream is not { } stream) return;
+        if (state.Page == MonitorPage.Vods)
+        {
+            if (state.IsContentLoading || queryQueued) return;
+
+            if (state.SelectedIndex >= 0 && state.SelectedIndex < state.Vods.Count) ShowVodContextMenu(state.Vods[state.SelectedIndex]);
+
+            return;
+        }
+
+        if (state.SelectedStream is not { } stream) return;
 
         var notify = !stream.DontNotify;
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items;
@@ -1668,6 +1632,43 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         {
             const string NotifyText = "Enable Notifications";
             return new SurfaceUi.MenuChoice(Text: NotifyText, Checked: notify, ToolTip: toolTip, Checkable: true);
+        }
+    }
+
+    private void ShowVodContextMenu(VodDetails vod)
+    {
+        (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items =
+        [
+            (new SurfaceUi.MenuChoice("Copy VOD URL"), ContextCommand.CopyUrl),
+            (new SurfaceUi.MenuChoice("Open in Browser"), ContextCommand.OpenInBrowser),
+        ];
+
+        var choices = Array.ConvertAll(items, item => item.Choice);
+        Ui.Popup(id: "context", Pointer, choices, chosen: index => _ = RunVodContextCommand(vod, items[index].Command));
+    }
+
+    private async Task RunVodContextCommand(VodDetails vod, ContextCommand command)
+    {
+        try
+        {
+            switch (command)
+            {
+                case ContextCommand.CopyUrl:
+                    CopyToClipboard(vod.Url);
+                    break;
+                case ContextCommand.OpenInBrowser:
+                    var uri = vod.GetBrowserUri();
+                    OpenInBrowser(uri.AbsoluteUri);
+                    break;
+            }
+        }
+        catch (Exception exception)
+        {
+            var title = command == ContextCommand.CopyUrl ? "Error copying URL" : "Error opening browser";
+            var message = exception.ExtractErrorMessage();
+            if (command == ContextCommand.CopyUrl) message = "An error occurred attempting to copy the URL: " + message;
+
+            await dialogs.ShowMessage(title, message);
         }
     }
 

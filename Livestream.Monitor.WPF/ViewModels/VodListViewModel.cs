@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Caliburn.Micro;
 using ExternalAPIs;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
@@ -23,8 +26,6 @@ namespace Livestream.Monitor.WPF.ViewModels
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly IApiClientFactory apiClientFactory;
 
-        private string vodUrl;
-        private VodDetails selectedItem;
         private IApiClient selectedApiClient;
 
         #region Design time constructor
@@ -126,18 +127,6 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
         }
 
-        public string VodUrl
-        {
-            get { return vodUrl; }
-            set
-            {
-                if (value == vodUrl) return;
-                vodUrl = value;
-                NotifyOfPropertyChange(() => VodUrl);
-                NotifyOfPropertyChange(() => CanOpenVod);
-            }
-        }
-
         public bool LoadingItems
         {
             get;
@@ -151,37 +140,32 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
         }
 
-        public VodDetails SelectedItem
+        public Task OpenVod(VodDetails vodDetails) => streamLauncher.OpenVod(vodDetails, this);
+
+        public async Task CopyVodUrl(VodDetails vodDetails)
         {
-            get { return selectedItem; }
-            set
+            try
             {
-                if (Equals(value, selectedItem)) return;
-                selectedItem = value;
-                NotifyOfPropertyChange(() => SelectedItem);
-                VodUrl = selectedItem.Url;
+                Clipboard.SetDataObject(vodDetails.Url);
+            }
+            catch (Exception exception)
+            {
+                var message = "An error occurred attempting to copy the URL: " + exception.ExtractErrorMessage();
+                await this.ShowMessageAsync("Error copying URL", message);
             }
         }
 
-        public bool CanOpenVod => !string.IsNullOrWhiteSpace(VodUrl) &&
-                                  Uri.IsWellFormedUriString(VodUrl, UriKind.Absolute);
-
-        public void VodClicked(VodDetails vodDetails)
+        public async Task OpenVodInBrowser(VodDetails vodDetails)
         {
-            SelectedItem = vodDetails;
-        }
-
-        public Task OpenVod()
-        {
-            if (!CanOpenVod) return Task.CompletedTask;
-
-            VodDetails vodDetails;
-            if (SelectedItem != null && selectedItem.Url == VodUrl)
-                vodDetails = SelectedItem;
-            else
-                vodDetails = new VodDetails() { Url = vodUrl, ApiClient = SelectedApiClient };
-
-            return streamLauncher.OpenVod(vodDetails, this);
+            try
+            {
+                var uri = vodDetails.GetBrowserUri();
+                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+            }
+            catch (Exception exception)
+            {
+                await this.ShowMessageAsync("Error opening browser", exception.ExtractErrorMessage());
+            }
         }
 
         protected override async Task OnInitializeAsync(CancellationToken cancellationToken)

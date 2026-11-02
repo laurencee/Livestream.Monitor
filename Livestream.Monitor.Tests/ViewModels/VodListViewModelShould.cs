@@ -20,6 +20,48 @@ namespace Livestream.Monitor.Tests.ViewModels;
 
 public class VodListViewModelShould
 {
+    [Fact]
+    public async Task LaunchEachClickedVodUsingItsOwnProviderUrlAndTitle()
+    {
+        // An invalid executable name keeps the test at the launch boundary without starting a player.
+        const string Player = "invalid|vod-player";
+        var configuration = new Settings
+        {
+            DebugMode = true,
+            Twitch = { VodCommand = new ExecCommand { FilePath = Player, Args = "twitch {url}" } },
+            YouTube = { VodCommand = new ExecCommand { FilePath = Player, Args = "youtube {url}" } },
+        };
+
+        var settings = Substitute.For<ISettingsHandler>();
+        settings.Settings.Returns(configuration);
+        var windows = Substitute.For<IWindowManager>();
+        var outputs = new List<MessageBoxViewModel>();
+        windows.When(x => x.ShowWindowAsync(Arg.Any<object>(), Arg.Any<object>(), Arg.Any<IDictionary<string, object>>()))
+            .Do(call => outputs.Add((MessageBoxViewModel)call[0]));
+
+        var launcher = new StreamLauncher(settings, windows);
+        var streams = Substitute.For<IMonitorStreamsModel>();
+        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        var viewModel = new VodListViewModel(launcher, streams, Substitute.For<IApiClientFactory>());
+        var twitch = Substitute.For<IApiClient>();
+        twitch.ApiName.Returns(TwitchApiClient.API_NAME);
+        var youtube = Substitute.For<IApiClient>();
+        youtube.ApiName.Returns(YoutubeApiClient.API_NAME);
+        viewModel.SelectedApiClient = twitch;
+        var first = new VodDetails { ApiClient = twitch, Url = "https://www.twitch.tv/videos/1", Title = "First VOD" };
+        var second = new VodDetails { ApiClient = youtube, Url = "https://www.youtube.com/watch?v=second", Title = "Second VOD" };
+
+        await viewModel.OpenVod(first);
+        await viewModel.OpenVod(second);
+
+        var launches = outputs.Distinct().ToArray();
+        Assert.Equal(2, launches.Length);
+        Assert.Equal(first.Title, launches[0].DisplayName);
+        Assert.Contains($"[DEBUG] {Player} twitch {first.Url}", launches[0].MessageText);
+        Assert.Equal(second.Title, launches[1].DisplayName);
+        Assert.Contains($"[DEBUG] {Player} youtube {second.Url}", launches[1].MessageText);
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

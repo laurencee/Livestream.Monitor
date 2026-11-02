@@ -44,6 +44,7 @@ Memory and CPU were measured with about 380 followed streams during a short sess
 * View **Top Streams** for Twitch and Kick. Filter Twitch top streams by category (Kick support coming soon).
 * **VOD browser** to see previously recorded broadcasts/uploads for supported platforms.
   * You don't have to be monitoring channels to view their VODs.
+  * Click a VOD tile to launch it in your configured player. Right click to copy its URL or open it in your browser.
 * Filter your channel list to find and manage streams quickly
 * Toast notifications for streams coming online
 * Toast notifications for popular streams (so you never miss a special event)

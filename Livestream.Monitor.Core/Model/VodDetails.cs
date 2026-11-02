@@ -1,5 +1,6 @@
 ﻿using Livestream.Monitor.Core;
 using System;
+using System.IO;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
@@ -10,6 +11,18 @@ namespace Livestream.Monitor.Model
         {
             get;
             set => Set(ref field, value);
+        }
+
+        /// <summary>Returns the VOD's HTTP or HTTPS URI for opening in a browser.</summary>
+        public Uri GetBrowserUri()
+        {
+            if (!Uri.TryCreate(Url, UriKind.Absolute, out var uri) ||
+                uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
+            {
+                throw new InvalidDataException($"Invalid VOD URL: '{Url}'. Only HTTP and HTTPS URLs can be opened in a browser.");
+            }
+
+            return uri;
         }
 
         public TimeSpan Length
