@@ -1,6 +1,5 @@
-﻿using System.Dynamic;
+using System.Dynamic;
 using System.Windows;
-using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
 namespace Livestream.Monitor.WPF.Core.Utility
@@ -8,22 +7,6 @@ namespace Livestream.Monitor.WPF.Core.Utility
     public class WindowSettingsBuilder
     {
         private readonly dynamic settings = new ExpandoObject();
-
-        /// <summary>
-        /// Popup settings builder to help creating <see cref="Popup"/>s.
-        /// <para>
-        ///     Default values: StaysOpen = false, Placement = <see cref="PlacementMode.Bottom"/>,
-        ///     PopupAnimation = <see cref="PopupAnimation.Scroll"/>
-        /// </para>
-        /// </summary>
-        public WindowSettingsBuilder PopupSettings(UIElement placementTarget, bool staysOpen = false)
-        {
-            settings.PlacementTarget = placementTarget;
-            settings.StaysOpen = staysOpen;
-            settings.Placement = PlacementMode.Bottom;
-            settings.PopupAnimation = PopupAnimation.Scroll;
-            return this;
-        }
 
         public WindowSettingsBuilder WithTopLeft(double top = 0, double left = 0)
         {
@@ -63,21 +46,9 @@ namespace Livestream.Monitor.WPF.Core.Utility
             return this;
         }
 
-        public WindowSettingsBuilder WithPlacement(PlacementMode placementMode)
-        {
-            settings.Placement = placementMode;
-            return this;
-        }
-
         public WindowSettingsBuilder WithStartupLocation(WindowStartupLocation startupLocation)
         {
             settings.WindowStartupLocation = startupLocation;
-            return this;
-        }
-
-        public WindowSettingsBuilder WithPopupAnimation(PopupAnimation popupAnimation)
-        {
-            settings.PopupAnimation = popupAnimation;
             return this;
         }
 
@@ -91,18 +62,6 @@ namespace Livestream.Monitor.WPF.Core.Utility
         {
             settings.AllowsTransparency = true;
             settings.Background = Brushes.Transparent;
-            return this;
-        }
-
-        public WindowSettingsBuilder Height(int height)
-        {
-            settings.Height = height;
-            return this;
-        }
-
-        public WindowSettingsBuilder Width(int width)
-        {
-            settings.Width = width;
             return this;
         }
 

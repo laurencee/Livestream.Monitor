@@ -81,10 +81,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => DisableNotifications);
-                NotifyOfPropertyChange(() => CanSave);
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
             }
         }
 
@@ -93,10 +90,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => HideStreamOutputOnLoad);
-                NotifyOfPropertyChange(() => CanSave);
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
             }
         }
 
@@ -105,10 +99,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => CheckForNewVersions);
-                NotifyOfPropertyChange(() => CanSave);
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
             }
         }
 
@@ -117,10 +108,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => DisableRefreshErrorDialogs);
-                NotifyOfPropertyChange(() => CanSave);
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
             }
         }
 
@@ -129,10 +117,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => DisableMinimizeToTrayNotification);
-                NotifyOfPropertyChange(() => CanSave);
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
             }
         }
 

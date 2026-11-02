@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -14,8 +14,6 @@ namespace Livestream.Monitor.WPF.Core.UI
             set => Set(ref field, value);
         } = 1;
 
-        public int TotalPages => Math.Min(Items.Count / ItemsPerPage, Items.Count);
-
         public int ItemsPerPage
         {
             get;
@@ -25,33 +23,23 @@ namespace Livestream.Monitor.WPF.Core.UI
                 if (value == field) return;
                 field = value;
                 NotifyOfPropertyChange(() => ItemsPerPage);
-                NotifyOfPropertyChange(() => TotalPages);
             }
         }
 
-        /// <summary> Will return to the start or end of the list on executing Next/Previous. </summary>
-        protected bool Circular { get; set; }
+        public abstract bool CanNext { get; }
 
-        public virtual bool CanNext => Circular || Page < TotalPages;
-
-        public virtual bool CanPrevious => Circular || Page > 1;
+        public abstract bool CanPrevious { get; }
 
         public virtual void Next()
         {
-            if (Circular && TotalPages <= Page)
-                Page = 1;
-            else
-                Page++;
+            Page++;
 
             MovePage();
         }
 
         public virtual void Previous()
         {
-            if (Circular && Page == 1)
-                Page = TotalPages;
-            else
-                Page--;
+            Page--;
 
             MovePage();
         }

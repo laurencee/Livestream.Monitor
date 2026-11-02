@@ -49,11 +49,10 @@ namespace Livestream.Monitor.Model
 
         public override int GetHashCode()
         {
-            unchecked
-            {
-                return ((ApiClientName?.GetHashCode() ?? 0) * 397) ^
-                       (StreamId == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(StreamId) * 397);
-            }
+            var apiHash = ApiClientName == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(ApiClientName);
+            var streamHash = StreamId == null ? 0 : StringComparer.OrdinalIgnoreCase.GetHashCode(StreamId);
+
+            return HashCode.Combine(apiHash, streamHash);
         }
 
         #endregion

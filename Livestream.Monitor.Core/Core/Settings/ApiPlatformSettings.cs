@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using static ExternalAPIs.TwitchTv.Helix.RequestConstants;
 using static Livestream.Monitor.Core.Settings.Settings;
@@ -24,6 +24,22 @@ public abstract class ApiPlatformSettings : ObservableModel
 
     [JsonObjectCreationHandling(JsonObjectCreationHandling.Populate)]
     public ExecCommand ChatCommand { get; set; } = new();
+
+    protected static ExecCommand CreatePlayerCommand(string filePath, string args) => new()
+    {
+        FilePath = filePath,
+        Args = args,
+        CaptureStandardOutput = true,
+        CaptureErrorOutput = true,
+    };
+
+    protected static ExecCommand CreateChatCommand() => new()
+    {
+        FilePath = DefaultEdgePath,
+        Args = UrlReplacementToken,
+        CaptureStandardOutput = false,
+        CaptureErrorOutput = false,
+    };
 }
 
 public class ExecCommand : ObservableModel
@@ -97,27 +113,11 @@ public class TwitchSettings : ApiPlatformSettings
 
     public TwitchSettings()
     {
-        StreamCommand = new ExecCommand
-        {
-            FilePath = "streamlink",
-            Args = $"{UrlReplacementToken} best --twitch-api-header=Authorization=Bearer={{auth_token}}",
-            CaptureStandardOutput = true,
-            CaptureErrorOutput = true,
-        };
-        VodCommand = new ExecCommand
-        {
-            FilePath = "streamlink",
-            Args = $"{UrlReplacementToken} best --twitch-api-header=Authorization=Bearer={{auth_token}}",
-            CaptureStandardOutput = true,
-            CaptureErrorOutput = true,
-        };
-        ChatCommand = new ExecCommand
-        {
-            FilePath = DefaultEdgePath,
-            Args = UrlReplacementToken,
-            CaptureStandardOutput = false,
-            CaptureErrorOutput = false,
-        };
+        var args = $"{UrlReplacementToken} best --twitch-api-header=Authorization=Bearer={{auth_token}}";
+
+        StreamCommand = CreatePlayerCommand("streamlink", args);
+        VodCommand = CreatePlayerCommand("streamlink", args);
+        ChatCommand = CreateChatCommand();
         AuthToken = "";
     }
 }
@@ -126,27 +126,11 @@ public class KickSettings : ApiPlatformSettings
 {
     public KickSettings()
     {
-        StreamCommand = new ExecCommand
-        {
-            FilePath = "streamlink",
-            Args = $"{UrlReplacementToken} best",
-            CaptureStandardOutput = true,
-            CaptureErrorOutput = true,
-        };
-        VodCommand = new ExecCommand
-        {
-            FilePath = "streamlink",
-            Args = $"{UrlReplacementToken} best",
-            CaptureStandardOutput = true,
-            CaptureErrorOutput = true,
-        };
-        ChatCommand = new ExecCommand
-        {
-            FilePath = DefaultEdgePath,
-            Args = UrlReplacementToken,
-            CaptureStandardOutput = false,
-            CaptureErrorOutput = false,
-        };
+        var args = $"{UrlReplacementToken} best";
+
+        StreamCommand = CreatePlayerCommand("streamlink", args);
+        VodCommand = CreatePlayerCommand("streamlink", args);
+        ChatCommand = CreateChatCommand();
     }
 }
 
@@ -154,26 +138,10 @@ public class YouTubeSettings : ApiPlatformSettings
 {
     public YouTubeSettings()
     {
-        StreamCommand = new ExecCommand
-        {
-            FilePath = "streamlink",
-            Args = $"{UrlReplacementToken} best",
-            CaptureErrorOutput = true,
-            CaptureStandardOutput = true,
-        };
-        VodCommand = new ExecCommand
-        {
-            FilePath = "mpc-hc64",
-            Args = UrlReplacementToken,
-            CaptureStandardOutput = true,
-            CaptureErrorOutput = true,
-        };
-        ChatCommand = new ExecCommand
-        {
-            FilePath = DefaultEdgePath,
-            Args = UrlReplacementToken,
-            CaptureStandardOutput = false,
-            CaptureErrorOutput = false,
-        };
+        var args = $"{UrlReplacementToken} best";
+
+        StreamCommand = CreatePlayerCommand("streamlink", args);
+        VodCommand = CreatePlayerCommand("mpc-hc64", UrlReplacementToken);
+        ChatCommand = CreateChatCommand();
     }
 }

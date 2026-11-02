@@ -19,7 +19,6 @@ using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.WPF.Core;
 using Livestream.Monitor.WPF.Core.UI;
-using Livestream.Monitor.WPF.Core.Utility;
 using Livestream.Monitor.WPF.Model;
 using Livestream.Monitor.WPF.Views;
 using MahApps.Metro.Controls.Dialogs;
@@ -203,7 +202,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (await dialogs.ConfirmRemoval(stream)) await StreamsModel.RemoveOrReport(stream, dialogs);
 
             // return focus to the datagrid after showing the remove livestream dialog
-            this.SetFocus("LivestreamListDataGrid");
+            FindLivestreamGrid()?.Focus();
         }
 
         public async Task CopyLivestreamUrl()
@@ -280,9 +279,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             // fix for DataGridColumn not showing sort icon on initial load
             // CollectionViewSource bindings don't directly touch DataGridColumn.SortDirection for whatever reason
-            var livestreamListView = (LivestreamListView)GetView();
-            var layoutControl = livestreamListView.FindName("LayoutControl") as ContentControl;
-            var dataGrid = FindVisualChild<DataGrid>(layoutControl);
+            var dataGrid = FindLivestreamGrid();
 
             // if we sorted by viewers then we have 2 sort descriptions as we first sort by live
             var sortDescription = ViewSource.SortDescriptions.Last();
@@ -292,7 +289,15 @@ namespace Livestream.Monitor.WPF.ViewModels
             base.OnViewLoaded(view);
         }
 
-        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        private DataGrid FindLivestreamGrid()
+        {
+            var view = GetView() as LivestreamListView;
+            var layoutControl = view?.FindName("LayoutControl") as ContentControl;
+
+            return layoutControl == null ? null : FindVisualChild<DataGrid>(layoutControl);
+        }
+
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
         {
             for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
             {

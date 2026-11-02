@@ -18,6 +18,4 @@ namespace ExternalAPIs.Youtube.Dto
     public class ChannelsRoot : PagedRoot<Channel> { }
 
     public class PlaylistItemsRoot : PagedRoot<PlaylistItem> { }
-
-    public class SearchLiveVideosRoot : PagedRoot<SearchResult> { }
 }
