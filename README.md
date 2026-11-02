@@ -6,7 +6,7 @@ Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/relea
 [![v](https://img.shields.io/github/v/release/laurencee/Livestream.Monitor?label=)](https://github.com/laurencee/Livestream.Monitor/releases/latest)
 
 Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.).\
-You can quickly install this on Win10/11 via cmd prompt or powershell `winget install Streamlink`
+You can install this on Win10/11 via cmd prompt or powershell `winget install Streamlink`
 
 ![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
 
@@ -17,7 +17,7 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
 
 ## WPF and Direct2D versions
-Livestream Monitor comes in two versions that share the same features, settings and stream list:
+Livestream Monitor comes in two versions that share the same features, settings and stream list when run from the same folder:
 
 | | Direct2D (`Livestream.Monitor.Direct2D.exe`) | WPF (`Livestream.Monitor.WPF.exe`) |
 | --- | --- | --- |
@@ -58,7 +58,7 @@ Tweak the app to your liking with some of the following settings
 
 * Custom FilePath/Args independently for stream/vod/chat for every platform via `settings.json` (launch app 1 time to create file)
 * Disable notifications for individual streams, popular streams or everything
-* Define preferred stream qualities and a fallback per platform under Settings → Stream quality
+* Define preferred stream qualities and a fallback per platform under Settings → Stream quality. (Replaces `best` with `{qualities}` in Streamlink command args to use these preferences)
 * Change your colour theme using the theme buttons in settings
 * Copy to clipboard or Open stream URLs directly to your browser from the right click context menu.
 
@@ -70,9 +70,9 @@ The only other settings you may need to manually edit are the various [Platform 
 ##### Platform configurations
 All support platforms will have their own configuration sections for configuring their stream/vod/chat commands and any platform specific settings.
 
-The `FilePaths` entry allows both full paths and shortened paths, e.g. `C:\Program Files\Streamlink\bin\streamlink.exe` and `streamlink`, and should work with anything you can launch via Win+R (Run).
+The `FilePath` entry allows both full paths and shortened paths, e.g. `C:\Program Files\Streamlink\bin\streamlink.exe` and `streamlink`, and should work with anything you can launch via Win+R (Run).
 
-FilePaths and Args support replacement tokens, all of them have `{url}`. Twitch specifically supports `{auth_token}`.
+Args support replacement tokens, all of them have `{url}`. Twitch specifically supports `{auth_token}`.
 
 ## Suggested streamlink configuration
 1. Edit your streamlink [configuration file](https://streamlink.github.io/cli.html#configuration-file) and set your preferred video player
@@ -82,7 +82,6 @@ FilePaths and Args support replacement tokens, all of them have `{url}`. Twitch 
 stream-segment-threads=4
 
 twitch-low-latency
-twitch-disable-ads
 hls-live-edge=1
 ```
 
@@ -90,16 +89,17 @@ hls-live-edge=1
 
 #### How do I add YouTube channels for livestream monitoring?
 
-You can either use the handle or the channel id, handle is preferred.
-- For handles, the URL looks like: `https://www.youtube.com/@handle` (e.g. `@MrBeast`)
-- For channel IDs, the URL looks like: `https://www.youtube.com/channel/channel_id` (e.g. `UCX6OQ3DkcsbYNE6H8uQQuVA`)
+Use the handle.
+- Channel urls look like this: `https://www.youtube.com/@handle`
 
 #### How can I watch YouTube vods?
 
 As of `2025-04-25` you can use MPC-HC (such as from [K-Lite Codec Pack](https://codecguide.com/download_kl.htm)) and [yt-dlp](https://github.com/yt-dlp/yt-dlp/releases).\
 `yt-dlp` just needs to be available from your `PATH` or dropped in the MPC-HC executable directory. You may also need `ffmpeg.exe` available for highest quality [according to the MPC-HC readme](https://github.com/clsid2/mpc-hc?tab=readme-ov-file#overview-of-features).
 
-After setting this up, your `settings.json` YouTube -> VodCommand section should look like this already if you haven't customized it:
+In Livestream Monitor go to Settings > YouTube > VOD Command. Set the filepath to `mpc-hc64` (fullpath usually not required) and you should be good to go!
+
+After setting this up, your `settings.json` YouTube -> VodCommand section should look similar to this:
 ```json
 "VodCommand": {
   "FilePath": "mpc-hc64",
