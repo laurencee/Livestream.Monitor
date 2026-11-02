@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using Caliburn.Micro;
 using ExternalAPIs;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
@@ -22,7 +23,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 {
     public class HeaderViewModel : Screen
     {
-        private const string TIP_ERROR_ADD_STREAM = "Tip: Make sure you have selected the right stream provider\nTip: Only input the streamers id and not the full url.";
+        private const string TipErrorAddChannel = "Tip: Make sure you have selected the right platform\nTip: Enter a channel name or ID, not a URL.";
 
         private readonly StreamLauncher streamLauncher;
         private readonly IApiClientFactory apiClientFactory;
@@ -92,7 +93,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (IsNullOrWhiteSpace(StreamName) || !CanAddStream) return;
 
             CanAddStream = false;
-            var dialogController = await this.ShowProgressAsync("Adding stream", $"Adding new stream '{StreamName}'");
+            var dialogController = await this.ShowProgressAsync("Adding channel", $"Adding channel '{StreamName}'");
             try
             {
                 await MonitorStreamsModel.AddLivestream(new ChannelIdentifier(SelectedApiClient, StreamName), new WpfDialogs(this));
@@ -108,12 +109,12 @@ namespace Livestream.Monitor.WPF.ViewModels
                 if (httpException != null && httpException.StatusCode == HttpStatusCode.NotFound)
                 {
                     await this.ShowMessageAsync("Error adding stream.",
-                        $"No channel found named '{StreamName}' for stream provider {SelectedApiClient.ApiName}{Environment.NewLine}" +
-                        $"{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+                        $"No channel found named '{StreamName}' for platform {PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}{Environment.NewLine}" +
+                        $"{Environment.NewLine}{TipErrorAddChannel}");
                 }
                 else
                 {
-                    await this.ShowMessageAsync("Error adding stream", $"{ex.ExtractErrorMessage()}{Environment.NewLine}{TIP_ERROR_ADD_STREAM}");
+                    await this.ShowMessageAsync("Error adding stream", $"{ex.ExtractErrorMessage()}{Environment.NewLine}{TipErrorAddChannel}");
                 }
             }
         }
@@ -123,19 +124,19 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (!SelectedApiClient.HasFollowedChannelsQuerySupport)
             {
                 await this.ShowMessageAsync("No import support",
-                    $"{SelectedApiClient.ApiName} does not have support for importing followed streams");
+                    $"{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)} does not support importing followed channels.");
                 return;
             }
 
             var dialogSettings = new MetroDialogSettings() { AffirmativeButtonText = "Import" };
-            var username = await this.ShowDialogAsync("Import Streams",
-                $"Enter username for importing followed streams from '{SelectedApiClient.ApiName}'",
+            var username = await this.ShowDialogAsync("Import followed channels",
+                $"Enter the {PlatformNames.GetDisplayName(SelectedApiClient.ApiName)} username whose followed channels you want to import.",
                 dialogSettings);
 
             if (!IsNullOrWhiteSpace(username))
             {
                 username = username.Trim();
-                var dialogController = await this.ShowProgressAsync("Importing followed streams", $"Importing followed streams from '{SelectedApiClient.ApiName}' for username '{username}'");
+                var dialogController = await this.ShowProgressAsync("Importing followed channels", $"Importing followed channels from '{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}' for username '{username}'");
                 try
                 {
                     await MonitorStreamsModel.ImportFollows(username, SelectedApiClient, new WpfDialogs(this));
@@ -255,7 +256,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             apiClientNames.Insert(0, FilterModel.AllApiClientsFilterName);
             FilterModel.ApiClientNames = new ObservableList<string>(apiClientNames);
 
-            // Set default selected stream provider to "all"
+            // Set default selected platform to "all"
             if (FilterModel.SelectedApiClientName == null || !apiClientNames.Contains(FilterModel.SelectedApiClientName))
                 FilterModel.SelectedApiClientName = FilterModel.AllApiClientsFilterName;
         }

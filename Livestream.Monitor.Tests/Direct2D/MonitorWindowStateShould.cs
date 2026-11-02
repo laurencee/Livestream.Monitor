@@ -177,11 +177,11 @@ public class MonitorWindowStateShould
 
         await model.Add("example", Substitute.For<IApiClient>());
 
-        Assert.Equal(["Adding stream shown", "progress closed", "error shown"], events);
+        Assert.Equal(["progress shown", "progress closed", "error shown"], events);
 
         IDisposable ShowProgress(string title, string message)
         {
-            events.Add($"{title} shown");
+            events.Add("progress shown");
             var progress = Substitute.For<IDisposable>();
             progress.When(x => x.Dispose()).Do(_ => events.Add("progress closed"));
             return progress;

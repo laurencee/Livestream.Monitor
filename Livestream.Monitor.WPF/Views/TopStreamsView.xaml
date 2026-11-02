@@ -37,7 +37,7 @@
                 <Style TargetType="TextBlock" BasedOn="{StaticResource HeaderTextblock}" />
             </StackPanel.Resources>
             <Button x:Name="TryCloseAsync" Style="{StaticResource BackButton}" />
-            <ComboBox x:Name="ApiClients" Margin="3" DisplayMemberPath="ApiName" MinWidth="80" />
+            <ComboBox x:Name="ApiClients" Margin="3" ItemTemplate="{StaticResource PlatformTemplate}" TextSearch.TextPath="ApiName" MinWidth="80" />
             <TextBlock Text="Game Filter" />
             <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ExpandPossibleGames}"
                       Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. You can type a partial game name to search for any matching game names from twitch."
@@ -63,11 +63,11 @@
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
-                                        <MenuItem Header="Copy Stream Url" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
+                                        <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Stream in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser($dataContext)]" />
                                         <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
-                                        <MenuItem Header="Open Vod Viewer" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
+                                        <MenuItem Header="Open in VOD browser" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
                                         <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]"
                                                   IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                                                   ToolTip="Untick this to prevent popup notifications about this stream coming online (if being followed) or showing up as a popular stream"/>
@@ -125,7 +125,7 @@
         </ScrollViewer>
 
         <!-- Footer -->
-        <TextBlock Grid.Row="2" Text="Click on a tile to follow/unfollow!" HorizontalAlignment="Left" Margin="10" />
+        <TextBlock Grid.Row="2" Text="Click a tile to add or remove the channel from your list." HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
             <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
             <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />

@@ -44,18 +44,18 @@
 
             <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <Button x:Name="TryCloseAsync" Style="{StaticResource BackButton}" />
-                <ComboBox x:Name="ApiClients" Margin="3" Width="80" DisplayMemberPath="ApiName" />
-                <TextBlock Text="Stream" />
+                <ComboBox x:Name="ApiClients" Margin="3" Width="80" ItemTemplate="{StaticResource PlatformTemplate}" TextSearch.TextPath="ApiName" />
+                <TextBlock Text="Channel" />
                 <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="DisplayName" Text="{Binding StreamDisplayName, Delay=500}" Width="140"
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"
-                      controls:TextBoxHelper.Watermark="streamid..." />
+                      controls:TextBoxHelper.Watermark="Channel name or ID..." />
                 <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
-                <TextBlock Text="Vod URL" />
+                <TextBlock Text="VOD URL" />
             </StackPanel>
             <TextBox Grid.Column="1" x:Name="VodUrl"
-                     ToolTip="Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles." />
+                     ToolTip="Paste a VOD URL for the selected platform, or select a video below." />
             <Button Grid.Column="2" x:Name="OpenVod" Content="Open VOD" Margin="3"
-                    ToolTip="Opens up the VOD through livestreamer/streamlink (with HLS passthrough to allow seeking)"/>
+                    ToolTip="Open the selected video in your configured player."/>
         </Grid>
 
 
@@ -109,7 +109,7 @@
         </ItemsControl>
 
         <!-- Footer -->
-        <TextBlock Grid.Row="2" Text="Click on a tile to put the url in the vod url textbox" HorizontalAlignment="Left" Margin="10" />
+        <TextBlock Grid.Row="2" Text="Select a tile, then press Open VOD" HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
             <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
             <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />

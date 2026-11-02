@@ -70,7 +70,7 @@
                     <StackPanel Margin="0,5,0,0">
                         <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
 
-                        <TextBlock Text="Popular stream minimum viewers (0 for off)" Margin="0,10,0,0"
+                        <TextBlock Text="Popular alert threshold (viewers; 0 = off)" Margin="0,10,0,0"
                                    ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams." />
                         <TextBox x:Name="MinimumEventViewers" MaxLength="7"
                                  ui:BindableBehaviors.Behaviors="{StaticResource NumericRestriction}"

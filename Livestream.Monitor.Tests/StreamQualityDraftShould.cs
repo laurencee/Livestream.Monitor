@@ -235,7 +235,7 @@ public class StreamQualityDraftShould
         all.NewQuality = "720p";
         all.AddQuality();
         Assert.True(editor.ShowOverrideNote);
-        Assert.Equal("Using 'All' settings.", twitch.EmptyQualityHint);
+        Assert.Equal("[Using 'All' settings]", twitch.EmptyQualityHint);
         editor.SelectedPlatform = all;
         Assert.False(editor.ShowOverrideNote);
         all.RemoveQuality(Assert.Single(all.QualityRows));

@@ -6,7 +6,7 @@
              xmlns:cal="http://www.caliburnproject.org">
     <StackPanel>
         <TextBlock Text="Preferred qualities" FontWeight="SemiBold" Margin="0,0,0,4" />
-        <TextBlock Text="First available quality is used, top to bottom." TextWrapping="Wrap" Margin="0,0,0,6" />
+        <TextBlock Text="Qualities are tried from top to bottom." TextWrapping="Wrap" Margin="0,0,0,6" />
         <TextBlock Text="{Binding EmptyQualityHint}" Margin="0,0,0,6">
             <TextBlock.Style>
                 <Style TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">

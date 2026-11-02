@@ -47,6 +47,12 @@ public class FrontendShould
         {
             var ids = window.Ids;
             window.Element(ids.ChannelToAdd, FrontendWindow.StartupTimeout);
+            var platformId = kind == FrontendKind.Wpf ? "ApiClients" : "provider";
+            var platformChoices = window.OpenItems(platformId, platformId, "Friendly platform names");
+            var displayedNames = platformChoices.Select(FrontendWindow.DisplayedText).Order().ToArray();
+            Assert.Equal(new[] { "Kick", "Twitch", "YouTube" }, displayedNames);
+            var twitchChoice = platformChoices.Single(choice => FrontendWindow.DisplayedText(choice) == "Twitch");
+            FrontendWindow.Choose(twitchChoice, window.Element(platformId));
             Assert.Null(window.Find(kind == FrontendKind.Wpf ? "OpenQualities" : "qualities"));
             window.InvokeUntil(ids.OpenSettings, () => window.Find("settings.section.0") != null, "Settings opened");
             var general = window.Element("settings.section.0");
@@ -70,7 +76,7 @@ public class FrontendShould
             window.InvokeUntil(allAdd, () => window.ShowsText("global-source") || window.ShowsText("1   global-source"), "All quality added");
             window.InvokeUntil(ids.SaveSettings, AllSaved, "All quality saved");
             SelectPlatform(window, "Twitch");
-            Assert.True(window.ShowsText("Provider settings override All settings."));
+            Assert.True(window.ShowsText("Custom preferences here replace 'All'."));
             window.WaitUntilDisabled(ids.SaveSettings);
             var inputId = kind == FrontendKind.Wpf ? "NewQuality" : "settings.quality.input.twitchtv";
 

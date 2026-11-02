@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using Caliburn.Micro;
 using ExternalAPIs;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Model;
@@ -178,7 +179,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
             catch (Exception e)
             {
-                await this.ShowMessageAsync("Error copying url", $"An error occurred attempting to copy the url: {e.ExtractErrorMessage()}");
+                await this.ShowMessageAsync("Error copying URL", $"An error occurred attempting to copy the URL: {e.ExtractErrorMessage()}");
             }
         }
 
@@ -330,7 +331,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             catch (Exception ex)
             {
                 var message =
-                    $"Error getting top streams from '{SelectedApiClient.ApiName}'.{Environment.NewLine}{Environment.NewLine}{ex}";
+                    $"Error getting top streams from '{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}'.{Environment.NewLine}{Environment.NewLine}{ex}";
 
                 // A page left during the query no longer has a view to show the error in.
                 if (IsActive) await this.ShowMessageAsync("Error", message);

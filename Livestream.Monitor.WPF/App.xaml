@@ -3,6 +3,7 @@
              xmlns:local="clr-namespace:Livestream.Monitor.WPF"
              xmlns:componentModel="clr-namespace:System.ComponentModel;assembly=PresentationFramework"
              xmlns:ui="clr-namespace:Livestream.Monitor.WPF.Core.UI"
+             xmlns:clients="clr-namespace:Livestream.Monitor.Model.ApiClients;assembly=Livestream.Monitor.Core"
              xmlns:system="clr-namespace:System;assembly=mscorlib"
              x:Class="Livestream.Monitor.WPF.App">
     <Application.Resources>
@@ -20,6 +21,13 @@
             <ui:InvertedBoolenConverter x:Key="InvertedBoolenConverter" />
             <ui:TotalHoursTimespanConverter x:Key="TotalHoursTimespanConverter" />
             <ui:CountryIdToFlagImageSourceConverter x:Key="CountryIdToFlagImageSourceConverter" />
+            <ui:PlatformNameConverter x:Key="PlatformNameConverter" />
+            <DataTemplate x:Key="PlatformTemplate" DataType="{x:Type clients:IApiClient}">
+                <TextBlock Text="{Binding ApiName, Converter={StaticResource PlatformNameConverter}}" />
+            </DataTemplate>
+            <DataTemplate x:Key="PlatformFilterTemplate" DataType="{x:Type system:String}">
+                <TextBlock Text="{Binding Converter={StaticResource PlatformNameConverter}}" />
+            </DataTemplate>
 
             <system:String x:Key="NextButtonText">&#9654;</system:String>
             <system:String x:Key="BackButtonText">&#9664;</system:String>

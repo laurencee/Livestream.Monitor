@@ -92,7 +92,7 @@ public class ApiClientsQualitiesViewModel : PropertyChangedBase
         {
             var apiName = StreamQualityDraft.Platforms[i].ApiName;
             var inheritsAll = apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences && !draft[apiName].IsConfigured;
-            Items[i].EmptyQualityHint = inheritsAll ? "Using 'All' settings." : "[Using the fallback quality]";
+            Items[i].EmptyQualityHint = inheritsAll ? "[Using 'All' settings]" : "[Using the fallback quality]";
         }
     }
 }

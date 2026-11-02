@@ -20,10 +20,10 @@
                           VirtualizingStackPanel.IsVirtualizing="True" IsSynchronizedWithCurrentItem="False">
                     <DataGrid.Resources>
                         <ContextMenu x:Key="ContextMenu" x:Shared="False" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
-                            <MenuItem Header="Remove Stream" cal:Message.Attach="[Click] = [RemoveLivestream]" />
+                            <MenuItem Header="Remove from list" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                             <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
                             <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser]" />
-                            <MenuItem Header="Open in Vod Viewer" IsEnabled="{Binding ApiClient.HasVodViewerSupport}"
+                            <MenuItem Header="Open in VOD browser" IsEnabled="{Binding ApiClient.HasVodViewerSupport}"
                                       cal:Message.Attach="[Click] = [GotoVodViewer]" />
                             <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]"
                                       IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"

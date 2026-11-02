@@ -42,7 +42,7 @@ Memory and CPU were measured with about 380 followed streams during a short sess
 * Add your favourite livestreams to be monitored from **Twitch**, **YouTube** or **Kick** by their channel names (end part of the url)
   * Import your existing Twitch follow list via the Import button to get up and running quickly.
 * View **Top Streams** for Twitch and Kick. Filter Twitch top streams by category (Kick support coming soon).
-* **VOD viewer** to see previously recorded broadcasts/uploads for supported platforms.
+* **VOD browser** to see previously recorded broadcasts/uploads for supported platforms.
   * You don't have to be monitoring channels to view their VODs.
 * Filter your channel list to find and manage streams quickly
 * Toast notifications for streams coming online
@@ -108,7 +108,7 @@ After setting this up, your `settings.json` YouTube -> VodCommand section should
 },
 ```
 
-Now you should be able to use the VodViewer screen in the app to launch any YouTube channel vods.
+Now you should be able to use the VOD browser screen in the app to launch any YouTube channel vods.
 
 *VLC is unable to play YouTube vods out of the box as of `2025-04-25`. There maybe addons to fix this but I don't follow them*
 

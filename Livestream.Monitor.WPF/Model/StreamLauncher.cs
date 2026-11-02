@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Caliburn.Micro;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
@@ -49,7 +50,7 @@ namespace Livestream.Monitor.WPF.Model
             if (!livestreamModel.ApiClient.HasChatSupport)
             {
                 await fromScreen.ShowMessageAsync("Chat not supported",
-                    $"No external chat support for stream provider '{livestreamModel.ApiClient.ApiName}'");
+                    $"No external chat support for platform '{PlatformNames.GetDisplayName(livestreamModel.ApiClient.ApiName)}'");
                 return;
             }
 
@@ -91,7 +92,7 @@ namespace Livestream.Monitor.WPF.Model
                 return;
             }
 
-            var initialMessage = $"Launching {livestreamModel.ApiClient.ApiName} stream {livestreamModel.DisplayName}...";
+            var initialMessage = $"Launching {PlatformNames.GetDisplayName(livestreamModel.ApiClient.ApiName)} stream {livestreamModel.DisplayName}...";
             var messageBoxViewModel = CreateAppLoadMessageBox(
                 title: $"Stream '{livestreamModel.DisplayName}'",
                 initialMessageText: initialMessage);
@@ -120,7 +121,7 @@ namespace Livestream.Monitor.WPF.Model
             if (string.IsNullOrWhiteSpace(vodDetails.Url) ||
                 !Uri.IsWellFormedUriString(vodDetails.Url, UriKind.Absolute))
             {
-                await fromScreen.ShowMessageAsync("VOD Url invalid", $"Invalid VOD url: '{vodDetails.Url}'");
+                await fromScreen.ShowMessageAsync("Invalid VOD URL", $"Invalid VOD URL: '{vodDetails.Url}'");
                 return;
             }
 

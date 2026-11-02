@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
 using ExternalAPIs;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -199,7 +200,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         protected override async Task OnActivateAsync(CancellationToken cancellationToken)
         {
-            // set twitch as the default stream provider
+            // set twitch as the default platform
             if (SelectedApiClient == null)
                 SelectedApiClient = apiClientFactory.Get<TwitchApiClient>();
 
@@ -238,15 +239,15 @@ namespace Livestream.Monitor.WPF.ViewModels
             catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 // A page left during the query no longer has a view to show the error in.
-                if (IsActive) await this.ShowMessageAsync("Error", $"Unknown stream name '{queryStreamDisplayName}'.");
+                if (IsActive) await this.ShowMessageAsync("Error", $"Unknown channel '{queryStreamDisplayName}'.");
             }
             catch (Exception ex)
             {
                 var message =
-                    $"Error occurred getting vods from api '{SelectedApiClient.ApiName}' for channel '{queryStreamDisplayName}'." +
+                    $"Could not load VODs from '{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}' for channel '{queryStreamDisplayName}'." +
                     $"{Environment.NewLine}{Environment.NewLine}{ex}";
 
-                if (IsActive) await this.ShowMessageAsync("Error Getting Vods", message);
+                if (IsActive) await this.ShowMessageAsync("Could not load VODs", message);
             }
 
             LoadingItems = false;

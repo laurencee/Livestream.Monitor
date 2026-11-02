@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Globalization;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Direct2D.Widgets;
@@ -29,7 +30,7 @@ internal sealed class NativeStreamLauncher(
         var title = chat ? $"Chat '{stream.DisplayName}'" : $"Stream '{stream.DisplayName}'";
         var launching = chat
             ? $"Launching chat for {stream.DisplayName}..."
-            : $"Launching {stream.ApiClient.ApiName} stream {stream.DisplayName}...";
+            : $"Launching {PlatformNames.GetDisplayName(stream.ApiClient.ApiName)} stream {stream.DisplayName}...";
 
         Launch(
             title,
@@ -44,7 +45,7 @@ internal sealed class NativeStreamLauncher(
 
     public void OpenVod(VodDetails vod)
     {
-        if (!Uri.TryCreate(vod.Url, UriKind.Absolute, out _)) throw new InvalidDataException($"Invalid VOD url: '{vod.Url}'");
+        if (!Uri.TryCreate(vod.Url, UriKind.Absolute, out _)) throw new InvalidDataException($"Invalid VOD URL: '{vod.Url}'");
 
         const int MaxTitleLength = 70;
         var title = vod.Title ?? "";

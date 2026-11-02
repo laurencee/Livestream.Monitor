@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Direct2D.Automation;
@@ -85,7 +86,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private readonly MonitorWindowState state;
     private readonly IApiClient[] providers;
     private readonly string[] providerNames;
-    private readonly string[] filterNames;
+    private readonly string[] filterValues;
+    private readonly string[] filterDisplayNames;
     private readonly NativeStreamLauncher launcher;
     private readonly TrayIcon tray;
     private readonly PopularLivestreamWatcher popularStreams;
@@ -128,8 +130,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         this.state = state;
         scrollBar = new VerticalScrollBar(ScrollTo);
         providers = state.ApiClientFactory.GetAll().ToArray();
-        providerNames = providers.Select(api => api.ApiName).ToArray();
-        filterNames = [FilterModel.AllApiClientsFilterName, .. providerNames];
+        providerNames = providers.Select(api => PlatformNames.GetDisplayName(api.ApiName)).ToArray();
+        filterValues = [FilterModel.AllApiClientsFilterName, .. providers.Select(api => api.ApiName)];
+        filterDisplayNames = [FilterModel.AllApiClientsFilterName, .. providerNames];
         palette = Theme.Create(state.SettingsHandler.Settings);
         ThemeSource = () => palette;
         images = new ImageCache(Graphics);
@@ -254,16 +257,16 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             topBounds,
             () => SwitchPage(MonitorPage.TopStreams),
             chrome: true,
-            toolTip: "Show top streams from twitch"
+            toolTip: "Browse top streams"
         );
         var vodBounds = new RectangleF(x: size.Width - 208, y: 0, width: 78, height: TitleHeight);
         Ui.Button(
             "vod",
-            "Vod Viewer",
+            "VOD browser",
             vodBounds,
             () => SwitchPage(MonitorPage.Vods),
             chrome: true,
-            toolTip: "View and open vods from twitch streams"
+            toolTip: "Browse recorded videos"
         );
         var settingsBounds = new RectangleF(x: size.Width - 129, y: 0, width: 35, height: TitleHeight);
         Ui.Button(
@@ -303,11 +306,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // Control positions follow the WPF toolbar, whose controls sit 2 pixels apart after the bold filter label.
         const int Y = ToolbarTop;
         const int Height = ToolbarControlHeight;
+        const float PlatformFilterExtraWidth = 33;
         Ui.Text("Filter:", new RectangleF(x: 13, y: Y, width: 36, height: Height), weight: FontWeight.Bold);
         var filterBounds = new RectangleF(x: 50, y: Y, width: 100, height: Height);
         Ui.Input(
             "filter",
-            "name...",
+            "Name...",
             filterBounds,
             value =>
             {
@@ -316,21 +320,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             },
             clear: true
         );
-        var filterIndex = Array.IndexOf(filterNames, state.ProviderFilter);
-        var filterProviderBounds = new RectangleF(x: 154, y: Y, width: 47, height: Height);
+        var filterIndex = Array.IndexOf(filterValues, state.ProviderFilter);
+        var filterProviderBounds = new RectangleF(x: 154, y: Y, width: 47 + PlatformFilterExtraWidth, height: Height);
         Ui.Combo(
             "filter.provider",
-            state.ProviderFilter,
-            filterNames,
+            PlatformNames.GetDisplayName(state.ProviderFilter),
+            filterDisplayNames,
             filterIndex,
             filterProviderBounds,
             index =>
             {
-                state.ProviderFilter = filterNames[index];
+                state.ProviderFilter = filterValues[index];
                 FilterChanged();
             }
         );
-        var onlineBounds = new RectangleF(x: 205, y: Y, width: 24, height: Height);
+        var onlineBounds = new RectangleF(x: 205 + PlatformFilterExtraWidth, y: Y, width: 24, height: Height);
         Ui.Button(
             "filter.online",
             "",
@@ -340,7 +344,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 state.OnlineOnly = !state.OnlineOnly;
                 FilterChanged();
             },
-            toolTip: "Toggle show online streams only",
+            toolTip: "Show live channels only",
             name: "Online only"
         );
         var onlineImage = images.GetEmbedded(state.OnlineOnly ? EmbeddedImages.Live : EmbeddedImages.Offline);
@@ -352,8 +356,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             height: OnlineImageSize);
 
         Ui.Image(onlineImage, onlineImageBounds);
-        Separator(237);
-        var chatBounds = new RectangleF(x: 245, y: Y, width: 50, height: Height);
+        Separator(237 + PlatformFilterExtraWidth);
+        var chatBounds = new RectangleF(x: 245 + PlatformFilterExtraWidth, y: Y, width: 50, height: Height);
         Ui.Button(
             "chat",
             "CHAT",
@@ -361,7 +365,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             () => _ = OpenChat(state.SelectedStream),
             CanOpenChat(state.SelectedStream)
         );
-        var refreshBounds = new RectangleF(x: 299, y: Y, width: 21, height: Height);
+        var refreshBounds = new RectangleF(x: 299 + PlatformFilterExtraWidth, y: Y, width: 21, height: Height);
         var canRefresh = state is { Busy: false, StreamsModel.CanRefreshLivestreams: true };
         Ui.Button(
             id: "refresh",
@@ -372,12 +376,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             toolTip: "Refresh Livestreams",
             name: "Refresh"
         );
-        Separator(328);
+        Separator(328 + PlatformFilterExtraWidth);
         var extra = Math.Max(0, width - Program.WindowWidth);
-        var channelBounds = new RectangleF(x: 336, y: Y, width: 150 + extra, height: Height);
-        Ui.Input(id: "channel", placeholder: "add new livestream...", channelBounds, enter: () => _ = AddChannel());
-        var providerName = SelectedProvider.ApiName;
-        var providerBounds = new RectangleF(x: 490 + extra, y: Y, width: 80, height: Height);
+        var channelBounds = new RectangleF(x: 336 + PlatformFilterExtraWidth, y: Y, width: 150 + extra, height: Height);
+        Ui.Input(id: "channel", placeholder: "Channel name or ID...", channelBounds, enter: () => _ = AddChannel());
+        var providerName = PlatformNames.GetDisplayName(SelectedProvider.ApiName);
+        var providerBounds = new RectangleF(x: 490 + PlatformFilterExtraWidth + extra, y: Y, width: 80, height: Height);
         Ui.Combo(
             "provider",
             providerName,
@@ -387,7 +391,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             SelectProvider,
             !state.Busy
         );
-        var addBounds = new RectangleF(x: 574 + extra, y: Y, width: 19, height: Height);
+        var addBounds = new RectangleF(x: 574 + PlatformFilterExtraWidth + extra, y: Y, width: 19, height: Height);
         var canAdd = !state.Busy && !string.IsNullOrWhiteSpace(Ui.Value("channel"));
         Ui.Button(
             id: "add",
@@ -395,17 +399,18 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             addBounds,
             action: () => _ = AddChannel(),
             enabled: canAdd,
-            toolTip: "Add new livestream",
+            toolTip: "Add channel",
             name: "Add"
         );
-        var importBounds = new RectangleF(x: 597 + extra, y: Y, width: 50, height: Height);
+        const float ImportButtonWidth = 65;
+        var importBounds = new RectangleF(x: 597 + PlatformFilterExtraWidth + extra, y: Y, width: ImportButtonWidth, height: Height);
         Ui.Button(
             "import",
-            "Import",
+            "Import…",
             importBounds,
             () => _ = Import(),
             !state.Busy,
-            toolTip: "Import livestreams from the provided username"
+            toolTip: "Import followed channels"
         );
     }
 
@@ -446,7 +451,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             toolTip: "Go back to livestream list",
             name: "Back"
         );
-        var providerName = SelectedProvider.ApiName;
+        var providerName = PlatformNames.GetDisplayName(SelectedProvider.ApiName);
         var providerBounds = new RectangleF(x: left + 31, y: Y, width: 80, height: Height);
         Ui.Combo(
             "provider",
@@ -509,11 +514,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return;
         }
 
-        Ui.Text("Stream", new RectangleF(x: 129, y: Y, width: 40, height: Height));
+        const float ChannelLabelLeft = 125;
+        const float ChannelLabelWidth = 45;
+        var channelLabelBounds = new RectangleF(x: ChannelLabelLeft, y: Y, width: ChannelLabelWidth, height: Height);
+        Ui.Text("Channel", channelLabelBounds);
         var channelBounds = new RectangleF(x: 173, y: Y, width: 140, height: Height);
         Ui.Input(
             "vod.channel",
-            "streamid...",
+            "Channel name or ID...",
             channelBounds,
             _ => vodQueryDue = Environment.TickCount64 + VodQueryDelayMilliseconds,
             () =>
@@ -549,12 +557,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             },
             !state.Busy && types.Count != 0
         );
-        Ui.Text("Vod URL", new RectangleF(x: 427, y: Y, width: 48, height: Height));
+        Ui.Text("VOD URL", new RectangleF(x: 427, y: Y, width: 48, height: Height));
         var urlBounds = new RectangleF(x: 480, y: Y, width: Math.Max(80, width - 566), height: Height);
         const string UrlToolTip =
-            "Any valid twitch vod URL can be placed in this textbox, not just urls from vod tiles.";
+            "Paste a VOD URL for the selected platform, or select a video below.";
 
-        Ui.Input("vod.url", placeholder: "", urlBounds, toolTip: UrlToolTip, name: "Vod URL");
+        Ui.Input("vod.url", placeholder: "", urlBounds, toolTip: UrlToolTip, name: "VOD URL");
 
         // Wider than the WPF button, whose bold upper-case text is narrower than this text.
         var openBounds = new RectangleF(x: width - 79, y: Y, width: 70, height: Height);
@@ -565,7 +573,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             openBounds,
             action: () => _ = OpenVodUrl(),
             enabled: canOpen,
-            toolTip: "Opens up the VOD through livestreamer/streamlink (with HLS passthrough to allow seeking)"
+            toolTip: "Open the selected video in your configured player."
         );
     }
 
@@ -1079,7 +1087,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // Shown before importing starts, so automatic refreshes continue while it is open.
         if (!provider.HasFollowedChannelsQuerySupport)
         {
-            var unsupported = $"{provider.ApiName} does not have support for importing followed streams";
+            var unsupported = $"{PlatformNames.GetDisplayName(provider.ApiName)} does not support importing followed channels.";
             await dialogs.ShowMessage("No import support", unsupported);
             return;
         }
@@ -1087,8 +1095,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         isImporting = true;
         try
         {
-            var prompt = $"Enter username for importing followed streams from '{provider.ApiName}'";
-            var name = await dialogs.Prompt("Import Streams", prompt, "Import");
+            var prompt = $"Enter the {PlatformNames.GetDisplayName(provider.ApiName)} username whose followed channels you want to import.";
+            var name = await dialogs.Prompt("Import followed channels", prompt, "Import");
             await state.Import(name, provider);
         }
         finally
@@ -1587,7 +1595,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     // WPF titles only the URL check as an invalid VOD URL; the launcher reports that check as invalid data.
     private Task ShowVodLaunchError(Exception exception)
     {
-        var title = exception is InvalidDataException ? "VOD Url invalid" : "Error";
+        var title = exception is InvalidDataException ? "Invalid VOD URL" : "Error";
         return dialogs.ShowMessage(title, exception.ExtractErrorMessage());
     }
 
@@ -1627,10 +1635,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var hasVods = stream.ApiClient.HasVodViewerSupport;
             items =
             [
-                (new SurfaceUi.MenuChoice("Remove Stream"), ContextCommand.Remove),
+                (new SurfaceUi.MenuChoice("Remove from list"), ContextCommand.Remove),
                 (new SurfaceUi.MenuChoice("Copy Stream URL"), ContextCommand.CopyUrl),
                 (new SurfaceUi.MenuChoice("Open in Browser"), ContextCommand.OpenInBrowser),
-                (new SurfaceUi.MenuChoice("Open in Vod Viewer", Enabled: hasVods), ContextCommand.OpenVods),
+                (new SurfaceUi.MenuChoice("Open in VOD browser", Enabled: hasVods), ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
             ];
         }
@@ -1642,11 +1650,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             items =
             [
-                (new SurfaceUi.MenuChoice("Copy Stream Url"), ContextCommand.CopyUrl),
+                (new SurfaceUi.MenuChoice("Copy Stream URL"), ContextCommand.CopyUrl),
                 (new SurfaceUi.MenuChoice("Open Stream"), ContextCommand.Open),
                 (new SurfaceUi.MenuChoice("Open Stream in Browser"), ContextCommand.OpenInBrowser),
                 (new SurfaceUi.MenuChoice("Open Chat"), ContextCommand.OpenChat),
-                (new SurfaceUi.MenuChoice("Open Vod Viewer"), ContextCommand.OpenVods),
+                (new SurfaceUi.MenuChoice("Open in VOD browser"), ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
             ];
         }
@@ -1708,8 +1716,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
         catch (Exception exception)
         {
-            var message = "An error occurred attempting to copy the url: " + exception.ExtractErrorMessage();
-            await dialogs.ShowMessage("Error copying url", message);
+            var message = "An error occurred attempting to copy the URL: " + exception.ExtractErrorMessage();
+            await dialogs.ShowMessage("Error copying URL", message);
         }
     }
 
@@ -1720,7 +1728,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (!stream.ApiClient.HasChatSupport)
         {
-            var unsupported = $"No external chat support for stream provider '{stream.ApiClient.ApiName}'";
+            var unsupported = $"No external chat support for platform '{PlatformNames.GetDisplayName(stream.ApiClient.ApiName)}'";
             await dialogs.ShowMessage("Chat not supported", unsupported);
             return;
         }

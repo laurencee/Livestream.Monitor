@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Net;
 using ExternalAPIs;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Model;
@@ -291,17 +292,17 @@ internal sealed class MonitorWindowState : ObservableModel
         if (string.IsNullOrWhiteSpace(name)) return false;
 
         var channel = name.Trim();
-        var progress = new ProgressDialog("Adding stream", $"Adding new stream '{channel}'");
+        var progress = new ProgressDialog("Adding channel", $"Adding channel '{channel}'");
         return await Run(DescribeError, () => StreamsModel.AddLivestream(new ChannelIdentifier(api, channel), dialogs), progress);
 
         ErrorDialog DescribeError(Exception exception)
         {
             const string Tip =
-                "Tip: Make sure you have selected the right stream provider\nTip: Only input the streamers id and not the full url.";
+                "Tip: Make sure you have selected the right platform\nTip: Enter a channel name or ID, not a URL.";
 
             var notFound = exception.InnerException is HttpRequestWithStatusException { StatusCode: HttpStatusCode.NotFound };
             var message = notFound
-                ? $"No channel found named '{channel}' for stream provider {api.ApiName}{Environment.NewLine}{Environment.NewLine}{Tip}"
+                ? $"No channel found named '{channel}' for platform {PlatformNames.GetDisplayName(api.ApiName)}{Environment.NewLine}{Environment.NewLine}{Tip}"
                 : $"{exception.ExtractErrorMessage()}{Environment.NewLine}{Tip}";
 
             return new ErrorDialog("Error adding stream", message);
@@ -314,8 +315,8 @@ internal sealed class MonitorWindowState : ObservableModel
         if (!api.HasFollowedChannelsQuerySupport) return;
 
         var username = name.Trim();
-        var message = $"Importing followed streams from '{api.ApiName}' for username '{username}'";
-        var progress = new ProgressDialog("Importing followed streams", message);
+        var message = $"Importing followed channels from '{PlatformNames.GetDisplayName(api.ApiName)}' for username '{username}'";
+        var progress = new ProgressDialog("Importing followed channels", message);
         await Run(DescribeError, () => StreamsModel.ImportFollows(username, api, dialogs), progress);
 
         static ErrorDialog DescribeError(Exception exception) => new("Error importing channels", exception.ExtractErrorMessage());
@@ -334,7 +335,7 @@ internal sealed class MonitorWindowState : ObservableModel
         {
             topStreams.Clear();
             HasNextPage = false;
-            Status = $"{api.ApiName} does not support Top Streams.";
+            Status = $"{PlatformNames.GetDisplayName(api.ApiName)} does not support Top Streams.";
             Changed?.Invoke();
             return;
         }
@@ -352,7 +353,7 @@ internal sealed class MonitorWindowState : ObservableModel
 
         ErrorDialog DescribeError(Exception exception)
         {
-            var message = $"Error getting top streams from '{api.ApiName}'.{Environment.NewLine}{Environment.NewLine}" +
+            var message = $"Error getting top streams from '{PlatformNames.GetDisplayName(api.ApiName)}'.{Environment.NewLine}{Environment.NewLine}" +
                           exception.ExtractErrorMessage();
 
             return new ErrorDialog("Error", message);
@@ -366,8 +367,8 @@ internal sealed class MonitorWindowState : ObservableModel
             Vods.Clear();
             HasNextPage = false;
             Status = api.HasVodViewerSupport
-                ? "Enter or select a stream name to view VODs."
-                : $"{api.ApiName} does not support VODs.";
+                ? "Enter or select a channel to browse VODs."
+                : $"{PlatformNames.GetDisplayName(api.ApiName)} does not support VODs.";
 
             Changed?.Invoke();
             return;
@@ -394,12 +395,12 @@ internal sealed class MonitorWindowState : ObservableModel
         ErrorDialog DescribeError(Exception exception)
         {
             if (exception is HttpRequestWithStatusException { StatusCode: HttpStatusCode.NotFound })
-                return new ErrorDialog("Error", $"Unknown stream name '{name}'.");
+                return new ErrorDialog("Error", $"Unknown channel '{name}'.");
 
-            var message = $"Error occurred getting vods from api '{api.ApiName}' for channel '{name}'." +
+            var message = $"Could not load VODs from '{PlatformNames.GetDisplayName(api.ApiName)}' for channel '{name}'." +
                           $"{Environment.NewLine}{Environment.NewLine}{exception.ExtractErrorMessage()}";
 
-            return new ErrorDialog("Error Getting Vods", message);
+            return new ErrorDialog("Could not load VODs", message);
         }
     }
 

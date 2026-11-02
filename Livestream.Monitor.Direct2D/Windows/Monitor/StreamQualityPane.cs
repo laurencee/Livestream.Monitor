@@ -52,16 +52,16 @@ internal sealed class StreamQualityPane(Settings settings)
         if (apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences)
         {
             const uint OverrideNoteColor = 0xFFCD5C5C;
-            ui.TextRow(text: "Provider settings override All settings.", body, ref y, spacing: Gap, color: OverrideNoteColor);
+            ui.TextRow(text: "Custom preferences here replace 'All'.", body, ref y, spacing: Gap, color: OverrideNoteColor);
         }
 
         ui.TextRow(text: "Preferred qualities", body, ref y, spacing: Gap, weight: FontWeight.SemiBold);
-        ui.TextRow(text: "First available quality is used, top to bottom.", body, ref y, spacing: Gap, color: ui.Palette.MutedText);
+        ui.TextRow(text: "Qualities are tried from top to bottom.", body, ref y, spacing: Gap, color: ui.Palette.MutedText);
 
         if (current.Qualities.Count == 0)
         {
             var inheritsAll = apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences && !current.IsConfigured;
-            var emptyHint = inheritsAll ? "Using 'All' settings." : "[Using the fallback quality]";
+            var emptyHint = inheritsAll ? "[Using 'All' settings]" : "[Using the fallback quality]";
             ui.TextRow(emptyHint, body, ref y, spacing: Gap, color: ui.Palette.MutedText);
         }
 

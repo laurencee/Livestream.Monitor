@@ -7,7 +7,7 @@
         <ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedPlatform}"
                   DisplayMemberPath="DisplayName" AutomationProperties.Name="Quality platform"
                   AutomationProperties.AutomationId="settings.quality.platform" />
-        <TextBlock Text="Provider settings override All settings." Foreground="IndianRed" TextWrapping="Wrap" Margin="0,6,0,0">
+        <TextBlock Text="Custom preferences here replace 'All'." Foreground="IndianRed" TextWrapping="Wrap" Margin="0,6,0,0">
             <TextBlock.Style>
                 <Style TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">
                     <Setter Property="Visibility" Value="Collapsed" />

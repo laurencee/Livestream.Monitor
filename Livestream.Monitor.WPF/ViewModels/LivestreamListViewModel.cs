@@ -218,7 +218,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
             catch (Exception e)
             {
-                await this.ShowMessageAsync("Error copying url", $"An error occurred attempting to copy the url: {e.Message}");
+                await this.ShowMessageAsync("Error copying URL", $"An error occurred attempting to copy the URL: {e.Message}");
             }
         }
 

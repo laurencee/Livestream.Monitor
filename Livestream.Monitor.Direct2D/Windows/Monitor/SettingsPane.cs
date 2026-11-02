@@ -156,7 +156,7 @@ internal sealed class SettingsPane
 
         var minimumTop = y;
         var minimumBody = BeginGroup(body, ref y);
-        var label = DrawTextRow(ui, text: "Popular stream minimum viewers (0 for off)", minimumBody, ref y, spacing: LabelSpacing);
+        var label = DrawTextRow(ui, text: "Popular alert threshold (viewers; 0 = off)", minimumBody, ref y, spacing: LabelSpacing);
         const string MinimumToolTip =
             "Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.\n" +
             "This helps you not miss out on special events or popular streams.";
