@@ -50,14 +50,11 @@ public class ShellViewModelShould
         var launcher = new StreamLauncher(settings, windows);
         var filter = new FilterModel();
         var navigation = Substitute.For<INavigationService>();
-        var qualities = new ApiClientsQualitiesViewModel(settings, apiClients);
         var header = new HeaderViewModel(
             monitorStreamsModel: streams,
             streamLauncher: launcher,
             filterModelModel: filter,
-            apiClientFactory: apiClients,
-            apiClientsQualitiesViewModel: qualities,
-            windowManager: windows);
+            apiClientFactory: apiClients);
 
         var list = new LivestreamListViewModel(
             monitorStreamsModel: streams,

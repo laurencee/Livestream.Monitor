@@ -32,6 +32,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         private readonly Version currentAppVersion;
         private TrayIconService taskbarIcon;
         private bool firstMinimize = true;
+        private bool confirmingSettingsClose;
 
         public ShellViewModel()
         {
@@ -91,7 +92,35 @@ namespace Livestream.Monitor.WPF.ViewModels
         public bool IsSettingsOpen
         {
             get;
-            set => Set(ref field, value);
+            set
+            {
+                if (!value && field && Settings.StreamQualities.HasChanges)
+                {
+                    _ = ConfirmSettingsClose();
+                    return;
+                }
+
+                Set(ref field, value);
+            }
+        }
+
+        private async Task ConfirmSettingsClose()
+        {
+            if (confirmingSettingsClose) return;
+
+            confirmingSettingsClose = true;
+            try
+            {
+                // Restore the flyout's bound state while the discard decision is pending.
+                NotifyOfPropertyChange(() => IsSettingsOpen);
+                // ReSharper disable once PossibleNullReferenceException — both constructors create Settings.
+                var discard = await Settings.ConfirmDiscardQualities();
+                if (discard) IsSettingsOpen = false;
+            }
+            finally
+            {
+                confirmingSettingsClose = false;
+            }
         }
 
         public void ShowWindow()

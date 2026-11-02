@@ -93,6 +93,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private readonly VerticalScrollBar scrollBar;
     private ThemePalette palette;
     private SettingsPane? settingsPane;
+    private bool confirmingSettingsClose;
     private readonly PanelSlide settingsSlide = new();
     private bool rowsDirty = true;
 
@@ -406,9 +407,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             !state.Busy,
             toolTip: "Import livestreams from the provided username"
         );
-        Separator(655 + extra);
-        var qualitiesBounds = new RectangleF(x: 663 + extra, y: Y, width: 104, height: Height);
-        Ui.Button(id: "qualities", text: "Stream Qualities", qualitiesBounds, action: () => _ = EditQualities());
     }
 
     // The WPF toolbar separators are as high as the toolbar controls.
@@ -923,6 +921,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void ToggleSettings()
     {
+        if (settingsSlide.IsOpen)
+        {
+            CloseSettings();
+            return;
+        }
+
         Ui.CloseMenu();
         preview?.Hide();
         settingsPane ??= new SettingsPane(
@@ -932,15 +936,38 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             saved: () => _ = ApplySettings()
         );
 
-        settingsSlide.SetOpen(!settingsSlide.IsOpen, PanelSlide.NowMilliseconds);
+        settingsSlide.SetOpen(true, PanelSlide.NowMilliseconds);
         NeedsPaint = true;
     }
 
-    private void CloseSettings()
+    private void CloseSettings() => _ = ConfirmSettingsClose();
+
+    private async Task ConfirmSettingsClose()
     {
-        Ui.CloseMenu();
-        settingsSlide.SetOpen(false, PanelSlide.NowMilliseconds);
-        NeedsPaint = true;
+        if (confirmingSettingsClose) return;
+
+        confirmingSettingsClose = true;
+        try
+        {
+            if (settingsPane is { HasQualityChanges: true })
+            {
+                var discard = await dialogs.Confirm(
+                    title: "Unsaved quality changes",
+                    message: "Discard quality changes and close Settings?",
+                    affirmative: "Discard",
+                    negative: "Keep editing");
+                if (!discard) return;
+            }
+
+            Ui.CloseMenu();
+            settingsPane?.DiscardQualityChanges(Ui);
+            settingsSlide.SetOpen(false, PanelSlide.NowMilliseconds);
+            NeedsPaint = true;
+        }
+        finally
+        {
+            confirmingSettingsClose = false;
+        }
     }
 
     private async Task ApplySettings()
@@ -1412,17 +1439,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (end > offset + viewport) return end - viewport;
 
         return offset;
-    }
-
-    private async Task EditQualities()
-    {
-        using var window = new QualitiesWindow(
-            owner: Handle,
-            settings: state.SettingsHandler,
-            providers: providers,
-            theme: ThemeSource
-        );
-        await window.Completion;
     }
 
     public override void Dispose()

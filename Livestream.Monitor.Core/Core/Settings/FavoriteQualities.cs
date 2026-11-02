@@ -15,6 +15,8 @@ public class FavoriteQualities
 
     public string FallbackQuality { get; set; } = FallbackQualityOption.Best;
 
+    internal bool IsConfigured => Qualities.Count != 0 || FallbackQuality != FallbackQualityOption.Best;
+
     public override bool Equals(object obj)
     {
         var qualities = obj as FavoriteQualities;

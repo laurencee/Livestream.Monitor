@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Input;
 using Caliburn.Micro;
 using Livestream.Monitor.Core;
@@ -13,23 +13,42 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         public ApiClientQualitiesViewModel()
         {
+            Qualities.CollectionChanged += (_, _) =>
+            {
+                NotifyOfPropertyChange(() => QualityRows);
+                NotifyOfPropertyChange(() => HasQualities);
+                NotifyOfPropertyChange(() => CanAddQuality);
+            };
+
             if (Execute.InDesignMode)
             {
-                Qualities.AddRange(new []
-                {
-                    "720p60",
-                    "720"
-                });
+                Qualities.AddRange(["720p60", "720"]);
                 FallbackQuality = "Worst";
             }
         }
 
-        public BindableCollection<string> Qualities { get; set; } = new();
+        public BindableCollection<string> Qualities { get; } = new();
+
+        public QualityPriorityRow[] QualityRows => Qualities.Select((quality, index) => new QualityPriorityRow(index + 1, quality)).ToArray();
+
+        public bool HasQualities => Qualities.Count != 0;
+
+        public string EmptyQualityHint
+        {
+            get;
+            set => Set(ref field, value);
+        } = "[Using the fallback quality]";
 
         public string FallbackQuality
         {
             get;
-            set => Set(ref field, value);
+            set
+            {
+                if (!Set(ref field, value)) return;
+
+                NotifyOfPropertyChange(() => FallbackQualityBestChecked);
+                NotifyOfPropertyChange(() => FallbackQualityWorstChecked);
+            }
         }
 
         public bool FallbackQualityBestChecked
@@ -71,50 +90,40 @@ namespace Livestream.Monitor.WPF.ViewModels
         public bool CanAddQuality => !string.IsNullOrWhiteSpace(newQuality) &&
                                      !Qualities.Contains(newQuality.Trim(), StringComparison.OrdinalIgnoreCase);
 
+        public bool CanMoveQualityDown(QualityPriorityRow qualityRow) => qualityRow.Priority > 0 && qualityRow.Priority < Qualities.Count;
 
-        public bool CanMoveQualityDown(string streamQuality)
-        {
-            var index = Qualities.IndexOf(streamQuality);
-            return Qualities.Count > 1 &&
-                   index < Qualities.Count - 1;
-        }
-
-        public bool CanMoveQualityUp(string streamQuality)
-        {
-            var index = Qualities.IndexOf(streamQuality);
-            return Qualities.Count > 1 &&
-                   index != 0;
-        }
+        public bool CanMoveQualityUp(QualityPriorityRow qualityRow) => qualityRow.Priority > 1 && qualityRow.Priority <= Qualities.Count;
 
         public void AddQuality()
         {
             if (!CanAddQuality) return;
 
             Qualities.Insert(0, NewQuality.Trim());
+            NewQuality = "";
             Qualities.Refresh(); // causes the CanMove guards to be checked
             NotifyOfPropertyChange(() => CanAddQuality);
         }
 
-        public void RemoveQuality(string streamQuality)
+        public void RemoveQuality(QualityPriorityRow qualityRow)
         {
-            Qualities.Remove(streamQuality);
+            Qualities.RemoveAt(qualityRow.Priority - 1);
             Qualities.Refresh(); // causes the CanMove guards to be checked
         }
 
-        public void MoveQualityDown(string streamQuality)
+        public void MoveQualityDown(QualityPriorityRow qualityRow)
         {
-            if (!CanMoveQualityDown(streamQuality)) return;
+            if (!CanMoveQualityDown(qualityRow)) return;
 
-            var index = Qualities.IndexOf(streamQuality);
+            var index = qualityRow.Priority - 1;
             Qualities.Move(index, index + 1);
             Qualities.Refresh(); // causes the CanMove guards to be checked
         }
 
-        public void MoveQualityUp(string streamQuality)
+        public void MoveQualityUp(QualityPriorityRow qualityRow)
         {
-            if (!CanMoveQualityUp(streamQuality)) return;
+            if (!CanMoveQualityUp(qualityRow)) return;
 
-            var index = Qualities.IndexOf(streamQuality);
+            var index = qualityRow.Priority - 1;
             Qualities.Move(index, index - 1);
             Qualities.Refresh(); // causes the CanMove guards to be checked
         }
@@ -124,14 +133,12 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (e.Key == Key.Enter)
                 AddQuality();
         }
+    }
 
-        public FavoriteQualities ToFavoriteQualities()
-        {
-            return new FavoriteQualities()
-            {
-                Qualities = new List<string>(Qualities),
-                FallbackQuality = FallbackQuality
-            };
-        }
+    public sealed class QualityPriorityRow(int priority, string value)
+    {
+        public int Priority { get; } = priority;
+
+        public string Value { get; } = value;
     }
 }

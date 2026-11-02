@@ -85,6 +85,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     /// <summary>Measures the width of text drawn at a font size, so drop-downs fit their choices.</summary>
     public required Func<string, float, float> MeasureWidth { get; init; }
 
+    /// <summary>Measures wrapped text with the same width, size and weight used to draw it.</summary>
+    public required Func<string, float, float, FontWeight, float> MeasureWrapped { get; init; }
+
     /// <summary>The tallest a combo box or drop-down list may be; WPF's default is a third of the primary screen height.</summary>
     public float ListMaximumHeight { get; set; } = float.MaxValue;
 
@@ -179,6 +182,26 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Radius = radius,
         Thickness = thickness,
     });
+
+    /// <summary>Draws a content-sized text row and advances the next row past it.</summary>
+    public RectangleF TextRow(
+        string text,
+        RectangleF body,
+        ref float y,
+        float spacing,
+        uint? color = null,
+        float size = FontSize,
+        FontWeight weight = FontWeight.Normal)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return RectangleF.Empty;
+
+        var height = MeasureWrapped(text, body.Width, size, weight);
+        var bounds = body with { Y = y, Height = height };
+
+        Text(text, bounds, color, size, weight, wrap: true);
+        y += height + spacing;
+        return bounds;
+    }
 
     public void Text(
         string text,

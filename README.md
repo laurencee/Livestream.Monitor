@@ -34,7 +34,7 @@ Memory and CPU were measured with about 380 followed streams during a short sess
 2. Run `Livestream.Monitor.Direct2D.exe` or `Livestream.Monitor.WPF.exe` (see [WPF and Direct2D versions](#wpf-and-direct2d-versions)).
 3. If you already follow channels on Twitch, use Import to import any channels you already follow. (*)
 4. Add other channels manually. (*)
-5. Double-click on live channels to open the stream or click on the quality button while a stream row is selected.
+5. Double-click on live channels to open the stream
 
 (*) For Twitch, you'll be required to authorize the app the first time you try to import/add/query
 
@@ -57,7 +57,7 @@ Tweak the app to your liking with some of the following settings
 
 * Custom FilePath/Args independently for stream/vod/chat for every platform via `settings.json` (launch app 1 time to create file)
 * Disable notifications for individual streams, popular streams or everything
-* Define your preferred stream qualities per api in a priority order
+* Define preferred stream qualities and a fallback per platform under Settings → Stream quality
 * Change your colour theme using the theme buttons in settings
 * Copy to clipboard or Open stream URLs directly to your browser from the right click context menu.
 

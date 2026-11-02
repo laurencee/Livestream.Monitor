@@ -1,143 +1,98 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using Caliburn.Micro;
 using Livestream.Monitor.Core.Settings;
-using Livestream.Monitor.Model.ApiClients;
-using Livestream.Monitor.WPF.Core;
-using MahApps.Metro.Controls.Dialogs;
 
-namespace Livestream.Monitor.WPF.ViewModels
+namespace Livestream.Monitor.WPF.ViewModels;
+
+public class ApiClientsQualitiesViewModel : PropertyChangedBase
 {
-    public class ApiClientsQualitiesViewModel : Conductor<ApiClientQualitiesViewModel>.Collection.OneActive
+    private readonly StreamQualityDraft draft;
+    private bool loading;
+
+    public ApiClientsQualitiesViewModel() : this(new Settings()) { }
+
+    public ApiClientsQualitiesViewModel(Settings settings)
     {
-        private readonly IApiClientFactory apiClientFactory;
-        private readonly ISettingsHandler settingsHandler;
+        draft = new StreamQualityDraft(settings);
 
-        public ApiClientsQualitiesViewModel()
+        foreach (var (apiName, displayName) in StreamQualityDraft.Platforms)
         {
-            if (!Execute.InDesignMode) throw new InvalidOperationException("Constructor only accessible in design time");
-
-            var apiClientQuality = new ApiClientQualitiesViewModel()
+            var editor = new ApiClientQualitiesViewModel { DisplayName = displayName };
+            editor.PropertyChanged += (_, args) =>
             {
-                DisplayName = "Api client A",
-                FallbackQuality = "Worst"
+                if (args.PropertyName == nameof(ApiClientQualitiesViewModel.FallbackQuality)) Changed(apiName, editor);
             };
-            Items.AddRange(
-                new[]
-                {
-                    apiClientQuality,
-                    new ApiClientQualitiesViewModel()
-                    {
-                        DisplayName = "Api client B",
-                        Qualities = new BindableCollection<string>(new []{ "SomeValue", "SomeOtherValue"}),
-                        FallbackQuality = FavoriteQualities.FallbackQualityOption.Best
-                    },
-                });
 
-            ActiveItem = apiClientQuality;
+            editor.Qualities.CollectionChanged += (_, _) => Changed(apiName, editor);
+            Items.Add(editor);
         }
 
-        public ApiClientsQualitiesViewModel(
-            ISettingsHandler settingsHandler,
-            IApiClientFactory apiClientFactory)
+        Reload();
+        SelectedPlatform = Items[0];
+    }
+
+    public BindableCollection<ApiClientQualitiesViewModel> Items { get; } = new();
+
+    public ApiClientQualitiesViewModel SelectedPlatform
+    {
+        get;
+        set
         {
-            this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-            this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
+            if (!Set(ref field, value)) return;
+
+            NotifyOfPropertyChange(() => ShowOverrideNote);
+        }
+    }
+
+    public bool HasChanges => draft.HasChanges;
+
+    public bool ShowOverrideNote => SelectedPlatform != Items[0] && draft.HasAllPreferences;
+
+    public void SaveChanges()
+    {
+        draft.SaveChanges();
+        NotifyOfPropertyChange(() => HasChanges);
+    }
+
+    public void Reload()
+    {
+        loading = true;
+        draft.Revert();
+
+        for (var i = 0; i < Items.Count; i++)
+        {
+            var saved = draft[StreamQualityDraft.Platforms[i].ApiName];
+            Items[i].Qualities.Clear();
+            Items[i].Qualities.AddRange(saved.Qualities);
+            Items[i].FallbackQuality = saved.FallbackQuality;
+            Items[i].NewQuality = "";
         }
 
-        public override string DisplayName { get; set; } = "Stream Qualities";
+        loading = false;
+        UpdateHints();
+        NotifyOfPropertyChange(() => HasChanges);
+        NotifyOfPropertyChange(() => ShowOverrideNote);
+    }
 
-        public bool CanSave
+    private void Changed(string apiName, ApiClientQualitiesViewModel editor)
+    {
+        if (loading) return;
+
+        var target = draft[apiName];
+        target.Qualities = editor.Qualities.ToList();
+        target.FallbackQuality = editor.FallbackQuality;
+        UpdateHints();
+        NotifyOfPropertyChange(() => HasChanges);
+        NotifyOfPropertyChange(() => ShowOverrideNote);
+    }
+
+    private void UpdateHints()
+    {
+        for (var i = 0; i < Items.Count; i++)
         {
-            get
-            {
-                foreach (var apiClientQualities in Items)
-                {
-                    var previousQualities = settingsHandler.Settings.GetStreamQualities(apiClientQualities.DisplayName);
-                    if (!previousQualities.Equals(apiClientQualities.ToFavoriteQualities()))
-                        return true;
-                }
-                return false;
-            }
-        }
-
-        public bool CanRevert => CanSave;
-
-        public override async Task<bool> CanCloseAsync(CancellationToken cancellationToken = default)
-        {
-            if (CanSave)
-            {
-                var result = await this.ShowMessageAsync("Unsaved changes", "Close without saving?", MessageDialogStyle.AffirmativeAndNegative);
-                return result == MessageDialogResult.Affirmative;
-            }
-            else
-            {
-                return true;
-            }
-        }
-
-        public void Save()
-        {
-            if (!CanSave) return;
-
-            foreach (var apiClientQualities in Items)
-            {
-                settingsHandler.Settings.FavoriteApiQualities[apiClientQualities.DisplayName] = apiClientQualities.ToFavoriteQualities();
-            }
-            settingsHandler.SaveSettings();
-
-            NotifyOfPropertyChange(() => CanSave);
-            NotifyOfPropertyChange(() => CanRevert);
-        }
-
-        public void Revert()
-        {
-            if (!CanRevert) return;
-
-            foreach (var apiClientQualities in Items)
-            {
-                var savedQualities = settingsHandler.Settings.GetStreamQualities(apiClientQualities.DisplayName);
-                apiClientQualities.Qualities.Clear();
-                apiClientQualities.Qualities.AddRange(savedQualities.Qualities);
-                apiClientQualities.FallbackQuality = savedQualities.FallbackQuality;
-            }
-        }
-
-        protected override async Task OnActivateAsync(CancellationToken cancellationToken)
-        {
-            Items.Clear();
-
-            var settingsStreamQualities = settingsHandler.Settings.FavoriteApiQualities;
-            var apiClients = apiClientFactory.GetAll().ToList();
-
-            foreach (var apiClient in apiClients)
-            {
-                settingsStreamQualities.TryGetValue(apiClient.ApiName, out var qualities);
-                var bindableQualities = new BindableCollection<string>(qualities?.Qualities ?? new List<string>());
-
-                var apiClientQualities = new ApiClientQualitiesViewModel()
-                {
-                    DisplayName = apiClient.ApiName,
-                    Qualities = bindableQualities,
-                    FallbackQuality = qualities?.FallbackQuality ?? FavoriteQualities.FallbackQualityOption.Best
-                };
-
-                apiClientQualities.PropertyChanged += (sender, args) => { NotifySaveRevert(); };
-                apiClientQualities.Qualities.CollectionChanged += (sender, args) => { NotifySaveRevert(); };
-                Items.Add(apiClientQualities);
-            }
-
-            await ActivateItemAsync(Items.FirstOrDefault(), cancellationToken);
-            await base.OnActivateAsync(cancellationToken);
-        }
-
-        private void NotifySaveRevert()
-        {
-            NotifyOfPropertyChange(() => CanSave);
-            NotifyOfPropertyChange(() => CanRevert);
+            var apiName = StreamQualityDraft.Platforms[i].ApiName;
+            var inheritsAll = apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences && !draft[apiName].IsConfigured;
+            Items[i].EmptyQualityHint = inheritsAll ? "Using 'All' settings." : "[Using the fallback quality]";
         }
     }
 }

@@ -7,6 +7,7 @@ using Caliburn.Micro;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.WPF.Core;
+using Livestream.Monitor.WPF.Core.UI;
 
 namespace Livestream.Monitor.WPF.ViewModels
 {
@@ -20,6 +21,7 @@ namespace Livestream.Monitor.WPF.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             ThemeSelector = new ThemeSelectorViewModel();
+            StreamQualities = new ApiClientsQualitiesViewModel();
             Twitch = new TwitchSettingsEditor();
             Kick = new ApiPlatformSettingsEditor("Kick");
             YouTube = new ApiPlatformSettingsEditor("YouTube");
@@ -44,11 +46,15 @@ namespace Livestream.Monitor.WPF.ViewModels
             Kick = new ApiPlatformSettingsEditor("Kick");
             YouTube = new ApiPlatformSettingsEditor("YouTube");
 
+            StreamQualities = new ApiClientsQualitiesViewModel(settingsHandler.Settings);
+            StreamQualities.PropertyChanged += (_, _) => NotifyOfPropertyChange(() => CanSave);
             HookPlatformEditors();
             ThemeSelector.ActivateWith(this);
         }
 
         public ThemeSelectorViewModel ThemeSelector { get; }
+
+        public ApiClientsQualitiesViewModel StreamQualities { get; }
 
         public TwitchSettingsEditor Twitch { get; }
 
@@ -136,9 +142,14 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             get
             {
-                if (settingsHandler == null || HasValidationErrors) return false;
+                if (settingsHandler == null) return false;
+                if (!HasOtherChanges) return StreamQualities.HasChanges;
 
-                return MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
+                return !HasValidationErrors;
+            }
+        }
+
+        private bool HasOtherChanges => MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
                        CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
@@ -147,7 +158,18 @@ namespace Livestream.Monitor.WPF.ViewModels
                        !Twitch.Matches(settingsHandler.Settings.Twitch) ||
                        !Kick.Matches(settingsHandler.Settings.Kick) ||
                        !YouTube.Matches(settingsHandler.Settings.YouTube);
-            }
+
+        public async Task<bool> ConfirmDiscardQualities()
+        {
+            var dialogs = new WpfDialogs(this);
+            var discard = await dialogs.Confirm(
+                title: "Unsaved quality changes",
+                message: "Discard quality changes and close Settings?",
+                affirmative: "Discard",
+                negative: "Keep editing");
+            if (discard) StreamQualities.Reload();
+
+            return discard;
         }
 
         public async Task OpenSettings()
@@ -166,6 +188,13 @@ namespace Livestream.Monitor.WPF.ViewModels
         public void Save()
         {
             if (!CanSave) return;
+            if (!HasOtherChanges)
+            {
+                StreamQualities.SaveChanges();
+                settingsHandler.SaveSettings();
+                NotifyOfPropertyChange(() => CanSave);
+                return;
+            }
 
             settingsHandler.Settings.PropertyChanged -= SettingsOnPropertyChanged;
 
@@ -184,6 +213,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             Kick.CopyTo(settingsHandler.Settings.Kick);
             YouTube.CopyTo(settingsHandler.Settings.YouTube);
 
+            StreamQualities.SaveChanges();
             settingsHandler.SaveSettings();
             settingsHandler.Settings.PropertyChanged += SettingsOnPropertyChanged;
 
@@ -234,6 +264,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         private void LoadFromSettings()
         {
+            StreamQualities.Reload();
             var settings = settingsHandler.Settings;
             var twitchSettings = settings.Twitch ?? new TwitchSettings();
             var kickSettings = settings.Kick ?? new KickSettings();

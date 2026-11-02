@@ -5,7 +5,6 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Input;
 using Caliburn.Micro;
 using ExternalAPIs;
@@ -15,7 +14,6 @@ using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
 using Livestream.Monitor.WPF.Core;
 using Livestream.Monitor.WPF.Core.UI;
-using Livestream.Monitor.WPF.Core.Utility;
 using Livestream.Monitor.WPF.Model;
 using MahApps.Metro.Controls.Dialogs;
 using static System.String;
@@ -28,8 +26,6 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         private readonly StreamLauncher streamLauncher;
         private readonly IApiClientFactory apiClientFactory;
-        private readonly IWindowManager windowManager;
-        private readonly ApiClientsQualitiesViewModel apiClientsQualitiesViewModel;
 
         public HeaderViewModel()
         {
@@ -41,16 +37,12 @@ namespace Livestream.Monitor.WPF.ViewModels
             IMonitorStreamsModel monitorStreamsModel,
             StreamLauncher streamLauncher,
             FilterModel filterModelModel,
-            IApiClientFactory apiClientFactory,
-            ApiClientsQualitiesViewModel apiClientsQualitiesViewModel,
-            IWindowManager windowManager)
+            IApiClientFactory apiClientFactory)
         {
             FilterModel = filterModelModel ?? throw new ArgumentNullException(nameof(filterModelModel));
             MonitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
             this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-            this.windowManager = windowManager;
-            this.apiClientsQualitiesViewModel = apiClientsQualitiesViewModel ?? throw new ArgumentNullException(nameof(apiClientsQualitiesViewModel));
         }
 
         public FilterModel FilterModel { get; }
@@ -207,20 +199,6 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             if (e.Key == Key.Enter && CanAddStream)
                 await AddStream();
-        }
-
-        public async Task OpenQualities()
-        {
-            var settings = new WindowSettingsBuilder()
-                .AsTopmost()
-                .SizeToContent(SizeToContent.Width)
-                .Height(300)
-                .Create();
-            await windowManager.ShowDialogAsync(apiClientsQualitiesViewModel, null, settings);
-
-            // remove focus from the toggle button after it has been clicked
-            // looks nicer ¯\_(ツ)_/¯
-            Keyboard.ClearFocus();
         }
 
         protected override async Task OnInitializeAsync(CancellationToken cancellationToken)

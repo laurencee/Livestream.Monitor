@@ -8,6 +8,9 @@ using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Rendering;
 using Livestream.Monitor.Direct2D.Widgets;
 using Livestream.Monitor.Direct2D.Windows;
+using Livestream.Monitor.Direct2D.Windows.Monitor;
+using Livestream.Monitor.Core;
+using NSubstitute;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Direct2D;
@@ -31,7 +34,7 @@ public sealed class SurfaceUiShould : IDisposable
     {
         window = new HiddenWindow();
         commands = [];
-        ui = new SurfaceUi(window, commands) { MeasureWidth = MeasureText };
+        ui = new SurfaceUi(window, commands) { MeasureWidth = MeasureText, MeasureWrapped = MeasureWrappedText };
         palette = Theme.Create(new Settings());
         viewport = new RectangleF(x: 0, y: 0, width: 400, height: 300);
     }
@@ -39,6 +42,110 @@ public sealed class SurfaceUiShould : IDisposable
     public void Dispose() => window.Dispose();
 
     private static float MeasureText(string text, float fontSize) => text.Length * CharacterWidth;
+
+    private static float MeasureWrappedText(string text, float width, float fontSize, FontWeight weight) =>
+        MathF.Ceiling(MeasureText(text, fontSize) / width) * Painter.LineHeight(fontSize);
+
+    [Fact]
+    public void KeepMeasuredSettingsTextInsideTheGroupPadding()
+    {
+        var settings = new Settings();
+        settings.Twitch.StreamCommand.FilePath = Environment.ProcessPath;
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(settings);
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+        Draw();
+        ClickSection("settings.section.0");
+        ClickSection("settings.section.1");
+        var label = commands.First(command => command.Text == "File path");
+        var border = commands.Where(command => command.Kind == DrawKind.Stroke && command.Bounds.Contains(label.Bounds))
+            .MinBy(command => command.Bounds.Width * command.Bounds.Height);
+        var leftInset = label.Bounds.Left - border.Bounds.Left;
+        var rightInset = border.Bounds.Right - label.Bounds.Right;
+        Assert.True(leftInset > 0);
+        Assert.Equal(leftInset, rightInset);
+
+        void Draw()
+        {
+            ui.Begin(palette, viewport);
+            pane.Draw(ui, viewport);
+            ui.End();
+        }
+
+        void ClickSection(string id)
+        {
+            var bounds = ui.Automation.Find(id)!.Bounds;
+            var point = new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+            ui.MouseDown(point);
+            ui.MouseUp(point);
+            Draw();
+        }
+    }
+
+    [Fact]
+    public void AlignQualityRowActionsWithTheAddButton()
+    {
+        var settings = new Settings { FavoriteApiQualities = { ["all"] = new FavoriteQualities { Qualities = ["720p"] } } };
+        var pane = new StreamQualityPane(settings);
+        ui.Begin(palette, viewport);
+        var y = viewport.Y;
+        pane.Draw(ui, viewport, ref y);
+        ui.End();
+
+        Assert.Equal(ui.Automation.Find("settings.quality.add")!.Bounds.Right, ui.Automation.Find("settings.quality.remove.0")!.Bounds.Right);
+    }
+
+    [Fact]
+    public void ClearUnaddedQualityInputWhenReverting()
+    {
+        var pane = new StreamQualityPane(new Settings());
+        ui.Begin(palette, viewport);
+        var y = viewport.Y;
+        pane.Draw(ui, viewport, ref y);
+        ui.End();
+        const string InputId = "settings.quality.input.all";
+        ui.SetValue(InputId, "unadded");
+
+        pane.Revert(ui);
+
+        Assert.Equal("", ui.Value(InputId));
+    }
+
+    [Theory]
+    [InlineData(16f)]
+    [InlineData(48f)]
+    public void SizeTextRowsToTheirMeasuredContent(float measuredHeight)
+    {
+        const string Message = "A note that can wrap when the pane becomes narrow";
+        const float Spacing = 4;
+        const float FontSize = 12;
+        var measuredUi = new SurfaceUi(window, commands)
+        {
+            MeasureWidth = MeasureText,
+            // The callback checks that layout passes the exact text, width and font to the renderer.
+            // ReSharper disable ParameterOnlyUsedForPreconditionCheck.Local
+            MeasureWrapped = (text, width, size, weight) =>
+            {
+                Assert.Equal(Message, text);
+                Assert.Equal(viewport.Width, width);
+                Assert.Equal(FontSize, size);
+                Assert.Equal(FontWeight.SemiBold, weight);
+                return measuredHeight;
+            },
+            // ReSharper restore ParameterOnlyUsedForPreconditionCheck.Local
+        };
+        measuredUi.Begin(palette, viewport);
+        var y = viewport.Y;
+        measuredUi.TextRow(Message, viewport, ref y, spacing: Spacing, size: FontSize, weight: FontWeight.SemiBold);
+        const float ButtonHeight = 26;
+        var nextBounds = viewport with { Y = y, Height = ButtonHeight };
+        measuredUi.Button(id: "next", text: "Next", bounds: nextBounds, action: () => { });
+        measuredUi.End();
+
+        var note = Assert.Single(commands, command => command.Kind == DrawKind.WrappedText);
+        Assert.Equal(measuredHeight, note.Bounds.Height);
+        Assert.Equal(note.Bounds.Bottom + Spacing, measuredUi.Automation.Find("next")!.Bounds.Y);
+    }
 
     [Fact]
     public void FocusTheNativeInputWhenItsPlaceholderIsShowing()
@@ -105,7 +212,7 @@ public sealed class SurfaceUiShould : IDisposable
     [InlineData(1000f, 275f)]
     public void ScrollAnOverflowingMenuWithItsOwnBar(float maximumHeight, float downArrowY)
     {
-        var listUi = new SurfaceUi(window, commands) { MeasureWidth = MeasureText, ListMaximumHeight = maximumHeight };
+        var listUi = new SurfaceUi(window, commands) { MeasureWidth = MeasureText, MeasureWrapped = MeasureWrappedText, ListMaximumHeight = maximumHeight };
         var longChoice = new string('_', 40);
         var choices = Enumerable.Range(1, 30).Select(i => "Stream " + i).Append(longChoice).ToArray();
         var control = new RectangleF(x: 10, y: 10, width: 140, height: 26);

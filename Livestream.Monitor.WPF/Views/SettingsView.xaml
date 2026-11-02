@@ -66,7 +66,7 @@
 
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Vertical">
-                <Expander Header="General settings" IsExpanded="True" Margin="0,0,0,0">
+                <Expander Header="General settings" IsExpanded="True" Margin="0,0,0,0" AutomationProperties.AutomationId="settings.section.0">
                     <StackPanel Margin="0,5,0,0">
                         <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
 
@@ -117,6 +117,9 @@
                         <ContentControl Content="{Binding YouTube.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding YouTube.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                     </StackPanel>
+                </Expander>
+                <Expander Header="Stream quality" IsExpanded="False" AutomationProperties.AutomationId="settings.section.4">
+                    <ContentControl cal:View.Model="{Binding StreamQualities}" />
                 </Expander>
             </StackPanel>
         </ScrollViewer>

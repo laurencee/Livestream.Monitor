@@ -20,7 +20,10 @@ internal sealed class SettingsPane
     private const float InputSpacing = 6;
     private const float GroupPadding = 6;
     private const float GroupGap = 6;
-    private const float GroupLabelHeight = 20;
+    private const float LabelSpacing = 4;
+    private const float StatusSpacing = 5;
+    private const float TextSize = 12;
+    private const float HeadingSpacing = 8;
     private const float GroupCheckHeight = 24;
     private const float GroupInputSpacing = 2;
     private const float GroupBorderThickness = 0.5f;
@@ -39,7 +42,8 @@ internal sealed class SettingsPane
     private readonly Settings draft;
     private readonly HashSet<string> seededInputs = [];
     private readonly Dictionary<string, PathState> paths = new(StringComparer.Ordinal);
-    private readonly bool[] expanded = [true, false, false, false];
+    private readonly bool[] expanded = [true, false, false, false, false];
+    private readonly StreamQualityPane streamQualities;
     private float scroll;
     private float maximumScroll;
     private string minimumViewersText;
@@ -55,10 +59,15 @@ internal sealed class SettingsPane
         this.dialogs = dialogs;
         this.close = close;
         this.saved = saved;
+        streamQualities = new StreamQualityPane(handler.Settings);
         draft = new Settings();
         CopyEditable(handler.Settings, draft);
         minimumViewersText = draft.MinimumEventViewers.ToString(CultureInfo.InvariantCulture);
     }
+
+    public bool HasQualityChanges => streamQualities.HasChanges;
+
+    public void DiscardQualityChanges(SurfaceUi ui) => streamQualities.Revert(ui);
 
     public void Draw(SurfaceUi ui, RectangleF bounds)
     {
@@ -91,6 +100,9 @@ internal sealed class SettingsPane
         y += SectionGap;
         DrawExpander(ui, body, ref y, index: 3, title: "YouTube");
         if (expanded[3]) DrawPlatform(ui, body, ref y, name: "YouTube", draft.YouTube);
+        y += SectionGap;
+        DrawExpander(ui, body, ref y, index: 4, title: "Stream quality");
+        if (expanded[4]) streamQualities.Draw(ui, body with { Width = body.Width - ScrollbarSpace }, ref y);
         ui.PopClip();
 
         maximumScroll = Math.Max(0, y + scroll - body.Bottom);
@@ -144,8 +156,7 @@ internal sealed class SettingsPane
 
         var minimumTop = y;
         var minimumBody = BeginGroup(body, ref y);
-        var label = Row(minimumBody, ref y, GroupLabelHeight);
-        ui.Text("Popular stream minimum viewers (0 for off)", label, wrap: true);
+        var label = DrawTextRow(ui, text: "Popular stream minimum viewers (0 for off)", minimumBody, ref y, spacing: LabelSpacing);
         const string MinimumToolTip =
             "Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.\n" +
             "This helps you not miss out on special events or popular streams.";
@@ -250,8 +261,7 @@ internal sealed class SettingsPane
         {
             var authTop = y;
             var authBody = BeginGroup(body, ref y);
-            var authLabel = Row(authBody, ref y, GroupLabelHeight);
-            ui.Text("Auth token", authLabel);
+            DrawTextRow(ui, text: "Auth token", authBody, ref y, spacing: LabelSpacing);
             const string AuthToolTip =
                 "Optional Twitch OAuth token. Delete it from settings.json and relaunch the app to reauthorize.";
 
@@ -301,12 +311,10 @@ internal sealed class SettingsPane
         ExecCommand command,
         string hint)
     {
-        var heading = Row(body, ref y, GroupCheckHeight);
-        ui.Text(title, heading, weight: FontWeight.SemiBold);
+        DrawTextRow(ui, title, body, ref y, spacing: HeadingSpacing, weight: FontWeight.SemiBold);
         var pathTop = y;
         var pathBody = BeginGroup(body, ref y);
-        var pathLabel = Row(pathBody, ref y, GroupLabelHeight);
-        ui.Text("File path", pathLabel);
+        DrawTextRow(ui, text: "File path", pathBody, ref y, spacing: LabelSpacing);
         DrawInput(
             ui,
             pathBody,
@@ -319,22 +327,18 @@ internal sealed class SettingsPane
             toolTip: "Enter a command name on PATH or a full executable path."
         );
 
-        const float StatusHeight = 32;
         var state = ResolvePath(command.FilePath);
-        var statusBounds = Row(pathBody, ref y, StatusHeight);
         const uint ValidPathColor = 0xFF008000;
         const uint InvalidPathColor = 0xFFCD5C5C;
         var statusColor = state.Valid ? ValidPathColor : InvalidPathColor;
-        ui.Text(state.Message, statusBounds, statusColor, size: 11, wrap: true);
+        const float HintFontSize = 11;
+        DrawTextRow(ui, state.Message, pathBody, ref y, spacing: StatusSpacing, color: statusColor, size: HintFontSize);
         EndGroup(ui, body, pathTop, ref y);
 
         var argsTop = y;
         var argsBody = BeginGroup(body, ref y);
-        var argsLabel = Row(argsBody, ref y, GroupLabelHeight);
-        ui.Text("Arguments", argsLabel);
-        const float HintHeight = 18;
-        var hintBounds = Row(argsBody, ref y, HintHeight);
-        ui.Text(hint, hintBounds, ui.Palette.MutedText, size: 11, wrap: true);
+        DrawTextRow(ui, text: "Arguments", argsBody, ref y, spacing: LabelSpacing);
+        DrawTextRow(ui, hint, argsBody, ref y, spacing: StatusSpacing, color: ui.Palette.MutedText, size: HintFontSize);
         DrawInput(
             ui,
             argsBody,
@@ -452,6 +456,20 @@ internal sealed class SettingsPane
         return bounds;
     }
 
+    private static RectangleF DrawTextRow(
+        SurfaceUi ui,
+        string text,
+        RectangleF body,
+        ref float y,
+        float spacing,
+        uint? color = null,
+        float size = TextSize,
+        FontWeight weight = FontWeight.Normal)
+    {
+        var content = body with { Width = body.Width - ScrollbarSpace };
+        return ui.TextRow(text, content, ref y, spacing, color, size, weight);
+    }
+
     private void DrawScrollbar(SurfaceUi ui, RectangleF body)
     {
         if (maximumScroll <= 0 || body.Height <= 0) return;
@@ -493,17 +511,20 @@ internal sealed class SettingsPane
     {
         if (!validMinimumViewers) return false;
 
-        var changed = !EditableMatch(draft, handler.Settings);
-        return changed && Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube);
+        var otherChanges = !EditableMatch(draft, handler.Settings);
+        return otherChanges ? Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube) : streamQualities.HasChanges;
     }
 
     private void Save()
     {
         if (!CanSave()) return;
 
-        CopyEditable(draft, handler.Settings);
+        var otherChanges = !EditableMatch(draft, handler.Settings);
+        if (otherChanges) CopyEditable(draft, handler.Settings);
+
+        streamQualities.SaveChanges();
         handler.SaveSettings();
-        saved?.Invoke();
+        if (otherChanges) saved?.Invoke();
     }
 
     // The settings this pane edits and saves together; the theme applies at once instead. A setting added here is

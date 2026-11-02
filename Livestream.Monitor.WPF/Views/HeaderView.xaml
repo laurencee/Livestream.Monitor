@@ -13,7 +13,7 @@
     <StackPanel Orientation="Horizontal">
         <!-- Filtering monitored streams -->
         <TextBlock Text="Filter:" VerticalAlignment="Center" Margin="2" FontWeight="Bold" />
-        <TextBox x:Name="FilterModel_LivestreamNameFilter" Text="{Binding FilterModel.LivestreamNameFilter, UpdateSourceTrigger=PropertyChanged, Delay=50}" 
+        <TextBox x:Name="FilterModel_LivestreamNameFilter" Text="{Binding FilterModel.LivestreamNameFilter, UpdateSourceTrigger=PropertyChanged, Delay=50}"
                  controls:TextBoxHelper.Watermark="name..." Margin="2" Width="100"
                  controls:TextBoxHelper.ClearTextButton="True" />
         <ComboBox x:Name="FilterModel_ApiClientNames" Margin="2" />
@@ -54,10 +54,6 @@
         </Button>
         <Button x:Name="ImportFollows" Content="Import"  Margin="2" ToolTip="Import livestreams from the provided username" />
 
-        <!-- Importing & Adding new streams -->
-        <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,2" />
-
-        <Button x:Name="OpenQualities" Content="Stream Qualities" Margin="2" />
         <!-- TODO Grid View/Tile View buttons that will change the content section of the main view  -->
     </StackPanel>
 </UserControl>

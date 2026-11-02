@@ -87,6 +87,7 @@ internal abstract class CanvasWindow : DesktopWindow
         {
             Invalidate = Invalidate,
             MeasureWidth = (text, fontSize) => MeasureWidth(text, fontSize),
+            MeasureWrapped = MeasureWrapped,
         };
 
         sharedGraphics ??= new GraphicsDevice();
@@ -122,9 +123,9 @@ internal abstract class CanvasWindow : DesktopWindow
     /// <summary>Requests a frame on the next tick.</summary>
     protected void Invalidate() => NeedsPaint = true;
 
-    internal float MeasureWrapped(string text, float width, float fontSize)
+    internal float MeasureWrapped(string text, float width, float fontSize, FontWeight weight = FontWeight.Normal)
     {
-        var style = new TextStyle(fontSize);
+        var style = new TextStyle(fontSize, weight);
         return painter.MeasureWrapped(text, width, style);
     }
 

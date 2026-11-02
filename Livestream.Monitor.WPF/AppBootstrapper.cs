@@ -63,7 +63,6 @@ namespace Livestream.Monitor.WPF
             container.PerRequest<LivestreamListViewModel>();
             container.PerRequest<TopStreamsViewModel>();
             container.PerRequest<VodListViewModel>();
-            container.PerRequest<ApiClientsQualitiesViewModel>();
 
             // singleton instance of the navigation service - this relies on using the container so it needs special registration
             Core.INavigationService navigationService = null;

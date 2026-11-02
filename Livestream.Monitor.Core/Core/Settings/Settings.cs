@@ -27,6 +27,7 @@ namespace Livestream.Monitor.Core.Settings
         public const int CurrentSettingsVersion = 4;
         public const string UrlReplacementToken = "{url}";
         private const string QualitiesReplacementToken = "{qualities}";
+        internal const string AllStreamQualitiesKey = "all";
 
         public const string DefaultChromeFullPath = @"C:\Program Files\Google\Chrome\Application\chrome.exe";
         public const string DefaultChromeArgs = "--app=" + UrlReplacementToken + " --window-size=350,760";
@@ -136,8 +137,24 @@ namespace Livestream.Monitor.Core.Settings
 
         public FavoriteQualities GetStreamQualities(string apiName)
         {
+            var qualities = GetSavedStreamQualities(apiName);
+            if (qualities.IsConfigured) return qualities;
+
+            return FavoriteApiQualities.ContainsKey(AllStreamQualitiesKey) ? GetSavedStreamQualities(AllStreamQualitiesKey) : qualities;
+        }
+
+        /// <summary>Reads saved preferences with null values treated as defaults, without applying All or changing stored data.</summary>
+        internal FavoriteQualities GetSavedStreamQualities(string apiName)
+        {
             FavoriteApiQualities.TryGetValue(apiName, out var qualities);
-            return qualities ?? new FavoriteQualities();
+            if (qualities == null) return new FavoriteQualities();
+            if (qualities.Qualities != null && qualities.FallbackQuality != null) return qualities;
+
+            return new FavoriteQualities
+            {
+                Qualities = qualities.Qualities ?? [],
+                FallbackQuality = qualities.FallbackQuality ?? FavoriteQualities.FallbackQualityOption.Best,
+            };
         }
 
         /// <summary>
