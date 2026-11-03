@@ -8,7 +8,7 @@ Download: [Latest Release](https://github.com/laurencee/Livestream.Monitor/relea
 Leverages [streamlink](https://streamlink.github.io/) to launch livestreams through your own video player (VLC, MPC-HC, etc.).\
 You can install this on Win10/11 via cmd prompt or powershell `winget install Streamlink`
 
-![image](https://cloud.githubusercontent.com/assets/3850553/12476536/b701f96c-c075-11e5-8bdd-45237f94f812.png)
+![image](https://github.com/user-attachments/assets/32f00e83-1760-455f-9346-1e167bf9e367)
 
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
