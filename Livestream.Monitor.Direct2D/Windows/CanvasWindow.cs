@@ -39,9 +39,9 @@ internal abstract class CanvasWindow : DesktopWindow
     private const int HitBottomLeft = 16;
     private const int HitBottomRight = 17;
 
-    // WPF ToolTipService defaults: the hover time before a tooltip opens, and the window after one closes during
-    // which the next opens at once.
-    private const long ToolTipInitialShowDelay = 1000;
+    // Tooltip delays in milliseconds: the initial hover time and the window after one closes during which the next
+    // opens at once.
+    private const long ToolTipInitialShowDelay = 250;
     private const long ToolTipBetweenShowDelay = 100;
     private static readonly ThemePalette DefaultPalette = Theme.Create(new Settings());
 
@@ -448,7 +448,7 @@ internal abstract class CanvasWindow : DesktopWindow
     }
 
     /// <summary>
-    /// Opens the tooltip of the region under the pointer once the pointer has stayed on it for the WPF delay; it
+    /// Opens the tooltip of the region under the pointer once the pointer has stayed on it for the initial delay; it
     /// stays open until the pointer leaves that region, a button is pressed or a key is typed.
     /// </summary>
     private void UpdateToolTip()

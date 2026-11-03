@@ -1205,7 +1205,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (row == hoveredRow) return;
 
         hoveredRow = row;
-        const int PreviewDelayMilliseconds = 500;
+        const int PreviewDelayMilliseconds = 100;
         previewDue = Environment.TickCount64 + PreviewDelayMilliseconds;
         preview?.Hide();
         NeedsPaint = true;
