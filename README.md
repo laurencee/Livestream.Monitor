@@ -13,7 +13,7 @@ You can install this on Win10/11 via cmd prompt or powershell `winget install St
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
 ## Pre-requisites
-* Windows 10 or later and the [.NET 10 runtime](https://dotnet.microsoft.com/download/dotnet/10.0). The WPF frontend requires the **Desktop Runtime**; Direct2D requires only the regular **.NET Runtime** (x64).
+* Windows 10 or later and the .NET 10 runtime (see table below).
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
 
 ## WPF and Direct2D versions
@@ -22,10 +22,10 @@ Livestream Monitor comes in two versions that share the same features, settings 
 | | Direct2D (`Livestream.Monitor.Direct2D.exe`) | WPF (`Livestream.Monitor.WPF.exe`) |
 | --- | --- | --- |
 | Interface | A lighter rewrite that draws its own interface | The original app |
-| Download size | 1.2 MB | 5.2 MB |
+| File size | 1.2 MB | 5.2 MB |
 | Memory use | ~120 MB | ~290 MB |
 | CPU use | Lowest | ~5× Direct2D |
-| Requires | .NET Runtime | .NET Desktop Runtime |
+| Requires | [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
 
 Memory and CPU were measured with about 380 followed streams during a short session of browsing Top Streams and the stream list.
 
