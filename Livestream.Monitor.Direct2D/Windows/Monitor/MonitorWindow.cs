@@ -1,3 +1,4 @@
+using Livestream.Monitor.Core.Utility;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
@@ -22,11 +23,12 @@ namespace Livestream.Monitor.Direct2D.Windows.Monitor;
 internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 {
     private const int ControlPadding = 5;
-    private const int ToolbarTop = TitleHeight + ControlPadding;
+    private const int NoticeHeight = 30;
+    private int ToolbarTop => TitleHeight + ControlPadding + (releaseNotice == null ? 0 : NoticeHeight);
     private const int ToolbarControlHeight = 26;
-    private const int TileAreaTop = ToolbarTop + ToolbarControlHeight + ControlPadding;
+    private int TileAreaTop => ToolbarTop + ToolbarControlHeight + ControlPadding;
     private const int ToolbarSeparatorHeight = 1;
-    private const int ToolbarBottom = TileAreaTop + ToolbarSeparatorHeight;
+    private int ToolbarBottom => TileAreaTop + ToolbarSeparatorHeight;
     private const int TitleCommandsWidth = 293;
 
     // The arrow area at the end of an editable combo box's input.
@@ -34,7 +36,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int HeaderHeight = 27;
     private const int RowHeight = 25;
     private const int DefaultVisibleRows = 15;
-    internal const int DefaultHeight = ToolbarBottom + HeaderHeight + DefaultVisibleRows * RowHeight + (int)WindowBorderThickness;
+    private const int DefaultTileAreaTop = TitleHeight + 2 * ControlPadding + ToolbarControlHeight;
+    internal const int DefaultHeight = DefaultTileAreaTop + ToolbarSeparatorHeight + HeaderHeight + DefaultVisibleRows * RowHeight + (int)WindowBorderThickness;
     private const int FooterControlHeight = 24;
     private const int FooterHeight = FooterControlHeight + ControlPadding * 2;
     private const int DefaultTileWidth = 155;
@@ -42,7 +45,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int TileMargin = 3;
     private const int TileGap = TileMargin * 2;
     private const int DefaultTileRows = 3;
-    private const int MinimumTileHeight = (DefaultHeight - TileAreaTop - FooterHeight - (DefaultTileRows - 1) * TileGap) / DefaultTileRows;
+    private const int MinimumTileHeight = (DefaultHeight - DefaultTileAreaTop - FooterHeight - (DefaultTileRows - 1) * TileGap) / DefaultTileRows;
     private const int MaximumTileHeight = MinimumTileHeight + ControlPadding;
     private const int MinimumTileRowPitch = MinimumTileHeight + TileGap;
     private const int TilesLeft = (int)WindowBorderThickness + TileMargin;
@@ -100,6 +103,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private readonly ImageCache images;
     private readonly VerticalScrollBar scrollBar;
     private ThemePalette palette;
+    private ReleaseNotice? releaseNotice;
     private SettingsPane? settingsPane;
     private bool confirmingSettingsClose;
     private double? settingsShakeStarted;
@@ -134,7 +138,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private bool isImporting;
     private readonly MainWindowPlacement? placement;
 
-    public MonitorWindow(MonitorWindowState state, NativeDialogs dialogs, StreamNotifications notifications)
+    public MonitorWindow(
+        MonitorWindowState state,
+        NativeDialogs dialogs,
+        StreamNotifications notifications,
+        ReleaseNotice? notice)
         : base(CaptionTitle, Program.WindowWidth, Program.WindowHeight)
     {
         // Windows animates minimizing and restoring only windows with a caption; the client area still covers the
@@ -145,6 +153,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Win32.SetWindowPos(Handle, insertAfter: 0, x: 0, y: 0, width: 0, height: 0, flags);
 
         this.dialogs = dialogs;
+        releaseNotice = notice;
         this.state = state;
         this.notifications = notifications;
         scrollBar = new VerticalScrollBar(ScrollTo);
@@ -330,6 +339,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         DrawCommandSeparator(size.Width - 209);
         DrawCommandSeparator(size.Width - 130);
         DrawCommandSeparator(size.Width - 94);
+        if (releaseNotice is { } notice) DrawReleaseNotice(size.Width, notice);
 
         if (state.Page == MonitorPage.Followed)
         {
@@ -361,14 +371,54 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         actionFeedback.Draw(Ui, feedbackArea);
     }
 
+    private void DrawReleaseNotice(float width, ReleaseNotice notice)
+    {
+        const float Margin = 8;
+        const float MarkerWidth = 3;
+        const float TextSize = 12;
+        var strip = new RectangleF(x: 1, y: TitleHeight, width: width - 2, height: NoticeHeight);
+        Ui.Fill(strip, palette.Panel);
+        Ui.Fill(strip with { Width = MarkerWidth }, palette.Accent);
+
+        var close = new RectangleF(x: width - NoticeHeight, y: TitleHeight, width: NoticeHeight, height: NoticeHeight);
+        var linkWidth = notice.Url == null ? 0 : MeasureWidth("Read release notes", TextSize) + 2 * Margin;
+        var version = "Updated to " + notice.VersionText;
+        var available = Math.Max(0, close.Left - linkWidth - Margin);
+        var versionWidth = Math.Min(available, MeasureWidth(version, TextSize) + Margin);
+        var versionBounds = strip with { X = Margin, Width = versionWidth };
+        Ui.Text(version, versionBounds);
+        var titleWidth = Math.Min(available - versionWidth, MeasureWidth(notice.Title, TextSize, FontWeight.SemiBold) + Margin);
+        if (notice.Title.Length == 0) titleWidth = 0;
+        if (titleWidth > Margin)
+        {
+            var bounds = strip with { X = versionBounds.Right, Width = titleWidth };
+            Ui.Text(notice.Title, bounds, weight: FontWeight.SemiBold);
+            Ui.ToolTip("update.title", bounds, notice.Title);
+        }
+
+        if (notice.Url != null)
+        {
+            var link = strip with { X = versionBounds.Right + titleWidth, Width = linkWidth };
+            Ui.PanelAction("update.notes", "Read release notes", link, () => _ = OpenReleaseNotes(notice.Url), underline: true);
+        }
+
+        Ui.PanelAction("update.dismiss", "×", close, () => { releaseNotice = null; NeedsPaint = true; }, name: "Dismiss update notice");
+    }
+
+    private async Task OpenReleaseNotes(Uri url)
+    {
+        try { OpenInBrowser(url.AbsoluteUri); }
+        catch (Win32Exception exception) { await dialogs.ShowMessage("Unable to open release notes", exception.Message); }
+    }
+
     private void DrawFollowedToolbar(float width)
     {
         // Toolbar controls sit 2 pixels apart after the bold filter label.
-        const int Y = ToolbarTop;
+        var y = ToolbarTop;
         const int Height = ToolbarControlHeight;
         const float PlatformFilterExtraWidth = 33;
-        Ui.Text("Filter:", new RectangleF(x: 13, y: Y, width: 36, height: Height), weight: FontWeight.Bold);
-        var filterBounds = new RectangleF(x: 50, y: Y, width: 100, height: Height);
+        Ui.Text("Filter:", new RectangleF(x: 13, y: y, width: 36, height: Height), weight: FontWeight.Bold);
+        var filterBounds = new RectangleF(x: 50, y: y, width: 100, height: Height);
         Ui.Input(
             "filter",
             "Name filter",
@@ -382,7 +432,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             clear: true
         );
         var filterIndex = Array.IndexOf(filterValues, state.ProviderFilter);
-        var filterProviderBounds = new RectangleF(x: 154, y: Y, width: 47 + PlatformFilterExtraWidth, height: Height);
+        var filterProviderBounds = new RectangleF(x: 154, y: y, width: 47 + PlatformFilterExtraWidth, height: Height);
         Ui.Combo(
             "filter.provider",
             "Platform filter",
@@ -396,7 +446,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 FilterChanged();
             }
         );
-        var onlineBounds = new RectangleF(x: 205 + PlatformFilterExtraWidth, y: Y, width: 24, height: Height);
+        var onlineBounds = new RectangleF(x: 205 + PlatformFilterExtraWidth, y: y, width: 24, height: Height);
         Ui.Button(
             "filter.online",
             "",
@@ -415,13 +465,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         const float OnlineImageSize = 13;
         var onlineImageBounds = new RectangleF(
             x: onlineBounds.X + (onlineBounds.Width - OnlineImageSize) / 2,
-            y: Y + (Height - OnlineImageSize) / 2,
+            y: y + (Height - OnlineImageSize) / 2,
             width: OnlineImageSize,
             height: OnlineImageSize);
 
         Ui.Image(onlineImage, onlineImageBounds);
         Separator(237 + PlatformFilterExtraWidth);
-        var chatBounds = new RectangleF(x: 245 + PlatformFilterExtraWidth, y: Y, width: 50, height: Height);
+        var chatBounds = new RectangleF(x: 245 + PlatformFilterExtraWidth, y: y, width: 50, height: Height);
         Ui.Button(
             "chat",
             "CHAT",
@@ -429,7 +479,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             () => _ = OpenChat(state.SelectedStream),
             CanOpenChat(state.SelectedStream)
         );
-        var refreshBounds = new RectangleF(x: 299 + PlatformFilterExtraWidth, y: Y, width: 21, height: Height);
+        var refreshBounds = new RectangleF(x: 299 + PlatformFilterExtraWidth, y: y, width: 21, height: Height);
         var canRefresh = state is { Busy: false, StreamsModel.CanRefreshLivestreams: true };
         Ui.Button(
             id: "refresh",
@@ -442,11 +492,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         );
         Separator(328 + PlatformFilterExtraWidth);
         var extra = Math.Max(0, width - Program.WindowWidth);
-        var channelBounds = new RectangleF(x: 336 + PlatformFilterExtraWidth, y: Y, width: 150 + extra, height: Height);
+        var channelBounds = new RectangleF(x: 336 + PlatformFilterExtraWidth, y: y, width: 150 + extra, height: Height);
         Ui.Input(id: "channel", name: "New channel", placeholder: "Channel name or ID...", channelBounds, enter: () => _ = AddChannel());
-        var providerBounds = new RectangleF(x: 490 + PlatformFilterExtraWidth + extra, y: Y, width: 80, height: Height);
+        var providerBounds = new RectangleF(x: 490 + PlatformFilterExtraWidth + extra, y: y, width: 80, height: Height);
         DrawProviderCombo(providerBounds);
-        var addBounds = new RectangleF(x: 574 + PlatformFilterExtraWidth + extra, y: Y, width: 19, height: Height);
+        var addBounds = new RectangleF(x: 574 + PlatformFilterExtraWidth + extra, y: y, width: 19, height: Height);
         var canAdd = !state.Busy && !string.IsNullOrWhiteSpace(Ui.Value("channel"));
         Ui.Button(
             id: "add",
@@ -458,7 +508,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             name: "Add"
         );
         const float ImportButtonWidth = 65;
-        var importBounds = new RectangleF(x: 597 + PlatformFilterExtraWidth + extra, y: Y, width: ImportButtonWidth, height: Height);
+        var importBounds = new RectangleF(x: 597 + PlatformFilterExtraWidth + extra, y: y, width: ImportButtonWidth, height: Height);
         Ui.Button(
             "import",
             "Import…",
@@ -489,13 +539,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         // Page header controls have 3-pixel margins; the VOD header's own
         // margin is 5 pixels narrower than the top streams header's.
-        const int Y = ToolbarTop;
+        var y = ToolbarTop;
         const int Height = ToolbarControlHeight;
         var left = state.Page == MonitorPage.Vods ? 9 : 14;
 
         // The back button glyph is a 6-pixel triangle; the font this frontend falls back to draws it larger.
         const float BackGlyphSize = 8;
-        var backBounds = new RectangleF(x: left, y: Y, width: 25, height: Height);
+        var backBounds = new RectangleF(x: left, y: y, width: 25, height: Height);
         Ui.Button(
             id: "back",
             text: "◀",
@@ -506,13 +556,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             name: "Back",
             flat: true
         );
-        var providerBounds = new RectangleF(x: left + 31, y: Y, width: 80, height: Height);
+        var providerBounds = new RectangleF(x: left + 31, y: y, width: 80, height: Height);
         DrawProviderCombo(providerBounds);
 
         if (state.Page == MonitorPage.TopStreams)
         {
-            Ui.Text("Game Filter", new RectangleF(x: 133, y: Y, width: 63, height: Height));
-            var gameBounds = new RectangleF(x: 201, y: Y, width: 175, height: Height);
+            Ui.Text("Game Filter", new RectangleF(x: 133, y: y, width: 63, height: Height));
+            var gameBounds = new RectangleF(x: 201, y: y, width: 175, height: Height);
             Ui.Input(
                 "game",
                 "Game filter",
@@ -555,7 +605,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
 
             const float RefreshGlyphSize = 15;
-            var refreshBounds = new RectangleF(x: 381, y: Y, width: 22, height: Height);
+            var refreshBounds = new RectangleF(x: 381, y: y, width: 22, height: Height);
             Ui.Button(
                 id: "refresh",
                 text: "↻",
@@ -572,9 +622,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         const float ChannelLabelLeft = 125;
         const float ChannelLabelWidth = 45;
-        var channelLabelBounds = new RectangleF(x: ChannelLabelLeft, y: Y, width: ChannelLabelWidth, height: Height);
+        var channelLabelBounds = new RectangleF(x: ChannelLabelLeft, y: y, width: ChannelLabelWidth, height: Height);
         Ui.Text("Channel", channelLabelBounds);
-        var channelBounds = new RectangleF(x: 173, y: Y, width: 140, height: Height);
+        var channelBounds = new RectangleF(x: 173, y: y, width: 140, height: Height);
         Ui.Input(
             "vod.channel",
             "Channel",
@@ -608,7 +658,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         );
         var types = provider.VodTypes;
         var type = types.Count == 0 ? "" : types[Math.Clamp(vodTypeIndex, 0, types.Count - 1)];
-        var typeBounds = new RectangleF(x: 319, y: Y, width: 100, height: Height);
+        var typeBounds = new RectangleF(x: 319, y: y, width: 100, height: Height);
         Ui.Combo(
             "vod.type",
             "VOD type",
@@ -802,7 +852,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     }
 
     /// <summary>Keeps the same number of tile columns when vertical overflow adds a scroll bar.</summary>
-    internal static TileLayout LayoutTiles(SizeF size, int itemCount)
+    private TileLayout LayoutTiles(SizeF size, int itemCount)
     {
         var viewportHeight = Math.Max(0, size.Height - TileAreaTop - FooterHeight);
         var viewport = (int)viewportHeight;
@@ -834,7 +884,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Extent: extent);
     }
 
-    private static RectangleF TileBounds(TileLayout layout, int index, int offset)
+    private RectangleF TileBounds(TileLayout layout, int index, int offset)
     {
         var x = TilesLeft + index % layout.Columns * layout.TilePitch;
         var row = index / layout.Columns;
@@ -1535,7 +1585,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         NeedsPaint = true;
     }
 
-    private static int VisibleRows(SizeF size) =>
+    private int VisibleRows(SizeF size) =>
         Math.Max(1, (int)(size.Height - ToolbarBottom - HeaderHeight) / RowHeight);
 
     protected override void OnPointerUp(PointF point)
@@ -2179,29 +2229,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private async Task CheckVersion()
     {
-        try
+        await AppUpdate.Offer(dialogs, async work =>
         {
-            var release = await new ExternalAPIs.GitHub.GitHubClient().GetLatestRelease();
-            if (IsClosed) return;
-
-            // Only an https download page is opened.
-            if (release == null || !Uri.TryCreate(release.HtmlUrl, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps)
-                throw new InvalidDataException($"Invalid HtmlUrl provided by GitHub API for latest release: {release?.HtmlUrl ?? "<null>"}");
-
-            if (!Version.TryParse(release.TagName, out var latest) || latest <= AppVersion) return;
-
-            if (await dialogs.Confirm("New version available", "There is a newer version available. Go to download page?"))
-                Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
-        }
-        catch (OperationCanceledException) { }
-        catch (Exception exception)
+            using var cancellation = new CancellationTokenSource();
+            using var progress = ShowDialog(
+                title: "Updating",
+                message: "Downloading and preparing update...",
+                kind: DialogKind.Progress,
+                affirmative: "Cancel");
+            progress.CancelRequested = cancellation.Cancel;
+            await work(cancellation.Token);
+        }, async () =>
         {
-            // Any other failure, including one opening the download page, is reported.
-            if (IsClosed) return;
-
-            var message = $"An error occurred while checking for a newer version.{Environment.NewLine}{exception.ExtractErrorMessage()}";
-            await dialogs.ShowMessage("Error", message);
-        }
+            if (IsClosed) return false;
+            return settingsPane == null || await settingsPane.ConfirmUpdateRestart(Ui);
+        }, () => { Close(); return Task.CompletedTask; });
     }
 
     private static bool CanOpenChat(LivestreamModel? stream) =>

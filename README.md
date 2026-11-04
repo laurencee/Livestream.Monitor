@@ -13,7 +13,7 @@ You can install this on Win10/11 via cmd prompt or powershell `winget install St
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
 ## Pre-requisites
-* Windows 10 or later and the [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
+* Windows 10 or later and the [.NET 10 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-10.0.15-windows-x64-installer).
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
 
 ## Usage
@@ -24,6 +24,11 @@ The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which 
 5. Double-click on live channels to open the stream
 
 (*) For Twitch, you'll be required to authorize the app the first time you try to import/add/query
+
+### Updates
+
+With version checks enabled, portable releases offer **Update and restart** when a newer release is available.
+The application folder must be writable, and versions before 3.3.0 need one manual update first.
 
 ## General Features
 * Add your favourite livestreams to be monitored from **Twitch**, **YouTube** or **Kick** by their channel names (end part of the url)

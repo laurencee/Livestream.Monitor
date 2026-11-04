@@ -675,6 +675,32 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             activate: () => InvokeWidget(id));
     }
 
+    public void PanelAction(
+        string id,
+        string text,
+        RectangleF bounds,
+        Action action,
+        string? name = null,
+        bool underline = false)
+    {
+        var over = IsPointerOver(bounds);
+        if (over) Fill(bounds, Palette.Hover);
+
+        Label(text, bounds, Palette.Text, alignment: TextAlign.Center);
+        if (underline)
+        {
+            const float BaselineOffset = 8;
+            const float HoverThickness = 2;
+            var width = Math.Min(bounds.Width, MeasureWidth(text, FontSize));
+            var left = bounds.X + (bounds.Width - width) / 2;
+            var top = bounds.Y + bounds.Height / 2 + BaselineOffset;
+            var line = new RectangleF(left, top, width, over ? HoverThickness : 1);
+            Fill(line, over ? Palette.Text : Palette.ChoiceAccent);
+        }
+
+        Hit(id, bounds, action, name ?? text);
+    }
+
     /// <summary>A clickable area drawn by the caller, such as a column header, named as the caller gives.</summary>
     public void Hit(
         string id,

@@ -41,6 +41,31 @@ public sealed class SurfaceUiShould : IDisposable
 
     public void Dispose() => window.Dispose();
 
+    [Theory]
+    [InlineData("settings.notifications", false)]
+    [InlineData("settings.Twitch.stream.stdout", true)]
+    public async System.Threading.Tasks.Task AskBeforeRestartingOnlyWithUnsavedPreferences(string control, bool platform)
+    {
+        var settings = new Settings();
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(settings);
+        var dialogs = Substitute.For<IUserDialogs>();
+        dialogs.Confirm(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns(false);
+        var pane = new SettingsPane(handler, dialogs, () => { });
+        DrawSettings(pane);
+        Click("settings.section.0");
+        Click(platform ? "settings.section.1" : "settings.section.5");
+        Click(control);
+
+        Assert.Equal(!platform, await pane.ConfirmUpdateRestart(ui));
+
+        void Click(string id)
+        {
+            ClickWidget(id);
+            DrawSettings(pane);
+        }
+    }
+
     private static float MeasureText(string text, float fontSize) => text.Length * CharacterWidth;
 
     private static float MeasureWrappedText(string text, float width, float fontSize, FontWeight weight) =>

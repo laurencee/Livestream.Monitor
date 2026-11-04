@@ -25,6 +25,38 @@ $sevenZip = (Get-Command 7z.exe -CommandType Application -ErrorAction Ignore)?.S
             (Join-Path $env:ProgramFiles '7-Zip\7z.exe')
 if (!(Test-Path -LiteralPath $sevenZip -PathType Leaf)) { throw '7-Zip must be installed or 7z.exe available on PATH.' }
 
+if (!('LivestreamReleaseBrotli' -as [type])) {
+    Add-Type -TypeDefinition @'
+using System;
+using System.IO;
+using System.IO.Compression;
+using System.Security.Cryptography;
+public static class LivestreamReleaseBrotli
+{
+    public static void Write(string source, string destination)
+    {
+        const int Quality = 11;
+        const int Window = 24;
+        byte[] input = File.ReadAllBytes(source);
+        byte[] packed = new byte[BrotliEncoder.GetMaxCompressedLength(input.Length)];
+        if (!BrotliEncoder.TryCompress(input, packed, out int written, Quality, Window))
+            throw new InvalidDataException("Unable to compress update payload.");
+
+        using (var output = File.Create(destination)) output.Write(packed, 0, written);
+        using (var file = File.OpenRead(destination))
+        using (var decoder = new BrotliStream(file, CompressionMode.Decompress))
+        using (var decoded = new MemoryStream())
+        {
+            decoder.CopyTo(decoded);
+            using (var sha = SHA256.Create())
+                if (!Convert.ToBase64String(sha.ComputeHash(input)).Equals(Convert.ToBase64String(sha.ComputeHash(decoded.ToArray()))))
+                    throw new InvalidDataException("Brotli update round-trip failed.");
+        }
+    }
+}
+'@
+}
+
 $name = 'Livestream.Monitor'
 $projectName = 'Livestream.Monitor.Direct2D'
 $publishedPath = Join-Path $publishPath $projectName
@@ -71,11 +103,18 @@ try {
 
     # Create a new archive in staging: adding to an existing archive would update it instead of replacing it.
     $version = [Version]$executable.VersionInfo.FileVersion
-    $archiveName = "$name.$($version.ToString($version.Revision -eq 0 ? 3 : 4)).7z"
+    $releaseVersion = $version.ToString($version.Revision -eq 0 ? 3 : 4)
+    $archiveName = "$name.$releaseVersion.7z"
     $archive = Join-Path $stagingPath $archiveName
     Invoke-NativeCommand $sevenZip @('a', '-mx=9', $archive, $executable.FullName)
     Invoke-NativeCommand $sevenZip @('t', $archive)
 
+    $framework = & dotnet msbuild $launcher '-getProperty:TargetFramework' '-nologo'
+    if ($LASTEXITCODE -ne 0 -or $framework -notmatch '^net(\d+)\.') { throw "Unable to determine runtime for $name." }
+    $update = Join-Path $stagingPath "$name.$releaseVersion.win-x64.net$($Matches[1]).exe.br"
+    [LivestreamReleaseBrotli]::Write($executable.FullName, $update)
+
+    Copy-FileToFolder $update $archivePath
     Copy-FileToFolder $executable.FullName $publishedPath
     Copy-FileToFolder $archive $archivePath
     $bytes = $executable.Length

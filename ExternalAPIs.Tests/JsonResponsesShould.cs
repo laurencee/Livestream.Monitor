@@ -56,9 +56,15 @@ public class JsonResponsesShould
     [Fact]
     public async Task PreserveReleaseWireNames()
     {
-        var response = await Read<Release>("""{"tag_name":"2.17.2","html_url":"https://example.test/release"}""");
+        var response = await Read<Release>("""{"tag_name":"2.17.2","name":"Faster startup","html_url":"https://example.test/release","assets":[{"name":"app.exe.br","browser_download_url":"https://example.test/app.exe.br","size":1234,"digest":"sha256:abcd"}]}""");
         Assert.Equal("2.17.2", response.TagName);
+        Assert.Equal("Faster startup", response.Name);
         Assert.Equal("https://example.test/release", response.HtmlUrl);
+        var asset = Assert.Single(response.Assets);
+        Assert.Equal("app.exe.br", asset.Name);
+        Assert.Equal("https://example.test/app.exe.br", asset.DownloadUrl);
+        Assert.Equal(1234, asset.Size);
+        Assert.Equal("sha256:abcd", asset.Digest);
     }
 
     [Fact]

@@ -33,7 +33,28 @@ namespace ExternalAPIs.GitHub
         [JsonPropertyName("tag_name")]
         public string TagName { get; set; }
 
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
         [JsonPropertyName("html_url")]
         public string HtmlUrl { get; set; }
+
+        [JsonPropertyName("assets")]
+        public ReleaseAsset[] Assets { get; set; } = [];
+    }
+
+    public sealed class ReleaseAsset
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; init; } = "";
+
+        [JsonPropertyName("browser_download_url")]
+        public string DownloadUrl { get; init; } = "";
+
+        [JsonPropertyName("size")]
+        public long Size { get; init; }
+
+        [JsonPropertyName("digest")]
+        public string Digest { get; set; } = "";
     }
 }

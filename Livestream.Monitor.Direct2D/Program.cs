@@ -24,8 +24,11 @@ internal static class Program
     // Appended to the names by which instances find each other, so each data directory has its own running instance.
     private static string profileScope = "";
 
+    internal static string ProfileInstanceName => InstanceName + profileScope;
+
     // Set once the window exists; a later launch's request before then has no window to show.
     private static MonitorWindow? mainWindow;
+    private static Task updateCleanup = Task.CompletedTask;
 
     // Where machine-local state is kept: in local application data for the default profile, otherwise with the profile's other data.
     private static string localDataDirectory = "";
@@ -43,6 +46,8 @@ internal static class Program
     {
         try
         {
+            var notice = AppUpdate.CompleteUpdate(ref args);
+
             Directory.SetCurrentDirectory(AppContext.BaseDirectory);
             MonitorName = Option(args, "--monitor");
             if (Option(args, "--width") is { } width) WindowWidth = int.Parse(width);
@@ -71,11 +76,12 @@ internal static class Program
             ComObject.Check(WindowsToast.RoInitialize(SingleThreaded));
             try
             {
-                return Run(exitSeconds, snapshot, toastLaunch);
+                return Run(exitSeconds, snapshot, toastLaunch, notice);
             }
             finally
             {
                 WindowsToast.RoUninitialize();
+                updateCleanup.GetAwaiter().GetResult();
             }
         }
         catch (Exception exception)
@@ -89,7 +95,11 @@ internal static class Program
         }
     }
 
-    private static unsafe int Run(double exitSeconds, string? snapshot, bool toastLaunch)
+    private static unsafe int Run(
+        double exitSeconds,
+        string? snapshot,
+        bool toastLaunch,
+        ReleaseNotice? notice)
     {
         Dispatcher = new UiDispatcher();
 
@@ -125,8 +135,9 @@ internal static class Program
         var monitorState = new MonitorWindowState(dialogs, showProgress: dialogs.Progress, openBrowsingError: dialogs.OpenMessage);
         monitorState.BeginInitialQuery();
 
-        using var window = new MonitorWindow(monitorState, dialogs, notifications);
+        using var window = new MonitorWindow(state: monitorState, dialogs: dialogs, notifications: notifications, notice: notice);
         mainWindow = window;
+        updateCleanup = AppUpdate.Cleanup(Environment.ProcessPath!);
         _ = window.Initialize();
         if (pending is { } initialTarget) window.ActivateNotification(initialTarget);
 
@@ -201,7 +212,7 @@ internal static class Program
 
     private static (bool Claimed, SingleInstance? Instance) ClaimInstance(ToastActivation? target = null)
     {
-        var name = InstanceName + profileScope;
+        var name = ProfileInstanceName;
 
         // A normal launch must wait for a cold opt-out to save and release its temporary instance.
         using var startup = new Mutex(initiallyOwned: false, name + Environment.UserName + ".Startup");

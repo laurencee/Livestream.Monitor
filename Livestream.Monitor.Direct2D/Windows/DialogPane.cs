@@ -42,6 +42,7 @@ internal sealed class DialogPane(
     private bool focusRequested = true;
     private bool disposed;
 
+    public Action? CancelRequested { get; set; }
     public Task<string?> Completion => completion.Task;
     public bool IsProgress => kind == DialogKind.Progress;
     public bool IsScrolling => ScrollBar.IsInteracting;
@@ -131,18 +132,21 @@ internal sealed class DialogPane(
         {
             var progressBounds = panel with { Y = panel.Bottom - ProgressBarHeight, Height = ProgressBarHeight };
             DrawProgressBar(ui, progressBounds);
-            return;
+            if (CancelRequested == null) return;
         }
 
         // As in MahApps, the last button has a 5 px right margin and the buttons are 10 px apart.
         const float ButtonRightMargin = 5;
         var hasCancel = kind is DialogKind.Input or DialogKind.Confirmation;
         var buttonsRight = left + contentWidth - ButtonRightMargin;
-        var affirmativeLeft = buttonsRight - ButtonWidth - (hasCancel ? ButtonWidth + 10 : 0);
+        const float ButtonTextSize = 14;
+        const float ButtonPadding = 24;
+        var buttonWidth = Math.Max(ButtonWidth, Math.Max(owner.MeasureWidth(affirmative, ButtonTextSize, FontWeight.SemiBold), owner.MeasureWidth(negative, ButtonTextSize, FontWeight.SemiBold)) + ButtonPadding);
+        var affirmativeLeft = buttonsRight - buttonWidth - (hasCancel ? buttonWidth + 10 : 0);
         var affirmativeBounds = new RectangleF(
             x: affirmativeLeft,
             y: contentBottom + spareHeight + 25,
-            width: ButtonWidth,
+            width: buttonWidth,
             height: ButtonHeight
         );
 
@@ -156,7 +160,7 @@ internal sealed class DialogPane(
         );
         if (!hasCancel) return;
 
-        var cancelBounds = affirmativeBounds with { X = buttonsRight - ButtonWidth };
+        var cancelBounds = affirmativeBounds with { X = buttonsRight - buttonWidth };
         ui.Button(
             id: "dialog.cancel",
             text: negative,
@@ -291,6 +295,12 @@ internal sealed class DialogPane(
             return true;
         }
 
+        if (key == VirtualKey.Escape && IsProgress && CancelRequested != null)
+        {
+            CancelRequested();
+            return true;
+        }
+
         if (key == VirtualKey.Escape && !IsProgress)
         {
             Dispose();
@@ -342,7 +352,11 @@ internal sealed class DialogPane(
         return (int)Win32.SendMessage(messageText, GetFirstVisibleLine, wParam: 0, lParam: 0);
     }
 
-    private void Accept() => Complete(input);
+    private void Accept()
+    {
+        if (IsProgress) { CancelRequested?.Invoke(); return; }
+        Complete(input);
+    }
 
     public void Dispose() => Complete(result: null);
 

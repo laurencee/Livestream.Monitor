@@ -86,6 +86,21 @@ internal sealed class SettingsPane
     public VerticalScrollBar ScrollBar { get; }
     public bool HasQualityChanges => streamQualities.HasChanges;
 
+    internal async Task<bool> ConfirmUpdateRestart(SurfaceUi ui)
+    {
+        var savedMinimum = handler.Settings.MinimumEventViewers.ToString(CultureInfo.InvariantCulture);
+        if (minimumViewersText != savedMinimum || HasQualityChanges || RevealPendingPlatform(ui))
+        {
+            return await dialogs.Confirm(
+                title: "Unsaved settings",
+                message: "Discard unsaved settings and restart?",
+                affirmative: "Discard",
+                negative: "Keep editing");
+        }
+
+        return true;
+    }
+
     public void DiscardQualityChanges(SurfaceUi ui) => streamQualities.Revert(ui);
 
     public bool OwnsInput(string id) => seededInputs.Contains(id) || id.StartsWith("settings.", StringComparison.Ordinal);
