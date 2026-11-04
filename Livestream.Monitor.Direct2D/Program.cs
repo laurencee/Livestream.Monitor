@@ -96,7 +96,7 @@ internal static class Program
             DesktopWindow.ThrowIfFailed();
             DesktopWindow.TickAll();
 
-            // The first refresh can still be applying complete results after initialization; it ends by re-enabling refreshes.
+            // Wait for the first full refresh before taking a snapshot.
             var settled = window.State.StreamsModel.CanRefreshLivestreams || window.State.StreamsModel.Livestreams.Count == 0;
             if (!savedSnapshot && snapshot != null && window.State.StreamsModel.Initialised && !window.State.Busy && settled)
             {

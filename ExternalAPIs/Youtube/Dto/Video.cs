@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-// ReSharper disable PropertyCanBeMadeInitOnly.Global -- response DTOs keep settable properties, like the other API DTOs.
+// ReSharper disable PropertyCanBeMadeInitOnly.Global -- keep setters consistent with the other API DTOs
 namespace ExternalAPIs.Youtube.Dto
 {
     public class Video

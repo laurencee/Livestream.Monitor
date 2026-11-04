@@ -37,9 +37,8 @@ internal abstract class DesktopWindow : IDisposable
     // Edit controls kept without inner margins, which setting a font restores.
     private readonly HashSet<nint> marginlessControls = [];
 
-    // Controls placed visible but not yet shown, and controls to hide or destroy; UpdatePlacedControls applies these once the
-    // frame drawn for them is on screen, since a child control drawn over the previous frame, or missing from it, reaches
-    // the screen one compositor pass ahead of that frame.
+    // Child control changes can reach the screen before the frame they're drawn for.
+    // Wait for that frame before showing controls or revealing what's underneath them.
     private readonly HashSet<nint> controlsToShow = [];
     private readonly HashSet<nint> controlsToHide = [];
     private readonly HashSet<nint> controlsToDestroy = [];
@@ -254,7 +253,7 @@ internal abstract class DesktopWindow : IDisposable
         return control;
     }
 
-    /// <summary>Hides the control once the next frame is on screen; placing it visible before then keeps it shown.</summary>
+    /// <summary>Hides the control after the next frame, unless it is placed visible again first.</summary>
     internal void HideControl(nint control)
     {
         controlsToShow.Remove(control);
@@ -264,7 +263,7 @@ internal abstract class DesktopWindow : IDisposable
     /// <summary>Destroys the control once the next frame is on screen.</summary>
     internal void DestroyControl(nint control)
     {
-        // Until it is destroyed, a focused control would keep receiving keys.
+        // Stop keyboard input while the control waits to be destroyed.
         if (Win32.GetFocus() == control) Win32.SetFocus(Handle);
 
         controlsToShow.Remove(control);
@@ -303,9 +302,8 @@ internal abstract class DesktopWindow : IDisposable
         Win32.EnableWindow(input, enabled);
         controlsToHide.Remove(input);
 
-        // Child controls draw over the composed frame. Shown now, a control could reach the screen before the frame drawn
-        // for it, over what the previous frame showed there, such as a menu that has since closed; hidden now, it
-        // reveals the previous frame, which draws an input's text beneath it.
+        // Wait for the new frame before showing a control over it.
+        // Hiding is safe now because the previous frame has the input text underneath.
         var shown = (Win32.GetWindowLongPtr(input, Win32.GwlStyle) & Win32.WsVisible) != 0;
         if (visible && !shown) controlsToShow.Add(input);
         if (visible) return;
@@ -314,12 +312,12 @@ internal abstract class DesktopWindow : IDisposable
         if (shown) Win32.ShowWindow(input, Win32.SwHide);
     }
 
-    /// <summary>Applies the shows, hides and destroys queued since the last call, once the frame presented for them is on screen.</summary>
+    /// <summary>Waits for the frame, then applies queued control visibility changes and destruction.</summary>
     internal void UpdatePlacedControls()
     {
         if (controlsToShow.Count == 0 && controlsToHide.Count == 0 && controlsToDestroy.Count == 0) return;
 
-        // A failed flush only skips that wait.
+        // Still update the controls if DwmFlush fails.
         Win32.DwmFlush();
 
         foreach (var control in controlsToShow) Win32.ShowWindow(control, Win32.SwShowNoActivate);
@@ -338,7 +336,7 @@ internal abstract class DesktopWindow : IDisposable
         controlsToDestroy.Clear();
     }
 
-    /// <summary>The area that <see cref="PlaceInput"/> covers for the bounds, after rounding to whole device pixels.</summary>
+    /// <summary>Bounds used by <see cref="PlaceInput"/>, rounded to device pixels and returned in logical units.</summary>
     internal RectangleF ControlArea(RectangleF bounds)
     {
         var pixels = ControlPixels(bounds);
@@ -377,8 +375,8 @@ internal abstract class DesktopWindow : IDisposable
         Action<int>? command = null,
         float fontSize = ControlFontSize)
     {
-        // A Rich Edit created hidden keeps wrapping at its creation width after it is resized, even once shown. Until the
-        // window is shown, a visible control cannot reach the screen ahead of its frame.
+        // Rich Edit keeps its original wrap width if created hidden.
+        // Create it visible while the parent is hidden so it can't appear ahead of the frame.
         var visibility = IsVisible ? 0 : Win32.WsVisible;
 
         var id = nextControlId++;
@@ -443,10 +441,7 @@ internal abstract class DesktopWindow : IDisposable
         return extent.Y / Scale;
     }
 
-    /// <summary>
-    /// Distance from the top of a single-line control to the baseline of its text, in logical units. GDI rounds the font's
-    /// ascent to whole device pixels, so this can differ by a pixel from Direct2D's at the same size.
-    /// </summary>
+    /// <summary>Text baseline offset in logical units for a single-line control. GDI rounds the ascent to device pixels, so it can differ from Direct2D.</summary>
     internal float MeasureControlAscent()
     {
         var context = Win32.GetDC(Handle);

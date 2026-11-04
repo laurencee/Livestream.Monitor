@@ -20,13 +20,12 @@ namespace ExternalAPIs
             UseCookies = false,
         };
 
-        // Stream provider API origins, connected before their first query.
         private static readonly string[] ProviderOrigins = ["https://api.twitch.tv/", "https://www.googleapis.com/"];
 
         /// <summary> Creates a request client sharing the application's connection pool. </summary>
         public static HttpClient CreateCompressionHttpClient()
         {
-            // HTTP/2 lets a provider's parallel requests share one connection instead of each paying its own TLS handshake.
+            // Use HTTP/2 so parallel requests can share a connection.
             return new HttpClient(SharedHandler, disposeHandler: false)
             {
                 Timeout = QueryTimeout,
@@ -35,10 +34,7 @@ namespace ExternalAPIs
             };
         }
 
-        /// <summary>
-        /// Opens pooled connections to the stream provider APIs in the background, so the first queries do not wait for
-        /// connection setup.
-        /// </summary>
+        /// <summary> Opens provider connections in the background to reduce the first query's connection delay. </summary>
         public static void PreconnectProviderApis()
         {
             foreach (var origin in ProviderOrigins)
@@ -47,11 +43,11 @@ namespace ExternalAPIs
                 {
                     try
                     {
-                        // The API root needs no key and counts against no quota; only the connection is wanted.
+                        // Use the API root to warm up the connection without making a data request.
                         using var httpClient = CreateCompressionHttpClient();
                         using var request = new HttpRequestMessage(HttpMethod.Head, origin);
 
-                        // A sent message keeps its own HTTP/1.1 default, whose connection the HTTP/2 queries would not share.
+                        // SendAsync uses the message's HTTP version, not the client's default.
                         request.Version = httpClient.DefaultRequestVersion;
                         request.VersionPolicy = httpClient.DefaultVersionPolicy;
 
@@ -59,7 +55,7 @@ namespace ExternalAPIs
                     }
                     catch (Exception)
                     {
-                        // A failed preconnect only means the first query connects as before, and reports any failure itself.
+                        // The first query can connect normally if preconnect fails.
                     }
                 });
             }

@@ -183,7 +183,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Thickness = thickness,
     });
 
-    /// <summary>Draws a content-sized text row and advances the next row past it.</summary>
+    /// <summary>Draws a text row sized to its content and advances y past it.</summary>
     public RectangleF TextRow(
         string text,
         RectangleF body,
@@ -758,14 +758,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             AddNode(clearId, AutomationRole.Button, name: "Clear", clearBounds, activate: () => InvokeWidget(clearId));
         }
 
-        // The native control covers this text, but is hidden while clipped or under a menu, and the frame without it can
-        // show before the next one is presented; drawing the text keeps the value in view throughout.
+        // Draw the value underneath so it stays visible while the native control is hidden or not yet shown.
         if (!input.ShowPlaceholder && input.Value.Length != 0)
         {
             var area = owner.ControlArea(InputBounds(input.Bounds));
 
-            // The line is centred in its box, so trimming the box from one side moves the text by half the trim, onto
-            // the control's own baseline, while keeping it inside the control's area.
+            // Text is centred, so trim one side by twice the baseline difference to align it with the native control.
+            // This keeps the text inside the control's area.
             var centredAscent = (area.Height - Painter.LineHeight(FontSize)) / 2 + Painter.Ascent(FontSize);
             var shift = owner.MeasureControlAscent() - centredAscent;
             var valueBounds = shift > 0

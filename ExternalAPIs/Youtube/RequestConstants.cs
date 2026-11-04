@@ -7,7 +7,7 @@
 
         // fileDetails are only available to the video owner so we can't use that
         public const string VideoLivestreamDetails = GoogleApiRoot + "videos?part=liveStreamingDetails,snippet,contentDetails,statistics"; // maxResults not used for id lookup per api docs
-        // Only the parts the live check reads; each extra part measurably slows the response
+        // only request the parts needed for the live check to keep the response small
         public const string VideoLiveStatus = GoogleApiRoot + "videos?part=liveStreamingDetails,snippet";
         public const string GetChannelByHandle = GoogleApiRoot + "channels?forHandle={0}&part=id,snippet,contentDetails";
         public const string GetChannels = GoogleApiRoot + "channels?part=id,snippet,contentDetails&maxResults=50";

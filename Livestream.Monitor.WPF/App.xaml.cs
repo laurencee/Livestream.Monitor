@@ -16,7 +16,6 @@ namespace Livestream.Monitor.WPF
     {
         internal const string Unique = "Livestream Monitor";
 
-        // Created in Main, or by the bootstrapper at design time, which registers these instances.
         internal static SettingsHandler SettingsHandler { get; private set; }
         internal static ApiClientFactory ApiClientFactory { get; private set; }
         internal static MonitoredStreamsFileHandler FileHandler { get; private set; }
@@ -37,7 +36,7 @@ namespace Livestream.Monitor.WPF
             using var instance = SingleInstance.Claim(Unique, () => dispatcher.BeginInvoke(ShowWindows));
             if (instance == null) return;
 
-            // The followed channels are loaded and queried while the application's resources and first view load.
+            // Start querying channels while WPF loads resources and the first view.
             ExternalAPIs.HttpClientExtensions.PreconnectProviderApis();
             CreateServices();
             StreamsModel.BeginInitialQuery();

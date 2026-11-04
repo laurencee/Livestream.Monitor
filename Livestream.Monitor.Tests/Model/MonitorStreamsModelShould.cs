@@ -80,13 +80,13 @@ public class MonitorStreamsModelShould
         List<LivestreamQueryResult> fastResults = [new(fastChannel) { LivestreamModel = liveStream }];
         fastProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(fastResults);
 
-        // A provider without channels finishes at once; it must not count as the first provider's results.
+        // An empty provider mustn't count as the first results.
         var idleProvider = CreateProvider("idle");
         idleProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(new List<LivestreamQueryResult>());
 
         var slowChannel = new ChannelIdentifier(slowProvider, "slow");
         var sut = CreateModel([slowChannel, fastChannel], idleProvider, slowProvider, fastProvider);
-        // Read when the event is raised; the refresh carries on applying results before an awaiting test resumes.
+        // Capture the state in the event handler; more results may arrive before the test resumes.
         var liveAtFirstProvider = new TaskCompletionSource<bool>();
         sut.ProviderRefreshComplete += (_, _) =>
             liveAtFirstProvider.TrySetResult(sut.Livestreams.Single(x => Equals(x.ChannelIdentifier, fastChannel)).Live);

@@ -111,7 +111,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             confirmingSettingsClose = true;
             try
             {
-                // Restore the flyout's bound state while the discard decision is pending.
+                // Keep the flyout open while confirming whether to discard changes.
                 NotifyOfPropertyChange(() => IsSettingsOpen);
                 // ReSharper disable once PossibleNullReferenceException — both constructors create Settings.
                 var discard = await Settings.ConfirmDiscardQualities();
@@ -199,7 +199,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             await Dispatcher.Yield(DispatcherPriority.Background);
 
-            // The progress dialog would only open and close again when the initial query has already finished.
+            // Skip the progress dialog if the initial query has already finished.
             if (monitorStreamsModel is MonitorStreamsModel { IsInitialQueryComplete: true })
             {
                 try

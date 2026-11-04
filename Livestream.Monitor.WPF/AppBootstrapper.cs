@@ -33,7 +33,7 @@ namespace Livestream.Monitor.WPF
             container = new SimpleContainer();
             ModelEnvironment.IsDesignMode = Execute.InDesignMode;
 
-            // The XAML designer configures the bootstrapper without running App.Main, which creates these services.
+            // The XAML designer doesn't run App.Main, so create its services here.
             if (Execute.InDesignMode) App.CreateServices();
 
             container.Singleton<IEventAggregator, EventAggregator>();

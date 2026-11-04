@@ -5,27 +5,18 @@ using System.Threading;
 
 namespace Livestream.Monitor.Core
 {
-    /// <summary>
-    /// Data kept between sessions only to save requests or time; a missing or unreadable cache starts empty and costs
-    /// only the requests it would have saved.
-    /// </summary>
+    /// <summary> Caches data between sessions to save requests or time. Missing or unreadable caches start empty. </summary>
     public interface ICacheHandler
     {
         /// <summary> The cached data, loaded on first use. </summary>
         Cache Cache { get; }
 
-        /// <summary>
-        /// Replaces the cached data with the result of <paramref name="update"/> and saves it; updates from different threads
-        /// apply one at a time. Returning the given instance saves nothing.
-        /// </summary>
+        /// <summary> Replaces the cache with the result of <paramref name="update"/> and saves it, one update at a time. Returning the same instance skips saving. </summary>
         void Update(Func<Cache, Cache> update);
     }
 
-    /// <param name="KickAppAccessToken"> Kick's app access token, reused across sessions until shortly before it expires. </param>
-    /// <param name="YouTubeLivestreamVideoIds">
-    /// Each YouTube channel's livestream playlist video IDs from its last complete check, keyed by channel ID; looked up
-    /// while the next check's playlist request is in flight.
-    /// </param>
+    /// <param name="KickAppAccessToken"> Kick token reused between sessions until near expiry. </param>
+    /// <param name="YouTubeLivestreamVideoIds"> Video IDs from each channel's last complete playlist check, keyed by channel ID. </param>
     public sealed record Cache(
         KickAppAccessToken KickAppAccessToken,
         IReadOnlyDictionary<string, IReadOnlyList<string>> YouTubeLivestreamVideoIds)
@@ -39,12 +30,12 @@ namespace Livestream.Monitor.Core
     {
         private const string CacheFileName = "cache.bin";
 
-        // Raised whenever the layout changes; a cache written in another layout is ignored.
+        // Increment when the cache format changes; other versions are ignored.
         private const int FormatVersion = 1;
-        // Bounds the counts read from the file, so a damaged one cannot request huge allocations.
+        // Cap counts read from the file so a damaged cache can't cause huge allocations.
         private const int MaxEntries = 100_000;
 
-        // Kick's token and YouTube's video IDs are saved from background query threads.
+        // Serialize background updates so one provider doesn't overwrite another's cache changes.
         private readonly Lock updateLock = new();
         private Cache cache;
 
@@ -143,7 +134,7 @@ namespace Livestream.Monitor.Core
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {
-                // The session keeps the data in memory; the next session only repeats the requests it would have saved.
+                // Keep using the in-memory cache if saving fails.
             }
         }
     }

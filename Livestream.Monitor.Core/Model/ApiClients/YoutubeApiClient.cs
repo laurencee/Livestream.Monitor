@@ -18,10 +18,9 @@ namespace Livestream.Monitor.Model.ApiClients
     {
         public const string API_NAME = "youtube";
 
-        // YouTube answers a few playlist entries markedly faster than a full page (about 330 ms against 500-750 ms).
+        // Keep the initial playlist request small to reduce startup delay.
         private const int QuickCheckCandidates = 5;
-        // Old livestreams can still be running far down the playlist; scanning past the first page can exceed the refresh
-        // timeout.
+        // Older entries may still be live, but scanning more than one page can exceed the refresh timeout.
         private const int CompleteCheckCandidates = 50;
 
         private readonly IYoutubeReadonlyClient youtubeClient = youtubeClient ?? throw new ArgumentNullException(nameof(youtubeClient));
@@ -101,8 +100,8 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         /// <summary>
-        /// Checks the entries each channel's last complete check read, or the first few playlist entries of a channel without
-        /// one, so it misses livestreams that no complete check has seen.
+        /// Checks known video IDs, or a few recent playlist entries if the channel has no cache entry.
+        /// Channels with cached IDs need a complete check to discover newer livestreams.
         /// </summary>
         public Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken)
         {
@@ -205,11 +204,6 @@ namespace Livestream.Monitor.Model.ApiClients
             return new ChannelIdentifier(this, channelDetails.Id);
         }
 
-        /// <summary>
-        /// Checks <paramref name="identifiers"/>; a complete check keeps their playlist entries for the next check, and forgets
-        /// other channels' entries when <paramref name="forgetOtherChannels"/> says the identifiers are every followed channel,
-        /// unless another check stored them since this one started.
-        /// </summary>
         private async Task<List<LivestreamQueryResult>> QueryChannels(
             IReadOnlyCollection<ChannelIdentifier> identifiers,
             bool complete,
@@ -224,19 +218,18 @@ namespace Livestream.Monitor.Model.ApiClients
 
                 try
                 {
-                    // More known IDs than a complete check reads come from a damaged cache, and one lookup cannot take them.
+                    // Ignore cache entries that exceed the video lookup limit.
                     var checkedBefore = knownVideoIds.TryGetValue(channelIdentifier.ChannelId, out var known) &&
                                         known.Count <= CompleteCheckCandidates;
                     if (!checkedBefore) known = [];
 
-                    // Even a few playlist entries take YouTube twice as long as the known-video lookup, so a quick check reads
-                    // none for a channel a complete check has read; a livestream started since then waits for the next one.
+                    // Quick checks skip the playlist for channels with known IDs; a livestream started since waits for the next complete check.
                     var candidates = complete ? CompleteCheckCandidates : checkedBefore ? 0 : QuickCheckCandidates;
                     var videos = await GetLivestreamVideos(channelIdentifier.ChannelId, candidates, known, cancellationToken);
                     playlistVideoIds = videos.PlaylistVideoIds;
 
-                    // A complete check reports only broadcasts on the playlist page it read, as before; a quick check reads too
-                    // little of the playlist to rule out the known videos.
+                    // Complete checks report only broadcasts on the playlist page they read.
+                    // Quick checks read too little of the playlist to rule out known videos.
                     var liveVideos = complete ? videos.LiveVideos.Where(x => playlistVideoIds.Contains(x.Id)).ToList() : videos.LiveVideos;
                     var livestreamModels = MapLivestreamModels(channelIdentifier, liveVideos);
 
@@ -276,14 +269,14 @@ namespace Livestream.Monitor.Model.ApiClients
 
             return checks.SelectMany(x => x.QueryResults).ToList();
 
-            // Each checked channel's playlist entries are kept for the next check; a failed check keeps the earlier ones.
+            // Keep the previous IDs for channels whose check failed.
             Cache KeepPlaylistEntries(Cache cache)
             {
                 var previous = cache.YouTubeLivestreamVideoIds;
                 var checkedChannelIds = checks.Select(x => x.ChannelId).ToHashSet();
                 var updated = new Dictionary<string, IReadOnlyList<string>>();
 
-                // Entries still the instances read at the start were stored by no concurrent check, e.g. one adding a channel.
+                // Don't remove IDs replaced by a concurrent check, e.g. while adding a channel.
                 foreach (var (channelId, ids) in previous)
                 {
                     var forget = forgetOtherChannels &&
@@ -297,8 +290,8 @@ namespace Livestream.Monitor.Model.ApiClients
                     if (check.PlaylistVideoIds != null)
                         updated[check.ChannelId] = check.PlaylistVideoIds;
 
-                // A check of chosen channels publishes even unchanged entries as new instances, so a concurrent full check
-                // sees them as stored since it started.
+                // Publish new list instances for individual channel checks, even when the IDs haven't changed.
+                // This stops a concurrent full check from removing them as stale entries.
                 var unchanged = forgetOtherChannels &&
                                 updated.Count == previous.Count &&
                                 updated.All(x => previous.TryGetValue(x.Key, out var ids) && ids.SequenceEqual(x.Value));
@@ -310,8 +303,8 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <param name="PlaylistVideoIds"> Null when the check failed. </param>
         private sealed record ChannelCheck(string ChannelId, List<LivestreamQueryResult> QueryResults, List<string> PlaylistVideoIds);
 
-        /// <param name="LiveVideos"> The live videos among the playlist entries and the known videos. </param>
-        /// <param name="PlaylistVideoIds"> The video IDs of the playlist entries read that have one, newest first. </param>
+        /// <param name="LiveVideos"> Live videos from both the playlist and known IDs. </param>
+        /// <param name="PlaylistVideoIds"> IDs from the playlist only, newest first. </param>
         private sealed record LivestreamVideos(List<Video> LiveVideos, List<string> PlaylistVideoIds);
 
         private sealed record KnownVideosLookup(IReadOnlyList<string> VideoIds, Lazy<Task<List<Video>>> LiveVideos)
@@ -320,8 +313,9 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         /// <summary>
-        /// Finds a channel's live broadcasts among the first <paramref name="candidates"/> entries of its livestream playlist,
-        /// none meaning no playlist request, and among <paramref name="knownVideoIds"/>, at most 50 of its videos.
+        /// Finds live broadcasts among recent playlist entries and known video IDs.
+        /// <paramref name="candidates"/> is the number of playlist entries to read; zero skips the playlist request.
+        /// <paramref name="knownVideoIds"/> contains up to 50 video IDs to check alongside the playlist.
         /// </summary>
         private async Task<LivestreamVideos> GetLivestreamVideos(
             string channelId,
@@ -362,14 +356,14 @@ namespace Livestream.Monitor.Model.ApiClients
 
             async Task<LivestreamVideos> ReadLivestreamVideos()
             {
-                // The known videos are usually the playlist entries already, so no lookup has to wait for the playlist.
+                // Start the known-video lookup without waiting for the playlist.
                 var knownLookup = LookUpKnownVideos(channelId, knownVideoIds, cancellationToken);
                 if (candidates == 0) return new LivestreamVideos([.. await knownLookup], []);
 
                 var playlistRequest = youtubeClient.GetLivestreamPlaylistVideoIds(channelId, candidates, cancellationToken);
                 await Task.WhenAll(knownLookup, playlistRequest);
 
-                // The known lookup's list can be shared with another check, so it is copied.
+                // Copy before adding videos; another check may be using the same result list.
                 List<Video> liveVideos = [.. await knownLookup];
                 var playlistVideoIds = await playlistRequest;
                 var unknownVideoIds = playlistVideoIds.Except(knownVideoIds).ToList();
@@ -380,16 +374,15 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         /// <summary>
-        /// Looks up which known videos are live, sharing the request of a check of the same videos still waiting for it, such as
-        /// the quick and complete checks at startup; the shared request ends with the first check's cancellation, and each check
-        /// stops waiting at its own.
+        /// Shares an in-flight lookup for the same known ID list instance.
+        /// The first caller's token cancels the request; each caller's token cancels its own wait.
         /// </summary>
         private Task<List<Video>> LookUpKnownVideos(string channelId, IReadOnlyList<string> knownVideoIds, CancellationToken cancellationToken)
         {
             if (knownVideoIds.Count == 0) return Task.FromResult(new List<Video>());
 
-            // Concurrent checks run on thread pool threads; the request starts outside the lock, once, through the Lazy, whose
-            // async factory turns even a synchronous failure into a faulted task rather than a cached exception.
+            // Lazy starts the shared request once, outside the lock.
+            // The async wrapper turns synchronous failures into faulted tasks so later checks can replace the failed lookup.
             KnownVideosLookup lookup;
             lock (knownVideosLookups)
             {

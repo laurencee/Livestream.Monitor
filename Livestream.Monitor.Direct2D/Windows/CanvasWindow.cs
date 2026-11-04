@@ -39,8 +39,7 @@ internal abstract class CanvasWindow : DesktopWindow
     private const int HitBottomLeft = 16;
     private const int HitBottomRight = 17;
 
-    // Tooltip delays in milliseconds: the initial hover time and the window after one closes during which the next
-    // opens at once.
+    // Delays in ms. Moving to another tooltip within the between-show delay skips the initial hover delay.
     private const long ToolTipInitialShowDelay = 250;
     private const long ToolTipBetweenShowDelay = 100;
     private static readonly ThemePalette DefaultPalette = Theme.Create(new Settings());
@@ -447,10 +446,7 @@ internal abstract class CanvasWindow : DesktopWindow
         return true;
     }
 
-    /// <summary>
-    /// Opens the tooltip of the region under the pointer once the pointer has stayed on it for the initial delay; it
-    /// stays open until the pointer leaves that region, a button is pressed or a key is typed.
-    /// </summary>
+    /// <summary>Shows tooltips after a hover delay; leaving the region, pressing a key, scrolling or pressing the left mouse button hides them.</summary>
     private void UpdateToolTip()
     {
         var now = Environment.TickCount64;

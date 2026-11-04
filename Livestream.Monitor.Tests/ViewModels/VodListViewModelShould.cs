@@ -23,7 +23,7 @@ public class VodListViewModelShould
     [Fact]
     public async Task LaunchEachClickedVodUsingItsOwnProviderUrlAndTitle()
     {
-        // An invalid executable name keeps the test at the launch boundary without starting a player.
+        // Use an invalid executable name so the test can't start a player.
         const string Player = "invalid|vod-player";
         var configuration = new Settings
         {

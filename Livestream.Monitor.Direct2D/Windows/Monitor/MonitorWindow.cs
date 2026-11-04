@@ -1573,7 +1573,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         NeedsPaint = true;
     }
 
-    // The items, text and order of the WPF frontend's context menus.
+    // Keep menu items, text and order consistent with WPF.
     private void ShowContextMenu()
     {
         if (state.Page == MonitorPage.Vods)

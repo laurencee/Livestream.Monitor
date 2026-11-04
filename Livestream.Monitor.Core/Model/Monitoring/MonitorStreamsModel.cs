@@ -22,7 +22,6 @@ namespace Livestream.Monitor.Model.Monitoring
         private LivestreamModel selectedLivestream;
         private Task<List<ChannelIdentifier>> initialChannels;
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> initialQueries = new();
-        // Complete queries of the providers whose initial query is quick, applied after the quick results.
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> completeInitialQueries = new();
         private Dictionary<ChannelIdentifier, string> initialNames;
         private DateTimeOffset initialQueryStartedAt;
@@ -118,14 +117,14 @@ namespace Livestream.Monitor.Model.Monitoring
         public event EventHandler ProviderRefreshComplete;
 
         /// <summary>
-        /// True when the initial query has finished for every provider with channels, so <see cref="Initialize"/> needs
-        /// no further network wait or authorization prompt.
+        /// True once followed channels are loaded and every provider with channels has finished its initial query.
+        /// <see cref="Initialize"/> then needs no network wait or authorization prompt. False after initialization.
         /// </summary>
         public bool IsInitialQueryComplete
         {
             get
             {
-                // The initial channels task completing publishes the initial queries it added.
+                // The queries are safe to read only after initialChannels completes.
                 if (initialChannels is not { IsCompletedSuccessfully: true } || Initialised) return false;
 
                 var channels = initialChannels.Result;
@@ -181,7 +180,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 using var timeout = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
                 try
                 {
-                    // A failed authorization is reported as these channels' query failure.
+                    // Report authorization failures as query failures for this provider's channels.
                     await preparation;
                     return quick ? await apiClient.QueryChannelsQuickly(timeout.Token) : await apiClient.QueryChannels(timeout.Token);
                 }
@@ -249,14 +248,13 @@ namespace Livestream.Monitor.Model.Monitoring
                 Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
                 CanRefreshLivestreams = Livestreams.Any();
 
-                // Initialization waits only for each provider's first results; the refresh carries on in the background
-                // to apply the complete results of providers that answered a quick query first.
+                // Return after each provider's first results; complete queries can finish in the background.
                 var initialResultsApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 var refresh = RefreshLivestreams(initialResultsApplied);
                 await Task.WhenAny(initialResultsApplied.Task, refresh);
 
-                // Set initial results win even if the refresh finished too; a refresh with nothing to refresh, or one failing
-                // before it applies results, never sets them.
+                // Prefer the initial result task so its query failures aren't lost if both tasks have finished.
+                // An empty or early-failing refresh may never complete that task.
                 await (initialResultsApplied.Task.IsCompleted ? initialResultsApplied.Task : refresh);
             }
             finally // don't stop initialization just due to something failing during stream refreshing
@@ -312,8 +310,8 @@ namespace Livestream.Monitor.Model.Monitoring
         public Task RefreshLivestreams() => RefreshLivestreams(initialResultsApplied: null);
 
         /// <param name="initialResultsApplied">
-        /// Set, or failed with the query failures, once each provider's first results are applied; the refresh then applies
-        /// the complete results that follow quick initial queries before it completes.
+        /// Set after each provider's first results are applied, or faulted with the query failures.
+        /// Complete queries may still be running.
         /// </param>
         private async Task RefreshLivestreams(TaskCompletionSource initialResultsApplied)
         {
@@ -334,15 +332,14 @@ namespace Livestream.Monitor.Model.Monitoring
                 using var timeoutTokenSource = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
                 var cancellationToken = timeoutTokenSource.Token;
 
-                // Providers without channels are skipped; their instant empty results would count as a provider's rows arriving.
+                // Providers without channels mustn't count as the first results arriving.
                 var queriedProviders = apiClientFactory.GetAll().Where(apiClient => channelIdentifiers.Any(x => x.ApiClient == apiClient));
                 var completeQueries = new List<Task<List<LivestreamQueryResult>>>();
                 var providerQueries = queriedProviders.Select(QueryProvider).ToList();
                 var livestreamQueryResults = new List<LivestreamQueryResult>();
 
-                // Each provider's results are applied as it finishes, one at a time, so a slow provider does not hold back
-                // the others' rows.
-                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- queries end at the deadline with failure results to collect
+                // Apply results as each provider finishes so slow providers don't hold up the others.
+                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- collect failure results after the query deadline
                 await foreach (var providerQuery in Task.WhenEach(providerQueries))
                     livestreamQueryResults.AddRange(ApplyResults(await providerQuery));
 
@@ -354,9 +351,8 @@ namespace Livestream.Monitor.Model.Monitoring
                     else initialResultsApplied.SetResult();
                 }
 
-                // Complete results replace quick ones; a failed complete query goes unreported, as the quick results stand
-                // until the next refresh.
-                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- initial queries end at their own deadline
+                // Keep quick results if the complete query fails; don't report that failure.
+                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- initial queries have their own deadline
                 await foreach (var completeQuery in Task.WhenEach(completeQueries)) ApplyResults(await completeQuery);
 
                 var namesChanged = channelIdentifiers.Any(x => savedNames.TryGetValue(x, out string name) && name != x.DisplayName);
@@ -369,9 +365,9 @@ namespace Livestream.Monitor.Model.Monitoring
                 {
                     var providerResults = queryResults.Where(x => channelIdentifiers.Contains(x.ChannelIdentifier)).ToList();
 
-                    // Failed channels retain their previous state instead of disappearing or becoming offline.
+                    // Keep the previous state for channels whose query failed, and still publish the others' changes.
                     PopulateLivestreams(providerResults.Where(x => x.IsSuccess).ToList());
-                    // Publish successful state changes even when another channel failed.
+
                     NotifyOfPropertyChange(() => CanOpenStream);
                     ProviderRefreshComplete?.Invoke(this, EventArgs.Empty);
                     return providerResults;
@@ -390,7 +386,7 @@ namespace Livestream.Monitor.Model.Monitoring
                                 DateTimeOffset.UtcNow - initialQueryStartedAt < Constants.HalfRefreshPollingTime;
                             if (useInitialResults && completeQuery != null) completeQueries.Add(completeQuery);
 
-                            // Finish the old requests before re-querying so they cannot mutate provider state alongside it.
+                            // Wait for old requests before re-querying so both can't update provider state at once.
                             var initialResults = await initialQuery;
                             if (useInitialResults) return initialResults;
                             if (completeQuery != null) await completeQuery;

@@ -122,7 +122,7 @@ public sealed class SurfaceUiShould : IDisposable
         var measuredUi = new SurfaceUi(window, commands)
         {
             MeasureWidth = MeasureText,
-            // The callback checks that layout passes the exact text, width and font to the renderer.
+            // The callback verifies the renderer arguments.
             // ReSharper disable ParameterOnlyUsedForPreconditionCheck.Local
             MeasureWrapped = (text, width, size, weight) =>
             {

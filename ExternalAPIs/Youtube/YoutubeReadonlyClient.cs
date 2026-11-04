@@ -30,7 +30,6 @@ namespace ExternalAPIs.Youtube
             var query = new PlaylistItemsQuery(playlistId) { ItemsPerPage = maxEntries };
             var playlistItems = await GetPlaylistItems(query, cancellationToken);
 
-            // An entry without a video ID can be neither looked up nor kept for the next check.
             return playlistItems.Items.Select(x => x.ContentDetails.VideoId).Where(id => id != null).ToList();
         }
 
@@ -38,7 +37,7 @@ namespace ExternalAPIs.Youtube
         {
             ArgumentNullException.ThrowIfNull(videoIds);
 
-            // A partial response with only the fields a livestream is shown from arrives sooner.
+            // Request only the fields used to display livestreams.
             // https://developers.google.com/youtube/v3/getting-started#fields
             const string LiveVideoFields =
                 "items(id,snippet(channelTitle,title,liveBroadcastContent,thumbnails(default/url,standard/url,maxres/url)),liveStreamingDetails(actualStartTime,activeLiveChatId,concurrentViewers))";

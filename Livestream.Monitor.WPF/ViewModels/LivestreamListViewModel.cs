@@ -318,8 +318,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             {
                 await RefreshLivestreams();
 
-                // The rows are now shown sorted, but the model's first refresh can still be applying complete results, which it
-                // ends by raising LivestreamsRefreshComplete; their view refreshes wait for that.
+                // The first refresh may still be applying complete results; defer their view refreshes until LivestreamsRefreshComplete.
                 if (!StreamsModel.CanRefreshLivestreams && StreamsModel.Livestreams.Any())
                 {
                     BeginViewRefreshBatch();

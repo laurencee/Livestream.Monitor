@@ -143,8 +143,8 @@ internal sealed class MonitorWindowState : ObservableModel
     }
 
     /// <summary>
-    /// Loads the followed channels and runs their first refresh. The rows replace the progress dialog once the first
-    /// provider's results are applied; the state stays busy until every provider's first results are in.
+    /// Loads followed channels and starts the first refresh. Shows rows after the first provider's results are applied,
+    /// but stays busy until every provider's first results are applied.
     /// </summary>
     public async Task Initialize()
     {
@@ -161,7 +161,7 @@ internal sealed class MonitorWindowState : ObservableModel
             finally
             {
                 StreamsModel.ProviderRefreshComplete -= ShowRows;
-                // Closed before a failure is reported.
+                // Close the progress dialog before showing an error.
                 CloseProgress();
             }
 
@@ -175,7 +175,7 @@ internal sealed class MonitorWindowState : ObservableModel
 
             void CloseProgress()
             {
-                // ReSharper disable once AccessToModifiedClosure -- cleared so the first provider and the finally close it once
+                // ReSharper disable once AccessToModifiedClosure -- clearing progress prevents the finally block from disposing it twice
                 progress?.Dispose();
                 progress = null;
             }

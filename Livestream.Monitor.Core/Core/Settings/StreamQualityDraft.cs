@@ -54,7 +54,7 @@ internal sealed class StreamQualityDraft
     private FavoriteQualities GetSaved(string apiName) =>
         settings.GetSavedStreamQualities(apiName);
 
-    // Saved values and drafts must never share a list: edits stay private until Save.
+    // Copy the list so draft edits don't change saved settings.
     private static FavoriteQualities Copy(FavoriteQualities source) => new()
     {
         Qualities = source.Qualities.ToList(),

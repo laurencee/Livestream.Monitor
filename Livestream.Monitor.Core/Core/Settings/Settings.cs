@@ -143,7 +143,7 @@ namespace Livestream.Monitor.Core.Settings
             return FavoriteApiQualities.ContainsKey(AllStreamQualitiesKey) ? GetSavedStreamQualities(AllStreamQualitiesKey) : qualities;
         }
 
-        /// <summary>Reads saved preferences with null values treated as defaults, without applying All or changing stored data.</summary>
+        /// <summary> Reads saved preferences, using defaults for null values. Does not apply the All fallback or change saved settings. </summary>
         internal FavoriteQualities GetSavedStreamQualities(string apiName)
         {
             FavoriteApiQualities.TryGetValue(apiName, out var qualities);

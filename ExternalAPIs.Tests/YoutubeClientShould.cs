@@ -72,7 +72,6 @@ namespace ExternalAPIs.Tests
 
             Assert.NotEmpty(onlineVideos);
 
-            // The fields filter keeps the fields every shown livestream has.
             var video = onlineVideos[0];
             Assert.NotNull(video.Id);
             Assert.NotNull(video.Snippet.Title);

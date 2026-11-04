@@ -24,7 +24,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Check if the user is authorized to interact with this api </summary>
         bool IsAuthorized { get; }
 
-        /// <summary> True when <see cref="Authorize"/> needs no prompts, so it can run before any view exists </summary>
+        /// <summary> True when <see cref="Authorize"/> can run without prompting the user </summary>
         bool CanAuthorizeWithoutUserInput { get; }
 
         /// <summary> True when <see cref="QueryChannelsQuickly"/> is faster than <see cref="QueryChannels"/> </summary>
@@ -59,9 +59,8 @@ namespace Livestream.Monitor.Model.ApiClients
         Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken);
 
         /// <summary>
-        /// Queries the followed channels faster than <see cref="QueryChannels"/> where <see cref="HasQuickQuerySupport"/> is
-        /// true, but its results can differ from those of <see cref="QueryChannels"/>, which runs at the same time on startup;
-        /// otherwise the same as it.
+        /// Queries followed channels using the faster query when <see cref="HasQuickQuerySupport"/> is true.
+        /// Results may differ from <see cref="QueryChannels"/>. Otherwise uses the normal query.
         /// </summary>
         Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken);
 

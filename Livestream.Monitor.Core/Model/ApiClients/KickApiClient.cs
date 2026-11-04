@@ -34,7 +34,6 @@ public class KickApiClient : IApiClient
     {
     }
 
-    /// <summary>Lets tests replace the request to Kick's token endpoint.</summary>
     internal KickApiClient(IKickReadonlyClient client, ICacheHandler cacheHandler, Func<Task<AuthResponse>> requestAccessToken)
     {
         this.client = client ?? throw new ArgumentNullException(nameof(client));
@@ -99,7 +98,7 @@ so we might as well just do machine-to-machine auth
 
         if (IsAuthorized) return;
 
-        // The token lasts about 60 days, so one saved by an earlier session is reused until shortly before it expires.
+        // Reuse the saved token until shortly before it expires.
         var renewalMargin = TimeSpan.FromDays(1);
         var saved = cacheHandler.Cache.KickAppAccessToken;
         if (!string.IsNullOrWhiteSpace(saved?.Token) && saved.ExpiresAt > DateTimeOffset.UtcNow + renewalMargin)
@@ -143,7 +142,7 @@ so we might as well just do machine-to-machine auth
         return JsonSerializer.Deserialize<AuthResponse>(content, JsonDefaults.Options);
     }
 
-    // A saved token can be revoked before it expires; Kick then rejects it, so a new one is requested and the call retried once.
+    // A token can be revoked before expiry, so renew it and retry once on 401.
     private async Task<T> WithTokenRenewal<T>(Func<Task<T>> request)
     {
         try
@@ -262,7 +261,7 @@ so we might as well just do machine-to-machine auth
     {
         if (channelIdentifiers.Count == 0) return [];
 
-        // An authorization that failed earlier, e.g. at startup, is retried so Kick recovers without a restart.
+        // Retry failed authorization so Kick can recover without a restart.
         if (!IsAuthorized) await Authorize(screen: null);
 
         var query = new GetChannelsQuery()
