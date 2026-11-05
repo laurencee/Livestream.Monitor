@@ -21,6 +21,7 @@ namespace Livestream.Monitor.Core.Settings
         nameof(HideStreamOutputMessageBoxOnLoad),
         nameof(FavoriteApiQualities),
         nameof(ExcludeFromNotifying),
+        nameof(ShowOnlineOnly),
         nameof(LivestreamListSortState))]
     public class Settings : ObservableModel
     {
@@ -110,6 +111,12 @@ namespace Livestream.Monitor.Core.Settings
         [JsonInclude]
         [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
         public ObservableList<UniqueStreamKey> ExcludeFromNotifying { get; private set; } = [];
+
+        public bool ShowOnlineOnly
+        {
+            get;
+            set => Set(ref field, value);
+        }
 
         public DataGridSortState LivestreamListSortState
         {

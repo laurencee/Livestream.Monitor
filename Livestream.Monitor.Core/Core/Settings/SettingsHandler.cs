@@ -211,7 +211,8 @@ namespace Livestream.Monitor.Core.Settings
         private void SettingsOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName != nameof(settings.MetroThemeBaseColour) &&
-                e.PropertyName != nameof(settings.MetroThemeAccentColour))
+                e.PropertyName != nameof(settings.MetroThemeAccentColour) &&
+                e.PropertyName != nameof(settings.ShowOnlineOnly))
             {
                 return;
             }

@@ -50,6 +50,7 @@ internal sealed class MonitorWindowState : ObservableModel
         this.dialogs = dialogs;
         this.showProgress = showProgress;
         SettingsHandler = settingsHandler ?? new SettingsHandler();
+        OnlineOnly = SettingsHandler.Settings.ShowOnlineOnly;
         ApiClientFactory = apiClientFactory ?? new ApiClientFactory(SettingsHandler);
         var fileHandler = new MonitoredStreamsFileHandler(ApiClientFactory);
         StreamsModel = monitorStreamsModel ?? new MonitorStreamsModel(fileHandler, SettingsHandler, ApiClientFactory);

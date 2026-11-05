@@ -348,6 +348,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             () =>
             {
                 state.OnlineOnly = !state.OnlineOnly;
+                state.SettingsHandler.Settings.ShowOnlineOnly = state.OnlineOnly;
                 FilterChanged();
             },
             toolTip: "Show live channels only",

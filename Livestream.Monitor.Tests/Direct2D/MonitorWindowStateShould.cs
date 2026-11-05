@@ -314,7 +314,8 @@ public class MonitorWindowStateShould
     [Fact]
     public void CombineNameProviderAndOnlineFilters()
     {
-        var model = Create();
+        var settings = new Settings { ShowOnlineOnly = true };
+        var model = Create(savedSettings: settings);
         model.StreamsModel.Livestreams.AddRange([
             Stream(id: "one", name: "Example", provider: "twitchtv", online: true, viewers: 5),
             Stream(id: "two", name: "Example other", provider: "youtube", online: true, viewers: 10),
@@ -322,7 +323,6 @@ public class MonitorWindowStateShould
         ]);
         model.Filter = "EXAMPLE";
         model.ProviderFilter = "twitchtv";
-        model.OnlineOnly = true;
         model.RebuildRows();
         Assert.Equal("one", Assert.Single(model.Rows).Id);
     }
@@ -454,10 +454,13 @@ public class MonitorWindowStateShould
         await dialogs.Received().ShowMessage(Arg.Any<string>(), $"First failed.{Environment.NewLine}Second failed.");
     }
 
-    private static MonitorWindowState Create(IUserDialogs dialogs = null, Func<string, string, IDisposable> showProgress = null)
+    private static MonitorWindowState Create(
+        IUserDialogs dialogs = null,
+        Func<string, string, IDisposable> showProgress = null,
+        Settings savedSettings = null)
     {
         var settings = Substitute.For<ISettingsHandler>();
-        settings.Settings.Returns(new Settings());
+        settings.Settings.Returns(savedSettings ?? new Settings());
         var streams = Substitute.For<IMonitorStreamsModel>();
         streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
         return new MonitorWindowState(

@@ -18,6 +18,7 @@
                  controls:TextBoxHelper.ClearTextButton="True" />
         <ComboBox ItemTemplate="{StaticResource PlatformFilterTemplate}" x:Name="FilterModel_ApiClientNames" Margin="2" />
         <ToggleButton x:Name="ToggleShowOnlineOnly" Margin="2"
+                      IsChecked="{Binding FilterModel.ShowOnlineOnly, Mode=OneWay}"
                       ToolTip="Show live channels only">
             <Image Height="13" RenderOptions.BitmapScalingMode="HighQuality">
                 <Image.Style>

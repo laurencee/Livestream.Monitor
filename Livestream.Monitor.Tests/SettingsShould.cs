@@ -59,6 +59,7 @@ public class SettingsShould
     [InlineData("DisableNotifications")]
     [InlineData("HideStreamOutputMessageBoxOnLoad")]
     [InlineData("FavoriteApiQualities")]
+    [InlineData("ShowOnlineOnly")]
     public void KeepDefaultsForSettingsThatIgnoreNull(string property)
     {
         var json = $$$"""{"{{{property}}}":null,"Twitch":{"AuthToken":"retained-token"}}""";
@@ -68,8 +69,28 @@ public class SettingsShould
         Assert.Equal(defaults.MinimumEventViewers, settings.MinimumEventViewers);
         Assert.Equal(defaults.MetroThemeBaseColour, settings.MetroThemeBaseColour);
         Assert.Equal(defaults.MetroThemeAccentColour, settings.MetroThemeAccentColour);
+        Assert.False(settings.ShowOnlineOnly);
         Assert.Empty(settings.FavoriteApiQualities);
         Assert.Equal("retained-token", settings.Twitch.AuthToken);
+    }
+
+    [Fact]
+    public void PersistOnlineOnlyPreference()
+    {
+        InTemporaryDirectory(() =>
+        {
+            var json = $$"""{"SettingsVersion":{{Settings.CurrentSettingsVersion}}}""";
+            File.WriteAllText(SettingsHandler.SettingsFileName, json);
+            var settings = new SettingsHandler().Settings;
+            Assert.False(settings.ShowOnlineOnly);
+
+            settings.ShowOnlineOnly = true;
+            var restored = new SettingsHandler().Settings;
+            Assert.True(restored.ShowOnlineOnly);
+
+            restored.ShowOnlineOnly = false;
+            Assert.False(new SettingsHandler().Settings.ShowOnlineOnly);
+        });
     }
 
     [Theory]

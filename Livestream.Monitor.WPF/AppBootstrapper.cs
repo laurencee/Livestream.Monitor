@@ -99,9 +99,17 @@ namespace Livestream.Monitor.WPF
 
         protected override async void OnStartup(object sender, System.Windows.StartupEventArgs e)
         {
+            var settings = container.GetInstance<ISettingsHandler>().Settings;
+            var filter = container.GetInstance<FilterModel>();
+            filter.ShowOnlineOnly = settings.ShowOnlineOnly;
+            filter.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(FilterModel.ShowOnlineOnly)) settings.ShowOnlineOnly = filter.ShowOnlineOnly;
+            };
+
             container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
             await DisplayRootViewForAsync<ShellViewModel>();
-            container.GetInstance<ISettingsHandler>().Settings.PropertyChanged += (_, args) =>
+            settings.PropertyChanged += (_, args) =>
             {
                 if (args.PropertyName != nameof(Settings.MetroThemeBaseColour) &&
                     args.PropertyName != nameof(Settings.MetroThemeAccentColour))
@@ -109,7 +117,6 @@ namespace Livestream.Monitor.WPF
                     return;
                 }
 
-                var settings = container.GetInstance<ISettingsHandler>().Settings;
                 var baseColour = settings.MetroThemeBaseColour.ToString().Replace("Base", "");
                 var themeName = $"{baseColour}.{settings.MetroThemeAccentColour}";
                 ControlzEx.Theming.ThemeManager.Current.ChangeTheme(System.Windows.Application.Current, themeName);
