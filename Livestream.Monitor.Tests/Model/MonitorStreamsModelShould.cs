@@ -185,9 +185,67 @@ public class MonitorStreamsModelShould
         await provider.DidNotReceive().Authorize(null);
     }
 
-    private static MonitorStreamsModel CreateModel(List<ChannelIdentifier> channels, params IApiClient[] providers)
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SaveALoginLearnedDuringPollingEvenWhenTheDisplayNameIsUnchanged(bool queryBeforeInitializing)
     {
+        var provider = CreateProvider(TwitchApiClient.API_NAME);
+        var channel = new ChannelIdentifier(provider, "42") { DisplayName = "한동숙" };
+        var stream = new LivestreamModel("42", channel) { DisplayName = channel.DisplayName };
+        List<LivestreamQueryResult> results = [new(channel) { LivestreamModel = stream }];
+        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            channel.TwitchLogin = "known_login";
+            return results;
+        });
         var fileHandler = Substitute.For<IMonitoredStreamsFileHandler>();
+        var sut = CreateModel([channel], fileHandler, provider);
+        var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.TrySetResult();
+
+        if (queryBeforeInitializing) sut.BeginInitialQuery();
+        await sut.Initialize(Substitute.For<IUserDialogs>());
+        await refreshComplete.Task;
+
+        fileHandler.Received(1).SaveToDisk(Arg.Is<IEnumerable<ChannelIdentifier>>(channels => channels.Single().TwitchLogin == "known_login"));
+    }
+
+    [Fact]
+    public async Task SaveALoginLearnedBetweenRefreshesAndStopWatchingARemovedChannel()
+    {
+        var provider = CreateProvider(TwitchApiClient.API_NAME);
+        var channel = new ChannelIdentifier(provider, "42") { DisplayName = "한동숙" };
+        var stream = new LivestreamModel("42", channel) { DisplayName = channel.DisplayName };
+        List<LivestreamQueryResult> results = [new(channel) { LivestreamModel = stream }];
+        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(results);
+        var fileHandler = Substitute.For<IMonitoredStreamsFileHandler>();
+        var sut = CreateModel([channel], fileHandler, provider);
+        var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.TrySetResult();
+        await sut.Initialize(Substitute.For<IUserDialogs>());
+        await refreshComplete.Task;
+        fileHandler.ClearReceivedCalls();
+
+        channel.TwitchLogin = "known_login";
+
+        fileHandler.Received(1).SaveToDisk(Arg.Any<IEnumerable<ChannelIdentifier>>());
+
+        await sut.RemoveLivestream(channel, Substitute.For<IUserDialogs>());
+        fileHandler.ClearReceivedCalls();
+        channel.TwitchLogin = "renamed_login";
+
+        fileHandler.DidNotReceive().SaveToDisk(Arg.Any<IEnumerable<ChannelIdentifier>>());
+    }
+
+    private static MonitorStreamsModel CreateModel(List<ChannelIdentifier> channels, params IApiClient[] providers) =>
+        CreateModel(channels, Substitute.For<IMonitoredStreamsFileHandler>(), providers);
+
+    private static MonitorStreamsModel CreateModel(
+        List<ChannelIdentifier> channels,
+        IMonitoredStreamsFileHandler fileHandler,
+        params IApiClient[] providers)
+    {
         fileHandler.LoadFromDisk().Returns(channels);
         var settingsHandler = Substitute.For<ISettingsHandler>();
         settingsHandler.Settings.Returns(new Settings());

@@ -184,6 +184,63 @@ public class SettingsShould
         });
     }
 
+    [Theory]
+    [InlineData("twitchtv", "Known_Login", "known_login", false)]
+    [InlineData("twitchtv", "한동숙", "known_login", true)]
+    [InlineData("twitchtv", "OldName", "known_login", true)]
+    [InlineData("twitchtv", "Known_Login", null, false)]
+    [InlineData("kick", "한동숙", "known_login", false)]
+    public async Task SaveOnlyTwitchLoginsThatDifferFromTheDisplayName(
+        string providerName,
+        string displayName,
+        string login,
+        bool shouldStore)
+    {
+        await InTemporaryDirectory(async () =>
+        {
+            var provider = Substitute.For<IApiClient>();
+            provider.ApiName.Returns(providerName);
+            var factory = Substitute.For<IApiClientFactory>();
+            factory.GetByName(providerName).Returns(provider);
+            var channel = new ChannelIdentifier(provider, "42") { DisplayName = displayName, TwitchLogin = login };
+            var fileHandler = new MonitoredStreamsFileHandler(factory);
+
+            fileHandler.SaveToDisk([channel]);
+
+            using var saved = JsonDocument.Parse(await File.ReadAllTextAsync("livestreams.json"));
+            var entry = saved.RootElement.GetProperty("LivestreamFileEntries")[0];
+            Assert.Equal(shouldStore, entry.TryGetProperty("TwitchLogin", out var savedLogin));
+            if (shouldStore) Assert.Equal(login, savedLogin.GetString());
+
+            var loaded = Assert.Single(await new MonitoredStreamsFileHandler(factory).LoadFromDisk());
+            Assert.Equal(shouldStore ? login : null, loaded.TwitchLogin);
+            Assert.Equal(displayName, loaded.DisplayName);
+
+            loaded.DisplayName = login ?? displayName;
+            fileHandler.SaveToDisk([loaded]);
+
+            Assert.DoesNotContain("\"TwitchLogin\"", await File.ReadAllTextAsync("livestreams.json"));
+        });
+    }
+
+    [Fact]
+    public async Task ReadOlderLivestreamEntriesWithoutATwitchLogin()
+    {
+        await InTemporaryDirectory(async () =>
+        {
+            const string Json = """{"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42","StreamProvider":"twitchtv","DisplayName":"Channel"}]}""";
+            await File.WriteAllTextAsync("livestreams.json", Json);
+            var provider = Substitute.For<IApiClient>();
+            var factory = Substitute.For<IApiClientFactory>();
+            factory.GetByName("twitchtv").Returns(provider);
+
+            var channel = Assert.Single(await new MonitoredStreamsFileHandler(factory).LoadFromDisk());
+
+            Assert.Equal("Channel", channel.DisplayName);
+            Assert.Null(channel.TwitchLogin);
+        });
+    }
+
     [Fact]
     public void KeepNonAsciiAndSymbolsReadableInSavedFiles()
     {

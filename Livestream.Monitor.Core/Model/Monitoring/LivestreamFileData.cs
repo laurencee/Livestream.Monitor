@@ -27,6 +27,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public string DisplayName { get; set; }
 
+        public string TwitchLogin { get; set; }
+
         /// <summary> The site which this livestream belongs to (twitch/youtube etc.) </summary>
         [JsonRequired]
         public string StreamProvider { get; set; }

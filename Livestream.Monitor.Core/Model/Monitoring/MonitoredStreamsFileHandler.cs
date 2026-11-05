@@ -29,7 +29,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 ChannelId = x.ChannelId,
                 StreamProvider = x.ApiClient.ApiName,
                 ImportedBy = x.ImportedBy,
-                DisplayName = x.DisplayName
+                DisplayName = x.DisplayName,
+                TwitchLogin = x.TwitchLogin,
             }).ToList();
 
             var livestreamFileData = new LivestreamFileData()
@@ -92,7 +93,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 return new ChannelIdentifier(apiClient, entry.ChannelId)
                 {
                     ImportedBy = entry.ImportedBy,
-                    DisplayName = entry.DisplayName
+                    DisplayName = entry.DisplayName,
+                    TwitchLogin = entry.TwitchLogin,
                 };
             }).ToList();
         }
@@ -144,6 +146,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 if (matchingUser != null)
                 {
                     twitchStream.DisplayName = matchingUser.DisplayName;
+                    twitchStream.TwitchLogin = matchingUser.Login;
                     twitchStream.ChannelId = matchingUser.Id;
                 }
                 else
@@ -181,6 +184,12 @@ namespace Livestream.Monitor.Model.Monitoring
 
         private void SaveToDisk(LivestreamFileData livestreamFileData)
         {
+            foreach (var entry in livestreamFileData.LivestreamFileEntries)
+            {
+                var loginMatchesDisplayName = string.Equals(entry.TwitchLogin, entry.DisplayName, StringComparison.OrdinalIgnoreCase);
+                if (entry.StreamProvider != TwitchApiClient.API_NAME || loginMatchesDisplayName) entry.TwitchLogin = null;
+            }
+
             if (backUpBeforeNextSave && File.Exists(FileName)) BackUpFile();
             backUpBeforeNextSave = false;
 

@@ -32,6 +32,21 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public string DisplayName { get; set; }
 
+        public string TwitchLogin
+        {
+            get;
+            set
+            {
+                if (value == field) return;
+
+                field = value;
+
+                TwitchLoginChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+        public event EventHandler TwitchLoginChanged;
+
         public override string ToString() => $"{ApiClient.ApiName}:{DisplayName ?? ChannelId}";
 
         public void OverrideChannelId(string newChannelId)

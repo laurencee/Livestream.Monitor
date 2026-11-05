@@ -23,7 +23,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private Task<List<ChannelIdentifier>> initialChannels;
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> initialQueries = new();
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> completeInitialQueries = new();
-        private Dictionary<ChannelIdentifier, string> initialNames;
+        private Dictionary<ChannelIdentifier, (string DisplayName, string TwitchLogin)> initialChannelDetails;
         private DateTimeOffset initialQueryStartedAt;
         private bool initialDataDirty;
 
@@ -145,7 +145,7 @@ namespace Livestream.Monitor.Model.Monitoring
             initialChannels = Task.Run(async () =>
             {
                 var channels = await fileHandler.LoadFromDisk();
-                initialNames = channels.Distinct().ToDictionary(x => x, x => x.DisplayName);
+                initialChannelDetails = channels.Distinct().ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
                 foreach (var channel in channels) channel.ApiClient.AddChannelWithoutQuerying(channel);
 
                 foreach (var apiClient in apiClientFactory.GetAll())
@@ -200,7 +200,7 @@ namespace Livestream.Monitor.Model.Monitoring
             var channels = await (initialChannels ?? fileHandler.LoadFromDisk());
             foreach (var channelIdentifier in channels)
             {
-                channelIdentifiers.Add(channelIdentifier);
+                if (channelIdentifiers.Add(channelIdentifier)) channelIdentifier.TwitchLoginChanged += ChannelTwitchLoginChanged;
                 if (initialChannels == null) channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
 
                 var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
@@ -325,8 +325,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
             try
             {
-                var savedNames = initialNames ?? channelIdentifiers.ToDictionary(x => x, x => x.DisplayName);
-                initialNames = null;
+                var savedDetails = initialChannelDetails ?? channelIdentifiers.ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
+                initialChannelDetails = null;
 
                 // A single deadline cancels every provider request; successful channels still update.
                 using var timeoutTokenSource = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
@@ -355,8 +355,10 @@ namespace Livestream.Monitor.Model.Monitoring
                 // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- initial queries have their own deadline
                 await foreach (var completeQuery in Task.WhenEach(completeQueries)) ApplyResults(await completeQuery);
 
-                var namesChanged = channelIdentifiers.Any(x => savedNames.TryGetValue(x, out string name) && name != x.DisplayName);
-                if (initialDataDirty || namesChanged) SaveLivestreams();
+                var channelDetailsChanged = channelIdentifiers.Any(x =>
+                    savedDetails.TryGetValue(x, out var details) && details != (x.DisplayName, x.TwitchLogin));
+
+                if (initialDataDirty || channelDetailsChanged) SaveLivestreams();
                 initialDataDirty = false;
 
                 if (initialResultsApplied == null && queryFailure != null) throw queryFailure;
@@ -423,6 +425,9 @@ namespace Livestream.Monitor.Model.Monitoring
             if (channelIdentifier == null) return;
 
             await channelIdentifier.ApiClient.RemoveChannel(channelIdentifier);
+            if (channelIdentifiers.TryGetValue(channelIdentifier, out var monitoredChannel))
+                monitoredChannel.TwitchLoginChanged -= ChannelTwitchLoginChanged;
+
             channelIdentifiers.Remove(channelIdentifier);
             // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
@@ -465,7 +470,10 @@ namespace Livestream.Monitor.Model.Monitoring
             foreach (var newChannel in newChannels)
             {
                 if (channelIdentifiers.Add(newChannel))
+                {
+                    newChannel.TwitchLoginChanged += ChannelTwitchLoginChanged;
                     channelAdded = true;
+                }
             }
 
             if (channelAdded)
@@ -478,6 +486,12 @@ namespace Livestream.Monitor.Model.Monitoring
         private void SaveLivestreams()
         {
             fileHandler.SaveToDisk(channelIdentifiers);
+        }
+
+        private void ChannelTwitchLoginChanged(object sender, EventArgs e)
+        {
+            // Refreshes save channel metadata once after applying all providers' results.
+            if (CanRefreshLivestreams) SaveLivestreams();
         }
 
         private void FollowedLivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)

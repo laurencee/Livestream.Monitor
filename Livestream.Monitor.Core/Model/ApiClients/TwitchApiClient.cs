@@ -142,6 +142,7 @@ namespace Livestream.Monitor.Model.ApiClients
 
             newChannel.OverrideChannelId(user.Id);
             newChannel.DisplayName = user.DisplayName;
+            newChannel.TwitchLogin = user.Login;
             var livestream = new LivestreamModel(user.Id, newChannel) { DisplayName = user.DisplayName };
 
             var streamsRoot = await twitchTvHelixClient.GetStreams(new GetStreamsQuery() { UserIds = [user.Id] });
@@ -213,6 +214,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 var channelIdentifier = monitoredChannels.First(x => x.ChannelId.IsEqualTo(onlineStream.UserId));
 
                 channelIdentifier.DisplayName = onlineStream.UserName;
+                channelIdentifier.TwitchLogin = onlineStream.UserLogin;
                 var livestream = new LivestreamModel(onlineStream.UserId, channelIdentifier);
                 livestream.PopulateWithStreamDetails(onlineStream);
                 queryResults.Add(new LivestreamQueryResult(channelIdentifier)
@@ -349,7 +351,11 @@ namespace Livestream.Monitor.Model.ApiClients
             var livestreamModels = new List<LivestreamModel>();
             foreach (var stream in topStreams.Streams.Take(topStreamQuery.Take))
             {
-                var channelIdentifier = new ChannelIdentifier(this, stream.UserId) { DisplayName = stream.UserName };
+                var channelIdentifier = new ChannelIdentifier(this, stream.UserId)
+                {
+                    DisplayName = stream.UserName,
+                    TwitchLogin = stream.UserLogin,
+                };
                 var livestreamModel = new LivestreamModel(stream.UserId, channelIdentifier);
                 livestreamModel.PopulateWithStreamDetails(stream);
 
@@ -414,7 +420,11 @@ namespace Livestream.Monitor.Model.ApiClients
             streamDisplayNameToUserMap[user.DisplayName] = user;
             var userFollows = await twitchTvHelixClient.GetFollowedChannels(user.Id);
             return (from follow in userFollows
-                    let channelIdentifier = new ChannelIdentifier(this, follow.BroadcasterId) { DisplayName = follow.BroadcasterName }
+                    let channelIdentifier = new ChannelIdentifier(this, follow.BroadcasterId)
+                    {
+                        DisplayName = follow.BroadcasterName,
+                        TwitchLogin = follow.BroadcasterLogin,
+                    }
                     select new LivestreamQueryResult(channelIdentifier)
                     {
                         LivestreamModel = new LivestreamModel(follow.BroadcasterId, channelIdentifier)
@@ -440,10 +450,19 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private async Task<string> GetStreamUrlSuffix(ChannelIdentifier channel)
         {
+            if (!string.IsNullOrEmpty(channel.TwitchLogin)) return channel.TwitchLogin;
+
+            // Ordinary display names differ from logins only in case; localized names cannot recover a missing login.
+            // https://help.twitch.tv/s/article/display-names-on-twitch
+            var displayName = channel.DisplayName;
+            if (!string.IsNullOrEmpty(displayName) && Regex.IsMatch(displayName, @"\A[A-Za-z0-9_]+\z"))
+                return displayName.ToLowerInvariant();
+
             var user = await FindUser(channel);
             if (user == null)
                 throw new InvalidOperationException($"Channel {channel.DisplayName} does not exist (likely suspended or deleted)");
 
+            channel.TwitchLogin = user.Login;
             return user.Login;
         }
 
@@ -504,6 +523,7 @@ namespace Livestream.Monitor.Model.ApiClients
             streamDisplayNameToUserMap[cacheKey] = user;
             streamDisplayNameToUserMap[user.DisplayName] = user;
             channel.DisplayName = user.DisplayName;
+            channel.TwitchLogin = user.Login;
             return user;
         }
 

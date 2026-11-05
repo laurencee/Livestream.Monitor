@@ -16,13 +16,14 @@ public class JsonResponsesShould
     public async Task PreserveTwitchWireNamesNumbersAndTimestamps()
     {
         const string Response = """
-            {"data":[{"id":"live","user_id":"42","user_name":"channel","game_name":"Game",
+            {"data":[{"id":"live","user_id":"42","user_login":"channel_login","user_name":"channel","game_name":"Game",
               "viewer_count":"1234","started_at":"2026-10-08T12:34:56Z","thumbnail_url":"https://example.test/{width}x{height}.jpg"}],
              "pagination":{"cursor":"next"}}
             """;
         var response = await Read<StreamsRoot>(Response);
         var stream = Assert.Single(response.Streams);
         Assert.Equal("42", stream.UserId);
+        Assert.Equal("channel_login", stream.UserLogin);
         Assert.Equal("channel", stream.UserName);
         Assert.Equal("Game", stream.GameName);
         Assert.Equal(1234, stream.ViewerCount);
