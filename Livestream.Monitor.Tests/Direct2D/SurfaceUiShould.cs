@@ -47,6 +47,60 @@ public sealed class SurfaceUiShould : IDisposable
         MathF.Ceiling(MeasureText(text, fontSize) / width) * Painter.LineHeight(fontSize);
 
     [Fact]
+    public void ReplaceAndFadeActionFeedbackWithoutInterceptingClicks()
+    {
+        var feedback = new ActionFeedback();
+        feedback.Show("First action", PointF.Empty, now: 0);
+        const int RestartMilliseconds = 500;
+        const int FadeMidpointMilliseconds = RestartMilliseconds + 1_375;
+        var clickPosition = new PointF(50, 80);
+        feedback.Show("Second action", clickPosition, RestartMilliseconds);
+        feedback.Tick(FadeMidpointMilliseconds);
+        ui.Begin(palette, viewport);
+        feedback.Draw(ui, viewport);
+        ui.End();
+
+        var text = Assert.Single(commands, command => command.Kind == DrawKind.Text);
+        Assert.Equal("Second action", text.Text);
+        Assert.True(viewport.Contains(text.Bounds));
+        var background = Assert.Single(commands, command => command.Kind == DrawKind.Fill);
+        Assert.Equal(clickPosition, background.Bounds.Location);
+        const int AlphaShift = 24;
+        const uint HalfOpacityAlpha = 128;
+        foreach (var command in commands) Assert.Equal(HalfOpacityAlpha, command.Color >> AlphaShift);
+
+        var point = new PointF(text.Bounds.X, text.Bounds.Y);
+        Assert.False(ui.MouseDown(point));
+        Assert.False(ui.MouseUp(point));
+
+        commands.Clear();
+        const int DisappearMilliseconds = RestartMilliseconds + 1_500;
+        feedback.Tick(DisappearMilliseconds);
+        feedback.Draw(ui, viewport);
+        Assert.Empty(commands);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(399, 299)]
+    [InlineData(399, 80)]
+    [InlineData(50, 299)]
+    public void KeepActionFeedbackInsideTheWindowAtEdgeClicks(float x, float y)
+    {
+        var feedback = new ActionFeedback();
+        feedback.Show("Copied", new PointF(x, y), now: 0);
+        ui.Begin(palette, viewport);
+        feedback.Draw(ui, viewport);
+        ui.End();
+
+        var background = Assert.Single(commands, command => command.Kind == DrawKind.Fill);
+        Assert.True(viewport.Contains(background.Bounds));
+        const float EdgeMargin = 4;
+        Assert.InRange(x, background.Bounds.Left - EdgeMargin, background.Bounds.Right + EdgeMargin);
+        Assert.InRange(y, background.Bounds.Top - EdgeMargin, background.Bounds.Bottom + EdgeMargin);
+    }
+
+    [Fact]
     public void KeepMeasuredSettingsTextInsideTheGroupPadding()
     {
         var settings = new Settings();

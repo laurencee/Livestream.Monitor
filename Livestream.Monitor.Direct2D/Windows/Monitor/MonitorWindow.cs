@@ -97,6 +97,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private SettingsPane? settingsPane;
     private bool confirmingSettingsClose;
     private readonly PanelSlide settingsSlide = new();
+    private readonly ActionFeedback actionFeedback = new();
     private bool rowsDirty = true;
 
     // In rows on the stream list and in pixels on the tile pages; one page shows at a time.
@@ -172,7 +173,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     public MonitorWindowState State => state;
     protected override bool IsAnimating =>
         base.IsAnimating || settingsSlide.IsAnimating || state.IsContentLoading && !HasDialog ||
-        scrollBar.IsInteracting;
+        scrollBar.IsInteracting || actionFeedback.IsVisible;
     private IApiClient SelectedProvider => providers[Math.Clamp(providerIndex, 0, providers.Length - 1)];
     private int ItemCount => state.Page == MonitorPage.Vods ? state.Vods.Count : state.Rows.Count;
 
@@ -190,6 +191,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (settingsSlide is { IsOpen: false, IsAnimating: false }) settingsPane = null;
         if (state.IsContentLoading && !HasDialog) NeedsPaint = true;
         if (scrollBar.Repeat(now)) NeedsPaint = true;
+        if (actionFeedback.Tick(now)) NeedsPaint = true;
         UpdatePreview(now);
 
         if (gameSuggestionsDue != 0 && now >= gameSuggestionsDue)
@@ -295,6 +297,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         if (state.Busy) Ui.Fill(new RectangleF(x: 1, y: TitleHeight, width: size.Width - 2, height: 2), palette.Accent);
+
+        var feedbackArea = new RectangleF(PointF.Empty, size);
+        actionFeedback.Draw(Ui, feedbackArea);
+
         if (settingsPane == null) return;
 
         Ui.Overlay();
@@ -1626,7 +1632,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var choices = Array.ConvertAll(items, item => item.Choice);
         Ui.Popup(id: "context", Pointer, choices, chosen: Choose);
 
-        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command);
+        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command, Pointer);
 
         SurfaceUi.MenuChoice NotifyChoice(string toolTip)
         {
@@ -1644,10 +1650,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         ];
 
         var choices = Array.ConvertAll(items, item => item.Choice);
-        Ui.Popup(id: "context", Pointer, choices, chosen: index => _ = RunVodContextCommand(vod, items[index].Command));
+        Ui.Popup(id: "context", Pointer, choices, chosen: index => _ = RunVodContextCommand(vod, items[index].Command, Pointer));
     }
 
-    private async Task RunVodContextCommand(VodDetails vod, ContextCommand command)
+    private async Task RunVodContextCommand(VodDetails vod, ContextCommand command, PointF clickPosition)
     {
         try
         {
@@ -1655,6 +1661,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             {
                 case ContextCommand.CopyUrl:
                     CopyToClipboard(vod.Url);
+                    ShowActionFeedback("Copied URL to clipboard", clickPosition);
                     break;
                 case ContextCommand.OpenInBrowser:
                     var uri = vod.GetBrowserUri();
@@ -1672,7 +1679,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private async Task RunContextCommand(LivestreamModel stream, ContextCommand command)
+    private async Task RunContextCommand(LivestreamModel stream, ContextCommand command, PointF clickPosition)
     {
         try
         {
@@ -1685,7 +1692,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     await OpenChat(stream);
                     break;
                 case ContextCommand.CopyUrl:
-                    await CopyStreamUrl(stream);
+                    await CopyStreamUrl(stream, clickPosition);
                     break;
                 case ContextCommand.OpenInBrowser:
                     OpenInBrowser(await stream.GetStreamUrl());
@@ -1709,11 +1716,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private async Task CopyStreamUrl(LivestreamModel stream)
+    private async Task CopyStreamUrl(LivestreamModel stream, PointF clickPosition)
     {
         try
         {
             CopyToClipboard(await stream.GetStreamUrl());
+            ShowActionFeedback("Copied URL to clipboard", clickPosition);
         }
         catch (Exception exception)
         {
@@ -1748,11 +1756,19 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private static void OpenInBrowser(string url) =>
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
+    private void ShowActionFeedback(string message, PointF clickPosition)
+    {
+        if (IsClosed) return;
+
+        actionFeedback.Show(message, clickPosition, Environment.TickCount64);
+        NeedsPaint = true;
+    }
+
     private unsafe void CopyToClipboard(string text)
     {
         const uint MoveableMemory = 2;
         const uint UnicodeText = 13;
-        if (!Win32.OpenClipboard(Handle)) return;
+        if (!Win32.OpenClipboard(Handle)) throw new InvalidOperationException("Cannot open the clipboard.");
 
         nint memory = 0;
         try
@@ -1766,8 +1782,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             text.CopyTo(destination);
             destination[^1] = '\0';
             Win32.GlobalUnlock(memory);
-            Win32.EmptyClipboard();
-            if (Win32.SetClipboardData(UnicodeText, memory) != 0) memory = 0;
+            if (!Win32.EmptyClipboard()) throw new InvalidOperationException("Cannot clear the clipboard.");
+            if (Win32.SetClipboardData(UnicodeText, memory) == 0) throw new InvalidOperationException("Cannot write text to the clipboard.");
+
+            memory = 0;
         }
         finally
         {
