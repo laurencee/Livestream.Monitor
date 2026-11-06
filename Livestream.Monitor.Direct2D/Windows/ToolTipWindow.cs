@@ -1,20 +1,20 @@
 using System.Drawing;
 using Livestream.Monitor.Direct2D.Native;
-using Livestream.Monitor.Direct2D.Rendering;
 using Livestream.Monitor.Direct2D.Widgets;
 
 namespace Livestream.Monitor.Direct2D.Windows;
 
 /// <summary>
 /// A click-through popup showing hover text below the pointer, styled as the WPF frontend's MahApps tooltip: theme
-/// background and text, a Gray7 border, 6 by 3 padding, and lines broken only at line feeds.
+/// background and text, a Gray7 border, and 6 by 3 padding.
 /// </summary>
 internal sealed class ToolTipWindow : PopupWindow
 {
     private const float FontSize = 12;
     private const float BorderThickness = 1;
-    private const float HorizontalPadding = 6;
-    private const float VerticalPadding = 3;
+    private const float HorizontalInset = 6 + BorderThickness;
+    private const float VerticalInset = 3 + BorderThickness;
+    private const float MaximumTextWidth = 480;
 
     // WPF places mouse-anchored popups 17 device pixels below the pointer hot spot, at its x coordinate; measured
     // from the WPF frontend.
@@ -38,25 +38,27 @@ internal sealed class ToolTipWindow : PopupWindow
             NeedsPaint = true;
         }
 
-        // Moved first, so a different monitor's DPI applies before the size is calculated.
-        var x = pointer.X;
-        var y = pointer.Y + PointerOffset;
-        const uint MoveFlags = Win32.SwpNoSize | Win32.SwpNoZOrder | Win32.SwpNoActivate;
-        Win32.SetWindowPos(Handle, insertAfter: 0, x, y, width: 0, height: 0, MoveFlags);
+        var workArea = Monitors.GetWorkArea(pointer);
+        // The old popup size can straddle a monitor boundary and select the wrong DPI.
+        var monitorX = workArea.Left + workArea.Width / 2;
+        var monitorY = workArea.Top + workArea.Height / 2;
+        const uint MoveFlags = Win32.SwpNoZOrder | Win32.SwpNoActivate;
+        Win32.SetWindowPos(Handle, insertAfter: 0, x: monitorX, y: monitorY, width: 1, height: 1, flags: MoveFlags);
 
-        var contentWidth = MeasureWidth(text, FontSize) + (HorizontalPadding + BorderThickness) * 2;
-        var lines = text.Count(character => character == '\n') + 1;
-        var contentHeight = Painter.LineHeight(FontSize) * lines + (VerticalPadding + BorderThickness) * 2;
-        var width = (int)MathF.Ceiling(contentWidth * Scale);
-        var height = (int)MathF.Ceiling(contentHeight * Scale);
+        var textWidth = Math.Min(MeasureWidth(text, FontSize), MaximumTextWidth);
+        var width = Math.Min(workArea.Width, (int)MathF.Ceiling((textWidth + HorizontalInset * 2) * Scale));
+        var textHeight = MeasureWrapped(text, width / Scale - HorizontalInset * 2, FontSize);
+        var height = Math.Min(workArea.Height, (int)MathF.Ceiling((textHeight + VerticalInset * 2) * Scale));
 
         // As in WPF, a popup that does not fit below the pointer opens above it.
-        var workArea = Monitors.GetWorkArea(pointer);
+        var x = Math.Clamp(pointer.X, workArea.Left, workArea.Right - width);
+        var y = pointer.Y + PointerOffset;
         if (y + height > workArea.Bottom) y = pointer.Y - 1 - height;
-        var position = Monitors.ClampToWorkArea(x, y, width, height);
+        y = Math.Clamp(y, workArea.Top, workArea.Bottom - height);
+
         const uint ShowFlags = Win32.SwpNoActivate | Win32.SwpFrameChanged;
         nint topmost = -1;
-        Win32.SetWindowPos(Handle, topmost, position.X, position.Y, width, height, ShowFlags);
+        Win32.SetWindowPos(Handle, topmost, x, y, width, height, ShowFlags);
 
         // Shown first: hidden windows are not redrawn, so the previous text would otherwise flash briefly.
         Show();
@@ -65,8 +67,8 @@ internal sealed class ToolTipWindow : PopupWindow
 
     protected override void Draw(SizeF size)
     {
-        var inset = HorizontalPadding + BorderThickness;
-        var textBounds = new RectangleF(x: inset, y: 0, width: size.Width - inset * 2, height: size.Height);
-        Ui.Text(text, textBounds, Ui.Palette.Text, size: FontSize);
+        var bounds = new RectangleF(PointF.Empty, size);
+        var textBounds = RectangleF.Inflate(bounds, -HorizontalInset, -VerticalInset);
+        Ui.Text(text, textBounds, Ui.Palette.Text, size: FontSize, wrap: true);
     }
 }

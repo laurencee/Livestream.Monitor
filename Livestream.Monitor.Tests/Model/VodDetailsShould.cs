@@ -8,6 +8,18 @@ namespace Livestream.Monitor.Tests.Model;
 public class VodDetailsShould
 {
     [Theory]
+    [InlineData("First\nSecond", "First\nSecond")]
+    [InlineData("First\r\n\r\nSecond", "First\n\nSecond")]
+    [InlineData("First\r\n\t\r\n \nSecond", "First\n\nSecond")]
+    [InlineData("\nFirst\n\n\n\nSecond\n", "First\n\nSecond")]
+    [InlineData("First\rSecond\u2028Third", "First\nSecond\nThird")]
+    [InlineData("\r\n\n ", "")]
+    public void PreserveDescriptionParagraphsWithAtMostOneBlankLine(string description, string expected)
+    {
+        Assert.Equal(expected, VodDetails.NormalizeDescription(description));
+    }
+
+    [Theory]
     [InlineData("https://www.twitch.tv/videos/1")]
     [InlineData("http://example.com/watch?v=1&quality=source")]
     public void ProvideAWebUriForTheBrowser(string url)

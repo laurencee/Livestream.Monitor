@@ -1,12 +1,18 @@
 ﻿using Livestream.Monitor.Core;
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
 {
     public class VodDetails : ObservableModel
     {
+        private static readonly Regex ExcessBlankLines = new(@"\n(?:[^\S\n]*\n){2,}");
+
+        internal static string NormalizeDescription(string description) =>
+            ExcessBlankLines.Replace(description.ReplaceLineEndings("\n").Trim(), "\n\n");
+
         public string Url
         {
             get;

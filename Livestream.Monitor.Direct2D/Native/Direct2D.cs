@@ -114,6 +114,17 @@ internal readonly struct DWriteTextMetrics(
     public readonly uint LineCount = lineCount;
 }
 
+/// <summary>DWRITE_LINE_METRICS.</summary>
+internal struct DWriteLineMetrics
+{
+    public uint Length;
+    public uint TrailingWhitespaceLength;
+    public uint NewlineLength;
+    public float Height;
+    public float Baseline;
+    public int IsTrimmed;
+}
+
 /// <summary>DWRITE_OVERHANG_METRICS describes visible ink relative to the layout edges.</summary>
 internal readonly struct DWriteOverhangMetrics(
     float left,
@@ -597,8 +608,27 @@ internal sealed unsafe class DWriteTextFormat(void* pointer) : ComObject(pointer
 /// <summary>IDWriteTextLayout.</summary>
 internal sealed unsafe class DWriteTextLayout(void* pointer) : ComObject(pointer)
 {
+    private const int GetLineMetricsSlot = 59;
     private const int GetMetricsSlot = 60;
     private const int GetOverhangMetricsSlot = 61;
+
+    private float? firstTwoLinesHeight;
+
+    public float GetFirstTwoLinesHeight() => firstTwoLinesHeight ??= MeasureFirstTwoLines();
+
+    private float MeasureFirstTwoLines()
+    {
+        var metrics = GetMetrics();
+        if (metrics.LineCount <= 2) return metrics.Height;
+
+        const int StackLimit = 64;
+        var lineCount = checked((int)metrics.LineCount);
+        Span<DWriteLineMetrics> lines = lineCount <= StackLimit ? stackalloc DWriteLineMetrics[lineCount] : new DWriteLineMetrics[lineCount];
+        var get = (delegate* unmanaged<void*, DWriteLineMetrics*, uint, out uint, int>)Methods[GetLineMetricsSlot];
+        fixed (DWriteLineMetrics* buffer = lines) Check(get(Pointer, buffer, metrics.LineCount, out _));
+
+        return lines[0].Height + lines[1].Height;
+    }
 
     public DWriteTextMetrics GetMetrics()
     {

@@ -152,7 +152,6 @@ namespace Livestream.Monitor.Model.ApiClients
             var vods = videoDetails.Items.Select(x =>
             {
                 var singleLineTitle = x.Snippet.Title.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
-                var singleLineDescription = x.Snippet.Description.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
                 var duration = XmlConvert.ToTimeSpan(x.ContentDetails.Duration); // didn't wanna bother writing my own parser
 
                 var vodDetails = new VodDetails()
@@ -160,7 +159,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     Url = "https://www.youtube.com/watch?v=" + x.Id,
                     Length = duration,
                     Views = x.Statistics.ViewCount,
-                    Description = singleLineDescription,
+                    Description = VodDetails.NormalizeDescription(x.Snippet.Description),
                     Title = singleLineTitle,
                     PreviewImage = x.Snippet.Thumbnails.High.Url,
                     IsUpcoming = x.Snippet.LiveBroadcastContent == "upcoming",

@@ -63,7 +63,8 @@
                             <controls:Tile.Content>
                                 <StackPanel Width="130">
                                     <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" />
-                                    <TextBlock Text="{Binding Description}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}" />
+                                    <TextBlock Text="{Binding Description, Converter={StaticResource SingleLineTextConverter}}"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}" />
                                     <TextBlock Text="{Binding Game}" />
                                     <!-- Blank spacer -->
                                     <TextBlock />

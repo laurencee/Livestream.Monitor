@@ -303,7 +303,6 @@ namespace Livestream.Monitor.Model.ApiClients
                 var timespan = new TimeSpan(hours.ToInt(), mins.ToInt(), secs.ToInt());
 
                 var singleLineTitle = video.Title.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
-                var singleLineDesc = video.Description.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
 
                 return new VodDetails
                 {
@@ -312,7 +311,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     RecordedAt = video.CreatedAt,
                     Views = video.ViewCount,
                     //Game = video.Game,
-                    Description = singleLineDesc,
+                    Description = VodDetails.NormalizeDescription(video.Description),
                     Title = singleLineTitle,
                     PreviewImage = largeThumbnail,
                     ApiClient = this,

@@ -239,9 +239,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (requestedPage is { } request)
         {
             requestedPage = null;
-            preferredProvider = request.Provider;
-            vodTypeIndex = 0;
-            SwitchPage(request.Page);
+            SwitchPage(request.Page, request.Provider, request.VodChannel);
         }
 
         // A quick YouTube query can show a channel placeholder before the notified video arrives.
@@ -858,15 +856,24 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 var titleBounds = new RectangleF(x: x + 5, y: y + 3, width: 145, height: 34);
                 Ui.Text(title, titleBounds, color, weight: FontWeight.SemiBold, wrap: true);
                 Ui.ToolTip(id: $"tile.{i}.title", titleBounds, title);
+
                 var description = vod.Description ?? "";
-                var descriptionBounds = new RectangleF(x: x + 5, y: y + 40, width: 145, height: 26);
-                Ui.Text(description, descriptionBounds, color, size: 11, wrap: true);
-                Ui.ToolTip(id: $"tile.{i}.description", descriptionBounds, description);
                 var game = vod.Game ?? "";
-                var gameBounds = new RectangleF(x: x + 5, y: y + 68, width: 145, height: 18);
+                const float DescriptionTop = 38;
+                const float DescriptionWidth = 145;
+                const float DescriptionFontSize = 11;
+                const float GameTop = 68;
+                const float LengthTop = 84;
+                var availableHeight = (game.Length == 0 ? LengthTop : GameTop) - DescriptionTop;
+                var descriptionHeight = Math.Min(MeasureFirstTwoLines(description, DescriptionWidth, DescriptionFontSize), availableHeight);
+                var descriptionBounds = new RectangleF(x: x + 5, y: y + DescriptionTop, width: DescriptionWidth, height: descriptionHeight);
+                Ui.Text(description, descriptionBounds, color, size: DescriptionFontSize, wrap: true);
+                Ui.ToolTip(id: $"tile.{i}.description", descriptionBounds, description);
+
+                var gameBounds = new RectangleF(x: x + 5, y: y + GameTop, width: 145, height: 18);
                 Ui.Text(game, gameBounds, color, size: 11);
                 var length = vod.IsUpcoming ? "Upcoming" : vod.Length.ToTotalHoursText();
-                var lengthBounds = new RectangleF(x: x + 5, y: y + 84, width: 145, height: 16);
+                var lengthBounds = new RectangleF(x: x + 5, y: y + LengthTop, width: 145, height: 16);
                 Ui.Text(length, lengthBounds, color, size: 11);
                 var recordedAt = vod.RecordedAt.ToString("MMM dd, yyyy", WpfBindingCulture);
                 var recordedBounds = new RectangleF(x: x + 5, y: y + 101, width: 145, height: 16);
@@ -1022,11 +1029,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void SelectProvider(IApiClient provider)
     {
-        CancelGameSuggestions();
-        preferredProvider = provider;
-        vodTypeIndex = 0;
-        state.PageNumber = 0;
-        if (state.Page != MonitorPage.Followed) _ = Query();
+        if (state.Page == MonitorPage.Followed || provider == SelectedProvider) preferredProvider = provider;
+        else SwitchPage(state.Page, provider);
     }
 
     private void Sort(int column)
@@ -1046,24 +1050,28 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         rowsDirty = true;
     }
 
-    private void SwitchPage(MonitorPage page)
+    private void SwitchPage(MonitorPage page, IApiClient? provider = null, string vodChannel = "")
     {
         Ui.CloseMenu();
         preview?.Hide();
         hoveredRow = -1;
 
-        // As in WPF, where the page is created anew each time, the VOD page starts afresh once another page is shown.
-        if (state.Page == MonitorPage.Vods && page != MonitorPage.Vods)
+        if (Ui.Value("game").Length != 0) Ui.SetValue("game", "");
+
+        if (state.Page == MonitorPage.Vods || page == MonitorPage.Vods)
         {
-            Ui.SetValue("vod.channel", "");
-            vodTypeIndex = 0;
+            if (Ui.Value("vod.channel") != vodChannel) Ui.SetValue("vod.channel", vodChannel);
+
             state.Vods.Clear();
         }
 
-        // Cleared after the reset, whose cleared inputs schedule queries of their own.
-        gameSuggestionsDue = 0;
+        // Resetting the inputs can schedule suggestions or a delayed query.
+        CancelGameSuggestions();
         vodQueryDue = 0;
 
+        if (provider != null) preferredProvider = provider;
+
+        vodTypeIndex = 0;
         state.Page = page;
         state.PageNumber = 0;
         state.SelectedIndex = -1;
@@ -1614,13 +1622,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (RequestPage(MonitorPage.TopStreams, stream.ApiClient)) Restore();
     }
 
-    private bool RequestPage(MonitorPage page, IApiClient provider)
+    private bool RequestPage(MonitorPage page, IApiClient provider, string vodChannel = "")
     {
         if (!GetProviderChoices(page).Clients.Contains(provider)) return false;
 
         CancelGameSuggestions();
         state.InvalidateContentQuery();
-        requestedPage = new PageRequest(page, provider);
+        requestedPage = new PageRequest(page, provider, vodChannel);
         return true;
     }
 
@@ -1817,10 +1825,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     OpenInBrowser(await stream.GetStreamUrl());
                     break;
                 case ContextCommand.OpenVods:
-                    if (!RequestPage(MonitorPage.Vods, stream.ApiClient)) break;
-
                     var channel = stream.ChannelIdentifier;
-                    Ui.SetValue("vod.channel", channel.DisplayName ?? channel.ChannelId);
+                    RequestPage(MonitorPage.Vods, stream.ApiClient, channel.DisplayName ?? channel.ChannelId);
                     break;
                 case ContextCommand.Remove:
                     await state.Remove(stream);
@@ -1923,7 +1929,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         public int GetSelectedIndex(IApiClient preferred) => Math.Max(0, Array.IndexOf(Clients, preferred));
     }
 
-    private readonly record struct PageRequest(MonitorPage Page, IApiClient Provider);
+    private readonly record struct PageRequest(MonitorPage Page, IApiClient Provider, string VodChannel);
 
     private readonly record struct TileLayout(int Columns, float Width, int Viewport, int Extent);
 

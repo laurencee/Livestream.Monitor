@@ -128,6 +128,12 @@ internal abstract class CanvasWindow : DesktopWindow
         return painter.MeasureWrapped(text, width, style);
     }
 
+    protected float MeasureFirstTwoLines(string text, float width, float fontSize)
+    {
+        var style = new TextStyle(fontSize);
+        return painter.MeasureFirstTwoLines(text, width, style);
+    }
+
     internal float MeasureWidth(string text, float fontSize, FontWeight weight = FontWeight.Normal)
     {
         var style = new TextStyle(fontSize, weight);

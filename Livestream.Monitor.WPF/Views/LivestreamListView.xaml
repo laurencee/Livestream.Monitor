@@ -33,7 +33,7 @@
                     <DataGrid.RowStyle >
                         <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource MahApps.Styles.DataGridRow}">
                             <Style.Resources>
-                                <Style TargetType="ToolTip" BasedOn="{StaticResource MahApps.Styles.ToolTip}">
+                                <Style TargetType="ToolTip" BasedOn="{StaticResource WrappedToolTip}">
                                     <Setter Property="Padding" Value="0" />
                                     <Setter Property="Background" Value="Transparent" />
                                 </Style>

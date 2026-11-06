@@ -163,6 +163,14 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
                 width,
                 height: 0).GetMetrics().Height;
 
+    public float MeasureFirstTwoLines(string text, float width, in TextStyle style)
+    {
+        if (text.Length == 0) return 0;
+
+        var format = Key(style, TextAlign.Leading, isWrapped: true);
+        return GetLayout(text, format, width, height: 0).GetFirstTwoLinesHeight();
+    }
+
     /// <summary>Draws the commands, in logical units scaled to device pixels, between BeginDraw and EndDraw.</summary>
     public void Render(D2DDeviceContext context, List<DrawCommand> commands, float pixelScale)
     {

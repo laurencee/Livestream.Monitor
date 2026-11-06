@@ -22,6 +22,7 @@
             <ui:TotalHoursTimespanConverter x:Key="TotalHoursTimespanConverter" />
             <ui:CountryIdToFlagImageSourceConverter x:Key="CountryIdToFlagImageSourceConverter" />
             <ui:PlatformNameConverter x:Key="PlatformNameConverter" />
+            <ui:SingleLineTextConverter x:Key="SingleLineTextConverter" />
             <DataTemplate x:Key="PlatformTemplate" DataType="{x:Type clients:IApiClient}">
                 <TextBlock Text="{Binding ApiName, Converter={StaticResource PlatformNameConverter}}" />
             </DataTemplate>
@@ -33,6 +34,18 @@
             <system:String x:Key="BackButtonText">&#9664;</system:String>
             <system:String x:Key="RefreshButtonText">&#x21BB;</system:String>
             <system:String x:Key="BackButtonTooltipText">Go back to livestream list</system:String>
+
+            <ui:ToolTipTextTemplateSelector x:Key="ToolTipTextTemplateSelector">
+                <ui:ToolTipTextTemplateSelector.TextTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding}" TextWrapping="Wrap" MaxWidth="480" />
+                    </DataTemplate>
+                </ui:ToolTipTextTemplateSelector.TextTemplate>
+            </ui:ToolTipTextTemplateSelector>
+            <Style x:Key="WrappedToolTip" TargetType="{x:Type ToolTip}" BasedOn="{StaticResource MahApps.Styles.ToolTip}">
+                <Setter Property="ContentTemplateSelector" Value="{StaticResource ToolTipTextTemplateSelector}" />
+            </Style>
+            <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource WrappedToolTip}" />
 
             <!--Design time hack to set the background color so we can work on user controls in dark VS theme-->
             <Style TargetType="{x:Type UserControl}">
