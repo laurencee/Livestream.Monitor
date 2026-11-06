@@ -190,6 +190,7 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
+    [Trait("Feature", "QualitySettings")]
     public void AlignQualityRowActionsWithTheAddButton()
     {
         var settings = new Settings { FavoriteApiQualities = { ["all"] = new FavoriteQualities { Qualities = ["720p"] } } };
@@ -203,6 +204,7 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
+    [Trait("Feature", "QualitySettings")]
     public void ClearUnaddedQualityInputWhenReverting()
     {
         var pane = new StreamQualityPane(new Settings());

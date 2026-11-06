@@ -23,6 +23,7 @@ public class FrontendShould
     [Theory]
     [InlineData(FrontendKind.Wpf)]
     [InlineData(FrontendKind.Direct2D)]
+    [Trait("Feature", "QualitySettings")]
     public void EditQualityPreferencesInSettingsWithoutChangingOtherPlatforms(FrontendKind kind)
     {
         const string MissingVodPlayer = "missing-unused-vod-player.exe";

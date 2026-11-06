@@ -12,6 +12,7 @@ using Xunit;
 
 namespace Livestream.Monitor.Tests;
 
+[Trait("Feature", "QualitySettings")]
 public class StreamQualityDraftShould
 {
     [Fact]

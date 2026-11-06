@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" TreatAsLocalProperty="VSTestTestCaseFilter">
   <PropertyGroup>
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
@@ -8,6 +8,15 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
+
+  <!-- Use -p:TestScope=All to include quality settings, or -p:TestScope=QualitySettings to run just that feature. -->
+  <PropertyGroup Condition="'$(TestScope)' != 'All'">
+    <_QualitySettingsFilter>Feature!=QualitySettings</_QualitySettingsFilter>
+    <_QualitySettingsFilter Condition="'$(TestScope)' == 'QualitySettings'">Feature=QualitySettings</_QualitySettingsFilter>
+    <VSTestTestCaseFilter Condition="'$(VSTestTestCaseFilter)' != ''">($(VSTestTestCaseFilter))&amp;$(_QualitySettingsFilter)</VSTestTestCaseFilter>
+    <VSTestTestCaseFilter Condition="'$(VSTestTestCaseFilter)' == ''">$(_QualitySettingsFilter)</VSTestTestCaseFilter>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Livestream.Monitor.Direct2D\Livestream.Monitor.Direct2D.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
