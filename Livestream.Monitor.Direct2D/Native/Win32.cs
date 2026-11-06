@@ -49,6 +49,8 @@ internal static unsafe partial class Win32
     public const uint WmRightButtonDown = 0x0204;
     public const uint WmMouseWheel = 0x020A;
     public const uint WmCaptureChanged = 0x0215;
+    public const uint WmEnterSizeMove = 0x0231;
+    public const uint WmExitSizeMove = 0x0232;
     public const uint WmDpiChanged = 0x02E0;
     public const uint WmApp = 0x8000;
     public const uint ScMinimize = 0xF020;

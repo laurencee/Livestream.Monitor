@@ -48,6 +48,7 @@ internal abstract class DesktopWindow : IDisposable
     private ThemePalette? controlPalette;
     private bool disposed;
     private bool hideRequested = true;
+    private bool paintingDuringSizeMove;
 
     // Set once this constructor has set the window up. Until then its messages reach only the base handler, since a
     // derived class's constructor has not run.
@@ -100,6 +101,7 @@ internal abstract class DesktopWindow : IDisposable
     public bool IsClosed { get; private set; }
     protected float Scale { get; private set; }
     protected bool NeedsPaint { get; set; } = true;
+    protected bool IsInSizeMove { get; private set; }
     protected virtual bool IsAnimating => false;
     protected bool IsVisible => Win32.IsWindowVisible(Handle) && !Win32.IsIconic(Handle);
 
@@ -481,11 +483,32 @@ internal abstract class DesktopWindow : IDisposable
             // including those the app hid in between, such as a preview the pointer has left.
             case Win32.WmShowWindow when wParam != 0 && lParam == Win32.ShowParentOpening && hideRequested:
                 return 0;
+            case Win32.WmEnterSizeMove:
+                IsInSizeMove = true;
+                return 0;
+            case Win32.WmExitSizeMove:
+                IsInSizeMove = false;
+                return 0;
             case Win32.WmPaint:
                 NeedsPaint = true;
-                return null;
+                if (!IsInSizeMove || paintingDuringSizeMove || !IsVisible) return null;
+
+                // Win32's move/size loop suspends TickAll. Validate the update region and draw here until it returns.
+                var result = Win32.DefWindowProc(Handle, message, wParam, lParam);
+                paintingDuringSizeMove = true;
+                try
+                {
+                    Tick();
+                }
+                finally
+                {
+                    paintingDuringSizeMove = false;
+                }
+
+                return result;
             case Win32.WmEraseBackground:
-                return null;
+                // The Direct2D frame paints the background.
+                return 1;
             case Win32.WmCommand:
                 if (commands.TryGetValue(Win32.LowWord((nint)wParam), out var command))
                     command(Win32.HighWord((nint)wParam));
@@ -494,6 +517,7 @@ internal abstract class DesktopWindow : IDisposable
                 return 0;
             case Win32.WmSize:
                 NeedsPaint = true;
+                if (IsInSizeMove) Win32.InvalidateRect(Handle, rect: 0, erase: false);
                 return 0;
             case Win32.WmDpiChanged:
                 Scale = Win32.LowWord((nint)wParam) / (float)Win32.UserDefaultScreenDpi;
@@ -583,8 +607,6 @@ internal abstract class DesktopWindow : IDisposable
     {
         if (registered) return;
 
-        // COLOR_WINDOW + 1: system colour brushes are passed as the colour index plus one.
-        const nint WindowColorBrush = 6;
         fixed (char* className = ClassName)
         {
             var windowClass = new Win32.WindowClass
@@ -595,7 +617,6 @@ internal abstract class DesktopWindow : IDisposable
                 Instance = Win32.GetModuleHandle(0),
                 Cursor = Win32.LoadCursor(0, Win32.IdcArrow),
                 ClassName = className,
-                Background = WindowColorBrush,
             };
 
             if (Win32.RegisterClassEx(windowClass) == 0) throw new Win32Exception(Marshal.GetLastWin32Error());

@@ -187,10 +187,12 @@ internal abstract class CanvasWindow : DesktopWindow
     {
         if (IsClosed) return;
 
+        // Regular updates can open a dialog and release the mouse capture held by Win32's move/size loop.
+        var updateWindow = !IsInSizeMove;
         try
         {
-            TickFrame();
-            UpdateToolTip();
+            TickFrame(updateWindow);
+            if (updateWindow) UpdateToolTip();
         }
         catch (COMException exception) when (GraphicsDevice.IsDeviceLost(exception.HResult))
         {
@@ -200,13 +202,17 @@ internal abstract class CanvasWindow : DesktopWindow
         }
     }
 
-    private void TickFrame()
+    private void TickFrame(bool updateWindow)
     {
         var visible = IsVisible;
-        if (visible) UpdatePointer(ReadPointer());
-        BeforeFrame();
-        if (Ui.Tick(Environment.TickCount64)) NeedsPaint = true;
-        if (ActiveDialog?.Tick(Environment.TickCount64) == true) NeedsPaint = true;
+        if (updateWindow)
+        {
+            if (visible) UpdatePointer(ReadPointer());
+            BeforeFrame();
+            if (Ui.Tick(Environment.TickCount64)) NeedsPaint = true;
+            if (ActiveDialog?.Tick(Environment.TickCount64) == true) NeedsPaint = true;
+        }
+
         var palette = ThemeSource();
         if (ActiveDialog?.IsProgress == true || palette != previousPalette || !surface.IsCurrent) NeedsPaint = true;
         if (!visible) surface.ReleaseIfStale();
