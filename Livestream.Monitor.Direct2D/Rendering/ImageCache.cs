@@ -9,23 +9,28 @@ namespace Livestream.Monitor.Direct2D.Rendering;
 /// </summary>
 internal sealed class ImageCache(GraphicsDevice graphics) : IDisposable
 {
-    private static readonly Dictionary<string, string> CountryMappings = EmbeddedImages.ReadCountryMappings();
     private readonly Dictionary<string, EmbeddedImage> embedded = [];
-    private readonly Dictionary<string, string> flagNames = [];
+    private readonly Dictionary<FlagRegion, D2DBitmap> flags = [];
+    private int flagGeneration;
 
     /// <summary>The flag of a broadcaster language or country code, or null when there is none.</summary>
     public D2DBitmap? GetFlag(string? language)
     {
-        if (string.IsNullOrWhiteSpace(language)) return null;
+        if (EmbeddedImages.FindFlag(language) is not { } region) return null;
+        if (region.IsStandalone) return GetEmbedded(EmbeddedImages.GuernseyFlag);
 
-        if (!flagNames.TryGetValue(language, out var name))
+        if (flagGeneration != graphics.Generation)
         {
-            var country = CountryMappings.GetValueOrDefault(language, language);
-            name = EmbeddedImages.GetFlagName(country);
-            flagNames.Add(language, name);
+            ClearFlags();
+            flagGeneration = graphics.Generation;
         }
 
-        return GetEmbedded(name);
+        if (flags.TryGetValue(region, out var bitmap)) return bitmap;
+
+        var atlas = GetEmbedded(EmbeddedImages.FlagAtlas) ?? throw new InvalidOperationException("Missing flag atlas");
+        bitmap = CopyFlag(atlas, region);
+        flags.Add(region, bitmap);
+        return bitmap;
     }
 
     /// <summary>An <see cref="EmbeddedImages"/> image, or null when there is no such image.</summary>
@@ -41,9 +46,48 @@ internal sealed class ImageCache(GraphicsDevice graphics) : IDisposable
 
     public void Dispose()
     {
+        ClearFlags();
+
         foreach (var image in embedded.Values) image.Bitmap?.Dispose();
 
         embedded.Clear();
+    }
+
+    private void ClearFlags()
+    {
+        foreach (var flag in flags.Values) flag.Dispose();
+
+        flags.Clear();
+    }
+
+    private D2DBitmap CopyFlag(D2DBitmap atlas, FlagRegion region)
+    {
+        const uint PremultipliedAlpha = 1;
+        var properties = new D2DBitmapProperties1(
+            pixelFormat: new D2DPixelFormat(DxgiFormat.B8G8R8A8UNorm, PremultipliedAlpha),
+            dpiX: 96,
+            dpiY: 96,
+            options: 0,
+            colorContext: 0);
+
+        var size = new D2DSizeU((uint)region.Width, (uint)region.Height);
+        var bounds = new D2DRectU(
+            left: (uint)region.X,
+            top: (uint)region.Y,
+            right: (uint)(region.X + region.Width),
+            bottom: (uint)(region.Y + region.Height));
+
+        var bitmap = graphics.Context.CreateBitmap(size, properties);
+        try
+        {
+            bitmap.CopyFromBitmap(atlas, bounds);
+            return bitmap;
+        }
+        catch
+        {
+            bitmap.Dispose();
+            throw;
+        }
     }
 
     private unsafe D2DBitmap? Load(string name)

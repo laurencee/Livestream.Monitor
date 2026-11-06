@@ -10,8 +10,9 @@
     <ProjectReference Include="..\ExternalAPIs\ExternalAPIs.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Read through EmbeddedImages by these logical names; the annotated .jsonc mapping reference is not shipped. -->
-    <EmbeddedResource Include="Images\*.png;Images\*.ico;Images\*.json" LogicalName="Images.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="Images\CountryFlags\*.png" LogicalName="Images.CountryFlags.%(Filename)%(Extension)" />
+    <!-- Read through EmbeddedImages by these logical names. The language mapping is part of the generated atlas index. -->
+    <EmbeddedResource Include="Images\*.png;Images\*.ico" LogicalName="Images.%(Filename)%(Extension)" />
+    <!-- Guernsey has its own color profile and DPI. Other flag sources are packed into the atlas. -->
+    <EmbeddedResource Include="Images\CountryFlags\gg.png" LogicalName="Images.CountryFlags.gg.png" />
   </ItemGroup>
 </Project>

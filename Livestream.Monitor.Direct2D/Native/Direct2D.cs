@@ -40,6 +40,19 @@ internal readonly struct D2DSizeU(uint width, uint height)
     public readonly uint Height = height;
 }
 
+/// <summary>D2D1_RECT_U.</summary>
+internal readonly struct D2DRectU(
+    uint left,
+    uint top,
+    uint right,
+    uint bottom)
+{
+    public readonly uint Left = left;
+    public readonly uint Top = top;
+    public readonly uint Right = right;
+    public readonly uint Bottom = bottom;
+}
+
 /// <summary>D2D1_ROUNDED_RECT.</summary>
 internal readonly struct D2DRoundedRect(D2DRect rect, float radiusX, float radiusY)
 {
@@ -141,7 +154,15 @@ internal sealed unsafe class D2DBrush(void* pointer) : ComObject(pointer);
 /// <summary>ID2D1Bitmap.</summary>
 internal sealed unsafe class D2DBitmap(void* pointer) : ComObject(pointer)
 {
+    private const int CopyFromBitmapSlot = 8;
     private const int CopyFromMemorySlot = 10;
+
+    /// <summary>Copies a pixel rectangle from a bitmap of the same format to the origin.</summary>
+    public void CopyFromBitmap(D2DBitmap source, in D2DRectU region)
+    {
+        var copy = (delegate* unmanaged<void*, void*, void*, in D2DRectU, int>)Methods[CopyFromBitmapSlot];
+        Check(copy(Pointer, null, source.Pointer, in region));
+    }
 
     /// <summary>Replaces every pixel with rows of the bitmap's own format, from the top.</summary>
     public void CopyFromMemory(ReadOnlySpan<byte> pixels, uint stride)
