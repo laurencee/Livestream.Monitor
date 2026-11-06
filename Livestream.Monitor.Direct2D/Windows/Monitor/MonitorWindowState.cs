@@ -31,6 +31,7 @@ internal readonly record struct ProgressDialog(string Title, string Message);
 internal sealed class MonitorWindowState : ObservableModel
 {
     private const string RefreshErrorTitle = "Error refreshing livestreams";
+    private const int DefaultPageSize = 15;
     private readonly IUserDialogs dialogs;
     private readonly Func<string, string, IDisposable>? showProgress;
     private readonly Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError;
@@ -42,6 +43,8 @@ internal sealed class MonitorWindowState : ObservableModel
     private int failedAutomaticRefreshes;
     private int gameSuggestionGeneration;
     private int contentQueryGeneration;
+    private int topStreamsPageSize = DefaultPageSize;
+    private int vodPageSize = DefaultPageSize;
     private IDisposable? browsingError;
 
     public MonitorWindowState(
@@ -108,7 +111,16 @@ internal sealed class MonitorWindowState : ObservableModel
     public bool OnlineOnly { get; set; }
     public int SelectedIndex { get; set; } = -1;
     public int PageNumber { get; set; }
-    public int PageSize { get; set; } = 15;
+    public int PageSize
+    {
+        get => Page == MonitorPage.Vods ? vodPageSize : topStreamsPageSize;
+        set
+        {
+            if (Page == MonitorPage.Vods) vodPageSize = value;
+            else topStreamsPageSize = value;
+        }
+    }
+
     public bool HasNextPage { get; private set; }
     public bool Busy { get; private set => Set(ref field, value); }
     public bool IsContentLoading { get; private set; } = true;
@@ -391,8 +403,8 @@ internal sealed class MonitorWindowState : ObservableModel
 
             var query = new TopStreamQuery
             {
-                Skip = PageNumber * PageSize,
-                Take = PageSize,
+                Skip = PageNumber * topStreamsPageSize,
+                Take = topStreamsPageSize,
                 GameName = api.HasTopStreamGameFilterSupport ? category : null,
             };
 
@@ -442,8 +454,8 @@ internal sealed class MonitorWindowState : ObservableModel
             var query = new VodQuery
             {
                 StreamDisplayName = name,
-                Skip = PageNumber * PageSize,
-                Take = PageSize,
+                Skip = PageNumber * vodPageSize,
+                Take = vodPageSize,
                 VodTypes = [type],
             };
 
@@ -451,7 +463,7 @@ internal sealed class MonitorWindowState : ObservableModel
             if (!IsCurrent()) return;
 
             Vods.AddRange(result);
-            HasNextPage = Vods.Count == PageSize;
+            HasNextPage = Vods.Count == query.Take;
         }
 
         ErrorDialog DescribeError(Exception exception)

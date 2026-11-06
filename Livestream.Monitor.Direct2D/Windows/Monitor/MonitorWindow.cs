@@ -107,7 +107,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     // In rows on the stream list and in pixels on the tile pages; one page shows at a time.
     private int scrollOffset;
 
-    private IApiClient preferredProvider;
     private int vodTypeIndex;
     private StreamNotificationTarget? requestedNotification;
     private PageRequest? requestedPage;
@@ -140,7 +139,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         providers = new ProviderChoices(clients);
         topStreamProviders = new ProviderChoices(clients.Where(api => api.HasTopStreamsSupport).ToArray());
         vodProviders = new ProviderChoices(clients.Where(api => api.HasVodViewerSupport).ToArray());
-        preferredProvider = clients[0];
         filterValues = [FilterModel.AllApiClientsFilterName, .. clients.Select(api => api.ApiName)];
         filterDisplayNames = [FilterModel.AllApiClientsFilterName, .. providers.Names];
         palette = Theme.Create(state.SettingsHandler.Settings);
@@ -194,14 +192,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     protected override bool IsAnimating =>
         base.IsAnimating || settingsSlide.IsAnimating || state.IsContentLoading && !HasDialog ||
         scrollBar.IsInteracting || actionFeedback.IsVisible;
-    private IApiClient SelectedProvider
-    {
-        get
-        {
-            var choices = GetProviderChoices(state.Page);
-            return choices.Clients[choices.GetSelectedIndex(preferredProvider)];
-        }
-    }
+    private IApiClient SelectedProvider => GetProviderChoices(state.Page).Selected;
     private int ItemCount => state.Page == MonitorPage.Vods ? state.Vods.Count : state.Rows.Count;
 
     protected override void BeforeFrame()
@@ -1015,7 +1006,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private void DrawProviderCombo(RectangleF bounds)
     {
         var choices = GetProviderChoices(state.Page);
-        var index = choices.GetSelectedIndex(preferredProvider);
+        var index = choices.SelectedIndex;
         Ui.Combo(
             id: "provider",
             text: choices.Names[index],
@@ -1029,8 +1020,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void SelectProvider(IApiClient provider)
     {
-        if (state.Page == MonitorPage.Followed || provider == SelectedProvider) preferredProvider = provider;
-        else SwitchPage(state.Page, provider);
+        if (state.Page == MonitorPage.Followed) providers.Select(provider);
+        else if (provider != SelectedProvider) SwitchPage(state.Page, provider);
     }
 
     private void Sort(int column)
@@ -1069,7 +1060,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         CancelGameSuggestions();
         vodQueryDue = 0;
 
-        if (provider != null) preferredProvider = provider;
+        if (provider != null) GetProviderChoices(page).Select(provider);
 
         vodTypeIndex = 0;
         state.Page = page;
@@ -1926,7 +1917,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         public IApiClient[] Clients { get; } = clients;
         public string[] Names { get; } = clients.Select(api => PlatformNames.GetDisplayName(api.ApiName)).ToArray();
 
-        public int GetSelectedIndex(IApiClient preferred) => Math.Max(0, Array.IndexOf(Clients, preferred));
+        public int SelectedIndex { get; private set; }
+        public IApiClient Selected => Clients[SelectedIndex];
+
+        public void Select(IApiClient provider) => SelectedIndex = Math.Max(0, Array.IndexOf(Clients, provider));
     }
 
     private readonly record struct PageRequest(MonitorPage Page, IApiClient Provider, string VodChannel);
