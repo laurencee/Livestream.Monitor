@@ -268,7 +268,7 @@ public class FrontendShould
     {
         using var profile = UiTestProfile.Create();
         using var window = FrontendWindow.Launch(kind, profile);
-        RunMainJourney(window, profile);
+        RunMainJourney(window, profile, kind);
     }
 
     [Theory]
@@ -287,7 +287,7 @@ public class FrontendShould
     }
 
     /// <summary>The main journey through a launched frontend.</summary>
-    private static void RunMainJourney(FrontendWindow window, UiTestProfile profile)
+    private static void RunMainJourney(FrontendWindow window, UiTestProfile profile, FrontendKind kind)
     {
         var ids = window.Ids;
         var followed = UiTestProfile.FollowedChannels;
@@ -324,6 +324,7 @@ public class FrontendShould
         var choices = window.OpenItems(ids.Providers, ids.Providers, "Providers with text in the drop-down");
         var selection = FrontendWindow.Pattern<SelectionPattern>(providers, SelectionPattern.Pattern).Current;
         var shown = choices.Select(FrontendWindow.DisplayedText).ToArray();
+        Assert.Equal(["Kick", "Twitch"], shown.Order());
         var seen = "";
         var oneSelected = "One of the shown providers selected";
         window.WaitFor(ShownSelection, FrontendWindow.StepTimeout, oneSelected, Seen);
@@ -335,6 +336,10 @@ public class FrontendShould
 
         // The VOD viewer offers the followed channels and lists a chosen channel's VODs.
         window.InvokeUntil(ids.VodViewer, () => window.Find(ids.KnownChannelsOpener) != null, "The VOD viewer");
+        var vodProviders = window.OpenItems(ids.VodProviders, ids.VodProviders, "VOD providers");
+        Assert.Equal(["Twitch", "YouTube"], vodProviders.Select(FrontendWindow.DisplayedText).Order());
+        FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(ids.VodProviders), ExpandCollapsePattern.Pattern).Collapse();
+
         var knownChannels = "The followed channels in the VOD viewer";
         var known = window.OpenItems(ids.KnownChannelsOpener, ids.KnownChannels, knownChannels);
         var knownNames = known.Select(FrontendWindow.DisplayedText).Order(StringComparer.CurrentCultureIgnoreCase);
@@ -342,6 +347,7 @@ public class FrontendShould
         FrontendWindow.Choose(known[0], window.Element(ids.KnownChannels));
         var vod = window.Element(ids.VodTile, FrontendWindow.QueryTimeout);
         Assert.False(string.IsNullOrWhiteSpace(FrontendWindow.DisplayedText(vod)), "The first VOD shows no text.");
+        if (kind == FrontendKind.Direct2D) VerifyVodProviderFallback(window);
 
         // Settings show the saved values and save changes to the settings file.
         window.InvokeUntil(ids.OpenSettings, () => window.Find(ids.CheckForNewVersions) != null, "The settings");
@@ -363,6 +369,88 @@ public class FrontendShould
             var item = items is [var only] ? only : null;
             seen = $"selected [{string.Join(", ", items.Select(FrontendWindow.DisplayedText))}]";
             return item != null && shown.Contains(FrontendWindow.DisplayedText(item)) ? item : null;
+        }
+    }
+
+    [Fact]
+    public void PreserveTheWpfGameFilterAcrossProviderChanges()
+    {
+        using var profile = UiTestProfile.Create();
+        using var window = FrontendWindow.Launch(FrontendKind.Wpf, profile);
+        VerifyGameFilterSurvivesProviderChange(window);
+    }
+
+    private static void VerifyGameFilterSurvivesProviderChange(FrontendWindow window)
+    {
+        const string Game = "Minecraft";
+        const string GameInput = "PART_EditableTextBox";
+        var providerId = window.Ids.Providers;
+
+        window.InvokeUntil(window.Ids.TopStreams, () => window.Find(GameInput) != null, "The Top Streams game filter");
+        WaitForStreamTile(window, previous: null);
+
+        const string GameChoices = "PossibleGameNames";
+        var games = window.OpenItems(GameChoices, GameChoices, "Twitch game suggestions");
+        Assert.Contains(games, item => FrontendWindow.DisplayedText(item) == Game);
+        FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(GameChoices), ExpandCollapsePattern.Pattern).Collapse();
+
+        var gameText = FrontendWindow.Pattern<ValuePattern>(window.Element(GameInput), ValuePattern.Pattern);
+        var kick = FindProvider("Kick");
+        var switchToKick = FrontendWindow.Pattern<SelectionItemPattern>(kick, SelectionItemPattern.Pattern);
+        gameText.SetValue(Game);
+        switchToKick.Select();
+
+        window.WaitUntilDisabled("PossibleGameNames");
+        FrontendWindow.Choose(FindProvider("Twitch"), window.Element(providerId));
+        window.WaitFor(RestoredInput, FrontendWindow.StepTimeout, "The game filter restored on Twitch");
+        window.WaitFor(FilteredTile, FrontendWindow.QueryTimeout, "Top Streams filtered by the restored game");
+
+        AutomationElement FilteredTile() => window.Find(window.Ids.TopStreamTile) is { } tile && FrontendWindow.Texts(tile).Contains(Game)
+            ? tile : null;
+
+        AutomationElement RestoredInput() => window.Find(GameInput) is { Current.IsEnabled: true } input &&
+                                             FrontendWindow.Pattern<ValuePattern>(input, ValuePattern.Pattern).Current.Value == Game
+            ? input : null;
+
+        AutomationElement FindProvider(string name)
+        {
+            var choices = window.OpenItems(providerId, providerId, "Top Streams providers");
+            return choices.Single(item => FrontendWindow.DisplayedText(item) == name);
+        }
+    }
+
+    private static void VerifyVodProviderFallback(FrontendWindow window)
+    {
+        var ids = window.Ids;
+        window.InvokeUntil("back", () => window.Find(ids.ChannelToAdd) != null, "The followed channels page");
+        var providers = window.OpenItems(ids.Providers, ids.Providers, "Followed channel providers");
+        Assert.Equal(["Kick", "Twitch", "YouTube"], providers.Select(FrontendWindow.DisplayedText).Order());
+        ChooseProvider(providers, "Kick");
+
+        window.InvokeUntil(ids.VodViewer, () => window.Find(ids.KnownChannelsOpener) != null, "The VOD viewer");
+        AssertSelectedProvider("Twitch");
+
+        window.InvokeUntil("back", () => window.Find(ids.ChannelToAdd) != null, "The followed channels page");
+        AssertSelectedProvider("Kick");
+
+        window.InvokeUntil(ids.VodViewer, () => window.Find(ids.KnownChannelsOpener) != null, "The VOD viewer");
+        var vodProviders = window.OpenItems(ids.VodProviders, ids.VodProviders, "VOD providers");
+        ChooseProvider(vodProviders, "YouTube");
+        AssertSelectedProvider("YouTube");
+
+        void ChooseProvider(AutomationElement[] choices, string name)
+        {
+            var choice = choices.Single(item => FrontendWindow.DisplayedText(item) == name);
+            FrontendWindow.Choose(choice, window.Element(ids.Providers));
+        }
+
+        void AssertSelectedProvider(string name)
+        {
+            var choices = window.OpenItems(ids.Providers, ids.Providers, "Providers with a selection");
+            var selected = Assert.Single(choices, item =>
+                FrontendWindow.Pattern<SelectionItemPattern>(item, SelectionItemPattern.Pattern).Current.IsSelected);
+            Assert.Equal(name, FrontendWindow.DisplayedText(selected));
+            FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(ids.Providers), ExpandCollapsePattern.Pattern).Collapse();
         }
     }
 

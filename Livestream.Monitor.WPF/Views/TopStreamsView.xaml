@@ -39,7 +39,7 @@
             <Button x:Name="TryCloseAsync" Style="{StaticResource BackButton}" />
             <ComboBox x:Name="ApiClients" Margin="3" ItemTemplate="{StaticResource PlatformTemplate}" TextSearch.TextPath="ApiName" MinWidth="80" />
             <TextBlock Text="Game Filter" />
-            <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsDropDownOpen="{Binding ExpandPossibleGames}"
+            <ComboBox x:Name="PossibleGameNames" Text="{Binding GameName, UpdateSourceTrigger=PropertyChanged}" IsDropDownOpen="{Binding ExpandPossibleGames}"
                       Width="175" Margin="3" ToolTip="Filter to show only streams from a particular game. You can type a partial game name to search for any matching game names from twitch."
                       controls:TextBoxHelper.Watermark="Partial game name..."
                       IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"
@@ -66,8 +66,10 @@
                                         <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Stream in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser($dataContext)]" />
-                                        <MenuItem Header="Open Chat" cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
-                                        <MenuItem Header="Open in VOD browser" cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
+                                        <MenuItem Header="Open Chat" IsEnabled="{Binding LivestreamModel.ApiClient.HasChatSupport}"
+                                                  cal:Message.Attach="[Click] = [OpenChat($dataContext)]" />
+                                        <MenuItem Header="Open in VOD browser" IsEnabled="{Binding LivestreamModel.ApiClient.HasVodViewerSupport}"
+                                                  cal:Message.Attach="[Click] = [GotoVodViewer($dataContext)]" />
                                         <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify($dataContext)]"
                                                   IsChecked="{Binding LivestreamModel.DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
                                                   ToolTip="Untick this to prevent popup notifications about this stream coming online (if being followed) or showing up as a popular stream"/>

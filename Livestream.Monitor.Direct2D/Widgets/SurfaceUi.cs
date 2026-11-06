@@ -466,9 +466,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string? symbol = null)
     {
         const float CornerRadius = 3;
+        // Effective light colours after MahApps applies its disabled overlay and content opacity.
+        const uint LightDisabledButtonBackground = 0xFFFBFBFB;
+        const uint LightDisabledButtonBorder = 0xFFE3E3E3;
+        const uint LightDisabledButtonText = 0xFFB0B0B0;
         var radius = flat ? 0 : CornerRadius;
         var over = IsPointerOver(bounds);
-        var background = pressed == id ? Palette.Pressed : over ? Palette.Hover : Palette.Control;
+        var useLightDisabledColours = !enabled && !Palette.IsDark && !chrome && !flat && !accent;
+        var background = useLightDisabledColours ? LightDisabledButtonBackground
+            : pressed == id ? Palette.Pressed : over ? Palette.Hover : Palette.Control;
         if (accent) background = over ? Theme.Blend(Palette.Accent, Palette.AccentText, 0.15f) : Palette.Accent;
 
         if (chrome)
@@ -482,8 +488,11 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                 : over ? Palette.ControlBorderHover
                 : Palette.ControlBorder;
 
+            if (!enabled)
+                border = useLightDisabledColours ? LightDisabledButtonBorder : Theme.Blend(Palette.Background, Palette.ControlBorder, 0.35f);
+
             Fill(bounds, background, radius);
-            Border(bounds, enabled ? border : Theme.Blend(Palette.Background, Palette.ControlBorder, 0.35f), radius: radius);
+            Border(bounds, border, radius: radius);
         }
 
         // WPF window commands are drawn at half opacity until the pointer is over them.
@@ -491,7 +500,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var commandText = over ? Palette.TitleText : Theme.Blend(TitleBarColor, Palette.TitleText, CommandTextOpacity);
         var color = enabled
             ? foreground ?? (chrome ? commandText : accent ? Palette.AccentText : Palette.Text)
-            : Palette.MutedText;
+            : useLightDisabledColours ? LightDisabledButtonText : Palette.MutedText;
 
         if (symbol != null)
         {
@@ -554,11 +563,16 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             height: BoxSize
         );
 
-        Fill(box, value ? Palette.Accent : Palette.Input);
-        Border(box, enabled ? Palette.Border : Palette.MutedText);
-        if (value) Icon(text: "✓", bounds: box, color: Palette.AccentText);
+        Fill(box, Palette.IsDark && value ? Palette.Accent : Palette.Input);
+        Border(box, ChoiceBorder(id, bounds, enabled));
+        if (value)
+        {
+            var checkmark = Palette.IsDark ? Palette.AccentText : enabled ? Palette.Highlight : Palette.AccentBrush;
+            Icon(text: "✓", bounds: box, color: checkmark);
+        }
+
         var textBounds = bounds with { X = bounds.X + 19, Width = bounds.Width - 19 };
-        Label(text, textBounds, enabled ? Palette.Text : Palette.MutedText);
+        Label(text, textBounds, enabled ? Palette.Text : Palette.ChoiceDisabledText);
         Add(id, bounds, action: () => changed(!value), enabled);
         if (enabled) ToolTip(id, bounds, toolTip);
         var states = WidgetStates(id, enabled) | (value ? AutomationStates.Checked : AutomationStates.None);
@@ -586,7 +600,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         {
             Kind = DrawKind.Ellipse,
             Bounds = circle,
-            Color = enabled ? Palette.Border : Palette.MutedText,
+            Color = ChoiceBorder(id, bounds, enabled),
         };
 
         commands.Add(outline);
@@ -596,15 +610,23 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (value)
         {
             var dot = RectangleF.Inflate(circle, -4, -4);
-            commands.Add(new DrawCommand { Kind = DrawKind.Ellipse, Bounds = dot, Color = Palette.Accent });
+            var dotColor = Palette.IsDark ? Palette.Accent : enabled ? Palette.Highlight : Palette.RowHover;
+            commands.Add(new DrawCommand { Kind = DrawKind.Ellipse, Bounds = dot, Color = dotColor });
         }
 
         var textBounds = bounds with { X = bounds.X + Diameter + 7, Width = bounds.Width - Diameter - 7 };
-        Label(text, textBounds, enabled ? Palette.Text : Palette.MutedText);
+        Label(text, textBounds, enabled ? Palette.Text : Palette.ChoiceDisabledText);
         if (focused == id) Border(RectangleF.Inflate(bounds, -1, -1), Palette.Accent);
         Add(id, bounds, action: () => changed(true), enabled, radioGroup: group);
         var states = WidgetStates(id, enabled) | (value ? AutomationStates.Selected : AutomationStates.None);
         AddNode(id, AutomationRole.RadioButton, text, bounds, states, activate: () => InvokeWidget(id));
+    }
+
+    private uint ChoiceBorder(string id, RectangleF bounds, bool enabled)
+    {
+        if (Palette.IsDark) return enabled ? Palette.ChoiceBorder : Palette.ChoiceDisabledText;
+
+        return enabled && (pressed == id || IsPointerOver(bounds)) ? Palette.ChoiceBorderHover : Palette.ChoiceBorder;
     }
 
     public void Combo(
@@ -620,9 +642,11 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // As in WPF, an open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
         var open = menu?.Id == id;
         var over = IsPointerOver(bounds);
+        var hasFocus = focused == id;
         var border = open ? Palette.ComboOpenBorder
+            : hasFocus && !Palette.IsDark ? Palette.InputBorderFocus
             : over ? Palette.ComboHoverBorder
-            : focused == id ? Palette.InputBorderHover
+            : hasFocus ? Palette.InputBorderFocus
             : Palette.InputBorder;
 
         Fill(bounds, open || over ? Palette.ComboHover : Palette.Input);
@@ -748,8 +772,11 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             setText: text => SetValue(id, text));
 
         Fill(bounds, Palette.Input);
-        var active = Win32.GetFocus() == input.Handle || IsPointerOver(bounds);
-        Border(bounds, active ? Palette.InputBorderHover : Palette.InputBorder);
+        var border = Win32.GetFocus() == input.Handle ? Palette.InputBorderFocus
+            : IsPointerOver(bounds) ? Palette.InputBorderHover
+            : Palette.InputBorder;
+
+        Border(bounds, border);
 
         if (input.ShowPlaceholder)
         {
@@ -1262,8 +1289,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var style = active.Style;
         var barWidth = active.Scrolls ? VerticalScrollBar.Width : 0;
         var textWidth = width - style.TextInset - style.EndPadding - barWidth;
-        Fill(active.Bounds, active.IsList ? Palette.Background : Palette.Panel);
-        Border(active.Bounds, active.IsList ? Palette.ListBorder : Palette.Border);
+        var disabledText = active.IsList ? Palette.MutedText : Palette.ContextMenuDisabledText;
+        Fill(active.Bounds, Palette.Background);
+        Border(active.Bounds, active.IsList ? Palette.ListBorder : Palette.ContextMenuBorder);
 
         if (active.Scrolls)
         {
@@ -1303,16 +1331,16 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             }
             else if (selected || over)
             {
-                Fill(row, Palette.Hover);
+                Fill(row, Palette.ContextMenuHover);
             }
 
             var checkBounds = row with { X = left + 5, Width = 19 };
             var textBounds = row with { X = left + style.TextInset, Width = textWidth };
-            var color = !choice.Enabled ? Palette.MutedText : active.IsList && selected ? Palette.SelectionText : Palette.Text;
+            var color = !choice.Enabled ? disabledText : active.IsList && selected ? Palette.SelectionText : Palette.Text;
 
             // A checked item's tick is centred in its own column, so labels line up whether or not an item is ticked,
             // and uses the accent, as WPF menu items do.
-            if (choice.Checked) Icon(text: "✓", checkBounds, Palette.Accent);
+            if (choice.Checked) Icon(text: "✓", checkBounds, Palette.IsDark ? Palette.Accent : Palette.AccentBrush);
 
             // As in WPF, a list clips a choice longer than its control; a context menu is as wide as its longest item.
             Label(choice.Text, textBounds, color, style.TextSize, trim: !active.IsList);

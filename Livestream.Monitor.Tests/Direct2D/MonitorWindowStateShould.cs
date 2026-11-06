@@ -427,20 +427,22 @@ public class MonitorWindowStateShould
     }
 
     [Theory]
-    [InlineData(15, 2, 30)]
-    [InlineData(30, 1, 30)]
-    public async Task ApplyTheSelectedPageSizeToProviderRequests(int pageSize, int page, int expectedSkip)
+    [InlineData(15, 2, 30, true)]
+    [InlineData(30, 1, 30, false)]
+    public async Task ApplyPagingAndSupportedGameFilters(int pageSize, int page, int expectedSkip, bool supportsGameFilter)
     {
         var model = Create();
         var api = AuthorizedProvider(topStreams: true);
+        api.HasTopStreamGameFilterSupport.Returns(supportsGameFilter);
         api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
         model.PageSize = pageSize;
         model.PageNumber = page;
+        var expectedGame = supportsGameFilter ? "Example game" : null;
 
         await model.QueryTop(api, "Example game");
 
         await api.Received().GetTopStreams(Arg.Is<ExternalAPIs.TopStreamQuery>(query =>
-            query.Take == pageSize && query.Skip == expectedSkip && query.GameName == "Example game"));
+            query.Take == pageSize && query.Skip == expectedSkip && query.GameName == expectedGame));
     }
 
     [Fact]

@@ -7,10 +7,12 @@ internal static class Theme
 {
     private const uint Black = 0xFF000000;
     private const uint White = 0xFFFFFFFF;
+    private const uint Gray5 = 0xFFB9B9B9;
+    private const uint Gray6 = 0xFFCCCCCC;
+    private const uint AccentBrushMask = 0xCCFFFFFF;
 
     // The WPF data grid's line above and rule below its column headers, measured from the WPF frontend.
     private const uint TableBorderGray = 0xFFA0A0A0;
-    private const uint HeaderRuleGray = 0xFFB9B9B9;
 
     // The WPF combo box list border as rendered, the same in both themes.
     private const uint ListBorderGray = 0xFFA59F93;
@@ -27,23 +29,16 @@ internal static class Theme
     // MahApps WindowTitle.NonActive and Border.NonActive, the same gray in both themes.
     private const uint NonActiveGray = 0xFF808080;
 
-    // Control borders measured from the WPF frontend: a button's at rest and under the pointer (its pressed and
-    // focused border is the text colour), a text box's at rest and under the pointer or focused, and a combo box's
-    // fill and border under the pointer and its border while its list is open.
+    // Dark control borders measured from the WPF frontend.
     private const uint DarkControlBorder = 0xFF7E7E7E;
-    private const uint LightControlBorder = 0xFFE2E2E2;
     private const uint DarkControlBorderHover = 0xFF898989;
-    private const uint LightControlBorderHover = 0xFFD6D6D6;
     private const uint DarkInputBorder = 0xFF4F4F4F;
-    private const uint LightInputBorder = 0xFFF2F2F2;
     private const uint DarkInputBorderHover = 0xFF5C5C5C;
-    private const uint LightInputBorderHover = 0xFFBFBFBF;
     private const uint DarkComboHover = 0xFF616161;
+    // MahApps Gray9 composited over the light theme's white background.
     private const uint LightComboHover = 0xFFEBEBEB;
     private const uint DarkComboHoverBorder = 0xFF686868;
-    private const uint LightComboHoverBorder = 0xFFC1C1C1;
     private const uint DarkComboOpenBorder = 0xFF9C9C9C;
-    private const uint LightComboOpenBorder = 0xFF8D8D8D;
 
     // MahApps 2.4.11 colors and brush opacities used by the original WPF frontend:
     // https://github.com/MahApps/MahApps.Metro/blob/2.4.11/src/MahApps.Metro/Styles/Themes/GeneratorParameters.json
@@ -67,20 +62,22 @@ internal static class Theme
             Panel: isDark ? 0xFF2B2B2B : White,
             Text: text,
             MutedText: isDark ? DarkMutedText : LightMutedText,
-            Border: 0xFFCCCCCC,
-            ControlBorder: isDark ? DarkControlBorder : LightControlBorder,
-            ControlBorderHover: isDark ? DarkControlBorderHover : LightControlBorderHover,
-            InputBorder: isDark ? DarkInputBorder : LightInputBorder,
-            InputBorderHover: isDark ? DarkInputBorderHover : LightInputBorderHover,
+            Border: Gray6,
+            ControlBorder: isDark ? DarkControlBorder : Gray6,
+            ControlBorderHover: isDark ? DarkControlBorderHover : Gray6,
+            InputBorder: isDark ? DarkInputBorder : Gray6,
+            InputBorderHover: isDark ? DarkInputBorderHover : LightMutedText,
+            InputBorderFocus: isDark ? DarkInputBorderHover : Black,
             ComboHover: isDark ? DarkComboHover : LightComboHover,
-            ComboHoverBorder: isDark ? DarkComboHoverBorder : LightComboHoverBorder,
-            ComboOpenBorder: isDark ? DarkComboOpenBorder : LightComboOpenBorder,
+            ComboHoverBorder: isDark ? DarkComboHoverBorder : LightMutedText,
+            ComboOpenBorder: isDark ? DarkComboOpenBorder : Black,
             Input: background,
             Control: isDark ? 0xFF2F2F2F : 0xFFF7F7F7,
             Hover: isDark ? 0xFF454545 : 0xFFE0E0E0,
             Highlight: Highlight(accent),
             Pressed: isDark ? DarkGray7 : LightGray7,
             Accent: accent,
+            AccentBrush: accent & AccentBrushMask,
             AccentText: accentText,
             Selection: selection,
             SelectionText: accentText,
@@ -89,10 +86,16 @@ internal static class Theme
             TitleBar: selection,
             InactiveChrome: NonActiveGray,
             TitleText: accentText,
-            HeaderRule: HeaderRuleGray,
+            HeaderRule: Gray5,
             TableBorder: TableBorderGray,
             ToolTipBorder: isDark ? DarkGray7 : LightGray7,
-            ListBorder: ListBorderGray
+            ListBorder: ListBorderGray,
+            ContextMenuBorder: isDark ? Gray6 : 0xE0717070,
+            ContextMenuHover: isDark ? 0xFF313131 : 0xFFDEDEDE,
+            ContextMenuDisabledText: isDark ? 0xFF7E7E7E : LightMutedText,
+            ChoiceBorder: isDark ? Gray6 : Gray5,
+            ChoiceBorderHover: isDark ? Gray6 : LightMutedText,
+            ChoiceDisabledText: isDark ? DarkMutedText : 0x66000000
         );
     }
 
@@ -169,6 +172,7 @@ internal sealed record ThemePalette(
     uint ControlBorderHover,
     uint InputBorder,
     uint InputBorderHover,
+    uint InputBorderFocus,
     uint ComboHover,
     uint ComboHoverBorder,
     uint ComboOpenBorder,
@@ -178,6 +182,7 @@ internal sealed record ThemePalette(
     uint Highlight,
     uint Pressed,
     uint Accent,
+    uint AccentBrush,
     uint AccentText,
     uint Selection,
     uint SelectionText,
@@ -198,5 +203,12 @@ internal sealed record ThemePalette(
     uint ToolTipBorder,
 
     // The border of a combo box list and a drop-down list.
-    uint ListBorder
+    uint ListBorder,
+
+    uint ContextMenuBorder,
+    uint ContextMenuHover,
+    uint ContextMenuDisabledText,
+    uint ChoiceBorder,
+    uint ChoiceBorderHover,
+    uint ChoiceDisabledText
 );

@@ -34,7 +34,8 @@
             </StackPanel.Resources>
 
             <Button x:Name="TryCloseAsync" Style="{StaticResource BackButton}" />
-            <ComboBox x:Name="ApiClients" Margin="3" Width="80" ItemTemplate="{StaticResource PlatformTemplate}" TextSearch.TextPath="ApiName" />
+            <ComboBox x:Name="ApiClients" AutomationProperties.AutomationId="VodProviders" Margin="3" Width="80"
+                      ItemTemplate="{StaticResource PlatformTemplate}" TextSearch.TextPath="ApiName" />
             <TextBlock Text="Channel" />
             <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="DisplayName" Text="{Binding StreamDisplayName, Delay=500}" Width="140"
                   IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"

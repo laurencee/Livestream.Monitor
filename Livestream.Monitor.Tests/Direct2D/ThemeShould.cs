@@ -83,6 +83,13 @@ public class ThemeShould
         Assert.Equal(0xFFE0E0E0u, light.Hover);
         Assert.Equal(0xFF7E7E7Eu, dark.Pressed);
         Assert.Equal(0xFFD8D8D9u, light.Pressed);
+        Assert.Equal(0xFFCCCCCCu, light.ControlBorder);
+        Assert.Equal(0xFFCCCCCCu, light.ControlBorderHover);
+        Assert.Equal(0xFFCCCCCCu, light.InputBorder);
+        Assert.Equal(0xFF7F7F7Fu, light.InputBorderHover);
+        Assert.Equal(0xFF000000u, light.InputBorderFocus);
+        Assert.Equal(0xFF7F7F7Fu, light.ComboHoverBorder);
+        Assert.Equal(0xFF000000u, light.ComboOpenBorder);
         Assert.NotEqual(dark.Selection, light.Selection);
         Assert.NotEqual(dark.Tile, light.Tile);
         Assert.Equal(dark.Accent, light.Accent);

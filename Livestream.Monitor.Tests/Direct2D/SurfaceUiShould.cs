@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using Livestream.Monitor.Core.Settings;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Direct2D.Automation;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Rendering;
@@ -389,6 +390,73 @@ public sealed class SurfaceUiShould : IDisposable
         ui.MouseDown(enabledItem);
         Assert.False(ui.HasMenu);
         Assert.Equal(1, chosen);
+    }
+
+    [Theory]
+    [InlineData(MetroThemeBaseColour.BaseDark, 0xFF252525u, 0xFF313131u, 0xFF7E7E7Eu)]
+    [InlineData(MetroThemeBaseColour.BaseLight, 0xFFFFFFFFu, 0xFFDEDEDEu, 0xFF7F7F7Fu)]
+    public void DrawTheWpfContextMenuColours(
+        MetroThemeBaseColour theme,
+        uint background,
+        uint hover,
+        uint disabledText)
+    {
+        const string DisabledLabel = "Unavailable";
+        var menuPalette = Theme.Create(new Settings { MetroThemeBaseColour = theme, MetroThemeAccentColour = MetroThemeAccentColour.Orange });
+        SurfaceUi.MenuChoice[] choices = [new("Open", Checked: true), new(DisabledLabel, Enabled: false)];
+        ui.Popup(id: "context", position: new PointF(10, 10), choices, chosen: _ => { });
+        ui.Begin(menuPalette, viewport);
+        ui.MouseMove(new PointF(40, 20));
+        ui.End();
+
+        var fills = commands.Where(command => command.Kind == DrawKind.Fill).Select(command => command.Color);
+        Assert.Equal([background, hover], fills);
+        var label = Assert.Single(commands, command => command is { Kind: DrawKind.Text, Text: DisabledLabel });
+        Assert.Equal(disabledText, label.Color);
+        var border = theme == MetroThemeBaseColour.BaseLight ? 0xE0717070u : 0xFFCCCCCCu;
+        var checkmark = theme == MetroThemeBaseColour.BaseLight ? 0xCCFA6800u : 0xFFFA6800u;
+        Assert.Equal(border, Assert.Single(commands, command => command.Kind == DrawKind.Stroke).Color);
+        Assert.Equal(checkmark, Assert.Single(commands, command => command.Kind == DrawKind.Icon).Color);
+    }
+
+    [Fact]
+    public void DrawLightThemeCheckBoxesAndRadioButtonsWithMahAppsColours()
+    {
+        var settings = new Settings
+        {
+            MetroThemeBaseColour = MetroThemeBaseColour.BaseLight,
+            MetroThemeAccentColour = MetroThemeAccentColour.Orange,
+        };
+
+        var light = Theme.Create(settings);
+        var checkBounds = new RectangleF(x: 10, y: 10, width: 120, height: 24);
+        var radioBounds = new RectangleF(x: 10, y: 40, width: 120, height: 24);
+
+        ui.Begin(light, viewport);
+        ui.Check(id: "check", text: "Check", value: true, checkBounds, changed: _ => { });
+        ui.Radio(id: "radio", text: "Radio", value: true, radioBounds, changed: _ => { }, group: "choices");
+        ui.End();
+
+        Assert.Equal(0xFFFFFFFFu, Assert.Single(commands, command => command.Kind == DrawKind.Fill).Color);
+        Assert.Equal(0xFFB9B9B9u, Assert.Single(commands, command => command.Kind == DrawKind.Stroke).Color);
+        Assert.Equal(0xFFB94C00u, Assert.Single(commands, command => command.Kind == DrawKind.Icon).Color);
+        var radioColours = commands.Where(command => command.Kind == DrawKind.Ellipse).Select(command => command.Color);
+        Assert.Equal([0xFFB9B9B9u, 0xFFFFFFFFu, 0xFFB94C00u], radioColours);
+    }
+
+    [Fact]
+    public void DrawDisabledLightButtonsWithMahAppsColours()
+    {
+        var light = Theme.Create(new Settings { MetroThemeBaseColour = MetroThemeBaseColour.BaseLight });
+        var bounds = new RectangleF(x: 10, y: 10, width: 120, height: 24);
+        ui.Begin(light, viewport);
+        ui.MouseMove(new PointF(40, 20));
+        ui.Button(id: "disabled", text: "Disabled", bounds, action: () => { }, enabled: false);
+        ui.End();
+
+        Assert.Equal(0xFFFBFBFBu, Assert.Single(commands, command => command.Kind == DrawKind.Fill).Color);
+        Assert.Equal(0xFFE3E3E3u, Assert.Single(commands, command => command.Kind == DrawKind.Stroke).Color);
+        Assert.Equal(0xFFB0B0B0u, Assert.Single(commands, command => command.Kind == DrawKind.Text).Color);
     }
 
     [Fact]

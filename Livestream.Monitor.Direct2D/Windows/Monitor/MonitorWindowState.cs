@@ -346,7 +346,13 @@ internal sealed class MonitorWindowState : ObservableModel
         {
             if (!api.IsAuthorized) await api.Authorize(dialogs);
 
-            var query = new TopStreamQuery { Skip = PageNumber * PageSize, Take = PageSize, GameName = category };
+            var query = new TopStreamQuery
+            {
+                Skip = PageNumber * PageSize,
+                Take = PageSize,
+                GameName = api.HasTopStreamGameFilterSupport ? category : null,
+            };
+
             var result = await api.GetTopStreams(query);
             topStreams.Clear();
             topStreams.AddRange(result.LivestreamModels);

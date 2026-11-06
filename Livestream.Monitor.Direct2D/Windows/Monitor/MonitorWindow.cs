@@ -85,8 +85,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private static readonly CultureInfo WpfBindingCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly NativeDialogs dialogs;
     private readonly MonitorWindowState state;
-    private readonly IApiClient[] providers;
-    private readonly string[] providerNames;
+    private readonly ProviderChoices providers;
+    private readonly ProviderChoices topStreamProviders;
+    private readonly ProviderChoices vodProviders;
     private readonly string[] filterValues;
     private readonly string[] filterDisplayNames;
     private readonly NativeStreamLauncher launcher;
@@ -105,7 +106,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     // In rows on the stream list and in pixels on the tile pages; one page shows at a time.
     private int scrollOffset;
 
-    private int providerIndex;
+    private IApiClient preferredProvider;
     private int vodTypeIndex;
     private StreamNotificationTarget? requestedNotification;
     private PageRequest? requestedPage;
@@ -135,10 +136,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         this.state = state;
         this.notifications = notifications;
         scrollBar = new VerticalScrollBar(ScrollTo);
-        providers = state.ApiClientFactory.GetAll().ToArray();
-        providerNames = providers.Select(api => PlatformNames.GetDisplayName(api.ApiName)).ToArray();
-        filterValues = [FilterModel.AllApiClientsFilterName, .. providers.Select(api => api.ApiName)];
-        filterDisplayNames = [FilterModel.AllApiClientsFilterName, .. providerNames];
+        var clients = state.ApiClientFactory.GetAll().ToArray();
+        providers = new ProviderChoices(clients);
+        topStreamProviders = new ProviderChoices(clients.Where(api => api.HasTopStreamsSupport).ToArray());
+        vodProviders = new ProviderChoices(clients.Where(api => api.HasVodViewerSupport).ToArray());
+        preferredProvider = clients[0];
+        filterValues = [FilterModel.AllApiClientsFilterName, .. clients.Select(api => api.ApiName)];
+        filterDisplayNames = [FilterModel.AllApiClientsFilterName, .. providers.Names];
         palette = Theme.Create(state.SettingsHandler.Settings);
         ThemeSource = () => palette;
         images = new ImageCache(Graphics);
@@ -190,7 +194,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     protected override bool IsAnimating =>
         base.IsAnimating || settingsSlide.IsAnimating || state.IsContentLoading && !HasDialog ||
         scrollBar.IsInteracting || actionFeedback.IsVisible;
-    private IApiClient SelectedProvider => providers[Math.Clamp(providerIndex, 0, providers.Length - 1)];
+    private IApiClient SelectedProvider
+    {
+        get
+        {
+            var choices = GetProviderChoices(state.Page);
+            return choices.Clients[choices.GetSelectedIndex(preferredProvider)];
+        }
+    }
     private int ItemCount => state.Page == MonitorPage.Vods ? state.Vods.Count : state.Rows.Count;
 
     protected override void BeforeFrame()
@@ -232,7 +243,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (requestedPage is { } request)
         {
             requestedPage = null;
-            providerIndex = request.ProviderIndex;
+            preferredProvider = request.Provider;
+            vodTypeIndex = 0;
             SwitchPage(request.Page);
         }
 
@@ -268,6 +280,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             "Top Streams",
             topBounds,
             () => SwitchPage(MonitorPage.TopStreams),
+            enabled: topStreamProviders.Clients.Length != 0,
             chrome: true,
             toolTip: "Browse top streams"
         );
@@ -277,6 +290,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             "VOD browser",
             vodBounds,
             () => SwitchPage(MonitorPage.Vods),
+            enabled: vodProviders.Clients.Length != 0,
             chrome: true,
             toolTip: "Browse recorded videos"
         );
@@ -397,17 +411,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var extra = Math.Max(0, width - Program.WindowWidth);
         var channelBounds = new RectangleF(x: 336 + PlatformFilterExtraWidth, y: Y, width: 150 + extra, height: Height);
         Ui.Input(id: "channel", placeholder: "Channel name or ID...", channelBounds, enter: () => _ = AddChannel());
-        var providerName = PlatformNames.GetDisplayName(SelectedProvider.ApiName);
         var providerBounds = new RectangleF(x: 490 + PlatformFilterExtraWidth + extra, y: Y, width: 80, height: Height);
-        Ui.Combo(
-            "provider",
-            providerName,
-            providerNames,
-            providerIndex,
-            providerBounds,
-            SelectProvider,
-            !state.Busy
-        );
+        DrawProviderCombo(providerBounds);
         var addBounds = new RectangleF(x: 574 + PlatformFilterExtraWidth + extra, y: Y, width: 19, height: Height);
         var canAdd = !state.Busy && !string.IsNullOrWhiteSpace(Ui.Value("channel"));
         Ui.Button(
@@ -468,17 +473,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             toolTip: "Go back to livestream list",
             name: "Back"
         );
-        var providerName = PlatformNames.GetDisplayName(SelectedProvider.ApiName);
         var providerBounds = new RectangleF(x: left + 31, y: Y, width: 80, height: Height);
-        Ui.Combo(
-            "provider",
-            providerName,
-            providerNames,
-            providerIndex,
-            providerBounds,
-            SelectProvider,
-            !state.Busy
-        );
+        DrawProviderCombo(providerBounds);
 
         if (state.Page == MonitorPage.TopStreams)
         {
@@ -996,9 +992,31 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         NeedsPaint = true;
     }
 
-    private void SelectProvider(int index)
+    private ProviderChoices GetProviderChoices(MonitorPage page) => page switch
     {
-        providerIndex = index;
+        MonitorPage.TopStreams => topStreamProviders,
+        MonitorPage.Vods => vodProviders,
+        _ => providers,
+    };
+
+    private void DrawProviderCombo(RectangleF bounds)
+    {
+        var choices = GetProviderChoices(state.Page);
+        var index = choices.GetSelectedIndex(preferredProvider);
+        Ui.Combo(
+            id: "provider",
+            text: choices.Names[index],
+            choices: choices.Names,
+            selectedIndex: index,
+            bounds,
+            changed: selectedIndex => SelectProvider(choices.Clients[selectedIndex]),
+            enabled: !state.Busy
+        );
+    }
+
+    private void SelectProvider(IApiClient provider)
+    {
+        preferredProvider = provider;
         vodTypeIndex = 0;
         state.PageNumber = 0;
         if (state.Page != MonitorPage.Followed) _ = Query();
@@ -1536,11 +1554,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
         else
         {
-            var index = Array.FindIndex(providers, provider => provider.ApiName.IsEqualTo(target.Key.ApiClientName));
-            if (index < 0) return false;
+            var provider = Array.Find(providers.Clients, api => api.ApiName.IsEqualTo(target.Key.ApiClientName));
+            if (provider == null || !RequestPage(MonitorPage.TopStreams, provider)) return false;
 
             requestedNotification = null;
-            requestedPage = new PageRequest(MonitorPage.TopStreams, index);
         }
 
         Restore();
@@ -1561,12 +1578,16 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void ShowTopStreams(LivestreamModel stream)
     {
-        RequestPage(MonitorPage.TopStreams, stream.ApiClient);
-        Restore();
+        if (RequestPage(MonitorPage.TopStreams, stream.ApiClient)) Restore();
     }
 
-    private void RequestPage(MonitorPage page, IApiClient provider) =>
-        requestedPage = new PageRequest(page, Array.IndexOf(providers, provider));
+    private bool RequestPage(MonitorPage page, IApiClient provider)
+    {
+        if (!GetProviderChoices(page).Clients.Contains(provider)) return false;
+
+        requestedPage = new PageRequest(page, provider);
+        return true;
+    }
 
     private async Task CheckVersion()
     {
@@ -1658,15 +1679,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (state.SelectedStream is not { } stream) return;
 
         var notify = !stream.DontNotify;
+        var hasVods = stream.ApiClient.HasVodViewerSupport;
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items;
-
         if (state.Page == MonitorPage.Followed)
         {
             const string NotifyToolTip =
                 "Untick this to prevent popup notifications about this stream coming online or showing up as a " +
                 "popular stream";
 
-            var hasVods = stream.ApiClient.HasVodViewerSupport;
             items =
             [
                 (new SurfaceUi.MenuChoice("Remove from list"), ContextCommand.Remove),
@@ -1687,8 +1707,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 (new SurfaceUi.MenuChoice("Copy Stream URL"), ContextCommand.CopyUrl),
                 (new SurfaceUi.MenuChoice("Open Stream"), ContextCommand.Open),
                 (new SurfaceUi.MenuChoice("Open Stream in Browser"), ContextCommand.OpenInBrowser),
-                (new SurfaceUi.MenuChoice("Open Chat"), ContextCommand.OpenChat),
-                (new SurfaceUi.MenuChoice("Open in VOD browser"), ContextCommand.OpenVods),
+                (new SurfaceUi.MenuChoice("Open Chat", Enabled: stream.ApiClient.HasChatSupport), ContextCommand.OpenChat),
+                (new SurfaceUi.MenuChoice("Open in VOD browser", Enabled: hasVods), ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
             ];
         }
@@ -1762,9 +1782,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     OpenInBrowser(await stream.GetStreamUrl());
                     break;
                 case ContextCommand.OpenVods:
+                    if (!RequestPage(MonitorPage.Vods, stream.ApiClient)) break;
+
                     var channel = stream.ChannelIdentifier;
                     Ui.SetValue("vod.channel", channel.DisplayName ?? channel.ChannelId);
-                    RequestPage(MonitorPage.Vods, stream.ApiClient);
                     break;
                 case ContextCommand.Remove:
                     await state.Remove(stream);
@@ -1859,7 +1880,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private readonly record struct PageRequest(MonitorPage Page, int ProviderIndex);
+    private sealed class ProviderChoices(IApiClient[] clients)
+    {
+        public IApiClient[] Clients { get; } = clients;
+        public string[] Names { get; } = clients.Select(api => PlatformNames.GetDisplayName(api.ApiName)).ToArray();
+
+        public int GetSelectedIndex(IApiClient preferred) => Math.Max(0, Array.IndexOf(Clients, preferred));
+    }
+
+    private readonly record struct PageRequest(MonitorPage Page, IApiClient Provider);
 
     private readonly record struct TileLayout(int Columns, float Width, int Viewport, int Extent);
 

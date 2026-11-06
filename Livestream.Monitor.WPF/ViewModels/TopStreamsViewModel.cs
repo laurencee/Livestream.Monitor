@@ -24,6 +24,7 @@ namespace Livestream.Monitor.WPF.ViewModels
     public class TopStreamsViewModel : PagingConductor<TopStreamResult>
     {
         private const int STREAM_TILES_PER_PAGE = 15;
+        private const int GameFilterDelayMilliseconds = 250;
 
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly ISettingsHandler settingsHandler;
@@ -32,6 +33,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         private readonly IApiClientFactory apiClientFactory;
 
         private bool hasNextPage;
+        private int gameFilterGeneration;
 
         #region Design time constructor
 
@@ -97,9 +99,9 @@ namespace Livestream.Monitor.WPF.ViewModels
             {
                 if (value == field) return;
                 field = value;
+                var generation = ++gameFilterGeneration;
                 NotifyOfPropertyChange(() => GameName);
-                if (!PossibleGameNames.Any(x => x.IsEqualTo(field))) UpdatePossibleGameNames();
-                MovePage();
+                if (IsActive) _ = ApplyGameFilterChange(generation);
             }
         }
 
@@ -125,6 +127,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             {
                 if (Equals(value, field)) return;
                 field = value;
+                gameFilterGeneration++;
                 NotifyOfPropertyChange(() => SelectedApiClient);
                 MovePage();
                 InitializeKnownGames();
@@ -153,19 +156,19 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         public async Task OpenChat(TopStreamResult stream)
         {
-            if (stream == null) return;
+            if (stream?.LivestreamModel is not { ApiClient.HasChatSupport: true } livestream) return;
 
-            await streamLauncher.OpenChat(stream.LivestreamModel, this);
+            await streamLauncher.OpenChat(livestream, this);
         }
 
         public void GotoVodViewer(TopStreamResult stream)
         {
-            if (stream?.LivestreamModel == null) return;
+            if (stream?.LivestreamModel is not { ApiClient.HasVodViewerSupport: true } livestream) return;
 
             navigationService.NavigateTo<VodListViewModel>(vm =>
             {
-                vm.SelectedApiClient = stream.LivestreamModel.ApiClient;
-                vm.StreamDisplayName = stream.LivestreamModel.ChannelIdentifier.DisplayName;
+                vm.SelectedApiClient = livestream.ApiClient;
+                vm.StreamDisplayName = livestream.ChannelIdentifier.DisplayName;
             });
         }
 
@@ -230,22 +233,35 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             if (Execute.InDesignMode) return;
 
+            await LoadTopStreams();
+            base.OnViewLoaded(view);
+        }
+
+        internal async Task LoadTopStreams()
+        {
             hasNextPage = false;
             await EnsureItems();
-            if (!PossibleGameNames.Any()) InitializeKnownGames();
-
-            base.OnViewLoaded(view);
+            if (string.IsNullOrWhiteSpace(GameName) && PossibleGameNames.Count == 0) InitializeKnownGames();
         }
 
         private async void InitializeKnownGames()
         {
-            PossibleGameNames.Clear();
-            if (!SelectedApiClient.HasTopStreamGameFilterSupport) return;
+            var provider = SelectedApiClient;
+            var generation = gameFilterGeneration;
+            ReplaceGameSuggestions([]);
+
+            if (provider?.HasTopStreamGameFilterSupport != true)
+            {
+                ExpandPossibleGames = false;
+                return;
+            }
 
             try
             {
-                var games = await SelectedApiClient.GetKnownGameNames(null);
-                PossibleGameNames.AddRange(games.Select(x => x.GameName));
+                var games = await provider.GetKnownGameNames(null);
+                if (generation != gameFilterGeneration) return;
+
+                ReplaceGameSuggestions(games);
             }
             catch
             {
@@ -308,7 +324,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
                 var topStreamsQuery = new TopStreamQuery
                 {
-                    GameName = GameName,
+                    GameName = SelectedApiClient.HasTopStreamGameFilterSupport ? GameName : null,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
@@ -340,23 +356,49 @@ namespace Livestream.Monitor.WPF.ViewModels
             LoadingItems = false;
         }
 
+        private async Task ApplyGameFilterChange(int generation)
+        {
+            await Task.Delay(GameFilterDelayMilliseconds);
+            if (!IsActive || generation != gameFilterGeneration) return;
+
+            if (string.IsNullOrWhiteSpace(GameName) && PossibleGameNames.Count == 0) InitializeKnownGames();
+            else if (!PossibleGameNames.Any(game => game.IsEqualTo(GameName))) UpdatePossibleGameNames();
+
+            MovePage();
+        }
+
         private async void UpdatePossibleGameNames()
         {
-            var game = GameName; // store local variable in case GameName changes while this is running
-            if (!SelectedApiClient.HasTopStreamGameFilterSupport || string.IsNullOrWhiteSpace(game)) return;
+            var provider = SelectedApiClient;
+            var game = GameName;
+            var generation = gameFilterGeneration;
+            if (provider?.HasTopStreamGameFilterSupport != true || string.IsNullOrWhiteSpace(game)) return;
 
             try
             {
-                var games = await SelectedApiClient.GetKnownGameNames(game);
-                var oldItems = PossibleGameNames.ToList();
-                PossibleGameNames.AddRange(games.Select(x => x.GameName));
-                PossibleGameNames.RemoveRange(oldItems);
+                var games = await provider.GetKnownGameNames(game);
+                if (generation != gameFilterGeneration) return;
+
+                ReplaceGameSuggestions(games);
                 ExpandPossibleGames = true;
             }
             catch
             {
                 // make sure we dont crash just updating auto-completion options
             }
+        }
+
+        private void ReplaceGameSuggestions(IReadOnlyCollection<KnownGame> games)
+        {
+            // Removing the selected suggestion also clears the editable combo box's text.
+            var enteredGame = GameName;
+            for (var i = PossibleGameNames.Count - 1; i >= 0; i--)
+                if (!PossibleGameNames[i].IsEqualTo(enteredGame)) PossibleGameNames.RemoveAt(i);
+
+            if (games.Count == 0) return;
+
+            var names = games.Select(game => game.GameName).Where(name => !PossibleGameNames.Contains(name));
+            PossibleGameNames.AddRange(names);
         }
     }
 }
