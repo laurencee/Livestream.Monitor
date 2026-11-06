@@ -24,6 +24,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int ToolbarTop = 33;
     private const int ToolbarControlHeight = 26;
     private const int ToolbarBottom = 65;
+    private const int TitleCommandsWidth = 293;
 
     // The arrow area at the end of an editable combo box's input, as wide as the WPF toggle.
     private const float DropDownArrowWidth = 20;
@@ -117,6 +118,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private bool firstMinimize = true;
     private int minimizeCount;
     private bool isImporting;
+    private readonly MainWindowPlacement? placement;
 
     public MonitorWindow(MonitorWindowState state, NativeDialogs dialogs) : base(CaptionTitle, Program.WindowWidth, Program.WindowHeight)
     {
@@ -162,6 +164,17 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             (_, _) => palette = Theme.Create(state.SettingsHandler.Settings);
 
         state.StreamOnline += NotifyOnline;
+
+        if (Program.MonitorName == null)
+        {
+            placement = new MainWindowPlacement(
+                window: Handle,
+                titleHeight: TitleHeight,
+                topTitleInset: ResizeBorder,
+                leftTitleInset: ResizeBorder,
+                rightTitleInset: TitleCommandsWidth);
+        }
+
         Tick();
         Show();
 
@@ -252,7 +265,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     protected override void Draw(SizeF size)
     {
         DrawCaption(CaptionTitle, size.Width, minimize: true);
-        var topBounds = new RectangleF(x: size.Width - 293, y: 0, width: 84, height: TitleHeight);
+        var topBounds = new RectangleF(x: size.Width - TitleCommandsWidth, y: 0, width: 84, height: TitleHeight);
         Ui.Button(
             "top",
             "Top Streams",
@@ -1338,6 +1351,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     protected override nint? OnMessage(uint message, nuint wParam, nint lParam)
     {
+        if (message == Win32.WmMove) placement?.Capture();
+
         if (HasDialog && message is Win32.WmRightButtonDown or Win32.WmContextMenu) return 0;
 
         if (message == TrayIcon.CallbackMessage)
@@ -1410,6 +1425,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         return offset;
     }
+
+    protected override void OnClosed() => placement?.Save();
 
     public override void Dispose()
     {

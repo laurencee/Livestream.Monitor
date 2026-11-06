@@ -21,6 +21,7 @@ internal static unsafe partial class Win32
     public const int GwlExStyle = -20;
 
     public const uint WmDestroy = 0x0002;
+    public const uint WmMove = 0x0003;
     public const uint WmSize = 0x0005;
     public const uint WmActivate = 0x0006;
     public const uint WmPaint = 0x000F;

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs;
 using Livestream.Monitor.Core.Settings;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -72,6 +73,48 @@ public class SettingsShould
         Assert.False(settings.ShowOnlineOnly);
         Assert.Empty(settings.FavoriteApiQualities);
         Assert.Equal("retained-token", settings.Twitch.AuthToken);
+    }
+
+    [Fact]
+    public void PersistMainWindowLocationAlongsideSettings()
+    {
+        InTemporaryDirectory(() =>
+        {
+            var json = $$"""{"SettingsVersion":{{Settings.CurrentSettingsVersion}}}""";
+            File.WriteAllText(SettingsHandler.SettingsFileName, json);
+            var settings = new SettingsHandler().Settings;
+            Assert.True(WindowLocationFile.TryLoad(out var initialLocation));
+            Assert.Null(initialLocation);
+
+            settings.ShowOnlineOnly = true;
+            var savedSettings = File.ReadAllText(SettingsHandler.SettingsFileName);
+
+            var location = new WindowLocation(X: -1200, Y: 160);
+            WindowLocationFile.Save(location);
+
+            Assert.True(WindowLocationFile.TryLoad(out var restored));
+            Assert.Equal(location, restored);
+            Assert.Equal(savedSettings, File.ReadAllText(SettingsHandler.SettingsFileName));
+        });
+    }
+
+    [Fact]
+    public void ReportAnUnavailableWindowLocationFile()
+    {
+        InTemporaryDirectory(() =>
+        {
+            var location = new WindowLocation(X: 120, Y: 160);
+            WindowLocationFile.Save(location);
+
+            using (File.Open(WindowLocationFile.FileName, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                Assert.False(WindowLocationFile.TryLoad(out var unavailable));
+                Assert.Null(unavailable);
+            }
+
+            Assert.True(WindowLocationFile.TryLoad(out var restored));
+            Assert.Equal(location, restored);
+        });
     }
 
     [Fact]

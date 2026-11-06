@@ -24,7 +24,7 @@ internal abstract class CanvasWindow : DesktopWindow
     protected const float CaptionTitleFontSize = 16;
     protected const float CaptionTitleMargins = 85;
 
-    private const int ResizeBorder = 5;
+    protected const int ResizeBorder = 5;
 
     // MahApps caption buttons are 46 pixels wide and adjoin each other and the window edge.
     private const int CaptionButtonWidth = 46;
