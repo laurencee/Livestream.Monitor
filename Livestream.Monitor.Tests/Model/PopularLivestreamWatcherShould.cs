@@ -39,6 +39,8 @@ namespace Livestream.Monitor.Tests.Model
             await sut.NotifyPopularStreams();
 
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
+            notificationHandler.Received(expectedNotificationCount)
+                .AddNotification(Arg.Is<LivestreamNotification>(notification => notification.Duration == TimeSpan.FromSeconds(25)));
         }
 
         [Theory, AutoNSubstituteData]

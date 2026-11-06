@@ -19,7 +19,7 @@ internal sealed class SettingsPane
     private const float InputHeight = 26;
     private const float InputSpacing = 6;
     private const float GroupPadding = 6;
-    private const float GroupGap = 6;
+    internal const float GroupGap = 6;
     private const float LabelSpacing = 4;
     private const float StatusSpacing = 5;
     private const float TextSize = 12;
@@ -129,10 +129,9 @@ internal sealed class SettingsPane
 
     private void DrawGeneral(SurfaceUi ui, RectangleF body, ref float y)
     {
-        const float ThemeHeight = 34;
-        var themes = Row(body, ref y, ThemeHeight);
-        var baseBounds = new RectangleF(x: themes.X + 5, y: themes.Y + 3, width: 108, height: InputHeight);
-        var accentBounds = new RectangleF(x: themes.X + 123, y: themes.Y + 3, width: 132, height: InputHeight);
+        var themes = Row(body, ref y, InputHeight);
+        var baseBounds = new RectangleF(x: themes.X + 5, y: themes.Y, width: 108, height: InputHeight);
+        var accentBounds = new RectangleF(x: themes.X + 123, y: themes.Y, width: 132, height: InputHeight);
         var baseIndex = handler.Settings.MetroThemeBaseColour == MetroThemeBaseColour.BaseDark ? 1 : 0;
         var accentIndex = Array.IndexOf(Accents, handler.Settings.MetroThemeAccentColour);
         ui.Combo(
@@ -154,6 +153,7 @@ internal sealed class SettingsPane
             keepOpen: true
         );
 
+        y += GroupGap;
         var minimumTop = y;
         var minimumBody = BeginGroup(body, ref y);
         var label = DrawTextRow(ui, text: "Popular alert threshold (viewers; 0 = off)", minimumBody, ref y, spacing: LabelSpacing);
@@ -175,9 +175,11 @@ internal sealed class SettingsPane
         EndGroup(ui, body, minimumTop, ref y);
 
         const float GeneralCheckHeight = 20;
+        var checkboxesTop = y;
+        var checkboxesBody = BeginGroup(body, ref y);
         DrawCheck(
             ui,
-            body,
+            checkboxesBody,
             ref y,
             "versions",
             "Check for new app versions",
@@ -188,7 +190,7 @@ internal sealed class SettingsPane
         );
         DrawCheck(
             ui,
-            body,
+            checkboxesBody,
             ref y,
             "notifications",
             "Disable notifications",
@@ -199,7 +201,7 @@ internal sealed class SettingsPane
         );
         DrawCheck(
             ui,
-            body,
+            checkboxesBody,
             ref y,
             "refresherrors",
             "Disable refresh error dialogs",
@@ -210,7 +212,7 @@ internal sealed class SettingsPane
         );
         DrawCheck(
             ui,
-            body,
+            checkboxesBody,
             ref y,
             "traypopup",
             "Disable minimize to tray popup",
@@ -221,7 +223,7 @@ internal sealed class SettingsPane
         );
         DrawCheck(
             ui,
-            body,
+            checkboxesBody,
             ref y,
             "output",
             "Hide stream output on load",
@@ -230,11 +232,36 @@ internal sealed class SettingsPane
             height: GeneralCheckHeight,
             toolTip: "When checked, the stream output box is hidden after a successful launch."
         );
+        EndGroup(ui, body, checkboxesTop, ref y);
+
+        var durationTop = y;
+        var durationBody = BeginGroup(body, ref y);
+        DrawTextRow(ui, text: "Stream notification popup duration", durationBody, ref y, spacing: LabelSpacing);
+        var duration = Row(durationBody, ref y, GeneralCheckHeight);
+        var shortBanner = duration with { Width = duration.Width / 2 };
+        var longBanner = shortBanner with { X = shortBanner.Right };
+        ui.Radio(
+            "settings.bannerduration.short",
+            "Short",
+            !draft.UseLongStreamNotificationBanners,
+            shortBanner,
+            _ => draft.UseLongStreamNotificationBanners = false,
+            group: "settings.bannerduration");
+        ui.Radio(
+            "settings.bannerduration.long",
+            "Long",
+            draft.UseLongStreamNotificationBanners,
+            longBanner,
+            _ => draft.UseLongStreamNotificationBanners = true,
+            group: "settings.bannerduration");
+        y += GroupInputSpacing;
+        EndGroup(ui, body, durationTop, ref y);
 
         const float OpenFileGap = 4;
         y += OpenFileGap;
         var openBounds = Row(body, ref y, RowHeight);
-        ui.Button(id: "settings.openfile", text: "Open settings file", bounds: openBounds, action: () => _ = OpenSettings());
+        const string DocumentSymbol = "\uE8A5";
+        ui.Button(id: "settings.openfile", text: "Open settings file", bounds: openBounds, action: () => _ = OpenSettings(), symbol: DocumentSymbol);
 
         void MinimumChanged(string value)
         {
@@ -298,7 +325,9 @@ internal sealed class SettingsPane
         var vodId = name + ".vod";
         var chatId = name + ".chat";
         DrawCommand(ui, body, ref y, streamId, title: "Stream command", platform.StreamCommand, hint);
+        y += SectionGap;
         DrawCommand(ui, body, ref y, vodId, title: "VOD command", platform.VodCommand, hint);
+        y += SectionGap;
         DrawCommand(ui, body, ref y, chatId, title: "Chat command", platform.ChatCommand, hint);
     }
 
@@ -332,7 +361,7 @@ internal sealed class SettingsPane
         const uint InvalidPathColor = 0xFFCD5C5C;
         var statusColor = state.Valid ? ValidPathColor : InvalidPathColor;
         const float HintFontSize = 11;
-        DrawTextRow(ui, state.Message, pathBody, ref y, spacing: StatusSpacing, color: statusColor, size: HintFontSize);
+        DrawTextRow(ui, state.Message, pathBody, ref y, spacing: GroupInputSpacing, color: statusColor, size: HintFontSize);
         EndGroup(ui, body, pathTop, ref y);
 
         var argsTop = y;
@@ -373,8 +402,7 @@ internal sealed class SettingsPane
             value => command.CaptureErrorOutput = value,
             height: GroupCheckHeight
         );
-        EndGroup(ui, body, captureTop, ref y);
-        y += SectionGap;
+        EndGroup(ui, body, captureTop, ref y, spacing: 0);
     }
 
     private static RectangleF BeginGroup(RectangleF body, ref float y)
@@ -387,7 +415,8 @@ internal sealed class SettingsPane
         SurfaceUi ui,
         RectangleF body,
         float top,
-        ref float y)
+        ref float y,
+        float spacing = GroupGap)
     {
         y += GroupPadding;
         var border = new RectangleF(x: body.X, y: top, width: body.Width - ScrollbarSpace, height: y - top);
@@ -397,7 +426,7 @@ internal sealed class SettingsPane
 
         var thickness = ui.Palette.IsDark ? GroupBorderThickness : 1;
         ui.Border(border, color, thickness);
-        y += GroupGap;
+        y += spacing;
     }
 
     private void DrawExpander(
@@ -414,6 +443,7 @@ internal sealed class SettingsPane
             expanded[index],
             bounds,
             value => expanded[index] = value);
+        if (expanded[index]) y += GroupGap;
     }
 
     private void DrawInput(
@@ -511,8 +541,10 @@ internal sealed class SettingsPane
     {
         if (!validMinimumViewers) return false;
 
-        var otherChanges = !EditableMatch(draft, handler.Settings);
-        return otherChanges ? Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube) : streamQualities.HasChanges;
+        var current = handler.Settings;
+        if (!EditableMatch(draft, current)) return Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube);
+
+        return draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners || streamQualities.HasChanges;
     }
 
     private void Save()
@@ -521,6 +553,7 @@ internal sealed class SettingsPane
 
         var otherChanges = !EditableMatch(draft, handler.Settings);
         if (otherChanges) CopyEditable(draft, handler.Settings);
+        else handler.Settings.UseLongStreamNotificationBanners = draft.UseLongStreamNotificationBanners;
 
         streamQualities.SaveChanges();
         handler.SaveSettings();
@@ -528,12 +561,13 @@ internal sealed class SettingsPane
     }
 
     // The settings this pane edits and saves together; the theme applies at once instead. A setting added here is
-    // also compared in EditableMatch.
+    // also compared in EditableMatch, except duration, which can be saved without validating playback commands.
     private static void CopyEditable(Settings source, Settings target)
     {
         target.MinimumEventViewers = source.MinimumEventViewers;
         target.CheckForNewVersions = source.CheckForNewVersions;
         target.DisableNotifications = source.DisableNotifications;
+        target.UseLongStreamNotificationBanners = source.UseLongStreamNotificationBanners;
         target.DisableRefreshErrorDialogs = source.DisableRefreshErrorDialogs;
         target.DisableMinimizeToTrayNotification = source.DisableMinimizeToTrayNotification;
         target.HideStreamOutputMessageBoxOnLoad = source.HideStreamOutputMessageBoxOnLoad;

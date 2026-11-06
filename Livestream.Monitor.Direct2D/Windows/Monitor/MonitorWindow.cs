@@ -91,6 +91,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private readonly string[] filterDisplayNames;
     private readonly NativeStreamLauncher launcher;
     private readonly TrayIcon tray;
+    private readonly StreamNotifications notifications;
     private readonly PopularLivestreamWatcher popularStreams;
     private readonly ImageCache images;
     private readonly VerticalScrollBar scrollBar;
@@ -106,7 +107,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private int providerIndex;
     private int vodTypeIndex;
-    private LivestreamModel? requestedNotificationStream;
+    private StreamNotificationTarget? requestedNotification;
     private PageRequest? requestedPage;
     private long gameSuggestionsDue;
     private long vodQueryDue;
@@ -120,7 +121,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private bool isImporting;
     private readonly MainWindowPlacement? placement;
 
-    public MonitorWindow(MonitorWindowState state, NativeDialogs dialogs) : base(CaptionTitle, Program.WindowWidth, Program.WindowHeight)
+    public MonitorWindow(MonitorWindowState state, NativeDialogs dialogs, StreamNotifications notifications)
+        : base(CaptionTitle, Program.WindowWidth, Program.WindowHeight)
     {
         // Windows animates minimizing and restoring only windows with a caption; the client area still covers the
         // whole window.
@@ -131,6 +133,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         this.dialogs = dialogs;
         this.state = state;
+        this.notifications = notifications;
         scrollBar = new VerticalScrollBar(ScrollTo);
         providers = state.ApiClientFactory.GetAll().ToArray();
         providerNames = providers.Select(api => PlatformNames.GetDisplayName(api.ApiName)).ToArray();
@@ -233,17 +236,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             SwitchPage(request.Page);
         }
 
-        if (!state.Busy && requestedNotificationStream is { } stream)
+        // A quick YouTube query can show a channel placeholder before the notified video arrives.
+        if (state is { Busy: false, IsContentLoading: false, FollowedRowsSettled: true } && requestedNotification is { } target)
         {
-            requestedNotificationStream = null;
-            Ui.SetValue("filter", "");
-            state.Filter = "";
-            state.ProviderFilter = FilterModel.AllApiClientsFilterName;
-            state.OnlineOnly = false;
-            SwitchPage(MonitorPage.Followed);
-            state.RebuildRows();
-            state.SelectedIndex = state.Rows.IndexOf(stream);
-            KeepSelectionVisible();
+            requestedNotification = null;
+            SelectNotifiedStream(target);
         }
 
         if (!rowsDirty) return;
@@ -1442,20 +1439,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         Program.Dispatcher.Post(() =>
         {
-            if (IsClosed || state.SettingsHandler.Settings.DisableNotifications ||
-                notification.LivestreamModel.DontNotify)
-            {
-                return;
-            }
-
-            if (launcher.IsWatching(notification.LivestreamModel)) return;
-
             // Popular streams are usually not followed; their notifications open Top Streams, as in WPF.
             var stream = notification.LivestreamModel;
 
-            if (state.IsFollowed(stream))
-                tray.Notify(notification.Title, notification.Message, () => ShowNotificationStream(stream));
-            else tray.Notify(notification.Title, notification.Message, () => ShowTopStreams(stream));
+            _ = NotifyStream(
+                title: notification.Title,
+                message: notification.Message,
+                imageUrl: notification.ImageUrl,
+                stream: stream,
+                followed: state.IsFollowed(stream));
         });
     }
 
@@ -1502,15 +1494,69 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void NotifyOnline(LivestreamModel stream)
     {
-        if (launcher.IsWatching(stream)) return;
-
-        tray.Notify($"{stream.DisplayName} Online", stream.Description, () => ShowNotificationStream(stream));
+        var title = $"{stream.DisplayName} Online";
+        _ = NotifyStream(title, message: stream.Description, imageUrl: stream.ThumbnailUrls?.Small, stream, followed: true);
     }
 
-    private void ShowNotificationStream(LivestreamModel stream)
+    private async Task NotifyStream(
+        string? title,
+        string? message,
+        string? imageUrl,
+        LivestreamModel stream,
+        bool followed)
     {
-        requestedNotificationStream = stream;
+        if (SuppressNotification(stream)) return;
+
+        var target = new StreamNotificationTarget(stream.UniqueStreamKey, stream.ChannelIdentifier.ChannelId, followed);
+        var thumbnail = await notifications.GetThumbnail(imageUrl);
+        if (SuppressNotification(stream)) return;
+
+        var longBanner = state.SettingsHandler.Settings.UseLongStreamNotificationBanners;
+        if (!notifications.TryShow(title, message, target, thumbnail, longBanner))
+            tray.Notify(title, message, () => ActivateNotification(target));
+    }
+
+    private bool SuppressNotification(LivestreamModel stream)
+    {
+        if (IsClosed) return true;
+
+        var settings = state.SettingsHandler.Settings;
+        // A popular alert can hold a different model from the row the user muted during the download.
+        return settings.DisableNotifications || stream.DontNotify ||
+               settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey) || launcher.IsWatching(stream);
+    }
+
+    internal bool ActivateNotification(StreamNotificationTarget target)
+    {
+        if (IsClosed) return false;
+
+        if (target.Followed)
+        {
+            requestedNotification = target;
+        }
+        else
+        {
+            var index = Array.FindIndex(providers, provider => provider.ApiName.IsEqualTo(target.Key.ApiClientName));
+            if (index < 0) return false;
+
+            requestedNotification = null;
+            requestedPage = new PageRequest(MonitorPage.TopStreams, index);
+        }
+
         Restore();
+        return true;
+    }
+
+    private void SelectNotifiedStream(StreamNotificationTarget target)
+    {
+        Ui.SetValue("filter", "");
+        state.Filter = "";
+        state.ProviderFilter = FilterModel.AllApiClientsFilterName;
+        state.OnlineOnly = false;
+        SwitchPage(MonitorPage.Followed);
+        state.RebuildRows();
+        state.SelectedIndex = target.FindFollowedRow(state.Rows);
+        KeepSelectionVisible();
     }
 
     private void ShowTopStreams(LivestreamModel stream)

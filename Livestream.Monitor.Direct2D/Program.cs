@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Direct2D.Native;
@@ -36,34 +37,43 @@ internal static class Program
             var dataDirectory = Option(args, "--data-directory");
             if (dataDirectory != null) Directory.SetCurrentDirectory(dataDirectory);
 
-            const uint ApartmentThreaded = 2;
-            ComObject.Check(Win32.CoInitializeEx(0, ApartmentThreaded));
+            var toastLaunch = args.Contains(StreamNotifications.ActivationSwitch);
+            const uint SingleThreaded = 0;
+            ComObject.Check(WindowsToast.RoInitialize(SingleThreaded));
             try
             {
-                return Run(exitSeconds, snapshot);
+                return Run(exitSeconds, snapshot, toastLaunch);
             }
             finally
             {
-                Win32.CoUninitialize();
+                WindowsToast.RoUninitialize();
             }
         }
         catch (Exception exception)
         {
             File.AppendAllText("direct2d-errors.log", $"{DateTimeOffset.Now:o} {exception}{Environment.NewLine}");
 
-            if (!args.Contains("--quiet"))
+            if (!args.Contains("--quiet") && !args.Contains(StreamNotifications.ActivationSwitch))
                 Win32.MessageBox(owner: 0, exception.Message, caption: "Livestream Monitor", Win32.MbIconError);
 
             return 1;
         }
     }
 
-    private static unsafe int Run(double exitSeconds, string? snapshot)
+    private static unsafe int Run(double exitSeconds, string? snapshot, bool toastLaunch)
     {
         Dispatcher = new UiDispatcher();
 
-        using var instance = SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()));
+        StreamNotificationTarget? pending = null;
+        var primary = ClaimInstance();
+        if (primary == null && toastLaunch) (primary, pending) = ForwardToastActivation();
+
+        using var instance = primary;
         if (instance == null) return 0;
+
+        using var activationPipe = new ToastActivationPipe(AcceptForwardedActivation);
+        using var notifications = new StreamNotifications(Activate);
+        if (!toastLaunch) notifications.RefreshMovedRegistration();
 
         ExternalAPIs.HttpClientExtensions.PreconnectProviderApis();
 
@@ -74,9 +84,10 @@ internal static class Program
         var monitorState = new MonitorWindowState(dialogs, showProgress: dialogs.Progress);
         monitorState.BeginInitialQuery();
 
-        using var window = new MonitorWindow(monitorState, dialogs);
+        using var window = new MonitorWindow(monitorState, dialogs, notifications);
         mainWindow = window;
         _ = window.Initialize();
+        if (pending is { } initialTarget) window.ActivateNotification(initialTarget);
 
         var clock = Stopwatch.StartNew();
         var savedSnapshot = false;
@@ -97,7 +108,7 @@ internal static class Program
             DesktopWindow.TickAll();
 
             // Wait for the first full refresh before taking a snapshot.
-            var settled = window.State.StreamsModel.CanRefreshLivestreams || window.State.StreamsModel.Livestreams.Count == 0;
+            var settled = window.State.FollowedRowsSettled;
             if (!savedSnapshot && snapshot != null && window.State.StreamsModel.Initialised && !window.State.Busy && settled)
             {
                 window.Snapshot(snapshot);
@@ -124,6 +135,73 @@ internal static class Program
 
         SynchronizationContext.SetSynchronizationContext(null);
         return 0;
+
+        static bool Activate(StreamNotificationTarget target)
+        {
+            if (mainWindow is { } window) return window.ActivateNotification(target);
+
+            Dispatcher.Post(() => mainWindow?.ActivateNotification(target));
+            return true;
+        }
+    }
+
+    private static Task<bool> AcceptForwardedActivation(StreamNotificationTarget target, CancellationToken cancellation)
+    {
+        var accepted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Dispatcher.Post(() =>
+        {
+            if (cancellation.IsCancellationRequested) return;
+
+            accepted.SetResult(mainWindow?.ActivateNotification(target) == true);
+        });
+
+        return accepted.Task.WaitAsync(cancellation);
+    }
+
+    private static SingleInstance? ClaimInstance() =>
+        SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()));
+
+    private static (SingleInstance? Instance, StreamNotificationTarget? Target) ForwardToastActivation()
+    {
+        (SingleInstance?, StreamNotificationTarget?) takeover = default;
+        using var completion = new ManualResetEvent(false);
+        using var activator = StreamNotifications.RegisterActivator(target =>
+        {
+            try
+            {
+                ToastActivationPipe.Forward(target);
+                return 0;
+            }
+            catch (Exception exception) when (exception is IOException or OperationCanceledException or UnauthorizedAccessException)
+            {
+                // The old instance can still hold the claim while its window and pipe are shutting down.
+                const int ClaimRetryMilliseconds = 750;
+                const int ClaimPollMilliseconds = 50;
+                var deadline = Environment.TickCount64 + ClaimRetryMilliseconds;
+                do
+                {
+                    if (ClaimInstance() is { } replacement)
+                    {
+                        takeover = (replacement, target);
+                        return 0;
+                    }
+
+                    Thread.Sleep(ClaimPollMilliseconds);
+                } while (Environment.TickCount64 < deadline);
+
+                StreamNotifications.LogFailure(exception);
+                return Marshal.GetHRForException(exception);
+            }
+            finally
+            {
+                // COM dispatches the callback synchronously on this STA while WaitForCallback pumps it.
+                // ReSharper disable once AccessToDisposedClosure
+                completion.Set();
+            }
+        });
+
+        ToastActivator.WaitForCallback(completion);
+        return takeover;
     }
 
     private static string? Option(string[] args, string name)

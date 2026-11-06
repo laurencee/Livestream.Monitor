@@ -46,6 +46,7 @@ public class MonitorWindowStateShould
         var pending = new TaskCompletionSource();
         model.StreamsModel.Initialize(Arg.Any<IUserDialogs>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
+        model.StreamsModel.Livestreams.Add(Stream("offline", "Channel", "youtube", online: false, viewers: 0));
         var initialization = model.Initialize();
         Assert.False(progressClosed);
         model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
@@ -56,6 +57,10 @@ public class MonitorWindowStateShould
         pending.SetResult();
         await initialization;
         Assert.False(model.Busy);
+        Assert.False(model.FollowedRowsSettled);
+
+        model.StreamsModel.CanRefreshLivestreams.Returns(true);
+        Assert.True(model.FollowedRowsSettled);
     }
 
     [Theory]

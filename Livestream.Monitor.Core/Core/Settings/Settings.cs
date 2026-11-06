@@ -18,6 +18,7 @@ namespace Livestream.Monitor.Core.Settings
         nameof(MetroThemeAccentColour),
         nameof(MinimumEventViewers),
         nameof(DisableNotifications),
+        nameof(UseLongStreamNotificationBanners),
         nameof(HideStreamOutputMessageBoxOnLoad),
         nameof(FavoriteApiQualities),
         nameof(ExcludeFromNotifying),
@@ -90,6 +91,13 @@ namespace Livestream.Monitor.Core.Settings
         } = DefaultMinimumPopularEventViewers;
 
         public bool DisableNotifications
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
+        /// <summary>Requests the long duration for Direct2D stream notification banners.</summary>
+        public bool UseLongStreamNotificationBanners
         {
             get;
             set => Set(ref field, value);

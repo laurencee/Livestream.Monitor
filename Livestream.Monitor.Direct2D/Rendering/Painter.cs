@@ -28,7 +28,8 @@ internal readonly record struct TextStyle(
     float Size,
     FontWeight Weight = FontWeight.Normal,
     TextAlign Align = TextAlign.Leading,
-    bool Trim = true);
+    bool Trim = true,
+    bool SystemSymbol = false);
 
 internal enum DrawKind : byte
 {
@@ -92,6 +93,8 @@ internal struct DrawCommand
 internal sealed class Painter(GraphicsDevice graphics) : IDisposable
 {
     private const string FontFamily = "Segoe UI";
+    private const string FluentIconFontFamily = "Segoe Fluent Icons";
+    private const string Mdl2IconFontFamily = "Segoe MDL2 Assets";
 
     // Segoe UI's design line spacing (ascent + descent over em).
     private const float SegoeUiLineSpacing = 1.33f;
@@ -106,6 +109,7 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
     private readonly Dictionary<FormatKey, TextFormat> formats = [];
     private readonly Dictionary<LayoutKey, CachedLayout> layouts = [];
     private readonly List<LayoutKey> expiredLayouts = [];
+    private string? systemSymbolFont;
     private int brushGeneration;
     private float scale = 1;
     private long now;
@@ -353,7 +357,10 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
     {
         if (formats.TryGetValue(key, out var format)) return format.Format;
 
-        var created = graphics.WriteFactory.CreateTextFormat(FontFamily, (int)key.Weight, key.Size);
+        var family = key.SystemSymbol
+            ? systemSymbolFont ??= graphics.WriteFactory.HasFontFamily(FluentIconFontFamily) ? FluentIconFontFamily : Mdl2IconFontFamily
+            : FontFamily;
+        var created = graphics.WriteFactory.CreateTextFormat(family, (int)key.Weight, key.Size);
         ComObject? ellipsis = null;
 
         try
@@ -399,14 +406,15 @@ internal sealed class Painter(GraphicsDevice graphics) : IDisposable
     }
 
     private static FormatKey Key(in TextStyle style, TextAlign align, bool isWrapped) =>
-        new(Size: style.Size, Weight: style.Weight, Align: align, IsWrapped: isWrapped, Trim: style.Trim);
+        new(Size: style.Size, Weight: style.Weight, Align: align, IsWrapped: isWrapped, Trim: style.Trim, SystemSymbol: style.SystemSymbol);
 
     private readonly record struct FormatKey(
         float Size,
         FontWeight Weight,
         TextAlign Align,
         bool IsWrapped,
-        bool Trim);
+        bool Trim,
+        bool SystemSymbol);
 
     // ReSharper disable NotAccessedPositionalProperty.Local -- All components participate in cache-key equality.
     private readonly record struct LayoutKey(

@@ -58,6 +58,7 @@ public class SettingsShould
     [InlineData("MetroThemeAccentColour")]
     [InlineData("MinimumEventViewers")]
     [InlineData("DisableNotifications")]
+    [InlineData("UseLongStreamNotificationBanners")]
     [InlineData("HideStreamOutputMessageBoxOnLoad")]
     [InlineData("FavoriteApiQualities")]
     [InlineData("ShowOnlineOnly")]
@@ -71,6 +72,7 @@ public class SettingsShould
         Assert.Equal(defaults.MetroThemeBaseColour, settings.MetroThemeBaseColour);
         Assert.Equal(defaults.MetroThemeAccentColour, settings.MetroThemeAccentColour);
         Assert.False(settings.ShowOnlineOnly);
+        Assert.False(settings.UseLongStreamNotificationBanners);
         Assert.Empty(settings.FavoriteApiQualities);
         Assert.Equal("retained-token", settings.Twitch.AuthToken);
     }
@@ -351,6 +353,7 @@ public class SettingsShould
               "MetroThemeBaseColour":1,
               "MetroThemeAccentColour":3,
               "DisableNotifications":true,
+              "UseLongStreamNotificationBanners":true,
               "Twitch":{"AuthToken":"retained-token","PassthroughClientId":true,
                 "StreamCommand":{"FilePath":"player","Args":"{url} {qualities} {auth_token}","CaptureStandardOutput":true}},
               "FavoriteApiQualities":{"twitchtv":{"Qualities":["1080p60","720p"],"FallbackQuality":"Worst"}},
@@ -362,6 +365,7 @@ public class SettingsShould
             JsonSerializer.Serialize(settings, JsonDefaults.IndentedOptions), JsonDefaults.Options);
         Assert.Equal(0, roundTrip.MinimumEventViewers);
         Assert.True(roundTrip.DisableNotifications);
+        Assert.True(roundTrip.UseLongStreamNotificationBanners);
         Assert.Equal(settings.MetroThemeAccentColour, roundTrip.MetroThemeAccentColour);
         Assert.Equal(settings.MetroThemeBaseColour, roundTrip.MetroThemeBaseColour);
         Assert.Equal("retained-token", roundTrip.Twitch.AuthToken);
@@ -389,6 +393,7 @@ public class SettingsShould
     {
         var settings = JsonSerializer.Deserialize<Settings>("{}", JsonDefaults.Options);
         Assert.Equal(Settings.DefaultMinimumPopularEventViewers, settings.MinimumEventViewers);
+        Assert.False(settings.UseLongStreamNotificationBanners);
         Assert.Equal("streamlink", settings.Twitch.StreamCommand.FilePath);
         Assert.Empty(settings.FavoriteApiQualities);
         Assert.Empty(settings.ExcludeFromNotifying);

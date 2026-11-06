@@ -137,6 +137,58 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
+    public void SaveBannerDurationWithAnUnavailablePlaybackCommand()
+    {
+        var settings = new Settings();
+        settings.YouTube.VodCommand.FilePath = "unavailable-vod-player.exe";
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(settings);
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+
+        DrawSettings(pane);
+        ClickWidget("settings.bannerduration.long");
+        DrawSettings(pane);
+        ClickWidget("settings.save");
+
+        Assert.True(settings.UseLongStreamNotificationBanners);
+        handler.Received(1).SaveSettings();
+    }
+
+    [Fact]
+    public void WrapBannerDurationArrowNavigationWithinItsOwnGroup()
+    {
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(new Settings());
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+
+        DrawSettings(pane);
+        ClickWidget("settings.section.4");
+        DrawSettings(pane);
+        Assert.NotNull(ui.Automation.Find("settings.quality.best"));
+        ClickWidget("settings.bannerduration.long");
+        Assert.True(ui.Key(VirtualKey.Right, shift: false));
+        DrawSettings(pane);
+
+        Assert.True(ui.Automation.Find("settings.bannerduration.short")?.Has(AutomationStates.Selected));
+    }
+
+    private void DrawSettings(SettingsPane pane)
+    {
+        var tallViewport = viewport with { Height = 1000 };
+        ui.Begin(palette, tallViewport);
+        pane.Draw(ui, tallViewport);
+        ui.End();
+    }
+
+    private void ClickWidget(string id)
+    {
+        var bounds = Assert.IsType<AutomationNode>(ui.Automation.Find(id)).Bounds;
+        var center = new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
+        Assert.True(ui.MouseDown(center));
+        Assert.True(ui.MouseUp(center));
+    }
+
+    [Fact]
     public void AlignQualityRowActionsWithTheAddButton()
     {
         var settings = new Settings { FavoriteApiQualities = { ["all"] = new FavoriteQualities { Qualities = ["720p"] } } };
@@ -406,8 +458,8 @@ public sealed class SurfaceUiShould : IDisposable
         var worstBounds = new RectangleF(x: 100, y: 10, width: 80, height: 25);
         var best = true;
         ui.Begin(palette, viewport);
-        ui.Radio(id: "best", text: "Best", value: true, bestBounds, changed: _ => best = true);
-        ui.Radio(id: "worst", text: "Worst", value: false, worstBounds, changed: _ => best = false);
+        ui.Radio(id: "best", text: "Best", value: true, bestBounds, changed: _ => best = true, group: "quality");
+        ui.Radio(id: "worst", text: "Worst", value: false, worstBounds, changed: _ => best = false, group: "quality");
 
         ui.MouseDown(new PointF(110, 20));
         ui.MouseUp(new PointF(110, 20));
@@ -419,6 +471,14 @@ public sealed class SurfaceUiShould : IDisposable
         const int LeftKey = 37;
         Assert.True(ui.Key(LeftKey, shift: false));
         Assert.True(best);
+
+        ui.Begin(palette, viewport);
+        ui.PushClip(viewport with { Y = 100 });
+        ui.Radio(id: "best", text: "Best", value: true, bestBounds, changed: _ => best = true, group: "quality");
+        ui.Radio(id: "worst", text: "Worst", value: false, worstBounds, changed: _ => best = false, group: "quality");
+        ui.PopClip();
+
+        Assert.False(ui.Key(LeftKey, shift: false));
     }
 
     [Fact]

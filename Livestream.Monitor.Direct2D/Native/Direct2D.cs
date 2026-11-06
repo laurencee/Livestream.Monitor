@@ -466,6 +466,7 @@ internal sealed unsafe class D2DDeviceContext(void* pointer) : ComObject(pointer
 /// <summary>IDWriteFactory.</summary>
 internal sealed unsafe partial class DWriteFactory(void* pointer) : ComObject(pointer)
 {
+    private const int GetSystemFontCollectionSlot = 3;
     private const int CreateTextFormatSlot = 15;
     private const int CreateTextLayoutSlot = 18;
     private const int CreateEllipsisTrimmingSignSlot = 20;
@@ -477,6 +478,21 @@ internal sealed unsafe partial class DWriteFactory(void* pointer) : ComObject(po
     {
         Check(DWriteCreateFactory(Shared, in Iid, out var factory));
         return new DWriteFactory(factory);
+    }
+
+    public bool HasFontFamily(string familyName)
+    {
+        var getCollection = (delegate* unmanaged<void*, out void*, int, int>)Methods[GetSystemFontCollectionSlot];
+        Check(getCollection(Pointer, out var pointer, 0));
+
+        using var collection = new ComObject(pointer);
+        const int FindFamilyNameSlot = 5;
+        var find = (delegate* unmanaged<void*, char*, out uint, out int, int>)(*(void***)collection.Pointer)[FindFamilyNameSlot];
+        fixed (char* family = familyName)
+        {
+            Check(find(collection.Pointer, family, out _, out var exists));
+            return exists != 0;
+        }
     }
 
     /// <summary>A text format of the system font family with normal style and stretch.</summary>

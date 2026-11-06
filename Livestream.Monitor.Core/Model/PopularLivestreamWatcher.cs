@@ -17,6 +17,7 @@ namespace Livestream.Monitor.Model
     {
         private const int PollMs = 60000;
 
+        private static readonly TimeSpan PopularAlertDuration = TimeSpan.FromSeconds(25);
         private readonly ISettingsHandler settingsHandler;
         private readonly INotificationHandler notificationHandler;
         private readonly IApiClientFactory apiClientFactory;
@@ -149,7 +150,7 @@ namespace Livestream.Monitor.Model
                     ImageUrl = livestreamModel.ThumbnailUrls?.Small,
                     Message = livestreamModel.Description,
                     Title = $"[POPULAR {livestreamModel.Viewers:N0} Viewers]\n{livestreamModel.DisplayName}",
-                    Duration = LivestreamNotification.MaxDuration,
+                    Duration = PopularAlertDuration,
                     ClickAction = clickAction,
                 });
             }

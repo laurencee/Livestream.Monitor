@@ -47,7 +47,7 @@ internal sealed class StreamQualityPane(Settings settings)
             bounds: Row(body, ref y),
             changed: index => selectedPlatform = index);
 
-        y += Gap;
+        y += SettingsPane.GroupGap;
 
         if (apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences)
         {
@@ -62,7 +62,7 @@ internal sealed class StreamQualityPane(Settings settings)
         {
             var inheritsAll = apiName != Settings.AllStreamQualitiesKey && draft.HasAllPreferences && !current.IsConfigured;
             var emptyHint = inheritsAll ? "[Using 'All' settings]" : "[Using the fallback quality]";
-            ui.TextRow(emptyHint, body, ref y, spacing: Gap, color: ui.Palette.MutedText);
+            ui.TextRow(emptyHint, body, ref y, spacing: SettingsPane.GroupGap, color: ui.Palette.MutedText);
         }
 
         for (var i = 0; i < current.Qualities.Count; i++)
@@ -94,9 +94,9 @@ internal sealed class StreamQualityPane(Settings settings)
                 bounds: remove,
                 action: () => current.Qualities.RemoveAt(index),
                 name: "Remove quality");
+            y += i + 1 == current.Qualities.Count ? SettingsPane.GroupGap : Gap;
         }
 
-        y += Gap;
         var inputRow = Row(body, ref y);
         const float AddWidth = 45;
         var input = inputRow with { Width = inputRow.Width - AddWidth - Gap };
@@ -106,7 +106,7 @@ internal sealed class StreamQualityPane(Settings settings)
         var canAdd = value.Length != 0 && !current.Qualities.Contains(value, StringComparer.OrdinalIgnoreCase);
         ui.Button(id: "settings.quality.add", text: "Add", bounds: add, action: Add, enabled: canAdd);
 
-        y += Gap;
+        y += SettingsPane.GroupGap;
         ui.TextRow(text: "Fallback quality", body, ref y, spacing: Gap, weight: FontWeight.SemiBold);
         var fallback = Row(body, ref y, RadioHeight);
         var best = fallback with { Width = fallback.Width / 2 };
@@ -116,13 +116,15 @@ internal sealed class StreamQualityPane(Settings settings)
             "Best",
             current.FallbackQuality == FavoriteQualities.FallbackQualityOption.Best,
             best,
-            _ => current.FallbackQuality = FavoriteQualities.FallbackQualityOption.Best);
+            _ => current.FallbackQuality = FavoriteQualities.FallbackQualityOption.Best,
+            group: "settings.quality.fallback");
         ui.Radio(
             "settings.quality.worst",
             "Worst",
             current.FallbackQuality == FavoriteQualities.FallbackQualityOption.Worst,
             worst,
-            _ => current.FallbackQuality = FavoriteQualities.FallbackQualityOption.Worst);
+            _ => current.FallbackQuality = FavoriteQualities.FallbackQualityOption.Worst,
+            group: "settings.quality.fallback");
 
         void Add()
         {
@@ -140,7 +142,7 @@ internal sealed class StreamQualityPane(Settings settings)
     private static RectangleF Row(RectangleF body, ref float y, float height = RowHeight)
     {
         var row = body with { Y = y, Height = height };
-        y += height + Gap;
+        y += height;
         return row;
     }
 }

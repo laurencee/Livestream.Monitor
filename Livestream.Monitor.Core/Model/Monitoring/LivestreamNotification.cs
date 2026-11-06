@@ -6,7 +6,7 @@ namespace Livestream.Monitor.Model.Monitoring
 {
     public class LivestreamNotification : ObservableModel
     {
-        public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(8);
+        public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan MaxDuration = TimeSpan.FromSeconds(60);
 
         public static readonly Action<IMonitorStreamsModel, LivestreamNotification> DefaultClickAction = (model, notification) =>

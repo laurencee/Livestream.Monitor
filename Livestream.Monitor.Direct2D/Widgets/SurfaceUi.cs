@@ -32,7 +32,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private static readonly string[] IconTexts = ["›", "‹", "◀", "▶", "↑", "↓", "×", "+", "↻", "⚙", "▴", "▲", "▼"];
     private readonly List<Widget> widgets = [];
     private readonly Dictionary<string, TextInput> inputs = [];
-    private readonly HashSet<string> radios = [];
     private readonly List<ToolTipRegion> toolTips = [];
     private readonly List<AutomationNode> automation = [];
     private readonly Dictionary<string, int> automationKeys = [];
@@ -116,7 +115,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private void ClearFrame()
     {
         widgets.Clear();
-        radios.Clear();
         toolTips.Clear();
         automation.Clear();
         automationKeys.Clear();
@@ -256,7 +254,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string text,
         RectangleF bounds,
         uint color,
-        float size = FontSize)
+        float size = FontSize,
+        bool systemSymbol = false)
     {
         commands.Add(new DrawCommand
         {
@@ -264,7 +263,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             Bounds = bounds,
             Color = color,
             Text = text,
-            Style = new TextStyle(Size: size, Align: TextAlign.Center),
+            Style = new TextStyle(Size: size, Align: TextAlign.Center, Trim: !systemSymbol, SystemSymbol: systemSymbol),
         });
     }
 
@@ -463,7 +462,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string? toolTip = null,
         string? name = null,
         bool flat = false,
-        bool focusable = true)
+        bool focusable = true,
+        string? symbol = null)
     {
         const float CornerRadius = 3;
         var radius = flat ? 0 : CornerRadius;
@@ -493,11 +493,24 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             ? foreground ?? (chrome ? commandText : accent ? Palette.AccentText : Palette.Text)
             : Palette.MutedText;
 
-        var textBounds = RectangleF.Inflate(bounds, -3, 0);
+        if (symbol != null)
+        {
+            const float SymbolSize = 16;
+            var padding = (bounds.Height - SymbolSize) / 2;
+            var iconBounds = new RectangleF(x: bounds.X + padding, y: bounds.Y + padding, width: SymbolSize, height: SymbolSize);
+            var textLeft = iconBounds.Right + padding;
+            var label = bounds with { X = textLeft, Width = bounds.Right - textLeft - padding };
+            Icon(symbol, iconBounds, color, size: SymbolSize, systemSymbol: true);
+            Label(text, label, color, size: size, weight: weight);
+        }
+        else
+        {
+            var textBounds = RectangleF.Inflate(bounds, -3, 0);
 
-        if (text == "▾") DropDownArrow(textBounds, color);
-        else if (Array.IndexOf(IconTexts, text) >= 0) Icon(text, textBounds, color, size);
-        else Label(text, textBounds, color, size: size, weight: weight, alignment: TextAlign.Center);
+            if (text == "▾") DropDownArrow(textBounds, color);
+            else if (Array.IndexOf(IconTexts, text) >= 0) Icon(text, textBounds, color, size);
+            else Label(text, textBounds, color, size: size, weight: weight, alignment: TextAlign.Center);
+        }
 
         Add(id, bounds, action, enabled, focusable);
         if (enabled) ToolTip(id, bounds, toolTip);
@@ -558,6 +571,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool value,
         RectangleF bounds,
         Action<bool> changed,
+        string group,
         bool enabled = true)
     {
         const float Diameter = 16;
@@ -588,8 +602,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var textBounds = bounds with { X = bounds.X + Diameter + 7, Width = bounds.Width - Diameter - 7 };
         Label(text, textBounds, enabled ? Palette.Text : Palette.MutedText);
         if (focused == id) Border(RectangleF.Inflate(bounds, -1, -1), Palette.Accent);
-        Add(id, bounds, action: () => changed(true), enabled);
-        if (enabled) radios.Add(id);
+        Add(id, bounds, action: () => changed(true), enabled, radioGroup: group);
         var states = WidgetStates(id, enabled) | (value ? AutomationStates.Selected : AutomationStates.None);
         AddNode(id, AutomationRole.RadioButton, text, bounds, states, activate: () => InvokeWidget(id));
     }
@@ -836,11 +849,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public bool Key(int key, bool shift)
     {
-        if (!HasFocusedInput && focused != null && radios.Contains(focused) &&
-            key is VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down)
+        if (!HasFocusedInput && focused != null &&
+            key is (VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down) &&
+            widgets.Find(widget => widget.Id == focused) is { RadioGroup: { } group } selected)
         {
-            var options = widgets.Where(widget => radios.Contains(widget.Id)).ToArray();
-            var index = Array.FindIndex(options, widget => widget.Id == focused);
+            var options = widgets.Where(widget => widget.RadioGroup == group).ToArray();
+            var index = Array.IndexOf(options, selected);
             var direction = key is VirtualKey.Left or VirtualKey.Up ? -1 : 1;
             var next = options[(index + direction + options.Length) % options.Length];
             focused = next.Id;
@@ -1183,12 +1197,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         RectangleF bounds,
         Action action,
         bool enabled,
-        bool focusable = true)
+        bool focusable = true,
+        string? radioGroup = null)
     {
         if (!enabled || !IsAvailable(bounds)) return;
 
         var hit = clip.HasValue ? RectangleF.Intersect(bounds, clip.Value) : bounds;
-        if (hit is { Width: > 0, Height: > 0 }) widgets.Add(new Widget(id, hit, action, focusable));
+        if (hit is { Width: > 0, Height: > 0 }) widgets.Add(new Widget(id, hit, action, focusable, radioGroup));
     }
 
     private bool IsAvailable(RectangleF bounds) =>
@@ -1360,7 +1375,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     /// <summary>A clickable widget; one that is not focusable leaves the focus where it was and is no tab stop.</summary>
-    private sealed record Widget(string Id, RectangleF Bounds, Action Action, bool Focusable);
+    private sealed record Widget(
+        string Id,
+        RectangleF Bounds,
+        Action Action,
+        bool Focusable,
+        string? RadioGroup);
 
     internal sealed record ToolTipRegion(string Id, RectangleF Bounds, string Text);
 

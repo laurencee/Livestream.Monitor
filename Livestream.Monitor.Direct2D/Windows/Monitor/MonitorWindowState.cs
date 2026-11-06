@@ -104,6 +104,7 @@ internal sealed class MonitorWindowState : ObservableModel
     public bool HasNextPage { get; private set; }
     public bool Busy { get; private set => Set(ref field, value); }
     public bool IsContentLoading { get; private set; } = true;
+    internal bool FollowedRowsSettled => StreamsModel.CanRefreshLivestreams || StreamsModel.Livestreams.Count == 0;
     public string Status { get; private set => Set(ref field, value); } = "Initializing…";
     public LivestreamModel? SelectedStream =>
         SelectedIndex >= 0 && SelectedIndex < Rows.Count ? Rows[SelectedIndex] : null;
