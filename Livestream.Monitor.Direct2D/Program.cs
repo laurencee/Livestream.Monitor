@@ -81,7 +81,7 @@ internal static class Program
 
         // As in WPF, loading and querying the followed channels starts before the window and its graphics device are created.
         var dialogs = new NativeDialogs(() => mainWindow!);
-        var monitorState = new MonitorWindowState(dialogs, showProgress: dialogs.Progress);
+        var monitorState = new MonitorWindowState(dialogs, showProgress: dialogs.Progress, openBrowsingError: dialogs.OpenMessage);
         monitorState.BeginInitialQuery();
 
         using var window = new MonitorWindow(monitorState, dialogs, notifications);

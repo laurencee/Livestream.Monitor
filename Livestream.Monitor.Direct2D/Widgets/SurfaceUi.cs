@@ -639,6 +639,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool enabled = true,
         bool keepOpen = false)
     {
+        if (!enabled) CloseMenu(id);
+
         // As in WPF, an open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
         var open = menu?.Id == id;
         var over = IsPointerOver(bounds);
@@ -997,7 +999,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (menu?.Id != id) InvokeWidget(id);
     }
 
-    private void CloseMenu(string id)
+    public void CloseMenu(string id)
     {
         if (menu?.Id == id) menu = null;
     }

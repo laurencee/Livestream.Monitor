@@ -62,6 +62,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int WheelPageScroll = -1;
     private static readonly int WheelScrollLines = ReadWheelScrollLines();
     private const int SettingsWidth = 300;
+    private const string GameSuggestionsMenuId = "game.suggestions";
 
     // Typing restarts these delays, so a query starts once the user pauses.
     private const int GameSuggestionDelayMilliseconds = 250;
@@ -112,7 +113,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private PageRequest? requestedPage;
     private long gameSuggestionsDue;
     private long vodQueryDue;
-    private string[] gameSuggestions = [];
     private bool queryQueued;
     private PreviewWindow? preview;
     private int hoveredRow = -1;
@@ -221,19 +221,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (actionFeedback.Tick(now)) NeedsPaint = true;
         UpdatePreview(now);
 
-        if (gameSuggestionsDue != 0 && now >= gameSuggestionsDue)
-        {
-            gameSuggestionsDue = 0;
-            _ = FindGames();
-        }
+        if (gameSuggestionsDue != 0 && now >= gameSuggestionsDue) _ = FindGames();
 
         if (vodQueryDue != 0 && now >= vodQueryDue)
         {
             vodQueryDue = 0;
-            queryQueued = true;
+            QueueQuery();
         }
 
-        if (queryQueued && !state.Busy)
+        if (requestedPage == null && requestedNotification == null && queryQueued && !state.Busy)
         {
             queryQueued = false;
             state.PageNumber = 0;
@@ -484,11 +480,16 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 "game",
                 "Partial game name...",
                 gameBounds,
-                _ => gameSuggestionsDue = Environment.TickCount64 + GameSuggestionDelayMilliseconds,
+                _ =>
+                {
+                    CancelGameSuggestions();
+                    gameSuggestionsDue = Environment.TickCount64 + GameSuggestionDelayMilliseconds;
+                },
                 () =>
                 {
+                    CancelGameSuggestions();
                     Ui.CloseMenu();
-                    queryQueued = true;
+                    QueueQuery();
                 },
                 SelectedProvider.HasTopStreamGameFilterSupport,
                 clear: true,
@@ -500,7 +501,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 bounds: choicesBounds,
                 frame: gameBounds,
                 action: () => _ = FindGames(),
-                menuId: "game.suggestions",
+                menuId: GameSuggestionsMenuId,
                 enabled: SelectedProvider.HasTopStreamGameFilterSupport,
                 name: "Find games"
             );
@@ -536,11 +537,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             "vod.channel",
             "Channel name or ID...",
             channelBounds,
-            _ => vodQueryDue = Environment.TickCount64 + VodQueryDelayMilliseconds,
+            _ =>
+            {
+                state.InvalidateContentQuery();
+                vodQueryDue = Environment.TickCount64 + VodQueryDelayMilliseconds;
+            },
             () =>
             {
                 vodQueryDue = 0;
-                queryQueued = true;
+                QueueQuery();
             },
             trailing: DropDownArrowWidth
         );
@@ -930,6 +935,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return;
         }
 
+        CancelGameSuggestions();
         Ui.CloseMenu();
         preview?.Hide();
         settingsPane ??= new SettingsPane(
@@ -1016,6 +1022,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void SelectProvider(IApiClient provider)
     {
+        CancelGameSuggestions();
         preferredProvider = provider;
         vodTypeIndex = 0;
         state.PageNumber = 0;
@@ -1077,16 +1084,26 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         _ = Query();
     }
 
-    private Task Query() => state.Page switch
+    private void QueueQuery()
     {
-        MonitorPage.TopStreams => state.QueryTop(SelectedProvider, Ui.Value("game")),
-        MonitorPage.Vods => state.QueryVods(
-            SelectedProvider,
-            Ui.Value("vod.channel"),
-            SelectedProvider.VodTypes.ElementAtOrDefault(vodTypeIndex) ?? ""
-        ),
-        _ => state.Refresh(),
-    };
+        state.InvalidateContentQuery();
+        queryQueued = true;
+    }
+
+    private Task Query()
+    {
+        if (state.Page == MonitorPage.TopStreams)
+        {
+            CloseGameSuggestions();
+            return state.QueryTop(SelectedProvider, Ui.Value("game"));
+        }
+
+        if (state.Page != MonitorPage.Vods) return state.Refresh();
+
+        var provider = SelectedProvider;
+        var vodType = provider.VodTypes.ElementAtOrDefault(vodTypeIndex) ?? "";
+        return state.QueryVods(provider, Ui.Value("vod.channel"), vodType);
+    }
 
     private async Task AddChannel()
     {
@@ -1121,41 +1138,54 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
+    private void CancelGameSuggestions()
+    {
+        state.InvalidateGameSuggestions();
+        CloseGameSuggestions();
+    }
+
+    private void CloseGameSuggestions()
+    {
+        gameSuggestionsDue = 0;
+        Ui.CloseMenu(GameSuggestionsMenuId);
+    }
+
     private async Task FindGames()
     {
-        if (state.Page != MonitorPage.TopStreams || !SelectedProvider.HasTopStreamGameFilterSupport) return;
+        gameSuggestionsDue = 0;
+
+        if (IsClosed || HasDialog || state.Page != MonitorPage.TopStreams || !SelectedProvider.HasTopStreamGameFilterSupport) return;
 
         var provider = SelectedProvider;
         var filter = Ui.Value("game");
+
         try
         {
-            var games = await provider.GetKnownGameNames(filter);
-
-            if (IsClosed || HasDialog || state.Page != MonitorPage.TopStreams ||
-                SelectedProvider != provider || Ui.Value("game") != filter)
-            {
-                return;
-            }
-
-            gameSuggestions = games.Select(game => game.GameName).ToArray();
-            if (gameSuggestions.Length == 0) return;
-
-            // Below the game filter input and its choices button.
-            Ui.DropDown(
-                "game.suggestions",
-                new RectangleF(x: 201, y: ToolbarTop, width: 175, height: ToolbarControlHeight),
-                gameSuggestions,
-                index =>
-                {
-                    Ui.SetValue("game", gameSuggestions[index]);
-                    gameSuggestionsDue = 0;
-                    queryQueued = true;
-                }
-            );
+            await state.QueryGameSuggestions(provider, filter, ShowGames);
         }
         catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException)
         {
             // Search suggestions are optional; typed game filters remain usable during provider outages.
+        }
+
+        void ShowGames(IReadOnlyList<KnownGame> games)
+        {
+            if (IsClosed || HasDialog || Ui.HasMenu || SelectedProvider != provider || Ui.Value("game") != filter) return;
+            if (games.Count == 0) return;
+
+            // Below the game filter input and its choices button.
+            var suggestions = games.Select(game => game.GameName).ToArray();
+            Ui.DropDown(
+                GameSuggestionsMenuId,
+                new RectangleF(x: 201, y: ToolbarTop, width: 175, height: ToolbarControlHeight),
+                suggestions,
+                index =>
+                {
+                    Ui.SetValue("game", suggestions[index]);
+                    CancelGameSuggestions();
+                    QueueQuery();
+                }
+            );
         }
     }
 
@@ -1175,7 +1205,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             {
                 Ui.SetValue("vod.channel", names[index]);
                 vodQueryDue = 0;
-                queryQueued = true;
+                QueueQuery();
             }
         );
     }
@@ -1551,6 +1581,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (target.Followed)
         {
             requestedNotification = target;
+            requestedPage = null;
+            CancelGameSuggestions();
+            state.AbandonBrowsingRequest();
         }
         else
         {
@@ -1585,6 +1618,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         if (!GetProviderChoices(page).Clients.Contains(provider)) return false;
 
+        CancelGameSuggestions();
+        state.InvalidateContentQuery();
         requestedPage = new PageRequest(page, provider);
         return true;
     }

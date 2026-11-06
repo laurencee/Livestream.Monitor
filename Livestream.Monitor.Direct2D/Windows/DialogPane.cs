@@ -361,8 +361,14 @@ internal sealed class NativeDialogs(Func<CanvasWindow> owner) : IUserDialogs
 {
     public async Task ShowMessage(string title, string message)
     {
-        using var dialog = owner().ShowDialog(title, message, kind: DialogKind.Message, affirmative: "OK");
-        await dialog.Completion;
+        var (dialog, completion) = OpenMessage(title, message);
+        using (dialog) await completion;
+    }
+
+    public (IDisposable Dialog, Task Completion) OpenMessage(string title, string message)
+    {
+        var dialog = owner().ShowDialog(title, message, kind: DialogKind.Message, affirmative: "OK");
+        return (dialog, dialog.Completion);
     }
 
     public async Task<bool> Confirm(

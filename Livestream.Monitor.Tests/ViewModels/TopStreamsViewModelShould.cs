@@ -85,6 +85,37 @@ public class TopStreamsViewModelShould
     }
 
     [Fact]
+    public async Task KeepOnlyTheLatestTopStreamResponse()
+    {
+        var provider = Substitute.For<IApiClient>();
+        provider.IsAuthorized.Returns(true);
+        var oldRequest = new TaskCompletionSource<TopStreamsResponse>();
+        var currentRequest = new TaskCompletionSource<TopStreamsResponse>();
+        provider.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(oldRequest.Task, currentRequest.Task);
+        var streams = Substitute.For<IMonitorStreamsModel>();
+        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        var viewModel = Create(provider, streams);
+        await ((IActivate)viewModel).ActivateAsync(CancellationToken.None);
+
+        var oldQuery = viewModel.RefreshItems();
+        var currentQuery = viewModel.RefreshItems();
+        var channel = new ChannelIdentifier(provider, "old");
+        oldRequest.SetResult(new TopStreamsResponse { LivestreamModels = [new LivestreamModel("old", channel)] });
+        await oldQuery;
+
+        Assert.True(viewModel.LoadingItems);
+        Assert.Empty(viewModel.Items);
+
+        var currentChannel = new ChannelIdentifier(provider, "current");
+        var currentStream = new LivestreamModel("current", currentChannel);
+        currentRequest.SetResult(new TopStreamsResponse { LivestreamModels = [currentStream] });
+        await currentQuery;
+
+        Assert.Same(currentStream, Assert.Single(viewModel.Items).LivestreamModel);
+        Assert.False(viewModel.LoadingItems);
+    }
+
+    [Fact]
     public void DiscardSuggestionsFromBeforeAProviderRoundTrip()
     {
         var provider = Substitute.For<IApiClient>();

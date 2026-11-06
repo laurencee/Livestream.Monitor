@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -39,8 +40,9 @@ namespace Livestream.Monitor.Model.ApiClients
         private readonly HashSet<ChannelIdentifier> monitoredChannels = [];
         private readonly Dictionary<string, string> gameNameToIdMap = new();
         private readonly Dictionary<string, User> streamDisplayNameToUserMap = new();
-        private readonly Dictionary<TopStreamQuery, string> topStreamsPaginationKeyMap = new();
-        private readonly Dictionary<VodQuery, string> vodsPaginationKeyMap = new();
+        private readonly ConcurrentDictionary<TopStreamQuery, (long RequestId, string Cursor)> topStreamsPaginationKeyMap = new();
+        private readonly ConcurrentDictionary<VodQuery, (long RequestId, string Cursor)> vodsPaginationKeyMap = new();
+        private long paginationRequestId;
 
         public string ApiName => API_NAME;
 
@@ -247,10 +249,12 @@ namespace Livestream.Monitor.Model.ApiClients
             if (vodQuery == null) throw new ArgumentNullException(nameof(vodQuery));
             if (string.IsNullOrWhiteSpace(vodQuery.StreamDisplayName)) throw new ArgumentNullException(nameof(vodQuery.StreamDisplayName));
 
+            var requestId = Interlocked.Increment(ref paginationRequestId);
+
             var user = await FindUser(vodQuery.StreamDisplayName);
             if (user == null) return new List<VodDetails>();
 
-            vodsPaginationKeyMap.TryGetValue(vodQuery, out var paginationKey);
+            vodsPaginationKeyMap.TryGetValue(vodQuery, out var page);
             var vodType = MapToHelixVodType(vodQuery.VodTypes);
             var getVideosQuery = new GetVideosQuery()
             {
@@ -259,7 +263,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 Type = vodType,
                 CursorPagination = new CursorPagination()
                 {
-                    After = paginationKey
+                    After = page.Cursor
                 }
             };
             var videosRoot = await twitchTvHelixClient.GetVideos(getVideosQuery);
@@ -271,7 +275,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 Take = vodQuery.Take,
                 VodTypes = vodQuery.VodTypes,
             };
-            vodsPaginationKeyMap[nextPageKeyLookup] = videosRoot.Pagination.Cursor;
+            RememberNextPageCursor(vodsPaginationKeyMap, nextPageKeyLookup, requestId, videosRoot.Pagination.Cursor);
 
             // fallback for active live streams that don't populate the current stream vod thumbnail correctly
             string liveThumbnailTemplate = null;
@@ -322,7 +326,8 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (topStreamQuery == null) throw new ArgumentNullException(nameof(topStreamQuery));
 
-            topStreamsPaginationKeyMap.TryGetValue(topStreamQuery, out var paginationKey);
+            var requestId = Interlocked.Increment(ref paginationRequestId);
+            topStreamsPaginationKeyMap.TryGetValue(topStreamQuery, out var page);
             var query = new GetStreamsQuery()
             {
                 // twitch sometimes returns less streams than we ask for some unknown reason
@@ -330,7 +335,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 First = topStreamQuery.Take + 5,
                 Pagination = new CursorPagination()
                 {
-                    After = paginationKey
+                    After = page.Cursor
                 }
             };
             if (!string.IsNullOrWhiteSpace(topStreamQuery.GameName))
@@ -346,7 +351,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 Skip = topStreamQuery.Skip + topStreamQuery.Take,
                 Take = topStreamQuery.Take
             };
-            topStreamsPaginationKeyMap[nextPageKeyLookup] = topStreams.Pagination?.Cursor;
+            RememberNextPageCursor(topStreamsPaginationKeyMap, nextPageKeyLookup, requestId, topStreams.Pagination?.Cursor);
 
             var livestreamModels = new List<LivestreamModel>();
             foreach (var stream in topStreams.Streams.Take(topStreamQuery.Take))
@@ -525,6 +530,21 @@ namespace Livestream.Monitor.Model.ApiClients
             channel.DisplayName = user.DisplayName;
             channel.TwitchLogin = user.Login;
             return user;
+        }
+
+        private static void RememberNextPageCursor<TQuery>(
+            ConcurrentDictionary<TQuery, (long RequestId, string Cursor)> cache,
+            TQuery nextPage,
+            long requestId,
+            string cursor)
+            where TQuery : PagedQuery
+        {
+            // A slow response must not replace the cursor from a newer request for the same page.
+            cache.AddOrUpdate(
+                key: nextPage,
+                addValueFactory: static (_, current) => current,
+                updateValueFactory: static (_, previous, current) => current.RequestId > previous.RequestId ? current : previous,
+                factoryArgument: (RequestId: requestId, Cursor: cursor));
         }
 
         private static string MapToHelixVodType(IEnumerable<string> vodTypes)

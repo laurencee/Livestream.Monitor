@@ -33,22 +33,28 @@ internal sealed class MonitorWindowState : ObservableModel
     private const string RefreshErrorTitle = "Error refreshing livestreams";
     private readonly IUserDialogs dialogs;
     private readonly Func<string, string, IDisposable>? showProgress;
+    private readonly Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError;
     private readonly List<LivestreamModel> topStreams = [];
     private readonly Dictionary<LivestreamModel, string> displayedUptimes = [];
     private readonly HashSet<UniqueStreamKey> followedKeys = [];
     private bool followedKeysStale = true;
     private long nextRefresh;
     private int failedAutomaticRefreshes;
+    private int gameSuggestionGeneration;
+    private int contentQueryGeneration;
+    private IDisposable? browsingError;
 
     public MonitorWindowState(
         IUserDialogs dialogs,
         ISettingsHandler? settingsHandler = null,
         IApiClientFactory? apiClientFactory = null,
         IMonitorStreamsModel? monitorStreamsModel = null,
-        Func<string, string, IDisposable>? showProgress = null)
+        Func<string, string, IDisposable>? showProgress = null,
+        Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError = null)
     {
         this.dialogs = dialogs;
         this.showProgress = showProgress;
+        this.openBrowsingError = openBrowsingError;
         SettingsHandler = settingsHandler ?? new SettingsHandler();
         OnlineOnly = SettingsHandler.Settings.ShowOnlineOnly;
         ApiClientFactory = apiClientFactory ?? new ApiClientFactory(SettingsHandler);
@@ -92,6 +98,8 @@ internal sealed class MonitorWindowState : ObservableModel
             // WPF's list restarts its refresh failure count each time it is shown.
             if (value == MonitorPage.Followed && field != MonitorPage.Followed) failedAutomaticRefreshes = 0;
             field = value;
+            InvalidateGameSuggestions();
+            InvalidateContentQuery();
         }
     }
 
@@ -150,7 +158,7 @@ internal sealed class MonitorWindowState : ObservableModel
     /// </summary>
     public async Task Initialize()
     {
-        await RunContentQuery(DescribeError, progress: null, async () =>
+        await RunContentQuery(DescribeError, async () =>
         {
             var progress = showProgress?.Invoke("Initializing", "Initializing App...");
             StreamsModel.ProviderRefreshComplete += ShowRows;
@@ -331,8 +339,34 @@ internal sealed class MonitorWindowState : ObservableModel
         await Run("Error Removing Stream", () => StreamsModel.RemoveOrReport(stream, dialogs));
     }
 
+    public void InvalidateGameSuggestions() => gameSuggestionGeneration++;
+
+    public void InvalidateContentQuery() => contentQueryGeneration++;
+
+    public void AbandonBrowsingRequest()
+    {
+        InvalidateContentQuery();
+
+        if (browsingError == null) return;
+
+        Status = "";
+        browsingError.Dispose();
+    }
+
+    public async Task QueryGameSuggestions(IApiClient api, string filter, Action<IReadOnlyList<KnownGame>> publish)
+    {
+        // Page, provider and filter values may match again by the time an old request completes.
+        var generation = ++gameSuggestionGeneration;
+
+        var games = await api.GetKnownGameNames(filter);
+
+        if (generation == gameSuggestionGeneration && Page == MonitorPage.TopStreams) publish(games);
+    }
+
     public async Task QueryTop(IApiClient api, string category)
     {
+        InvalidateGameSuggestions();
+
         if (!api.HasTopStreamsSupport)
         {
             topStreams.Clear();
@@ -342,9 +376,18 @@ internal sealed class MonitorWindowState : ObservableModel
             return;
         }
 
-        await RunContentQuery(DescribeError, progress: null, async () =>
+        var generation = contentQueryGeneration;
+        await RunContentQuery(DescribeError, Load, IsCurrent);
+
+        bool IsCurrent() => generation == contentQueryGeneration;
+
+        async Task Load()
         {
+            topStreams.Clear();
+            HasNextPage = false;
+
             if (!api.IsAuthorized) await api.Authorize(dialogs);
+            if (!IsCurrent()) return;
 
             var query = new TopStreamQuery
             {
@@ -354,10 +397,11 @@ internal sealed class MonitorWindowState : ObservableModel
             };
 
             var result = await api.GetTopStreams(query);
-            topStreams.Clear();
+            if (!IsCurrent()) return;
+
             topStreams.AddRange(result.LivestreamModels);
             HasNextPage = result.HasNextPage;
-        });
+        }
 
         ErrorDialog DescribeError(Exception exception)
         {
@@ -382,9 +426,18 @@ internal sealed class MonitorWindowState : ObservableModel
             return;
         }
 
-        await RunContentQuery(DescribeError, progress: null, async () =>
+        var generation = contentQueryGeneration;
+        await RunContentQuery(DescribeError, Load, IsCurrent);
+
+        bool IsCurrent() => generation == contentQueryGeneration;
+
+        async Task Load()
         {
+            Vods.Clear();
+            HasNextPage = false;
+
             if (!api.IsAuthorized) await api.Authorize(dialogs);
+            if (!IsCurrent()) return;
 
             var query = new VodQuery
             {
@@ -395,10 +448,11 @@ internal sealed class MonitorWindowState : ObservableModel
             };
 
             var result = await api.GetVods(query);
-            Vods.Clear();
+            if (!IsCurrent()) return;
+
             Vods.AddRange(result);
             HasNextPage = Vods.Count == PageSize;
-        });
+        }
 
         ErrorDialog DescribeError(Exception exception)
         {
@@ -424,18 +478,42 @@ internal sealed class MonitorWindowState : ObservableModel
     /// A progress dialog, if given and the state was created with a way to show one, is shown while the action runs and
     /// closed before any failure is shown.
     /// </summary>
-    public async Task<bool> Run(Func<Exception, ErrorDialog> describeError, Func<Task> action, ProgressDialog? progress = null)
+    private Task<bool> Run(
+        Func<Exception, ErrorDialog> describeError,
+        Func<Task> action,
+        ProgressDialog? progress = null,
+        Func<bool>? isCurrentBrowsingRequest = null)
     {
-        return await RunAndReport(ShowError, progress, action);
+        return RunAndReport(ShowError, progress, action, shouldReportError: isCurrentBrowsingRequest);
 
-        Task ShowError(Exception exception)
+        async Task ShowError(Exception exception)
         {
             var error = describeError(exception);
-            return dialogs.ShowMessage(error.Title, error.Message);
+            if (isCurrentBrowsingRequest == null || openBrowsingError == null)
+            {
+                await dialogs.ShowMessage(error.Title, error.Message);
+                return;
+            }
+
+            var opened = openBrowsingError(error.Title, error.Message);
+            using var dialog = opened.Dialog;
+            browsingError = dialog;
+            try
+            {
+                await opened.Completion;
+            }
+            finally
+            {
+                browsingError = null;
+            }
         }
     }
 
-    private async Task<bool> RunAndReport(Func<Exception, Task> reportError, ProgressDialog? progress, Func<Task> action)
+    private async Task<bool> RunAndReport(
+        Func<Exception, Task> reportError,
+        ProgressDialog? progress,
+        Func<Task> action,
+        Func<bool>? shouldReportError = null)
     {
         if (Busy) return false;
 
@@ -451,6 +529,12 @@ internal sealed class MonitorWindowState : ObservableModel
         }
         catch (Exception exception)
         {
+            if (shouldReportError?.Invoke() == false)
+            {
+                Status = "";
+                return false;
+            }
+
             // The footer has room for one line; the dialog shows each failure on its own line.
             Status = exception.ExtractErrorMessage().ReplaceLineEndings(" · ");
             await reportError(exception);
@@ -463,14 +547,14 @@ internal sealed class MonitorWindowState : ObservableModel
         }
     }
 
-    private async Task RunContentQuery(Func<Exception, ErrorDialog> describeError, ProgressDialog? progress, Func<Task> action)
+    private async Task RunContentQuery(Func<Exception, ErrorDialog> describeError, Func<Task> action, Func<bool>? isCurrent = null)
     {
         if (Busy) return;
 
         IsContentLoading = true;
         try
         {
-            await Run(describeError, action, progress);
+            await Run(describeError, action, isCurrentBrowsingRequest: isCurrent);
         }
         finally
         {

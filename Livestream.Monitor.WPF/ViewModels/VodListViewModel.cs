@@ -27,6 +27,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         private readonly IApiClientFactory apiClientFactory;
 
         private IApiClient selectedApiClient;
+        private int queryGeneration;
 
         #region Design time constructor
 
@@ -63,9 +64,15 @@ namespace Livestream.Monitor.WPF.ViewModels
                 field = value;
                 NotifyOfPropertyChange(() => StreamDisplayName);
                 if (!string.IsNullOrWhiteSpace(field))
+                {
                     MovePage();
+                }
                 else
+                {
+                    queryGeneration++;
                     Items.Clear();
+                    LoadingItems = false;
+                }
             }
         }
 
@@ -199,8 +206,11 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         private async Task EnsureItems()
         {
-            var queryStreamDisplayName = StreamDisplayName; // avoid possible case of the stream id changes mid query
+            var queryStreamDisplayName = StreamDisplayName;
             if (!IsActive || string.IsNullOrWhiteSpace(queryStreamDisplayName)) return;
+
+            var generation = ++queryGeneration;
+            var provider = selectedApiClient;
 
             LoadingItems = true;
 
@@ -216,25 +226,30 @@ namespace Livestream.Monitor.WPF.ViewModels
                 };
                 if (SelectedVodType != null) vodQuery.VodTypes.Add(SelectedVodType);
 
-                var vods = await selectedApiClient.GetVods(vodQuery);
+                var vods = await provider.GetVods(vodQuery);
 
-                Items.AddRange(vods);
+                if (IsCurrent()) Items.AddRange(vods);
             }
             catch (HttpRequestWithStatusException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
-                // A page left during the query no longer has a view to show the error in.
-                if (IsActive) await this.ShowMessageAsync("Error", $"Unknown channel '{queryStreamDisplayName}'.");
+                if (IsCurrent()) await this.ShowMessageAsync("Error", $"Unknown channel '{queryStreamDisplayName}'.");
             }
             catch (Exception ex)
             {
+                if (!IsCurrent()) return;
+
                 var message =
-                    $"Could not load VODs from '{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}' for channel '{queryStreamDisplayName}'." +
+                    $"Could not load VODs from '{PlatformNames.GetDisplayName(provider.ApiName)}' for channel '{queryStreamDisplayName}'." +
                     $"{Environment.NewLine}{Environment.NewLine}{ex}";
 
-                if (IsActive) await this.ShowMessageAsync("Could not load VODs", message);
+                await this.ShowMessageAsync("Could not load VODs", message);
+            }
+            finally
+            {
+                if (generation == queryGeneration) LoadingItems = false;
             }
 
-            LoadingItems = false;
+            bool IsCurrent() => IsActive && generation == queryGeneration;
         }
     }
 }

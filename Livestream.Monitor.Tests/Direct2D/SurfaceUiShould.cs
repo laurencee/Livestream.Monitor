@@ -609,6 +609,39 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
+    public void CloseAnOpenComboBoxWhenItBecomesDisabled()
+    {
+        var bounds = new RectangleF(x: 10, y: 10, width: 80, height: 24);
+        var chosen = -1;
+        DrawFrame(enabled: true);
+        ui.Automation.Find("provider")!.Activate!();
+        DrawFrame(enabled: true);
+        var openTree = ui.Automation;
+        var firstChoice = openTree.ChildrenOf(openTree.IndexOf("provider"))[0];
+        var activateChoice = openTree.Nodes[firstChoice].Activate!;
+
+        DrawFrame(enabled: false);
+        activateChoice();
+
+        Assert.Equal(-1, chosen);
+        Assert.False(ui.HasMenu);
+
+        void DrawFrame(bool enabled)
+        {
+            ui.Begin(palette, viewport);
+            ui.Combo(
+                id: "provider",
+                text: "Twitch",
+                choices: ["Kick", "Twitch"],
+                selectedIndex: 1,
+                bounds,
+                changed: index => chosen = index,
+                enabled);
+            ui.End();
+        }
+    }
+
+    [Fact]
     public void ExposeOnlyUncoveredElementsWithTheirGroupAndState()
     {
         var covered = new RectangleF(x: 200, y: 0, width: 200, height: 300);

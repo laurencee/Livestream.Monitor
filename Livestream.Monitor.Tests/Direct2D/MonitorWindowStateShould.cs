@@ -120,6 +120,186 @@ public class MonitorWindowStateShould
     }
 
     [Fact]
+    public async Task ClearOldTopStreamResultsWhenTheNextPageFails()
+    {
+        var model = Create();
+        model.Page = MonitorPage.TopStreams;
+        var api = AuthorizedProvider(topStreams: true);
+        var firstPage = new TopStreamsResponse
+        {
+            LivestreamModels = [Stream("first", "First", "twitchtv", online: true, viewers: 10)],
+            HasNextPage = true,
+        };
+        var failure = new InvalidOperationException("Controlled provider failure");
+        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>())
+            .Returns(Task.FromResult(firstPage), Task.FromException<TopStreamsResponse>(failure));
+        await model.QueryTop(api, "");
+
+        model.PageNumber = 1;
+        await model.QueryTop(api, "");
+        model.RebuildRows();
+
+        Assert.Empty(model.Rows);
+        Assert.False(model.HasNextPage);
+    }
+
+    [Fact]
+    public async Task ClearOldVodResultsWhenTheNewChannelFails()
+    {
+        var model = Create();
+        model.Page = MonitorPage.Vods;
+        var api = AuthorizedProvider(vods: true);
+        IReadOnlyCollection<VodDetails> firstChannel = [new() { Title = "Old VOD" }];
+        var failure = new InvalidOperationException("Controlled provider failure");
+        api.GetVods(Arg.Any<VodQuery>())
+            .Returns(Task.FromResult(firstChannel), Task.FromException<IReadOnlyCollection<VodDetails>>(failure));
+        await model.QueryVods(api, "old", "archive");
+
+        await model.QueryVods(api, "new", "archive");
+
+        Assert.Empty(model.Vods);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task SuppressSupersededBrowsingErrors(bool browseVods, bool replaceOnSamePage)
+    {
+        const string OldError = "Obsolete provider failure";
+        var dialogs = Substitute.For<IUserDialogs>();
+        var model = Create(dialogs);
+        var page = browseVods ? MonitorPage.Vods : MonitorPage.TopStreams;
+        model.Page = page;
+        var api = AuthorizedProvider(topStreams: !browseVods, vods: browseVods);
+        var vods = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
+        var top = new TaskCompletionSource<TopStreamsResponse>();
+        api.GetVods(Arg.Any<VodQuery>()).Returns(vods.Task);
+        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(top.Task);
+        var query = browseVods ? model.QueryVods(api, "channel", "archive") : model.QueryTop(api, "");
+        if (replaceOnSamePage)
+        {
+            model.InvalidateContentQuery();
+        }
+        else
+        {
+            model.Page = MonitorPage.Followed;
+            model.Page = page;
+        }
+
+        if (browseVods) vods.SetException(new InvalidOperationException(OldError));
+        else top.SetException(new InvalidOperationException(OldError));
+        await query;
+
+        await dialogs.DidNotReceive().ShowMessage(Arg.Any<string>(), Arg.Any<string>());
+        Assert.Empty(model.Status);
+        Assert.False(model.Busy);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DismissAnOpenBrowsingErrorWhenAbandoningTheRequest(bool browseVods)
+    {
+        var dialog = Substitute.For<IDisposable>();
+        var completion = new TaskCompletionSource();
+        dialog.When(pane => pane.Dispose()).Do(_ => completion.TrySetResult());
+        var model = Create(openBrowsingError: (_, _) => (dialog, completion.Task));
+        var provider = AuthorizedProvider(topStreams: !browseVods, vods: browseVods);
+        var failure = new InvalidOperationException("Controlled browsing error");
+        provider.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(Task.FromException<TopStreamsResponse>(failure));
+        provider.GetVods(Arg.Any<VodQuery>()).Returns(Task.FromException<IReadOnlyCollection<VodDetails>>(failure));
+
+        model.Page = browseVods ? MonitorPage.Vods : MonitorPage.TopStreams;
+        var query = browseVods ? model.QueryVods(provider, "channel", "archive") : model.QueryTop(provider, "");
+
+        try
+        {
+            Assert.True(model.Busy);
+            model.AbandonBrowsingRequest();
+
+            Assert.True(completion.Task.IsCompleted);
+            await query;
+            Assert.False(model.Busy);
+            Assert.False(model.IsContentLoading);
+            Assert.Empty(model.Status);
+        }
+        finally
+        {
+            completion.TrySetResult();
+            await query;
+        }
+    }
+
+    [Fact]
+    public async Task LeaveAnUnrelatedErrorOpenWhenAbandoningBrowsing()
+    {
+        var dialogs = Substitute.For<IUserDialogs>();
+        var completion = new TaskCompletionSource();
+        dialogs.ShowMessage(Arg.Any<string>(), Arg.Any<string>()).Returns(completion.Task);
+        var model = Create(
+            dialogs,
+            openBrowsingError: (_, _) => throw new InvalidOperationException("Expected the ordinary error dialog."));
+        var failure = new InvalidOperationException("Controlled failure");
+        var operation = model.Run("Error", () => Task.FromException(failure));
+
+        try
+        {
+            model.AbandonBrowsingRequest();
+
+            Assert.True(model.Busy);
+            Assert.False(operation.IsCompleted);
+        }
+        finally
+        {
+            completion.TrySetResult();
+            await operation;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SkipTheProviderFetchWhenBrowsingIsAbandonedDuringAuthorization(bool browseVods)
+    {
+        var model = Create();
+        var provider = AuthorizedProvider(topStreams: !browseVods, vods: browseVods);
+        var authorization = new TaskCompletionSource();
+        provider.IsAuthorized.Returns(false);
+        provider.Authorize(Arg.Any<IUserDialogs>()).Returns(authorization.Task);
+        provider.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
+        provider.GetVods(Arg.Any<VodQuery>()).Returns(Array.Empty<VodDetails>());
+
+        model.Page = browseVods ? MonitorPage.Vods : MonitorPage.TopStreams;
+        var query = browseVods ? model.QueryVods(provider, "channel", "archive") : model.QueryTop(provider, "");
+        model.AbandonBrowsingRequest();
+        authorization.SetResult();
+        await query;
+
+        await provider.DidNotReceive().GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>());
+        await provider.DidNotReceive().GetVods(Arg.Any<VodQuery>());
+        Assert.False(model.Busy);
+    }
+
+    [Fact]
+    public async Task DiscardVodResultsWhenTheChannelChangesBeforeTheNextQueryStarts()
+    {
+        var model = Create();
+        model.Page = MonitorPage.Vods;
+        var api = AuthorizedProvider(vods: true);
+        var pending = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
+        api.GetVods(Arg.Any<VodQuery>()).Returns(pending.Task);
+
+        var query = model.QueryVods(api, "old", "archive");
+        model.InvalidateContentQuery();
+        pending.SetResult([new VodDetails { Title = "Old VOD" }]);
+        await query;
+
+        Assert.Empty(model.Vods);
+    }
+
+    [Fact]
     public async Task KeepTheTableVisibleDuringOrdinaryFollowedStreamRefreshes()
     {
         var model = Create();
@@ -427,6 +607,82 @@ public class MonitorWindowStateShould
     }
 
     [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task PublishOnlyCurrentGameSuggestions(bool revisitPage)
+    {
+        const string Filter = "Game";
+        var model = Create();
+        model.Page = MonitorPage.TopStreams;
+        var api = AuthorizedProvider(topStreams: true);
+        var oldRequest = new TaskCompletionSource<List<KnownGame>>();
+        var currentGames = new List<KnownGame> { new() { GameName = "Current game" } };
+        api.GetKnownGameNames(Filter).Returns(oldRequest.Task, Task.FromResult(currentGames));
+        var published = new List<KnownGame>();
+        var oldQuery = model.QueryGameSuggestions(api, Filter, published.AddRange);
+
+        if (revisitPage)
+        {
+            model.Page = MonitorPage.Vods;
+            model.Page = MonitorPage.TopStreams;
+        }
+        else
+        {
+            await model.QueryGameSuggestions(api, Filter, published.AddRange);
+        }
+
+        oldRequest.SetResult([new KnownGame { GameName = "Stale game" }]);
+        await oldQuery;
+
+        if (revisitPage)
+        {
+            Assert.Empty(published);
+            await model.QueryGameSuggestions(api, Filter, published.AddRange);
+        }
+
+        Assert.Equal("Current game", Assert.Single(published).GameName);
+    }
+
+    [Fact]
+    public async Task DropPendingGameSuggestionsBeforeAReplacementStarts()
+    {
+        var model = Create();
+        model.Page = MonitorPage.TopStreams;
+        var api = AuthorizedProvider(topStreams: true);
+        var pending = new TaskCompletionSource<List<KnownGame>>();
+        api.GetKnownGameNames("Game").Returns(pending.Task);
+        var published = new List<KnownGame>();
+        var query = model.QueryGameSuggestions(api, "Game", published.AddRange);
+
+        model.InvalidateGameSuggestions();
+        pending.SetResult([new KnownGame { GameName = "Stale game" }]);
+        await query;
+
+        Assert.Empty(published);
+    }
+
+    [Fact]
+    public async Task DropPendingGameSuggestionsWhenApplyingTheFilter()
+    {
+        const string Filter = "Game";
+        var model = Create();
+        model.Page = MonitorPage.TopStreams;
+        var api = AuthorizedProvider(topStreams: true);
+        api.HasTopStreamGameFilterSupport.Returns(true);
+        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
+        var pending = new TaskCompletionSource<List<KnownGame>>();
+        api.GetKnownGameNames(Filter).Returns(pending.Task);
+        var published = new List<KnownGame>();
+        var suggestions = model.QueryGameSuggestions(api, Filter, published.AddRange);
+
+        await model.QueryTop(api, Filter);
+        pending.SetResult([new KnownGame { GameName = "Stale game" }]);
+        await suggestions;
+
+        Assert.Empty(published);
+    }
+
+    [Theory]
     [InlineData(15, 2, 30, true)]
     [InlineData(30, 1, 30, false)]
     public async Task ApplyPagingAndSupportedGameFilters(int pageSize, int page, int expectedSkip, bool supportsGameFilter)
@@ -464,7 +720,8 @@ public class MonitorWindowStateShould
     private static MonitorWindowState Create(
         IUserDialogs dialogs = null,
         Func<string, string, IDisposable> showProgress = null,
-        Settings savedSettings = null)
+        Settings savedSettings = null,
+        Func<string, string, (IDisposable Dialog, Task Completion)> openBrowsingError = null)
     {
         var settings = Substitute.For<ISettingsHandler>();
         settings.Settings.Returns(savedSettings ?? new Settings());
@@ -475,7 +732,8 @@ public class MonitorWindowStateShould
             settingsHandler: settings,
             apiClientFactory: Substitute.For<IApiClientFactory>(),
             monitorStreamsModel: streams,
-            showProgress: showProgress
+            showProgress: showProgress,
+            openBrowsingError: openBrowsingError
         );
     }
 

@@ -34,6 +34,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         private bool hasNextPage;
         private int gameFilterGeneration;
+        private int queryGeneration;
 
         #region Design time constructor
 
@@ -314,21 +315,28 @@ namespace Livestream.Monitor.WPF.ViewModels
         {
             if (!IsActive) return;
 
+            var generation = ++queryGeneration;
+            var filterGeneration = gameFilterGeneration;
+            var provider = SelectedApiClient;
+
             LoadingItems = true;
 
             try
             {
                 Items.Clear();
 
-                if (!SelectedApiClient.IsAuthorized) await SelectedApiClient.Authorize(new WpfDialogs(this));
+                if (!provider.IsAuthorized) await provider.Authorize(new WpfDialogs(this));
+                if (!IsCurrent()) return;
 
                 var topStreamsQuery = new TopStreamQuery
                 {
-                    GameName = SelectedApiClient.HasTopStreamGameFilterSupport ? GameName : null,
+                    GameName = provider.HasTopStreamGameFilterSupport ? GameName : null,
                     Skip = (Page - 1) * ItemsPerPage,
                     Take = ItemsPerPage,
                 };
-                var response = await SelectedApiClient.GetTopStreams(topStreamsQuery);
+                var response = await provider.GetTopStreams(topStreamsQuery);
+                if (!IsCurrent()) return;
+
                 var monitoredStreams = monitorStreamsModel.Livestreams;
 
                 var topStreamResults = new List<TopStreamResult>();
@@ -346,14 +354,19 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
             catch (Exception ex)
             {
-                var message =
-                    $"Error getting top streams from '{PlatformNames.GetDisplayName(SelectedApiClient.ApiName)}'.{Environment.NewLine}{Environment.NewLine}{ex}";
+                if (!IsCurrent()) return;
 
-                // A page left during the query no longer has a view to show the error in.
-                if (IsActive) await this.ShowMessageAsync("Error", message);
+                var message =
+                    $"Error getting top streams from '{PlatformNames.GetDisplayName(provider.ApiName)}'.{Environment.NewLine}{Environment.NewLine}{ex}";
+
+                await this.ShowMessageAsync("Error", message);
+            }
+            finally
+            {
+                if (generation == queryGeneration) LoadingItems = false;
             }
 
-            LoadingItems = false;
+            bool IsCurrent() => IsActive && generation == queryGeneration && filterGeneration == gameFilterGeneration;
         }
 
         private async Task ApplyGameFilterChange(int generation)

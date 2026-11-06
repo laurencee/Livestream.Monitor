@@ -152,6 +152,50 @@ public sealed class TwitchApiClientShould
         await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task UseTheNewestTopStreamsCursorWhenTheSamePageLoadsOutOfOrder()
+    {
+        const string CurrentCursor = "current";
+        var oldResponse = new TaskCompletionSource<StreamsRoot>();
+        var currentResponse = new StreamsRoot { Streams = [], Pagination = new() { Cursor = CurrentCursor } };
+        client.GetStreams(Arg.Any<GetStreamsQuery>(), Arg.Any<CancellationToken>())
+            .Returns(oldResponse.Task, Task.FromResult(currentResponse));
+
+        var oldRequest = sut.GetTopStreams(new TopStreamQuery { Take = 1 });
+        await sut.GetTopStreams(new TopStreamQuery { Take = 1 });
+        oldResponse.SetResult(new StreamsRoot { Streams = [], Pagination = new() { Cursor = "old" } });
+        await oldRequest;
+
+        await sut.GetTopStreams(new TopStreamQuery { Skip = 1, Take = 1 });
+
+        await client.Received(1).GetStreams(
+            Arg.Is<GetStreamsQuery>(query => query.Pagination.After == CurrentCursor),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UseTheNewestVodCursorWhenTheSamePageLoadsOutOfOrder()
+    {
+        const string Channel = "channel";
+        const string CurrentCursor = "current";
+        client.GetUserByUsername(Channel, Arg.Any<CancellationToken>()).Returns(new User { Id = ChannelId });
+        var oldResponse = new TaskCompletionSource<VideosRoot>();
+        var currentResponse = new VideosRoot { Videos = [], Pagination = new() { Cursor = CurrentCursor } };
+        client.GetVideos(Arg.Any<GetVideosQuery>(), Arg.Any<CancellationToken>())
+            .Returns(oldResponse.Task, Task.FromResult(currentResponse));
+
+        var oldRequest = sut.GetVods(new VodQuery { StreamDisplayName = Channel, Take = 1 });
+        await sut.GetVods(new VodQuery { StreamDisplayName = Channel, Take = 1 });
+        oldResponse.SetResult(new VideosRoot { Videos = [], Pagination = new() });
+        await oldRequest;
+
+        await sut.GetVods(new VodQuery { StreamDisplayName = Channel, Skip = 1, Take = 1 });
+
+        await client.Received(1).GetVideos(
+            Arg.Is<GetVideosQuery>(query => query.CursorPagination.After == CurrentCursor),
+            Arg.Any<CancellationToken>());
+    }
+
     private static StreamsRoot CreateLiveResponse() => new()
     {
         Streams =

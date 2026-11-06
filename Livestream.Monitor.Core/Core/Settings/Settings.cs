@@ -36,7 +36,7 @@ namespace Livestream.Monitor.Core.Settings
 
         public const string DefaultEdgePath = "msedge";
 
-        public const int DefaultMinimumPopularEventViewers = 50000;
+        public const int DefaultMinimumPopularEventViewers = 100_000;
 
         public int SettingsVersion
         {

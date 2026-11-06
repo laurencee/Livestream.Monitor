@@ -392,7 +392,7 @@ public class SettingsShould
     public void KeepDefaultsWhenFieldsAreAbsent()
     {
         var settings = JsonSerializer.Deserialize<Settings>("{}", JsonDefaults.Options);
-        Assert.Equal(Settings.DefaultMinimumPopularEventViewers, settings.MinimumEventViewers);
+        Assert.Equal(100_000, settings.MinimumEventViewers);
         Assert.False(settings.UseLongStreamNotificationBanners);
         Assert.Equal("streamlink", settings.Twitch.StreamCommand.FilePath);
         Assert.Empty(settings.FavoriteApiQualities);

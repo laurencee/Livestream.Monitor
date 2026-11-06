@@ -107,6 +107,50 @@ public class VodListViewModelShould
     }
 
     [Fact]
+    public async Task DiscardVodResultsAfterChangingOrClearingTheChannel()
+    {
+        var provider = Substitute.For<IApiClient>();
+        var oldRequest = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
+        var clearedRequest = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
+        var currentVod = new VodDetails { Title = "Current VOD" };
+        var currentRequest = Task.FromResult<IReadOnlyCollection<VodDetails>>([currentVod]);
+        provider.GetVods(Arg.Any<VodQuery>()).Returns(oldRequest.Task, currentRequest, clearedRequest.Task);
+        var streams = Substitute.For<IMonitorStreamsModel>();
+        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        var settings = Substitute.For<ISettingsHandler>();
+        settings.Settings.Returns(new Settings());
+        var launcher = new StreamLauncher(settings, Substitute.For<IWindowManager>());
+        var viewModel = new VodListViewModel(launcher, streams, Substitute.For<IApiClientFactory>());
+        var context = new RecordingContext();
+        var previous = SynchronizationContext.Current;
+        SynchronizationContext.SetSynchronizationContext(context);
+
+        try
+        {
+            await ((IActivate)viewModel).ActivateAsync(CancellationToken.None);
+            viewModel.SelectedApiClient = provider;
+            viewModel.StreamDisplayName = "old";
+            viewModel.StreamDisplayName = "current";
+            oldRequest.SetResult([new VodDetails { Title = "Old VOD" }]);
+
+            Assert.Same(currentVod, Assert.Single(viewModel.Items));
+
+            viewModel.StreamDisplayName = "about to clear";
+            viewModel.StreamDisplayName = "";
+            clearedRequest.SetResult([new VodDetails { Title = "Cleared VOD" }]);
+
+            Assert.Empty(viewModel.Items);
+            Assert.False(viewModel.LoadingItems);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(previous);
+        }
+
+        Assert.Empty(context.Errors);
+    }
+
+    [Fact]
     public void OfferTheSelectedProvidersVodTypes()
     {
         // The view lists the types through a binding, which only re-reads them when told they changed.
