@@ -24,6 +24,7 @@ internal sealed class TrayIcon : IDisposable
     private readonly Action show;
     private readonly Action exit;
     private NotifyIconData data;
+    private nint menuOwner;
     private Action? notificationClicked;
 
     public TrayIcon(nint window, Action show, Action exit)
@@ -85,21 +86,30 @@ internal sealed class TrayIcon : IDisposable
         if ((uint)message == Win32.WmLeftButtonDoubleClick) show();
         if ((uint)message != RightButtonUp) return;
 
+        // Foreground a hidden top-level owner so outside clicks dismiss the menu without raising the monitor window.
+        if (menuOwner == 0) menuOwner = CreateMenuOwner();
+        if (menuOwner == 0) return;
+
         var menu = Win32.CreatePopupMenu();
         try
         {
             Win32.AppendMenu(menu, flags: 0, ShowCommand, title: "Show");
             Win32.AppendMenu(menu, flags: 0, ExitCommand, title: "Exit");
             Win32.GetCursorPos(out var point);
-            Win32.SetForegroundWindow(data.Window);
+            Win32.SetForegroundWindow(menuOwner);
             var command = (nuint)Win32.TrackPopupMenu(
                 menu,
                 Win32.TpmReturnCommand,
                 point.X,
                 point.Y,
                 reserved: 0,
-                data.Window,
+                menuOwner,
                 rect: 0);
+
+            // Let Windows complete the task switch so the next tray menu stays open.
+            const uint WmNull = 0;
+            var threadId = Win32.GetCurrentThreadId();
+            Win32.PostThreadMessage(threadId, WmNull, wParam: 0, lParam: 0);
 
             if (command == ShowCommand) show();
             if (command == ExitCommand) exit();
@@ -110,9 +120,28 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
+    private static nint CreateMenuOwner()
+    {
+        var instance = Win32.GetModuleHandle(0);
+        return Win32.CreateWindowEx(
+            Win32.WsExToolWindow,
+            className: "Static",
+            windowName: "",
+            Win32.WsPopup,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            parent: 0,
+            menu: 0,
+            instance,
+            parameter: 0);
+    }
+
     public void Dispose()
     {
         ShellNotifyIcon(Delete, ref data);
+        if (menuOwner != 0) Win32.DestroyWindow(menuOwner);
         if (data.Icon != 0) DestroyIcon(data.Icon);
     }
 
