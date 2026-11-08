@@ -20,8 +20,9 @@ namespace Livestream.Monitor.Tests.Model
     {
         [InlineAutoNSubstituteData(1, 2)]
         [InlineAutoNSubstituteData(500, 1)]
+        [InlineAutoNSubstituteData(2000, 0)]
         [Theory]
-        public async Task NotifyWhenStreamAboveMinimumViewers(
+        public async Task NotifyEligibleStreamsOnceAcrossConsecutivePolls(
             int minimumViewers,
             int expectedNotificationCount,
             [Frozen] ISettingsHandler settingsHandler,
@@ -41,46 +42,7 @@ namespace Livestream.Monitor.Tests.Model
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
             notificationHandler.Received(expectedNotificationCount)
                 .AddNotification(Arg.Is<LivestreamNotification>(notification => notification.Duration == TimeSpan.FromSeconds(25)));
-        }
 
-        [Theory, AutoNSubstituteData]
-        public async Task NotNotifyWhenBelowMinimumViewers(
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory)
-        {
-            var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamModels);
-            factory.GetAll().Returns(apiClients);
-            settingsHandler.Settings.MinimumEventViewers = 2000;
-            var sut = Create(settingsHandler, notificationHandler, factory);
-
-            await sut.NotifyPopularStreams();
-
-            notificationHandler.DidNotReceive().AddNotification(Arg.Any<LivestreamNotification>());
-        }
-
-        [InlineAutoNSubstituteData(1, 2)]
-        [InlineAutoNSubstituteData(500, 1)]
-        [Theory]
-        public async Task NotNotifySameStreamWithin1Hr(
-            int minimumViewers,
-            int expectedNotificationCount,
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory)
-        {
-            var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamModels);
-            factory.GetAll().Returns(apiClients);
-            settingsHandler.Settings.MinimumEventViewers = minimumViewers;
-            var sut = Create(settingsHandler, notificationHandler, factory);
-
-            await sut.NotifyPopularStreams();
             await sut.NotifyPopularStreams();
 
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
@@ -133,8 +95,11 @@ namespace Livestream.Monitor.Tests.Model
             }
         }
 
-        [Theory, AutoNSubstituteData]
-        public async Task StartWatching_IsIdempotent_AndTriggersOneImmediateQuery(
+        [InlineAutoNSubstituteData(false)]
+        [InlineAutoNSubstituteData(true)]
+        [Theory]
+        public async Task PollOnceOnDuplicateStartOrAgainAfterRestart(
+            bool restart,
             [Frozen] ISettingsHandler settingsHandler,
             [Frozen] INotificationHandler notificationHandler,
             [Frozen] IApiClient apiClient,
@@ -149,39 +114,20 @@ namespace Livestream.Monitor.Tests.Model
             try
             {
                 sut.StartWatching();
-                sut.StartWatching();
+                if (!restart) sut.StartWatching();
 
                 await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 1);
-                await AssertRemainsTrueAsync(() => Volatile.Read(ref queryCount) == 1);
-            }
-            finally
-            {
-                sut.StopWatching();
-            }
-        }
 
-        [Theory, AutoNSubstituteData]
-        public async Task StopWatching_AllowsImmediateRestart(
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory)
-        {
-            int queryCount = 0;
-            SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
-            factory.GetAll().Returns([apiClient]);
-            settingsHandler.Settings.MinimumEventViewers = 1;
-            var sut = Create(settingsHandler, notificationHandler, factory);
-
-            try
-            {
-                sut.StartWatching();
-                await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 1);
-
-                sut.StopWatching();
-                sut.StartWatching();
-
-                await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 2);
+                if (restart)
+                {
+                    sut.StopWatching();
+                    sut.StartWatching();
+                    await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 2);
+                }
+                else
+                {
+                    await AssertRemainsTrueAsync(() => Volatile.Read(ref queryCount) == 1);
+                }
             }
             finally
             {

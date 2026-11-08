@@ -111,6 +111,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private int vodTypeIndex;
     private StreamNotificationTarget? requestedNotification;
+    private StreamNotificationTarget? requestedForegroundStream;
     private PageRequest? requestedPage;
     private long gameSuggestionsDue;
     private long vodQueryDue;
@@ -222,7 +223,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             QueueQuery();
         }
 
-        if (requestedPage == null && requestedNotification == null && queryQueued && !state.Busy)
+        if (requestedPage == null && requestedNotification == null && requestedForegroundStream == null && queryQueued && !state.Busy)
         {
             queryQueued = false;
             state.PageNumber = 0;
@@ -236,10 +237,19 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         // A quick YouTube query can show a channel placeholder before the notified video arrives.
-        if (state is { Busy: false, IsContentLoading: false, FollowedRowsSettled: true } && requestedNotification is { } target)
+        if (state is { IsContentLoading: false, FollowedRowsSettled: true })
         {
-            requestedNotification = null;
-            SelectNotifiedStream(target);
+            if (!state.Busy && requestedNotification is { } target)
+            {
+                requestedNotification = null;
+                SelectNotifiedStream(target);
+            }
+            else if (requestedForegroundStream is { } foregroundTarget)
+            {
+                // A refresh error can keep the window busy after the followed rows have settled.
+                requestedForegroundStream = null;
+                SelectForegroundStream(foregroundTarget);
+            }
         }
 
         if (!rowsDirty) return;
@@ -1080,6 +1090,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void SwitchPage(MonitorPage page, IApiClient? provider = null, string vodChannel = "")
     {
+        requestedForegroundStream = null;
         Ui.CloseMenu();
         preview?.Hide();
         hoveredRow = -1;
@@ -1560,6 +1571,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     protected override void Minimize()
     {
+        requestedForegroundStream = null;
         Win32.ShowWindow(Handle, Win32.SwMinimize);
         _ = HideAfterMinimizeAnimation(++minimizeCount);
 
@@ -1582,7 +1594,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private void NotifyOnline(LivestreamModel stream)
     {
         var title = $"{stream.DisplayName} Online";
-        _ = NotifyStream(title, message: stream.Description, imageUrl: stream.ThumbnailUrls?.Small, stream, followed: true);
+        _ = NotifyStream(
+            title,
+            message: stream.Description,
+            imageUrl: stream.ThumbnailUrls?.Small,
+            stream,
+            followed: true,
+            streamWentOnline: true);
     }
 
     private async Task NotifyStream(
@@ -1590,11 +1608,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         string? message,
         string? imageUrl,
         LivestreamModel stream,
-        bool followed)
+        bool followed,
+        bool streamWentOnline = false)
     {
         if (SuppressNotification(stream)) return;
 
         var target = new StreamNotificationTarget(stream.UniqueStreamKey, stream.ChannelIdentifier.ChannelId, followed);
+        if (streamWentOnline && requestedNotification == null && requestedPage == null && CanSelectForegroundStream())
+            requestedForegroundStream = target;
+
         var settings = state.SettingsHandler.Settings;
         if (settings.StreamNotificationImage == StreamNotificationImage.ChannelIcon)
         {
@@ -1621,6 +1643,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         return settings.DisableNotifications || stream.DontNotify ||
                settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey) || launcher.IsWatching(stream);
     }
+
+    private bool CanSelectForegroundStream() => IsVisible && state.SettingsHandler.Settings.BringToForegroundOnStreamOnline;
 
     internal bool ActivateNotification(ToastActivation target)
     {
@@ -1662,8 +1686,29 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             requestedNotification = null;
         }
 
+        requestedForegroundStream = null;
         Restore();
         return true;
+    }
+
+    private void SelectForegroundStream(StreamNotificationTarget target)
+    {
+        if (!CanSelectForegroundStream()) return;
+
+        var stream = state.FindLiveFollowedStream(target);
+        if (stream == null || SuppressNotification(stream)) return;
+
+        state.RevealFollowedStream(stream);
+        Ui.SetValue("filter", state.Filter);
+        if (state.Page != MonitorPage.Followed) SwitchPage(MonitorPage.Followed);
+
+        SelectFollowedRow(target);
+        if (Win32.GetForegroundWindow() == Handle || Win32.SetForegroundWindow(Handle)) return;
+
+        // A direct raise can leave the window behind the foreground app. Move through the topmost stack without taking focus.
+        SetTopmost();
+        var flags = Win32.SwpNoMove | Win32.SwpNoSize | Win32.SwpNoActivate;
+        Win32.SetWindowPos(Handle, insertAfter: Win32.HwndNotTopmost, x: 0, y: 0, width: 0, height: 0, flags);
     }
 
     private void SelectNotifiedStream(StreamNotificationTarget target)
@@ -1673,9 +1718,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         state.ProviderFilter = FilterModel.AllApiClientsFilterName;
         state.OnlineOnly = false;
         SwitchPage(MonitorPage.Followed);
+        SelectFollowedRow(target);
+    }
+
+    private void SelectFollowedRow(StreamNotificationTarget target)
+    {
         state.RebuildRows();
         state.SelectedIndex = target.FindFollowedRow(state.Rows);
         KeepSelectionVisible();
+        NeedsPaint = true;
     }
 
     private void ShowTopStreams(LivestreamModel stream)

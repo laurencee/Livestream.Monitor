@@ -525,6 +525,31 @@ public class MonitorWindowStateShould
         Assert.Equal("channel_handle", Assert.Single(model.Rows).Id);
     }
 
+    [Theory]
+    [InlineData("TARGET", "twitchtv", "TARGET", "twitchtv")]
+    [InlineData("missing", "twitchtv", "", "twitchtv")]
+    [InlineData("TARGET", "youtube", "TARGET", FilterModel.AllApiClientsFilterName)]
+    public void RevealTheLiveTargetByClearingOnlyObstructingFilters(string name, string provider, string expectedName, string expectedProvider)
+    {
+        var model = Create(savedSettings: new Settings { ShowOnlineOnly = true });
+        var stream = Stream(id: "target", name: "Example", provider: "twitchtv", online: false, viewers: 5);
+        model.StreamsModel.Livestreams.Add(stream);
+        model.Filter = name;
+        model.ProviderFilter = provider;
+        var target = new StreamNotificationTarget(stream.UniqueStreamKey, stream.ChannelIdentifier.ChannelId, Followed: true);
+        Assert.Null(model.FindLiveFollowedStream(target));
+
+        stream.Live = true;
+        var live = Assert.IsType<LivestreamModel>(model.FindLiveFollowedStream(target));
+        model.RevealFollowedStream(live);
+        model.RebuildRows();
+
+        Assert.Same(stream, Assert.Single(model.Rows));
+        Assert.Equal(expectedName, model.Filter);
+        Assert.Equal(expectedProvider, model.ProviderFilter);
+        Assert.True(model.OnlineOnly);
+    }
+
     [Fact]
     public void KeepSelectionWhenTheSavedSortChanges()
     {
@@ -643,39 +668,29 @@ public class MonitorWindowStateShould
         Assert.Equal("Current game", Assert.Single(published).GameName);
     }
 
-    [Fact]
-    public async Task DropPendingGameSuggestionsBeforeAReplacementStarts()
-    {
-        var model = Create();
-        model.Page = MonitorPage.TopStreams;
-        var api = AuthorizedProvider(topStreams: true);
-        var pending = new TaskCompletionSource<List<KnownGame>>();
-        api.GetKnownGameNames("Game").Returns(pending.Task);
-        var published = new List<KnownGame>();
-        var query = model.QueryGameSuggestions(api, "Game", published.AddRange);
-
-        model.InvalidateGameSuggestions();
-        pending.SetResult([new KnownGame { GameName = "Stale game" }]);
-        await query;
-
-        Assert.Empty(published);
-    }
-
-    [Fact]
-    public async Task DropPendingGameSuggestionsWhenApplyingTheFilter()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DropPendingGameSuggestionsOnInvalidationOrFilterApply(bool applyFilter)
     {
         const string Filter = "Game";
         var model = Create();
         model.Page = MonitorPage.TopStreams;
         var api = AuthorizedProvider(topStreams: true);
-        api.HasTopStreamGameFilterSupport.Returns(true);
-        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
+        if (applyFilter)
+        {
+            api.HasTopStreamGameFilterSupport.Returns(true);
+            api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
+        }
+
         var pending = new TaskCompletionSource<List<KnownGame>>();
         api.GetKnownGameNames(Filter).Returns(pending.Task);
         var published = new List<KnownGame>();
         var suggestions = model.QueryGameSuggestions(api, Filter, published.AddRange);
 
-        await model.QueryTop(api, Filter);
+        if (applyFilter) await model.QueryTop(api, Filter);
+        else model.InvalidateGameSuggestions();
+
         pending.SetResult([new KnownGame { GameName = "Stale game" }]);
         await suggestions;
 

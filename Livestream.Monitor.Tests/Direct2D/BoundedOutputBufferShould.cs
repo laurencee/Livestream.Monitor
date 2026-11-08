@@ -28,26 +28,40 @@ public class BoundedOutputBufferShould
     }
 
     [Fact]
-    public void RetainHistoryAcrossReadsAndRingWraparound()
+    public void ReportOnlyChangesAndRetainHistoryAcrossRingWraparound()
     {
         const int Capacity = 7;
         var buffer = new BoundedOutputBuffer(Capacity);
-        buffer.Append("abcd");
-        Assert.True(buffer.TryRead(out var first));
-        Assert.Equal("abcd", first.Text);
-        Assert.Equal(0, first.DiscardedCharacters);
+        Assert.False(buffer.TryRead(out _));
+        buffer.Append(ReadOnlySpan<char>.Empty);
+        Assert.False(buffer.TryRead(out _));
 
-        buffer.Append("efgh");
+        buffer.Append("ab\r\n");
+        Assert.True(buffer.TryRead(out var first));
+        Assert.Equal("ab\r\n", first.Text);
+        Assert.Equal(0, first.DiscardedCharacters);
+        Assert.False(buffer.TryRead(out _));
+        buffer.Append(ReadOnlySpan<char>.Empty);
+        Assert.False(buffer.TryRead(out _));
+
+        buffer.Append("c\n");
+        Assert.True(buffer.TryRead(out var combined));
+        Assert.Equal("ab\r\nc\n", combined.Text);
+        Assert.Equal(0, combined.DiscardedCharacters);
+        Assert.False(buffer.TryRead(out _));
+
+        buffer.Append("de");
         Assert.True(buffer.TryRead(out var wrapped));
-        Assert.Equal("bcdefgh", wrapped.Text);
+        Assert.Equal("b\r\nc\nde", wrapped.Text);
         Assert.Equal(1, wrapped.DiscardedCharacters);
 
-        buffer.Append("ijk");
+        buffer.Append("fgh");
         Assert.True(buffer.TryRead(out var latest));
-        Assert.Equal("efghijk", latest.Text);
+        Assert.Equal("c\ndefgh", latest.Text);
         Assert.Equal(4, latest.DiscardedCharacters);
-        Assert.Equal("abcd", first.Text);
-        Assert.Equal("bcdefgh", wrapped.Text);
+        Assert.Equal("ab\r\n", first.Text);
+        Assert.Equal("b\r\nc\nde", wrapped.Text);
+        Assert.False(buffer.TryRead(out _));
     }
 
     [Fact]
@@ -66,28 +80,6 @@ public class BoundedOutputBufferShould
         Assert.True(buffer.TryRead(out var next));
         Assert.Equal("6789z", next.Text);
         Assert.Equal(9, next.DiscardedCharacters);
-    }
-
-    [Fact]
-    public void ReportOnlyChangesWithoutClearingRetainedText()
-    {
-        var buffer = new BoundedOutputBuffer();
-        Assert.False(buffer.TryRead(out _));
-        buffer.Append(ReadOnlySpan<char>.Empty);
-        Assert.False(buffer.TryRead(out _));
-
-        buffer.Append("stdout\r\n");
-        Assert.True(buffer.TryRead(out var first));
-        Assert.Equal("stdout\r\n", first.Text);
-        Assert.False(buffer.TryRead(out _));
-        buffer.Append(ReadOnlySpan<char>.Empty);
-        Assert.False(buffer.TryRead(out _));
-
-        buffer.Append("stderr\n");
-        Assert.True(buffer.TryRead(out var second));
-        Assert.Equal("stdout\r\nstderr\n", second.Text);
-        Assert.Equal(0, second.DiscardedCharacters);
-        Assert.False(buffer.TryRead(out _));
     }
 
     [Fact]

@@ -70,8 +70,21 @@
                 <Expander Header="General settings" IsExpanded="True" Margin="0,0,0,0" AutomationProperties.AutomationId="settings.section.0">
                     <StackPanel Margin="0,5,0,0">
                         <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
+                        <CheckBox x:Name="CheckForNewVersions" Content="Check for new app versions"
+                                  ToolTip="When unchecked, app version checks on startup are disabled." />
+                        <CheckBox x:Name="DisableRefreshErrorDialogs" Content="Disable refresh error dialogs"
+                                  ToolTip="When checked, refresh failure dialogs are disabled." />
+                        <CheckBox x:Name="DisableMinimizeToTrayNotification" Content="Disable minimize to tray popup"
+                                  ToolTip="When checked, the first minimize-to-tray popup after launch is disabled." />
+                        <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide stream output on load"
+                                  ToolTip="When checked, the stream output box is hidden after a successful launch." />
+                        <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,0" />
+                    </StackPanel>
+                </Expander>
 
-                        <TextBlock Text="Popular alert threshold (viewers; 0 = off)" Margin="0,10,0,0"
+                <Expander Header="Stream Notifications" IsExpanded="False" AutomationProperties.AutomationId="settings.section.5">
+                    <StackPanel Margin="0,5,0,0">
+                        <TextBlock Text="Popular alert threshold (viewers; 0 = off)"
                                    ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams." />
                         <TextBox x:Name="MinimumEventViewers" MaxLength="7"
                                  ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams.">
@@ -79,16 +92,8 @@
                                 <ui:RestrictTextBoxInputBehavior RegularExpression="^\d+$" />
                             </i:Interaction.Behaviors>
                         </TextBox>
-                        <CheckBox x:Name="CheckForNewVersions" Content="Check for new app versions"
-                                  ToolTip="When unchecked, app version checks on startup are disabled." />
                         <CheckBox x:Name="DisableNotifications" Content="Disable notifications"
                                   ToolTip="When checked, all notifications are disabled." />
-                        <CheckBox x:Name="DisableRefreshErrorDialogs" Content="Disable refresh error dialogs"
-                                  ToolTip="When checked, refresh failure dialogs are disabled." />
-                        <CheckBox x:Name="DisableMinimizeToTrayNotification" Content="Disable minimize to tray popup"
-                                  ToolTip="When checked, the first minimize-to-tray popup after launch is disabled." />
-                        <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide stream output on load"
-                                  ToolTip="When checked, the stream output box is hidden after a successful launch." />
                         <TextBlock Text="Stream notification image" Margin="0,5,0,0" />
                         <StackPanel Orientation="Horizontal">
                             <RadioButton Content="Channel icon" GroupName="StreamNotificationImage" IsChecked="{Binding ChannelIconSelected}"
@@ -96,7 +101,6 @@
                             <RadioButton Content="Live thumbnail" GroupName="StreamNotificationImage" IsChecked="{Binding LiveThumbnailSelected}"
                                          AutomationProperties.AutomationId="LiveThumbnailSelected" />
                         </StackPanel>
-                        <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,0" />
                     </StackPanel>
                 </Expander>
 

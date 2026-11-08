@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -25,6 +25,7 @@ namespace Livestream.Monitor.Core.Settings
         nameof(MetroThemeAccentColour),
         nameof(MinimumEventViewers),
         nameof(DisableNotifications),
+        nameof(BringToForegroundOnStreamOnline),
         nameof(StreamNotificationImage),
         nameof(UseLongStreamNotificationBanners),
         nameof(HideStreamOutputMessageBoxOnLoad),
@@ -99,6 +100,12 @@ namespace Livestream.Monitor.Core.Settings
         } = DefaultMinimumPopularEventViewers;
 
         public bool DisableNotifications
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
+        public bool BringToForegroundOnStreamOnline
         {
             get;
             set => Set(ref field, value);

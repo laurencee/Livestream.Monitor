@@ -131,6 +131,20 @@ internal sealed class MonitorWindowState : ObservableModel
     public event Action? Changed;
     public event Action<LivestreamModel>? StreamOnline;
 
+    internal LivestreamModel? FindLiveFollowedStream(StreamNotificationTarget target)
+    {
+        foreach (var stream in StreamsModel.Livestreams)
+            if (stream.Live && target.MatchesStream(stream)) return stream;
+
+        return null;
+    }
+
+    internal void RevealFollowedStream(LivestreamModel stream)
+    {
+        if (!FilterModel.Matches(stream, Filter, FilterModel.AllApiClientsFilterName, OnlineOnly)) Filter = "";
+        if (ProviderFilter != stream.ApiClient.ApiName) ProviderFilter = FilterModel.AllApiClientsFilterName;
+    }
+
     public string GetDisplayedUptime(LivestreamModel stream)
     {
         if (!stream.Live) return TimeSpan.Zero.ToTotalHoursText();

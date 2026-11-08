@@ -59,6 +59,7 @@ internal static unsafe partial class Win32
     public const int SwMinimize = 6;
     public const int SwRestore = 9;
     public const int SwShowNoActivate = 4;
+    public const nint HwndNotTopmost = -2;
     public const uint SwpNoSize = 0x0001;
     public const uint SwpNoMove = 0x0002;
     public const uint SwpNoZOrder = 0x0004;
@@ -192,6 +193,9 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetForegroundWindow(nint window);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint GetForegroundWindow();
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

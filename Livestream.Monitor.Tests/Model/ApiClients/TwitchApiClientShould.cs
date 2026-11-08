@@ -29,27 +29,17 @@ public sealed class TwitchApiClientShould
     }
 
     [Theory]
-    [InlineData("Saved_Name42", "saved_name42")]
-    [InlineData("x", "x")]
-    public async Task UseTheSavedNameForUrlsWithoutLookingUpTheAccount(string displayName, string login)
+    [InlineData("Saved_Name42", null, "saved_name42")]
+    [InlineData("x", null, "x")]
+    [InlineData("한동숙", "known_login", "known_login")]
+    [InlineData("OldName", "known_login", "known_login")]
+    public async Task UseTheSavedNameOrLoginForUrlsWithoutLookingUpTheAccount(string displayName, string savedLogin, string expectedLogin)
     {
         var stream = CreateStream(displayName);
+        stream.ChannelIdentifier.TwitchLogin = savedLogin;
 
-        Assert.Equal($"https://www.twitch.tv/{login}/", await stream.GetStreamUrl());
-        Assert.Equal($"https://www.twitch.tv/{login}/chat?popout=true", await stream.GetChatUrl());
-        await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
-    }
-
-    [Theory]
-    [InlineData("한동숙")]
-    [InlineData("OldName")]
-    public async Task UseTheSavedLoginForUrlsWithoutLookingUpTheAccount(string displayName)
-    {
-        var stream = CreateStream(displayName);
-        stream.ChannelIdentifier.TwitchLogin = "known_login";
-
-        Assert.Equal("https://www.twitch.tv/known_login/", await stream.GetStreamUrl());
-        Assert.Equal("https://www.twitch.tv/known_login/chat?popout=true", await stream.GetChatUrl());
+        Assert.Equal($"https://www.twitch.tv/{expectedLogin}/", await stream.GetStreamUrl());
+        Assert.Equal($"https://www.twitch.tv/{expectedLogin}/chat?popout=true", await stream.GetChatUrl());
         await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
     }
 

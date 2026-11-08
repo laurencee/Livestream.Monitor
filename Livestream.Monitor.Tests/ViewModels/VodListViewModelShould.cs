@@ -179,14 +179,24 @@ public class VodListViewModelShould
         Assert.Empty(context.Errors);
     }
 
-    [Fact]
-    public void OfferTheSelectedProvidersVodTypes()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ShowVodTypesAndKnownStreamsForTheSelectedProvider(bool hasVodTypes)
     {
         // The view lists the types through a binding, which only re-reads them when told they changed.
         var provider = Substitute.For<IApiClient>();
-        provider.VodTypes.Returns(["archive", "highlight"]);
+        string[] expectedTypes = hasVodTypes ? ["archive", "highlight"] : [];
+        if (hasVodTypes) provider.VodTypes.Returns([.. expectedTypes]);
+
+        // The ids sort in another order, so only ordering by display name passes.
+        var livestreams = hasVodTypes
+            ? new ObservableList<LivestreamModel>()
+            : new ObservableList<LivestreamModel> { Stream("1", "charlie"), Stream("3", "Alpha"), Stream("2", "bravo") };
+
+        string[] expectedNames = hasVodTypes ? [] : ["Alpha", "bravo", "charlie"];
         var streams = Substitute.For<IMonitorStreamsModel>();
-        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        streams.Livestreams.Returns(livestreams);
         var settings = Substitute.For<ISettingsHandler>();
         settings.Settings.Returns(new Settings());
         var launcher = new StreamLauncher(settings, Substitute.For<IWindowManager>());
@@ -197,24 +207,9 @@ public class VodListViewModelShould
         viewModel.SelectedApiClient = provider;
 
         Assert.Contains(nameof(VodListViewModel.VodTypes), changed);
-        Assert.Equal(["archive", "highlight"], viewModel.VodTypes);
-        Assert.Equal("archive", viewModel.SelectedVodType);
-    }
-
-    [Fact]
-    public void ListTheProvidersKnownStreamsAlphabetically()
-    {
-        var provider = Substitute.For<IApiClient>();
-        // The ids sort in another order, so only ordering by display name passes.
-        var livestreams = new ObservableList<LivestreamModel> { Stream("1", "charlie"), Stream("3", "Alpha"), Stream("2", "bravo") };
-        var streams = Substitute.For<IMonitorStreamsModel>();
-        streams.Livestreams.Returns(livestreams);
-        var settings = Substitute.For<ISettingsHandler>();
-        settings.Settings.Returns(new Settings());
-        var launcher = new StreamLauncher(settings, Substitute.For<IWindowManager>());
-        var viewModel = new VodListViewModel(launcher, streams, Substitute.For<IApiClientFactory>()) { SelectedApiClient = provider };
-
-        Assert.Equal(["Alpha", "bravo", "charlie"], viewModel.KnownStreams.Select(stream => stream.DisplayName));
+        Assert.Equal(expectedTypes, viewModel.VodTypes);
+        Assert.Equal(hasVodTypes ? "archive" : null, viewModel.SelectedVodType);
+        Assert.Equal(expectedNames, viewModel.KnownStreams.Select(stream => stream.DisplayName));
 
         LivestreamModel Stream(string id, string displayName) =>
             new(id, new ChannelIdentifier(provider, id)) { DisplayName = displayName };

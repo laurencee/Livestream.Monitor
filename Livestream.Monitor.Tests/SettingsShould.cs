@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -118,25 +118,6 @@ public class SettingsShould
 
             Assert.True(WindowLocationFile.TryLoad(out var restored));
             Assert.Equal(location, restored);
-        });
-    }
-
-    [Fact]
-    public void PersistOnlineOnlyPreference()
-    {
-        InTemporaryDirectory(() =>
-        {
-            var json = $$"""{"SettingsVersion":{{Settings.CurrentSettingsVersion}}}""";
-            File.WriteAllText(SettingsHandler.SettingsFileName, json);
-            var settings = new SettingsHandler().Settings;
-            Assert.False(settings.ShowOnlineOnly);
-
-            settings.ShowOnlineOnly = true;
-            var restored = new SettingsHandler().Settings;
-            Assert.True(restored.ShowOnlineOnly);
-
-            restored.ShowOnlineOnly = false;
-            Assert.False(new SettingsHandler().Settings.ShowOnlineOnly);
         });
     }
 
@@ -310,19 +291,6 @@ public class SettingsShould
     }
 
     [Fact]
-    public void KeepNonAsciiAndSymbolsReadableInSavedFiles()
-    {
-        const string Args = "--title \"Jürgen & ゲーム's <stream>\"";
-        var settings = new Settings();
-        settings.Twitch.StreamCommand.Args = Args;
-
-        var saved = JsonSerializer.Serialize(settings, JsonDefaults.IndentedOptions);
-
-        Assert.Contains("Jürgen & ゲーム's <stream>", saved);
-        Assert.Equal(Args, JsonSerializer.Deserialize<Settings>(saved, JsonDefaults.Options).Twitch.StreamCommand.Args);
-    }
-
-    [Fact]
     public void PreservePreviouslyReadSettingsWhenLaterValuesAreNull()
     {
         const string Json = """
@@ -346,40 +314,66 @@ public class SettingsShould
     }
 
     [Fact]
-    public void PreserveCommandsTokensPreferencesAndNotificationExclusions()
+    public void SaveAndReloadSettings()
     {
-        const string Json = """
+        const string Title = "Jürgen & ゲーム's <stream>";
+        const string Args = "--title \"" + Title + "\" {url} {qualities} {auth_token}";
+        var argsJson = JsonSerializer.Serialize(Args);
+        var json = $$$"""
             {
-              "SettingsVersion":4,
+              "SettingsVersion":{{{Settings.CurrentSettingsVersion}}},
               "MinimumEventViewers":0,
               "MetroThemeBaseColour":1,
               "MetroThemeAccentColour":3,
               "DisableNotifications":true,
+              "BringToForegroundOnStreamOnline":null,
               "StreamNotificationImage":"LiveThumbnail",
               "UseLongStreamNotificationBanners":true,
               "Twitch":{"AuthToken":"retained-token","PassthroughClientId":true,
-                "StreamCommand":{"FilePath":"player","Args":"{url} {qualities} {auth_token}","CaptureStandardOutput":true}},
+                "StreamCommand":{"FilePath":"player","Args":{{{argsJson}}},"CaptureStandardOutput":true}},
               "FavoriteApiQualities":{"twitchtv":{"Qualities":["1080p60","720p"],"FallbackQuality":"Worst"}},
               "ExcludeFromNotifying":[{"ApiClientName":"twitchtv","StreamId":"42"}]
             }
             """;
-        var settings = JsonSerializer.Deserialize<Settings>(Json, JsonDefaults.Options);
-        var roundTrip = JsonSerializer.Deserialize<Settings>(
-            JsonSerializer.Serialize(settings, JsonDefaults.IndentedOptions), JsonDefaults.Options);
-        Assert.Equal(0, roundTrip.MinimumEventViewers);
-        Assert.True(roundTrip.DisableNotifications);
-        Assert.Equal(StreamNotificationImage.LiveThumbnail, roundTrip.StreamNotificationImage);
-        Assert.True(roundTrip.UseLongStreamNotificationBanners);
-        Assert.Equal(settings.MetroThemeAccentColour, roundTrip.MetroThemeAccentColour);
-        Assert.Equal(settings.MetroThemeBaseColour, roundTrip.MetroThemeBaseColour);
-        Assert.Equal("retained-token", roundTrip.Twitch.AuthToken);
-        Assert.True(roundTrip.Twitch.PassthroughClientId);
-        Assert.Equal("player", roundTrip.Twitch.StreamCommand.FilePath);
-        Assert.Equal("{url} {qualities} {auth_token}", roundTrip.Twitch.StreamCommand.Args);
-        Assert.True(roundTrip.Twitch.StreamCommand.CaptureStandardOutput);
-        Assert.Equal(new[] { "1080p60", "720p" }, roundTrip.FavoriteApiQualities["twitchtv"].Qualities);
-        Assert.Equal("Worst", roundTrip.FavoriteApiQualities["twitchtv"].FallbackQuality);
-        Assert.Equal(new UniqueStreamKey("twitchtv", "42"), Assert.Single(roundTrip.ExcludeFromNotifying));
+
+        InTemporaryDirectory(() =>
+        {
+            File.WriteAllText(SettingsHandler.SettingsFileName, json);
+            var handler = new SettingsHandler();
+            var settings = handler.Settings;
+            Assert.False(settings.ShowOnlineOnly);
+            Assert.False(settings.BringToForegroundOnStreamOnline);
+
+            settings.BringToForegroundOnStreamOnline = true;
+            handler.SaveSettings();
+
+            var saved = File.ReadAllText(SettingsHandler.SettingsFileName);
+            Assert.Contains(Title, saved);
+
+            var roundTrip = new SettingsHandler().Settings;
+            Assert.True(roundTrip.BringToForegroundOnStreamOnline);
+            Assert.Equal(0, roundTrip.MinimumEventViewers);
+            Assert.True(roundTrip.DisableNotifications);
+            Assert.Equal(StreamNotificationImage.LiveThumbnail, roundTrip.StreamNotificationImage);
+            Assert.True(roundTrip.UseLongStreamNotificationBanners);
+            Assert.Equal(settings.MetroThemeAccentColour, roundTrip.MetroThemeAccentColour);
+            Assert.Equal(settings.MetroThemeBaseColour, roundTrip.MetroThemeBaseColour);
+            Assert.Equal("retained-token", roundTrip.Twitch.AuthToken);
+            Assert.True(roundTrip.Twitch.PassthroughClientId);
+            Assert.Equal("player", roundTrip.Twitch.StreamCommand.FilePath);
+            Assert.Equal(Args, roundTrip.Twitch.StreamCommand.Args);
+            Assert.True(roundTrip.Twitch.StreamCommand.CaptureStandardOutput);
+            Assert.Equal(new[] { "1080p60", "720p" }, roundTrip.FavoriteApiQualities["twitchtv"].Qualities);
+            Assert.Equal("Worst", roundTrip.FavoriteApiQualities["twitchtv"].FallbackQuality);
+            Assert.Equal(new UniqueStreamKey("twitchtv", "42"), Assert.Single(roundTrip.ExcludeFromNotifying));
+
+            roundTrip.ShowOnlineOnly = true;
+            var restored = new SettingsHandler().Settings;
+            Assert.True(restored.ShowOnlineOnly);
+
+            restored.ShowOnlineOnly = false;
+            Assert.False(new SettingsHandler().Settings.ShowOnlineOnly);
+        });
     }
 
     [Fact]
@@ -397,6 +391,7 @@ public class SettingsShould
     {
         var settings = JsonSerializer.Deserialize<Settings>("{}", JsonDefaults.Options);
         Assert.Equal(100_000, settings.MinimumEventViewers);
+        Assert.False(settings.BringToForegroundOnStreamOnline);
         Assert.Equal(StreamNotificationImage.ChannelIcon, settings.StreamNotificationImage);
         Assert.False(settings.UseLongStreamNotificationBanners);
         Assert.Equal("streamlink", settings.Twitch.StreamCommand.FilePath);

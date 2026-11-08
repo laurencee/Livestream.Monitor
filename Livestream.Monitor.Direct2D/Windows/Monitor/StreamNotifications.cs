@@ -101,14 +101,17 @@ internal readonly record struct StreamNotificationTarget(UniqueStreamKey Key, st
         return true;
     }
 
+    public bool MatchesStream(LivestreamModel stream) =>
+        stream.UniqueStreamKey.Equals(Key) && stream.ChannelIdentifier.ChannelId == ChannelId;
+
     public int FindFollowedRow(List<LivestreamModel> rows)
     {
-        var key = Key;
-        var channel = ChannelId;
-        var exact = rows.FindIndex(stream => stream.UniqueStreamKey.Equals(key) && stream.ChannelIdentifier.ChannelId == channel);
-        if (exact >= 0) return exact;
+        for (var i = 0; i < rows.Count; i++)
+            if (MatchesStream(rows[i])) return i;
 
         // YouTube replaces a live video's row with an offline row for its channel.
+        var key = Key;
+        var channel = ChannelId;
         return rows.FindIndex(stream => !stream.Live && stream.ApiClient.ApiName == key.ApiClientName &&
                                         stream.ChannelIdentifier.ChannelId == channel);
     }

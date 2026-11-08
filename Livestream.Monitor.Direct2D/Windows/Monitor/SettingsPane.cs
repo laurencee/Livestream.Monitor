@@ -28,6 +28,7 @@ internal sealed class SettingsPane
     private const float TextSize = 12;
     private const float HeadingSpacing = 8;
     private const float GroupCheckHeight = 24;
+    private const float PreferenceCheckHeight = 20;
     private const float GroupInputSpacing = 2;
     private const float GroupBorderThickness = 0.5f;
     private const float GroupBorderOpacity = 0.4f;
@@ -35,6 +36,7 @@ internal sealed class SettingsPane
     private const float SectionGap = 10;
     private const float ScrollStep = 36;
     private const int MaximumViewerDigits = 7;
+    private const int StreamNotificationsSectionIndex = 5;
     private static readonly string[] BaseNames = ["Base Light", "Base Dark"];
     private static readonly MetroThemeAccentColour[] Accents = Enum.GetValues<MetroThemeAccentColour>();
     private static readonly string[] AccentNames = Enum.GetNames<MetroThemeAccentColour>();
@@ -45,7 +47,7 @@ internal sealed class SettingsPane
     private readonly Settings draft;
     private readonly HashSet<string> seededInputs = [];
     private readonly Dictionary<string, PathState> paths = new(StringComparer.Ordinal);
-    private readonly bool[] expanded = [true, false, false, false, false];
+    private readonly bool[] expanded = [true, false, false, false, false, false];
     private readonly StreamQualityPane streamQualities;
     private float scroll;
     private float maximumScroll;
@@ -97,6 +99,9 @@ internal sealed class SettingsPane
         ui.PushClip(body);
         DrawExpander(ui, body, ref y, index: 0, title: "General settings");
         if (expanded[0]) DrawGeneral(ui, body, ref y);
+        y += SectionGap;
+        DrawExpander(ui, body, ref y, index: StreamNotificationsSectionIndex, title: "Stream Notifications");
+        if (expanded[StreamNotificationsSectionIndex]) DrawStreamNotifications(ui, body, ref y);
         y += SectionGap;
         DrawExpander(ui, body, ref y, index: 1, title: "Twitch");
         if (expanded[1]) DrawPlatform(ui, body, ref y, name: "Twitch", draft.Twitch);
@@ -164,6 +169,63 @@ internal sealed class SettingsPane
         );
 
         y += GroupGap;
+        var checkboxesTop = y;
+        var checkboxesBody = BeginGroup(body, ref y);
+        DrawCheck(
+            ui,
+            checkboxesBody,
+            ref y,
+            "versions",
+            "Check for new app versions",
+            draft.CheckForNewVersions,
+            value => draft.CheckForNewVersions = value,
+            height: PreferenceCheckHeight,
+            toolTip: "When unchecked, app version checks on startup are disabled."
+        );
+        DrawCheck(
+            ui,
+            checkboxesBody,
+            ref y,
+            "refresherrors",
+            "Disable refresh error dialogs",
+            draft.DisableRefreshErrorDialogs,
+            value => draft.DisableRefreshErrorDialogs = value,
+            height: PreferenceCheckHeight,
+            toolTip: "When checked, refresh failure dialogs are disabled."
+        );
+        DrawCheck(
+            ui,
+            checkboxesBody,
+            ref y,
+            "traypopup",
+            "Disable minimize to tray popup",
+            draft.DisableMinimizeToTrayNotification,
+            value => draft.DisableMinimizeToTrayNotification = value,
+            height: PreferenceCheckHeight,
+            toolTip: "When checked, the first minimize-to-tray popup after launch is disabled."
+        );
+        DrawCheck(
+            ui,
+            checkboxesBody,
+            ref y,
+            "output",
+            "Hide stream output on load",
+            draft.HideStreamOutputMessageBoxOnLoad,
+            value => draft.HideStreamOutputMessageBoxOnLoad = value,
+            height: PreferenceCheckHeight,
+            toolTip: "When checked, the stream output box is hidden after a successful launch."
+        );
+        EndGroup(ui, body, checkboxesTop, ref y);
+
+        const float OpenFileGap = 4;
+        y += OpenFileGap;
+        var openBounds = Row(body, ref y, RowHeight);
+        const string DocumentSymbol = "\uE8A5";
+        ui.Button(id: "settings.openfile", text: "Open settings file", bounds: openBounds, action: () => _ = OpenSettings(), symbol: DocumentSymbol);
+    }
+
+    private void DrawStreamNotifications(SurfaceUi ui, RectangleF body, ref float y)
+    {
         var minimumTop = y;
         var minimumBody = BeginGroup(body, ref y);
         var label = DrawTextRow(ui, text: "Popular alert threshold (viewers; 0 = off)", minimumBody, ref y, spacing: LabelSpacing);
@@ -184,20 +246,8 @@ internal sealed class SettingsPane
             toolTip: MinimumToolTip);
         EndGroup(ui, body, minimumTop, ref y);
 
-        const float GeneralCheckHeight = 20;
         var checkboxesTop = y;
         var checkboxesBody = BeginGroup(body, ref y);
-        DrawCheck(
-            ui,
-            checkboxesBody,
-            ref y,
-            "versions",
-            "Check for new app versions",
-            draft.CheckForNewVersions,
-            value => draft.CheckForNewVersions = value,
-            height: GeneralCheckHeight,
-            toolTip: "When unchecked, app version checks on startup are disabled."
-        );
         DrawCheck(
             ui,
             checkboxesBody,
@@ -206,57 +256,28 @@ internal sealed class SettingsPane
             "Disable notifications",
             draft.DisableNotifications,
             value => draft.DisableNotifications = value,
-            height: GeneralCheckHeight,
+            height: PreferenceCheckHeight,
             toolTip: "When checked, all notifications are disabled."
         );
         DrawCheck(
             ui,
             checkboxesBody,
             ref y,
-            "refresherrors",
-            "Disable refresh error dialogs",
-            draft.DisableRefreshErrorDialogs,
-            value => draft.DisableRefreshErrorDialogs = value,
-            height: GeneralCheckHeight,
-            toolTip: "When checked, refresh failure dialogs are disabled."
-        );
-        DrawCheck(
-            ui,
-            checkboxesBody,
-            ref y,
-            "traypopup",
-            "Disable minimize to tray popup",
-            draft.DisableMinimizeToTrayNotification,
-            value => draft.DisableMinimizeToTrayNotification = value,
-            height: GeneralCheckHeight,
-            toolTip: "When checked, the first minimize-to-tray popup after launch is disabled."
-        );
-        DrawCheck(
-            ui,
-            checkboxesBody,
-            ref y,
-            "output",
-            "Hide stream output on load",
-            draft.HideStreamOutputMessageBoxOnLoad,
-            value => draft.HideStreamOutputMessageBoxOnLoad = value,
-            height: GeneralCheckHeight,
-            toolTip: "When checked, the stream output box is hidden after a successful launch."
+            "foregroundonstreamonline",
+            "Bring app forward on live alerts",
+            draft.BringToForegroundOnStreamOnline,
+            value => draft.BringToForegroundOnStreamOnline = value,
+            height: PreferenceCheckHeight,
+            toolTip: "When a followed stream goes live and the app isn't minimized, bring the app window to the foreground."
         );
         EndGroup(ui, body, checkboxesTop, ref y);
 
         var notificationTop = y;
         var notificationBody = BeginGroup(body, ref y);
         DrawTextRow(ui, text: "Stream notification image", notificationBody, ref y, spacing: LabelSpacing);
-        var image = Row(notificationBody, ref y, GeneralCheckHeight);
-        var liveThumbnail = image with { Width = image.Width / 2 };
-        var channelIcon = liveThumbnail with { X = liveThumbnail.Right };
-        ui.Radio(
-            "settings.notificationimage.thumbnail",
-            "Live thumbnail",
-            draft.StreamNotificationImage == StreamNotificationImage.LiveThumbnail,
-            liveThumbnail,
-            _ => draft.StreamNotificationImage = StreamNotificationImage.LiveThumbnail,
-            group: "settings.notificationimage");
+        var image = Row(notificationBody, ref y, PreferenceCheckHeight);
+        var channelIcon = image with { Width = image.Width / 2 };
+        var liveThumbnail = channelIcon with { X = channelIcon.Right };
         ui.Radio(
             "settings.notificationimage.icon",
             "Channel icon",
@@ -264,10 +285,17 @@ internal sealed class SettingsPane
             channelIcon,
             _ => draft.StreamNotificationImage = StreamNotificationImage.ChannelIcon,
             group: "settings.notificationimage");
+        ui.Radio(
+            "settings.notificationimage.thumbnail",
+            "Live thumbnail",
+            draft.StreamNotificationImage == StreamNotificationImage.LiveThumbnail,
+            liveThumbnail,
+            _ => draft.StreamNotificationImage = StreamNotificationImage.LiveThumbnail,
+            group: "settings.notificationimage");
         y += InputSpacing;
 
         DrawTextRow(ui, text: "Stream notification popup duration", notificationBody, ref y, spacing: LabelSpacing);
-        var duration = Row(notificationBody, ref y, GeneralCheckHeight);
+        var duration = Row(notificationBody, ref y, PreferenceCheckHeight);
         var shortBanner = duration with { Width = duration.Width / 2 };
         var longBanner = shortBanner with { X = shortBanner.Right };
         ui.Radio(
@@ -286,12 +314,6 @@ internal sealed class SettingsPane
             group: "settings.bannerduration");
         y += GroupInputSpacing;
         EndGroup(ui, body, notificationTop, ref y);
-
-        const float OpenFileGap = 4;
-        y += OpenFileGap;
-        var openBounds = Row(body, ref y, RowHeight);
-        const string DocumentSymbol = "\uE8A5";
-        ui.Button(id: "settings.openfile", text: "Open settings file", bounds: openBounds, action: () => _ = OpenSettings(), symbol: DocumentSymbol);
 
         void MinimumChanged(string value)
         {
@@ -574,7 +596,8 @@ internal sealed class SettingsPane
         var current = handler.Settings;
         if (!EditableMatch(draft, current)) return Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube);
 
-        return draft.StreamNotificationImage != current.StreamNotificationImage ||
+        return draft.BringToForegroundOnStreamOnline != current.BringToForegroundOnStreamOnline ||
+               draft.StreamNotificationImage != current.StreamNotificationImage ||
                draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners ||
                streamQualities.HasChanges;
     }
@@ -587,6 +610,7 @@ internal sealed class SettingsPane
         if (otherChanges) CopyEditable(draft, handler.Settings);
         else
         {
+            handler.Settings.BringToForegroundOnStreamOnline = draft.BringToForegroundOnStreamOnline;
             handler.Settings.StreamNotificationImage = draft.StreamNotificationImage;
             handler.Settings.UseLongStreamNotificationBanners = draft.UseLongStreamNotificationBanners;
         }
@@ -597,12 +621,13 @@ internal sealed class SettingsPane
     }
 
     // The settings this pane edits and saves together; the theme applies at once instead. A setting added here is
-    // also compared in EditableMatch, except the banner options, which can be saved without validating playback commands.
+    // also compared in EditableMatch, except the foreground and banner options, which can be saved without validating playback commands.
     private static void CopyEditable(Settings source, Settings target)
     {
         target.MinimumEventViewers = source.MinimumEventViewers;
         target.CheckForNewVersions = source.CheckForNewVersions;
         target.DisableNotifications = source.DisableNotifications;
+        target.BringToForegroundOnStreamOnline = source.BringToForegroundOnStreamOnline;
         target.StreamNotificationImage = source.StreamNotificationImage;
         target.UseLongStreamNotificationBanners = source.UseLongStreamNotificationBanners;
         target.DisableRefreshErrorDialogs = source.DisableRefreshErrorDialogs;

@@ -324,9 +324,12 @@ public class FrontendShould
         var main = AutomationElement.RootElement.FindFirst(TreeScope.Children, process);
         var mainHandle = (nint)main.Current.NativeWindowHandle;
         var mainWindow = FrontendWindow.Pattern<WindowPattern>(main, WindowPattern.Pattern);
+        const string StreamNotificationsId = "settings.section.5";
         // The readiness check completes before the window is disposed.
         // ReSharper disable once AccessToDisposedClosure
-        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(ChannelIconId) != null, "The notification image setting");
+        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(StreamNotificationsId) != null, "The Stream Notifications group");
+        var streamNotifications = window.Element(StreamNotificationsId);
+        FrontendWindow.Pattern<ExpandCollapsePattern>(streamNotifications, ExpandCollapsePattern.Pattern).Expand();
         var icon = window.Element(ChannelIconId);
         Assert.True(FrontendWindow.Pattern<SelectionItemPattern>(icon, SelectionItemPattern.Pattern).Current.IsSelected);
         var thumbnail = window.Element("LiveThumbnailSelected");

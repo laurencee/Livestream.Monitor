@@ -48,51 +48,30 @@ namespace Livestream.Monitor.Tests
             }
         }
 
-        [Fact]
-        public void Resolve_CommonWindowsCommand_FromSearchPath()
+        [Theory]
+        [InlineData(false, true)]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        [InlineData(true, false)]
+        public void ResolveOnlyExistingBareAndFullyQualifiedCommands(bool fullyQualified, bool exists)
         {
-            var resolved = WindowsCommandResolver.TryResolveExecutable("cmd", out string resolvedPath);
+            var input = exists ? "cmd" : $"livestream-monitor-missing-{Guid.NewGuid():N}";
+            if (fullyQualified) input = exists ? Path.GetFullPath(CmdFullPath) : Path.Combine(Path.GetTempPath(), input + ".exe");
+            if (fullyQualified && !exists) Assert.False(File.Exists(input));
 
-            Assert.True(resolved);
-            Assert.NotNull(resolvedPath);
-            Assert.True(File.Exists(resolvedPath));
-            Assert.True(PathsEqual(CmdFullPath, resolvedPath));
-        }
+            var resolved = WindowsCommandResolver.TryResolveExecutable(input, out var resolvedPath);
+            Assert.Equal(exists, resolved);
 
-        [Fact]
-        public void NotResolve_MissingCommand_FromSearchPath()
-        {
-            var missingCommand = $"livestream-monitor-missing-{Guid.NewGuid():N}";
-
-            var resolved = WindowsCommandResolver.TryResolveExecutable(missingCommand, out string resolvedPath);
-
-            Assert.False(resolved);
-            Assert.Null(resolvedPath);
-        }
-
-        [Fact]
-        public void Resolve_ExistingFullyQualifiedPath()
-        {
-            var expectedPath = Path.GetFullPath(CmdFullPath);
-
-            var resolved = WindowsCommandResolver.TryResolveExecutable(expectedPath, out string resolvedPath);
-
-            Assert.True(resolved);
-            Assert.NotNull(resolvedPath);
-            Assert.True(File.Exists(resolvedPath));
-            Assert.True(PathsEqual(expectedPath, resolvedPath));
-        }
-
-        [Fact]
-        public void NotResolve_MissingFullyQualifiedPath()
-        {
-            var missingPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.exe");
-            Assert.False(File.Exists(missingPath));
-
-            var resolved = WindowsCommandResolver.TryResolveExecutable(missingPath, out string resolvedPath);
-
-            Assert.False(resolved);
-            Assert.Null(resolvedPath);
+            if (exists)
+            {
+                Assert.NotNull(resolvedPath);
+                Assert.True(File.Exists(resolvedPath));
+                Assert.True(PathsEqual(CmdFullPath, resolvedPath));
+            }
+            else
+            {
+                Assert.Null(resolvedPath);
+            }
         }
 
         [Theory]
