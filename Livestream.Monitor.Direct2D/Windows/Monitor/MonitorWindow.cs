@@ -20,30 +20,31 @@ namespace Livestream.Monitor.Direct2D.Windows.Monitor;
 /// <summary> Main app window </summary>
 internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 {
-    // The WPF toolbar row: controls 26 high with 2-pixel margins below the title bar, over a separator line.
-    private const int ToolbarTop = 33;
+    private const int ControlPadding = 5;
+    private const int ToolbarTop = TitleHeight + ControlPadding;
     private const int ToolbarControlHeight = 26;
-    private const int ToolbarBottom = 65;
+    private const int TileAreaTop = ToolbarTop + ToolbarControlHeight + ControlPadding;
+    private const int ToolbarSeparatorHeight = 1;
+    private const int ToolbarBottom = TileAreaTop + ToolbarSeparatorHeight;
     private const int TitleCommandsWidth = 293;
 
     // The arrow area at the end of an editable combo box's input, as wide as the WPF toggle.
     private const float DropDownArrowWidth = 20;
     private const int HeaderHeight = 27;
     private const int RowHeight = 25;
-    private const int FooterHeight = 36;
-
-    // Footer controls are centred in the footer, leaving the WPF footer's 5-pixel margin above the window border.
-    private const int FooterControlTop = 6;
+    private const int DefaultVisibleRows = 15;
+    internal const int DefaultHeight = ToolbarBottom + HeaderHeight + DefaultVisibleRows * RowHeight + (int)WindowBorderThickness;
     private const int FooterControlHeight = 24;
-    private const int TileWidth = 155;
-    private const int TileHeight = 120;
+    private const int FooterHeight = FooterControlHeight + ControlPadding * 2;
+    private const int DefaultTileWidth = 155;
 
-    // As in WPF, each tile has a 3-pixel margin, and the tile pages' content starts under their 32-pixel toolbar row.
+    // The tiles use WPF's 3-pixel side margins and 6-pixel gaps between rows.
     private const int TileMargin = 3;
     private const int TileGap = TileMargin * 2;
-    private const int TileRowPitch = TileHeight + TileGap;
-    private const int TileAreaTop = 63;
-    private const int TilesTop = TileAreaTop + TileMargin;
+    private const int DefaultTileRows = 3;
+    private const int MinimumTileHeight = (DefaultHeight - TileAreaTop - FooterHeight - (DefaultTileRows - 1) * TileGap) / DefaultTileRows;
+    private const int MaximumTileHeight = MinimumTileHeight + ControlPadding;
+    private const int MinimumTileRowPitch = MinimumTileHeight + TileGap;
     private const int TilesLeft = (int)WindowBorderThickness + TileMargin;
 
     // The WPF data grid's columns, inside the window border: the live column is sized to its header, the name,
@@ -68,6 +69,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int GameSuggestionDelayMilliseconds = 250;
     private const int VodQueryDelayMilliseconds = 500;
     private static readonly string[] ColumnNames = ["LIVE", "NAME", "STATUS", "GAME", "VIEWERS", "UPTIME"];
+    private static readonly string[] PageSizeLabels = Array.ConvertAll(PageSizes.ToArray(), static size => size.ToString(CultureInfo.InvariantCulture));
     private static readonly string[] SortProperties =
     [
         nameof(LivestreamModel.Live), nameof(LivestreamModel.DisplayName), nameof(LivestreamModel.Description),
@@ -447,7 +449,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var left = state.Page == MonitorPage.Vods ? 9 : 14;
 
         // The WPF back button glyph is a 6-pixel triangle; the font this frontend falls back to draws it larger.
-        const float BackGlyphSize = 7;
+        const float BackGlyphSize = 8;
         var backBounds = new RectangleF(x: left, y: Y, width: 25, height: Height);
         Ui.Button(
             id: "back",
@@ -456,7 +458,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             action: () => SwitchPage(MonitorPage.Followed),
             size: BackGlyphSize,
             toolTip: "Go back to livestream list",
-            name: "Back"
+            name: "Back",
+            flat: true
         );
         var providerBounds = new RectangleF(x: left + 31, y: Y, width: 80, height: Height);
         DrawProviderCombo(providerBounds);
@@ -512,7 +515,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 action: () => _ = Query(),
                 enabled: !state.Busy,
                 toolTip: "Refresh Top Streams",
-                name: "Refresh"
+                name: "Refresh",
+                flat: true
             );
             return;
         }
@@ -524,7 +528,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var channelBounds = new RectangleF(x: 173, y: Y, width: 140, height: Height);
         Ui.Input(
             "vod.channel",
-            "Channel name or ID...",
+            "Channel name/ID",
             channelBounds,
             _ =>
             {
@@ -609,7 +613,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Ui.Fill(ruleBounds, palette.HeaderRule);
 
         // Separates the table from the toolbar above it.
-        var tableTop = new RectangleF(x: 0, y: ToolbarBottom - 1, width: size.Width, height: 1);
+        var tableTop = new RectangleF(x: 0, y: ToolbarBottom - ToolbarSeparatorHeight, width: size.Width, height: ToolbarSeparatorHeight);
         Ui.Fill(tableTop, palette.TableBorder);
 
         for (var i = 0; i < ColumnNames.Length; i++)
@@ -725,29 +729,37 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Ui.Triangle(head, SortArrowGray, up: ascending);
     }
 
-    /// <summary>
-    /// The tile grid for the window size. As in a WPF scroll viewer whose scroll bar shows only when needed, tiles
-    /// that do not fit are laid out again beside the scroll bar.
-    /// </summary>
-    private TileLayout LayoutTiles(SizeF size)
+    /// <summary>Keeps the same number of tile columns when vertical overflow adds a scroll bar.</summary>
+    internal static TileLayout LayoutTiles(SizeF size, int itemCount)
     {
-        var viewport = Math.Max(0, (int)(size.Height - TileAreaTop - FooterHeight));
-        var width = size.Width;
-        var columns = Columns(width);
-        var extent = Extent(columns);
+        var viewportHeight = Math.Max(0, size.Height - TileAreaTop - FooterHeight);
+        var viewport = (int)viewportHeight;
+        var availableWidth = (int)(size.Width - WindowBorderThickness * 2);
+        var columns = Math.Max(1, availableWidth / (DefaultTileWidth + TileGap));
+        var rows = (itemCount + columns - 1) / columns;
+        var visibleRows = (viewport + TileGap) / MinimumTileRowPitch;
+        var fittedTileHeight = (viewportHeight + TileGap) / Math.Max(1, visibleRows) - TileGap;
+        var tileHeight = Math.Clamp(fittedTileHeight, MinimumTileHeight, MaximumTileHeight);
+        var extent = (int)MathF.Ceiling(Math.Max(0, rows * (tileHeight + TileGap) - TileGap));
+        if (rows <= visibleRows) extent = Math.Min(extent, viewport);
+
+        var clipWidth = size.Width;
+        var tileWidth = DefaultTileWidth;
 
         if (extent > viewport)
         {
-            width = size.Width - WindowBorderThickness - VerticalScrollBar.Width;
-            columns = Columns(width);
-            extent = Extent(columns);
+            clipWidth -= WindowBorderThickness + VerticalScrollBar.Width;
+            availableWidth = (int)(clipWidth - WindowBorderThickness);
+            tileWidth = Math.Clamp(availableWidth / columns - TileGap, 1, DefaultTileWidth);
         }
 
-        return new TileLayout(columns, width, viewport, extent);
-
-        static int Columns(float available) =>
-            Math.Max(1, (int)(available - WindowBorderThickness * 2) / (TileWidth + TileGap));
-        int Extent(int perRow) => (ItemCount + perRow - 1) / perRow * TileRowPitch;
+        return new TileLayout(
+            Columns: columns,
+            TileWidth: tileWidth,
+            TileHeight: tileHeight,
+            ClipWidth: clipWidth,
+            ViewportHeight: viewportHeight,
+            Extent: extent);
     }
 
     private void DrawTiles(SizeF size)
@@ -766,7 +778,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return;
         }
 
-        var layout = LayoutTiles(size);
+        var layout = LayoutTiles(size, ItemCount);
         var columns = layout.Columns;
         scrollOffset = Math.Clamp(scrollOffset, 0, Math.Max(0, layout.Extent - layout.Viewport));
         var barBounds = new RectangleF(
@@ -776,16 +788,18 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             height: layout.Viewport);
 
         scrollBar.Update(barBounds, layout.Extent, layout.Viewport, scrollOffset, TileLineSize);
-        var clipBounds = new RectangleF(x: 0, y: TileAreaTop, width: layout.Width, height: layout.Viewport);
+        var clipBounds = new RectangleF(x: 0, y: TileAreaTop, width: layout.ClipWidth, height: layout.ViewportHeight);
         Ui.PushClip(clipBounds);
 
-        for (var i = scrollOffset / TileRowPitch * columns; i < ItemCount; i++)
+        var firstVisibleRow = (int)(scrollOffset / layout.RowPitch);
+        for (var i = firstVisibleRow * columns; i < ItemCount; i++)
         {
-            var x = TilesLeft + i % columns * (TileWidth + TileGap);
-            var y = TilesTop + i / columns * TileRowPitch - scrollOffset;
-            if (y >= TileAreaTop + layout.Viewport) break;
+            var x = TilesLeft + i % columns * layout.TilePitch;
+            var row = i / columns;
+            var y = TileAreaTop + row * layout.RowPitch - scrollOffset;
+            if (y >= clipBounds.Bottom) break;
 
-            var bounds = new RectangleF(x: x, y: y, width: TileWidth, height: TileHeight);
+            var bounds = new RectangleF(x: x, y: y, width: layout.TileWidth, height: layout.TileHeight);
             var stream = state.Page == MonitorPage.TopStreams ? state.Rows[i] : null;
             var tileName = stream != null ? stream.DisplayName : state.Vods[i].Title ?? "";
             var tileStates = i == state.SelectedIndex ? AutomationStates.Selected : AutomationStates.None;
@@ -803,12 +817,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 // As in WPF, a 130-pixel-wide stack of 16-pixel text lines is centred in the tile, with the flag at
                 // its top right corner and a blank line between the game and the viewer count.
                 const float ContentWidth = 130;
-                const float ContentLeft = (TileWidth - ContentWidth) / 2;
                 const float ContentTop = 12;
                 const float LineHeight = 16;
                 const float FlagWidth = 16;
                 const float FlagHeight = 11;
-                var contentLeft = x + ContentLeft;
+                var contentLeft = x + (layout.TileWidth - ContentWidth) / 2;
                 var nameBounds = new RectangleF(x: contentLeft, y: y + ContentTop, width: 110, height: LineHeight);
                 Ui.Text(stream.DisplayName, nameBounds, color);
                 var descriptionBounds = nameBounds with { Y = nameBounds.Y + LineHeight, Width = ContentWidth };
@@ -844,30 +857,32 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             {
                 var vod = state.Vods[i];
                 var title = vod.Title ?? "";
-                var titleBounds = new RectangleF(x: x + 5, y: y + 3, width: 145, height: 34);
+                const float ContentPadding = 5;
+                var contentLeft = x + ContentPadding;
+                var contentWidth = layout.TileWidth - ContentPadding * 2;
+                var titleBounds = new RectangleF(x: contentLeft, y: y + 3, width: contentWidth, height: 34);
                 Ui.Text(title, titleBounds, color, weight: FontWeight.SemiBold, wrap: true);
                 Ui.ToolTip(id: $"tile.{i}.title", titleBounds, title);
 
                 var description = vod.Description ?? "";
                 var game = vod.Game ?? "";
                 const float DescriptionTop = 38;
-                const float DescriptionWidth = 145;
                 const float DescriptionFontSize = 11;
                 const float GameTop = 68;
                 const float LengthTop = 84;
                 var availableHeight = (game.Length == 0 ? LengthTop : GameTop) - DescriptionTop;
-                var descriptionHeight = Math.Min(MeasureFirstTwoLines(description, DescriptionWidth, DescriptionFontSize), availableHeight);
-                var descriptionBounds = new RectangleF(x: x + 5, y: y + DescriptionTop, width: DescriptionWidth, height: descriptionHeight);
+                var descriptionHeight = Math.Min(MeasureFirstTwoLines(description, contentWidth, DescriptionFontSize), availableHeight);
+                var descriptionBounds = new RectangleF(x: contentLeft, y: y + DescriptionTop, width: contentWidth, height: descriptionHeight);
                 Ui.Text(description, descriptionBounds, color, size: DescriptionFontSize, wrap: true);
                 Ui.ToolTip(id: $"tile.{i}.description", descriptionBounds, description);
 
-                var gameBounds = new RectangleF(x: x + 5, y: y + GameTop, width: 145, height: 18);
+                var gameBounds = new RectangleF(x: contentLeft, y: y + GameTop, width: contentWidth, height: 18);
                 Ui.Text(game, gameBounds, color, size: 11);
                 var length = vod.IsUpcoming ? "Upcoming" : vod.Length.ToTotalHoursText();
-                var lengthBounds = new RectangleF(x: x + 5, y: y + LengthTop, width: 145, height: 16);
+                var lengthBounds = new RectangleF(x: contentLeft, y: y + LengthTop, width: contentWidth, height: 16);
                 Ui.Text(length, lengthBounds, color, size: 11);
                 var recordedAt = vod.RecordedAt.ToString("MMM dd, yyyy", WpfBindingCulture);
-                var recordedBounds = new RectangleF(x: x + 5, y: y + 101, width: 145, height: 16);
+                var recordedBounds = new RectangleF(x: contentLeft, y: y + 101, width: contentWidth, height: 16);
                 Ui.Text(recordedAt, recordedBounds, color, size: 11);
             }
 
@@ -878,50 +893,72 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollBar.Draw(Ui);
     }
 
+    // YouTube's uploads endpoint accepts at most 50 results per request.
+    internal static ReadOnlySpan<int> PageSizes => [15, 30, 50];
+
     private void DrawFooter(SizeF size)
     {
         var y = size.Height - FooterHeight;
         var status = state.Status;
         var statusBounds = new RectangleF(x: 10, y: y, width: size.Width - 270, height: FooterHeight);
         Ui.Text(status, statusBounds, palette.MutedText, size: 11);
-        Ui.Text("Items:", new RectangleF(x: size.Width - 260, y: y, width: 42, height: FooterHeight));
-        int[] counts = [15, 30, 60];
-        var control = new RectangleF(x: 0, y: y + FooterControlTop, width: 0, height: FooterControlHeight);
+        var control = new RectangleF(x: 0, y: y + ControlPadding, width: 0, height: FooterControlHeight);
         var pageSizeBounds = control with { X = size.Width - 217, Width = 53 };
+        const float ItemsLabelGap = 5;
+        var itemsLabelWidth = pageSizeBounds.Left - statusBounds.Right - ItemsLabelGap;
+        var itemsLabelBounds = new RectangleF(x: statusBounds.Right, y: y, width: itemsLabelWidth, height: FooterHeight);
+        Ui.Text("Items:", itemsLabelBounds, alignment: TextAlign.Trailing);
         Ui.Combo(
             "page.size",
-            state.PageSize.ToString(),
-            ["15", "30", "60"],
-            Array.IndexOf(counts, state.PageSize),
+            state.PageSize.ToString(CultureInfo.InvariantCulture),
+            PageSizeLabels,
+            PageSizes.IndexOf(state.PageSize),
             pageSizeBounds,
             index =>
             {
-                state.PageSize = counts[index];
+                state.PageSize = PageSizes[index];
                 state.PageNumber = 0;
                 _ = Query();
             },
             !state.Busy
         );
-        var previousBounds = control with { X = size.Width - 153, Width = 25 };
+
+        const float PageLabelOffset = 123;
+        const float PageLabelSlotWidth = 80;
+        const float PageLabelFontSize = 12;
+        const float PageButtonWidth = 25;
+        const float PageChevronSize = 18;
+        const float PreviousPageSlotGap = 5;
+        const float NextPageSlotGap = 8;
+        var page = "Page " + (state.PageNumber + 1);
+        var pageWidth = Math.Min(PageLabelSlotWidth, MathF.Ceiling(MeasureWidth(page, PageLabelFontSize)));
+        var labelInset = (PageLabelSlotWidth - pageWidth) / 2;
+        var pageBounds = new RectangleF(x: size.Width - PageLabelOffset + labelInset, y: y, width: pageWidth, height: FooterHeight);
+        var previousX = pageBounds.Left - PageButtonWidth - (PreviousPageSlotGap + labelInset) / 2;
+        var nextX = pageBounds.Right + (NextPageSlotGap + labelInset) / 2;
+        var previousBounds = control with { X = previousX, Width = PageButtonWidth };
+        var nextBounds = control with { X = nextX, Width = PageButtonWidth };
+
         Ui.Button(
             "page.previous",
-            "◀",
+            "‹",
             previousBounds,
             () => ChangePage(-1),
             state is { Busy: false, PageNumber: > 0 },
-            name: "Previous page"
+            size: PageChevronSize,
+            name: "Previous page",
+            flat: true
         );
-        var page = "Page " + (state.PageNumber + 1);
-        var pageBounds = new RectangleF(x: size.Width - 123, y: y, width: 80, height: FooterHeight);
-        Ui.Text(page, pageBounds, alignment: TextAlign.Center);
-        var nextBounds = control with { X = size.Width - 35, Width = 25 };
+        Ui.Text(page, pageBounds, size: PageLabelFontSize, alignment: TextAlign.Center);
         Ui.Button(
             "page.next",
-            "▶",
+            "›",
             nextBounds,
             () => ChangePage(1),
             state is { Busy: false, HasNextPage: true },
-            name: "Next page"
+            size: PageChevronSize,
+            name: "Next page",
+            flat: true
         );
     }
 
@@ -1312,7 +1349,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         var followed = state.Page == MonitorPage.Followed;
-        var viewport = followed ? VisibleRows(ClientSize) : LayoutTiles(ClientSize).Viewport;
+        var viewport = followed ? VisibleRows(ClientSize) : LayoutTiles(ClientSize, ItemCount).Viewport;
         var lineSize = followed ? RowLineSize : TileLineSize;
         scrollOffset = Math.Max(0, scrollOffset - steps * WheelDistance(lineSize, viewport));
     }
@@ -1353,7 +1390,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return -1;
         if (!Ui.IsContentPoint(point) || scrollBar.IsVisible && scrollBar.Bounds.Contains(point)) return -1;
 
-        var top = state.Page == MonitorPage.Followed ? ToolbarBottom + HeaderHeight : TilesTop;
+        var top = state.Page == MonitorPage.Followed ? ToolbarBottom + HeaderHeight : TileAreaTop;
 
         if (point.Y < top || point.Y >= ClientSize.Height - (state.Page == MonitorPage.Followed ? 0 : FooterHeight))
             return -1;
@@ -1362,17 +1399,16 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (state.Page != MonitorPage.Followed)
         {
-            var columns = LayoutTiles(ClientSize).Columns;
+            var layout = LayoutTiles(ClientSize, ItemCount);
             var x = (int)point.X - TilesLeft;
-            var y = (int)point.Y - top + scrollOffset;
+            var y = point.Y - top + scrollOffset;
+            var column = x / layout.TilePitch;
+            var row = (int)(y / layout.RowPitch);
 
-            if (x < 0 || x / (TileWidth + TileGap) >= columns ||
-                x % (TileWidth + TileGap) >= TileWidth || y % TileRowPitch >= TileHeight)
-            {
-                return -1;
-            }
+            var yInRow = y - row * layout.RowPitch;
+            if (x < 0 || column >= layout.Columns || x % layout.TilePitch >= layout.TileWidth || yInRow >= layout.TileHeight) return -1;
 
-            index = y / TileRowPitch * columns + x / (TileWidth + TileGap);
+            index = row * layout.Columns + column;
         }
 
         return index >= 0 && index < ItemCount ? index : -1;
@@ -1449,10 +1485,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return;
         }
 
-        var layout = LayoutTiles(ClientSize);
-        var tileTop = state.SelectedIndex / layout.Columns * TileRowPitch;
-        var tileBottom = tileTop + TileHeight;
-        scrollOffset = GetVisibleOffset(tileTop, tileBottom, scrollOffset, layout.Viewport);
+        var layout = LayoutTiles(ClientSize, ItemCount);
+        var row = state.SelectedIndex / layout.Columns;
+        var tileTop = row * layout.RowPitch;
+        var tileBottom = tileTop + layout.TileHeight;
+        var top = (int)tileTop;
+        var bottom = (int)MathF.Ceiling(tileBottom);
+        var offset = GetVisibleOffset(top, bottom, scrollOffset, layout.Viewport);
+        scrollOffset = Math.Clamp(offset, 0, Math.Max(0, layout.Extent - layout.Viewport));
     }
 
     /// <summary>
@@ -1714,6 +1754,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         var notify = !stream.DontNotify;
         var hasVods = stream.ApiClient.HasVodViewerSupport;
+        var vodToolTip = hasVods ? null : $"The {PlatformNames.GetDisplayName(stream.ApiClient.ApiName)} API doesn't provide VODs.";
+        var openVods = new SurfaceUi.MenuChoice(Text: "Open in VOD browser", Enabled: hasVods, ToolTip: vodToolTip, ShowToolTipWhenDisabled: true);
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items;
         if (state.Page == MonitorPage.Followed)
         {
@@ -1726,7 +1768,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 (new SurfaceUi.MenuChoice("Remove from list"), ContextCommand.Remove),
                 (new SurfaceUi.MenuChoice("Copy Stream URL"), ContextCommand.CopyUrl),
                 (new SurfaceUi.MenuChoice("Open in Browser"), ContextCommand.OpenInBrowser),
-                (new SurfaceUi.MenuChoice("Open in VOD browser", Enabled: hasVods), ContextCommand.OpenVods),
+                (openVods, ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
             ];
         }
@@ -1742,7 +1784,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 (new SurfaceUi.MenuChoice("Open Stream"), ContextCommand.Open),
                 (new SurfaceUi.MenuChoice("Open Stream in Browser"), ContextCommand.OpenInBrowser),
                 (new SurfaceUi.MenuChoice("Open Chat", Enabled: stream.ApiClient.HasChatSupport), ContextCommand.OpenChat),
-                (new SurfaceUi.MenuChoice("Open in VOD browser", Enabled: hasVods), ContextCommand.OpenVods),
+                (openVods, ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
             ];
         }
@@ -1925,7 +1967,18 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private readonly record struct PageRequest(MonitorPage Page, IApiClient Provider, string VodChannel);
 
-    private readonly record struct TileLayout(int Columns, float Width, int Viewport, int Extent);
+    internal readonly record struct TileLayout(
+        int Columns,
+        int TileWidth,
+        float TileHeight,
+        float ClipWidth,
+        float ViewportHeight,
+        int Extent)
+    {
+        public int TilePitch => TileWidth + TileGap;
+        public float RowPitch => TileHeight + TileGap;
+        public int Viewport => (int)ViewportHeight;
+    }
 
     private enum ContextCommand
     {

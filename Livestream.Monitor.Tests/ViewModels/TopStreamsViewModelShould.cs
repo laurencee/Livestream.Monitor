@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Caliburn.Micro;
@@ -82,6 +83,33 @@ public class TopStreamsViewModelShould
         var expectedGame = supportsGameFilter ? Game : null;
         await provider.Received(1).GetTopStreams(Arg.Is<TopStreamQuery>(query => query.GameName == expectedGame));
         Assert.Equal(Game, viewModel.GameName);
+    }
+
+    [Fact]
+    public async Task ReloadTopStreamsFromTheFirstPageWhenThePageSizeChanges()
+    {
+        const int PageSize = 50;
+        var provider = Substitute.For<IApiClient>();
+        provider.IsAuthorized.Returns(true);
+        var results = Enumerable.Range(0, PageSize).Select(i => new LivestreamModel($"stream-{i}", new ChannelIdentifier(provider, $"channel-{i}")));
+        var response = new TopStreamsResponse { LivestreamModels = results.ToList(), HasNextPage = true };
+        provider.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(response);
+        var streams = Substitute.For<IMonitorStreamsModel>();
+        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        var viewModel = Create(provider, streams);
+        await ((IActivate)viewModel).ActivateAsync(CancellationToken.None);
+        viewModel.Page = 2;
+
+        viewModel.ItemsPerPage = PageSize;
+
+        Assert.Equal(1, viewModel.Page);
+        await provider.Received(1).GetTopStreams(Arg.Is<TopStreamQuery>(query => query.Skip == 0 && query.Take == PageSize));
+        Assert.Equal(PageSize, viewModel.Items.Count);
+        Assert.True(viewModel.CanNext);
+
+        viewModel.Next();
+
+        await provider.Received(1).GetTopStreams(Arg.Is<TopStreamQuery>(query => query.Skip == PageSize && query.Take == PageSize));
     }
 
     [Fact]

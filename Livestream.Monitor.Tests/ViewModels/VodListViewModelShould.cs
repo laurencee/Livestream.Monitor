@@ -107,6 +107,35 @@ public class VodListViewModelShould
     }
 
     [Fact]
+    public async Task ReloadVodsFromTheFirstPageWhenThePageSizeChanges()
+    {
+        const int PageSize = 30;
+        var provider = Substitute.For<IApiClient>();
+        var vods = Enumerable.Range(0, PageSize).Select(i => new VodDetails { Title = $"VOD {i}" }).ToArray();
+        provider.GetVods(Arg.Any<VodQuery>()).Returns(vods);
+        var streams = Substitute.For<IMonitorStreamsModel>();
+        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        var settings = Substitute.For<ISettingsHandler>();
+        var launcher = new StreamLauncher(settings, Substitute.For<IWindowManager>());
+        var viewModel = new VodListViewModel(launcher, streams, Substitute.For<IApiClientFactory>());
+        await ((IActivate)viewModel).ActivateAsync(CancellationToken.None);
+        viewModel.SelectedApiClient = provider;
+        viewModel.StreamDisplayName = "channel";
+        viewModel.Page = 2;
+
+        viewModel.ItemsPerPage = PageSize;
+
+        Assert.Equal(1, viewModel.Page);
+        await provider.Received(1).GetVods(Arg.Is<VodQuery>(query => query.Skip == 0 && query.Take == PageSize));
+        Assert.Equal(PageSize, viewModel.Items.Count);
+        Assert.True(viewModel.CanNext);
+
+        viewModel.Next();
+
+        await provider.Received(1).GetVods(Arg.Is<VodQuery>(query => query.Skip == PageSize && query.Take == PageSize));
+    }
+
+    [Fact]
     public async Task DiscardVodResultsAfterChangingOrClearingTheChannel()
     {
         var provider = Substitute.For<IApiClient>();

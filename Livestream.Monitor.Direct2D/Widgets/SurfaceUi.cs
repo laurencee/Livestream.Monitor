@@ -472,7 +472,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         const uint LightDisabledButtonText = 0xFFB0B0B0;
         var radius = flat ? 0 : CornerRadius;
         var over = IsPointerOver(bounds);
-        var useLightDisabledColours = !enabled && !Palette.IsDark && !chrome && !flat && !accent;
+        var useLightDisabledColours = !enabled && !Palette.IsDark && !chrome && !accent;
         var background = useLightDisabledColours ? LightDisabledButtonBackground
             : pressed == id ? Palette.Pressed : over ? Palette.Hover : Palette.Control;
         if (accent) background = over ? Theme.Blend(Palette.Accent, Palette.AccentText, 0.15f) : Palette.Accent;
@@ -704,13 +704,17 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (area is { Width: > 0, Height: > 0 }) toolTips.Add(new ToolTipRegion(id, area, text));
     }
 
-    /// <summary>The topmost tooltip region under the position, or null while a menu is open.</summary>
+    /// <summary>The topmost tooltip under the position, restricted to the menu while it is open.</summary>
     public ToolTipRegion? ToolTipAt(PointF position)
     {
         if (menu != null)
         {
             var index = MenuIndexAt(menu, position);
-            if (index < 0 || menu.Choices[index] is not { Enabled: true, ToolTip: { Length: > 0 } text }) return null;
+            if (index < 0) return null;
+
+            var choice = menu.Choices[index];
+            var text = choice.ToolTip;
+            if (choice is { Enabled: false, ShowToolTipWhenDisabled: false } || string.IsNullOrEmpty(text)) return null;
 
             var row = MenuRow(menu, index - menu.Offset);
             return new ToolTipRegion($"menu.{menu.Id}.{index}", row, text);
@@ -1420,7 +1424,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool Enabled = true,
         bool Checked = false,
         string? ToolTip = null,
-        bool Checkable = false);
+        bool Checkable = false,
+        bool ShowToolTipWhenDisabled = false);
 
     private sealed class TextInput
     {

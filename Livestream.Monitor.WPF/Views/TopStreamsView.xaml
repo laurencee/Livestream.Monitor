@@ -7,6 +7,7 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.WPF.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:ui="clr-namespace:Livestream.Monitor.WPF.Core.UI"
              xmlns:model="clr-namespace:Livestream.Monitor.Model;assembly=Livestream.Monitor.Core"
              d:DataContext="{d:DesignInstance Type=viewModels:TopStreamsViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
@@ -53,13 +54,14 @@
             <ItemsControl x:Name="Items">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
+                        <ui:TileWrapPanel IsItemsHost="True" />
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="model:TopStreamResult">
                         <Grid>
-                            <controls:Tile x:Name="StreamTile" Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]" Height="120" Width="155">
+                            <controls:Tile x:Name="StreamTile" Style="{StaticResource StreamTile}" cal:Message.Attach="[Click] = [StreamClicked($dataContext)]"
+                                           Height="120" Width="Auto" Margin="3" HorizontalAlignment="Stretch">
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
                                     <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
@@ -129,7 +131,10 @@
         <!-- Footer -->
         <TextBlock Grid.Row="2" Text="Click a tile to add or remove the channel from your list." HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
-            <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
+            <TextBlock Text="Items:" VerticalAlignment="Center" Margin="5" />
+            <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding ItemsPerPage, Mode=TwoWay}"
+                      IsEnabled="{Binding LoadingItems, Converter={StaticResource InvertedBoolenConverter}}" MinWidth="54" Margin="0,0,5,0"
+                      AutomationProperties.AutomationId="PageSize" AutomationProperties.Name="Items per page" />
             <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />
             <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <Button x:Name="Next" Content="{StaticResource NextButtonText}" Padding="10,0" />

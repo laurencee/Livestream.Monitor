@@ -41,6 +41,7 @@
                             <Setter Property="ContextMenu" Value="{StaticResource ContextMenu}" />
                             <Setter Property="cal:Message.Attach" Value="[MouseDoubleClick] = [OpenStream()];
                                                                  [PreviewKeyDown] = [DataGridKeyDown($eventArgs)]" />
+                            <Setter Property="ToolTipService.InitialShowDelay" Value="100" />
                             <Setter Property="ToolTip">
                                 <Setter.Value>
                                     <Border BorderThickness="2" BorderBrush="Black">

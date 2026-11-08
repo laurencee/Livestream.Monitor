@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using ExternalAPIs.Youtube.Query;
 using Livestream.Monitor.Direct2D.Windows.Monitor;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
@@ -123,6 +124,17 @@ public class MonitorWindowShould
         var target = new StreamNotificationTarget(new UniqueStreamKey("youtube", "video"), "channel", Followed: true);
 
         Assert.ThrowsAny<IOException>(() => ToastActivationPipe.Forward(target, pipeName));
+    }
+
+    [Fact]
+    public void OfferPageSizesSupportedByYouTubeUploads()
+    {
+        var query = new PlaylistItemsQuery("uploads");
+        foreach (var pageSize in MonitorWindow.PageSizes)
+        {
+            query.ItemsPerPage = pageSize;
+            Assert.Equal(pageSize, query.ItemsPerPage);
+        }
     }
 
     [Theory]

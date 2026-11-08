@@ -168,7 +168,11 @@ internal sealed class FrontendWindow : IDisposable
     /// Opens a list, by expanding it or by invoking the button that shows it, and returns the list or menu items within
     /// the container once each shows text. A list that closes before then, such as under a message, is opened again.
     /// </summary>
-    public AutomationElement[] OpenItems(string openerId, string containerId, string description)
+    public AutomationElement[] OpenItems(
+        string openerId,
+        string containerId,
+        string description,
+        Func<string[], bool> ready = null)
     {
         Element(openerId);
         AutomationElement[] items = [];
@@ -199,8 +203,9 @@ internal sealed class FrontendWindow : IDisposable
         {
             var container = Find(containerId);
             items = container?.FindAll(TreeScope.Descendants, Items).Cast<AutomationElement>().ToArray() ?? [];
-            seen = string.Join(", ", items.Select(item => $"'{DisplayedText(item)}'"));
-            return items.Length != 0 && items.All(item => !string.IsNullOrWhiteSpace(DisplayedText(item)));
+            var labels = items.Select(DisplayedText).ToArray();
+            seen = string.Join(", ", labels.Select(label => $"'{label}'"));
+            return labels.Length != 0 && labels.All(label => !string.IsNullOrWhiteSpace(label)) && (ready?.Invoke(labels) ?? true);
         }
     }
 

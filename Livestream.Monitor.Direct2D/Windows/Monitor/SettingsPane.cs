@@ -13,7 +13,10 @@ namespace Livestream.Monitor.Direct2D.Windows.Monitor;
 internal sealed class SettingsPane
 {
     private const float HeaderHeight = 46;
-    private const float FooterHeight = 58;
+    private const float SaveButtonHeight = 28;
+    private const float SaveButtonPadding = 5;
+    private const float FooterDividerHeight = 1;
+    private const float FooterHeight = FooterDividerHeight + SaveButtonHeight + SaveButtonPadding * 2;
     private const float Margin = 10;
     private const float RowHeight = 28;
     private const float InputHeight = 26;
@@ -114,11 +117,15 @@ internal sealed class SettingsPane
         }
 
         DrawScrollbar(ui, body);
+        var footerTop = bounds.Bottom - FooterHeight;
+        var divider = body with { Y = footerTop, Height = FooterDividerHeight };
+        ui.Fill(divider, ui.Palette.Border);
+
         var saveBounds = new RectangleF(
             x: bounds.X + 30,
-            y: bounds.Bottom - FooterHeight + 5,
+            y: divider.Bottom + SaveButtonPadding,
             width: bounds.Width - 60,
-            height: 28
+            height: SaveButtonHeight
         );
 
         var canSave = CanSave();

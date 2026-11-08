@@ -36,6 +36,7 @@ internal sealed class UiFrontend
         NextPage = "Next",
         VodViewer = "VodViewer",
         VodProviders = "VodProviders",
+        VodTypes = "VodTypes",
         KnownChannelsOpener = "KnownStreams",
         KnownChannels = "KnownStreams",
         VodTile = "VodTile",
@@ -61,6 +62,7 @@ internal sealed class UiFrontend
         NextPage = "page.next",
         VodViewer = "vod",
         VodProviders = "provider",
+        VodTypes = "vod.type",
         KnownChannelsOpener = "vod.channels",
         KnownChannels = "vod.known",
         VodTile = "tile.0",
@@ -91,6 +93,7 @@ internal sealed class UiFrontend
     public required string NextPage { get; init; }
     public required string VodViewer { get; init; }
     public required string VodProviders { get; init; }
+    public required string VodTypes { get; init; }
 
     /// <summary>Opens the followed channels list on the VOD page, by expanding or invoking it.</summary>
     public required string KnownChannelsOpener { get; init; }

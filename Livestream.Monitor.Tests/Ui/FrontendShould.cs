@@ -335,16 +335,33 @@ public class FrontendShould
         window.InvokeUntil(ids.NextPage, () => window.ShowsText("Page 2"), "Page 2 of the top streams");
         WaitForStreamTile(window, firstPage);
 
+        if (kind == FrontendKind.Wpf)
+        {
+            ChooseWpfPageSize(window, "30");
+            window.WaitFor(() => window.ShowsText("Page 1") ? window : null, FrontendWindow.StepTimeout, "Page 1 after changing page size");
+            WaitForStreamTile(window, previous: null);
+        }
+
         // The VOD viewer offers the followed channels and lists a chosen channel's VODs.
         window.InvokeUntil(ids.VodViewer, () => window.Find(ids.KnownChannelsOpener) != null, "The VOD viewer");
+        if (kind == FrontendKind.Wpf) ChooseWpfPageSize(window, "50");
+
+        window.Element(ids.VodTypes);
         var vodProviders = window.OpenItems(ids.VodProviders, ids.VodProviders, "VOD providers");
         Assert.Equal(["Twitch", "YouTube"], vodProviders.Select(FrontendWindow.DisplayedText).Order());
-        FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(ids.VodProviders), ExpandCollapsePattern.Pattern).Collapse();
+        var youtube = Assert.Single(vodProviders, item => FrontendWindow.DisplayedText(item) == "YouTube");
+        FrontendWindow.Choose(youtube, window.Element(ids.VodProviders));
+        window.WaitUntilDisabled(ids.VodTypes);
+
+        vodProviders = window.OpenItems(ids.VodProviders, ids.VodProviders, "VOD providers");
+        var twitch = Assert.Single(vodProviders, item => FrontendWindow.DisplayedText(item) == "Twitch");
+        FrontendWindow.Choose(twitch, window.Element(ids.VodProviders));
+        var vodTypes = window.OpenItems(ids.VodTypes, ids.VodTypes, "Twitch VOD types");
+        Assert.Equal(["archive", "highlight", "upload"], vodTypes.Select(FrontendWindow.DisplayedText));
+        FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(ids.VodTypes), ExpandCollapsePattern.Pattern).Collapse();
 
         var knownChannels = "The followed channels in the VOD viewer";
-        var known = window.OpenItems(ids.KnownChannelsOpener, ids.KnownChannels, knownChannels);
-        var knownNames = known.Select(FrontendWindow.DisplayedText).Order(StringComparer.CurrentCultureIgnoreCase);
-        Assert.Equal(ascending, knownNames);
+        var known = window.OpenItems(ids.KnownChannelsOpener, ids.KnownChannels, knownChannels, ready: KnownChannelsShown);
         FrontendWindow.Choose(known[0], window.Element(ids.KnownChannels));
         var vod = window.Element(ids.VodTile, FrontendWindow.QueryTimeout);
         Assert.False(string.IsNullOrWhiteSpace(FrontendWindow.DisplayedText(vod)), "The first VOD shows no text.");
@@ -360,6 +377,7 @@ public class FrontendShould
 
         bool Ticked() => toggle.Current.ToggleState == ToggleState.On;
         bool Saved() => ReadFlag(profile, "CheckForNewVersions") == true;
+        bool KnownChannelsShown(string[] labels) => labels.Order(StringComparer.CurrentCultureIgnoreCase).SequenceEqual(ascending);
 
         string Seen() => seen;
 
@@ -371,6 +389,15 @@ public class FrontendShould
             seen = $"selected [{string.Join(", ", items.Select(FrontendWindow.DisplayedText))}]";
             return item != null && shown.Contains(FrontendWindow.DisplayedText(item)) ? item : null;
         }
+    }
+
+    private static void ChooseWpfPageSize(FrontendWindow window, string size)
+    {
+        const string Selector = "PageSize";
+        var choices = window.OpenItems(Selector, Selector, "Items per page choices");
+        Assert.Equal(["15", "30", "50"], choices.Select(FrontendWindow.DisplayedText));
+        var choice = Assert.Single(choices, item => FrontendWindow.DisplayedText(item) == size);
+        FrontendWindow.Choose(choice, window.Element(Selector));
     }
 
     [Fact]

@@ -18,7 +18,7 @@ internal static class Program
 
     public static string? MonitorName { get; private set; }
     public static int WindowWidth { get; private set; } = 810;
-    public static int WindowHeight { get; private set; } = 480;
+    public static int WindowHeight { get; private set; } = MonitorWindow.DefaultHeight;
     public static UiDispatcher Dispatcher { get; private set; } = null!;
 
     [STAThread]

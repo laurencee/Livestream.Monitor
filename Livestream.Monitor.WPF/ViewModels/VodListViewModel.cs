@@ -20,8 +20,6 @@ namespace Livestream.Monitor.WPF.ViewModels
 {
     public class VodListViewModel : PagingConductor<VodDetails>
     {
-        private const int VOD_TILES_PER_PAGE = 15;
-
         private readonly StreamLauncher streamLauncher;
         private readonly IMonitorStreamsModel monitorStreamsModel;
         private readonly IApiClientFactory apiClientFactory;
@@ -47,13 +45,11 @@ namespace Livestream.Monitor.WPF.ViewModels
             this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
             this.monitorStreamsModel = monitorStreamsModel ?? throw new ArgumentNullException(nameof(monitorStreamsModel));
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-
-            ItemsPerPage = VOD_TILES_PER_PAGE;
         }
 
         public override bool CanPrevious => Page > 1 && !LoadingItems;
 
-        public override bool CanNext => !LoadingItems && Items.Count == VOD_TILES_PER_PAGE;
+        public override bool CanNext => !LoadingItems && Items.Count == ItemsPerPage;
 
         public string StreamDisplayName
         {

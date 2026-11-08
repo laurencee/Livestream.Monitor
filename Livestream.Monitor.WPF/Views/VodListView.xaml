@@ -7,6 +7,7 @@
              xmlns:cal="http://www.caliburnproject.org"
              xmlns:viewModels="clr-namespace:Livestream.Monitor.WPF.ViewModels"
              xmlns:controls="http://metro.mahapps.com/winfx/xaml/controls"
+             xmlns:ui="clr-namespace:Livestream.Monitor.WPF.Core.UI"
              xmlns:model="clr-namespace:Livestream.Monitor.Model;assembly=Livestream.Monitor.Core"
              d:DataContext="{d:DesignInstance Type=viewModels:VodListViewModel, IsDesignTimeCreatable=True}"
              cal:Bind.AtDesignTime="True"
@@ -40,68 +41,75 @@
             <ComboBox x:Name="KnownStreams" Margin="3" DisplayMemberPath="DisplayName" Text="{Binding StreamDisplayName, Delay=500}" Width="140"
                   IsEditable="True" IsTextSearchEnabled="True" IsTextSearchCaseSensitive="False"
                   controls:TextBoxHelper.Watermark="Channel name or ID..." />
-            <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}" />
+            <ComboBox x:Name="VodTypes" Width="100" Margin="3" SelectedItem="{Binding SelectedVodType}"
+                      IsEnabled="{Binding HasItems, RelativeSource={RelativeSource Self}}" />
         </StackPanel>
 
         <!-- Vod list -->
-        <ItemsControl Grid.Row="1" x:Name="Items">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <WrapPanel IsItemsHost="True" Orientation="Horizontal" />
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="model:VodDetails">
-                    <Grid>
-                        <controls:Tile x:Name="VodTile" Style="{StaticResource VodTile}" cal:Message.Attach="[Click] = [OpenVod($dataContext)]" Height="120" Width="155">
-                            <controls:Tile.ContextMenu>
-                                <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
-                                    <MenuItem Header="Copy VOD URL" cal:Message.Attach="[Click] = [CopyVodUrl($dataContext)]" />
-                                    <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenVodInBrowser($dataContext)]" />
-                                </ContextMenu>
-                            </controls:Tile.ContextMenu>
-                            <controls:Tile.Content>
-                                <StackPanel Width="130">
-                                    <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" />
-                                    <TextBlock Text="{Binding Description, Converter={StaticResource SingleLineTextConverter}}"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}" />
-                                    <TextBlock Text="{Binding Game}" />
-                                    <!-- Blank spacer -->
-                                    <TextBlock />
-                                    <TextBlock>
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsUpcoming}" Value="True">
-                                                        <Setter Property="Text" Value="Upcoming"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                    <!-- Blank spacer -->
-                                    <TextBlock />
-                                    <TextBlock Text="{Binding RecordedAt, StringFormat={}{0:MMM} {0:dd}\, {0:yyyy}}" />
-                                </StackPanel>
-                            </controls:Tile.Content>
-                        </controls:Tile>
-                        <Popup IsOpen="{Binding ElementName=VodTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
-                               AllowsTransparency="True" PopupAnimation="Slide"
-                               HorizontalOffset="-35" VerticalOffset="0">
-                            <Border BorderThickness="1" BorderBrush="Black">
-                                <Image Margin="2" Source="{Binding PreviewImage, IsAsync=True}" />
-                            </Border>
-                        </Popup>
-                    </Grid>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <ItemsControl x:Name="Items">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <ui:TileWrapPanel IsItemsHost="True" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="model:VodDetails">
+                        <Grid>
+                            <controls:Tile x:Name="VodTile" Style="{StaticResource VodTile}" cal:Message.Attach="[Click] = [OpenVod($dataContext)]"
+                                           Height="120" Width="Auto" Margin="3" HorizontalAlignment="Stretch">
+                                <controls:Tile.ContextMenu>
+                                    <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
+                                        <MenuItem Header="Copy VOD URL" cal:Message.Attach="[Click] = [CopyVodUrl($dataContext)]" />
+                                        <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenVodInBrowser($dataContext)]" />
+                                    </ContextMenu>
+                                </controls:Tile.ContextMenu>
+                                <controls:Tile.Content>
+                                    <StackPanel Width="130">
+                                        <TextBlock Text="{Binding Title}" ToolTip="{Binding Title}" />
+                                        <TextBlock Text="{Binding Description, Converter={StaticResource SingleLineTextConverter}}"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Description}" />
+                                        <TextBlock Text="{Binding Game}" />
+                                        <!-- Blank spacer -->
+                                        <TextBlock />
+                                        <TextBlock>
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding Length, Converter={StaticResource TotalHoursTimespanConverter}}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsUpcoming}" Value="True">
+                                                            <Setter Property="Text" Value="Upcoming"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <!-- Blank spacer -->
+                                        <TextBlock />
+                                        <TextBlock Text="{Binding RecordedAt, StringFormat={}{0:MMM} {0:dd}\, {0:yyyy}}" />
+                                    </StackPanel>
+                                </controls:Tile.Content>
+                            </controls:Tile>
+                            <Popup IsOpen="{Binding ElementName=VodTile, Path=IsMouseOver, Mode=OneWay, UpdateSourceTrigger=PropertyChanged}"
+                                   AllowsTransparency="True" PopupAnimation="Slide"
+                                   HorizontalOffset="-35" VerticalOffset="0">
+                                <Border BorderThickness="1" BorderBrush="Black">
+                                    <Image Margin="2" Source="{Binding PreviewImage, IsAsync=True}" />
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
 
         <!-- Footer -->
         <TextBlock Grid.Row="2" Text="Click a tile to play. Right click for URL options." HorizontalAlignment="Left" Margin="10" />
         <StackPanel Grid.Row="2" Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="5">
-            <TextBlock Text="{Binding ItemsPerPage, StringFormat={}Items {0}}" Margin="5" />
+            <TextBlock Text="Items:" VerticalAlignment="Center" Margin="5" />
+            <ComboBox ItemsSource="{Binding PageSizeOptions}" SelectedItem="{Binding ItemsPerPage, Mode=TwoWay}"
+                      IsEnabled="{Binding LoadingItems, Converter={StaticResource InvertedBoolenConverter}}" MinWidth="54" Margin="0,0,5,0"
+                      AutomationProperties.AutomationId="PageSize" AutomationProperties.Name="Items per page" />
             <Button x:Name="Previous" Content="{StaticResource BackButtonText}" Padding="10,0" />
             <TextBlock Text="{Binding Page, StringFormat={}Page {0}}" Margin="5" />
             <Button x:Name="Next" Content="{StaticResource NextButtonText}" Padding="10,0" />

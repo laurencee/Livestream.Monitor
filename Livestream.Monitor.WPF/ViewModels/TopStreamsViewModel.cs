@@ -23,7 +23,6 @@ namespace Livestream.Monitor.WPF.ViewModels
 {
     public class TopStreamsViewModel : PagingConductor<TopStreamResult>
     {
-        private const int STREAM_TILES_PER_PAGE = 15;
         private const int GameFilterDelayMilliseconds = 250;
 
         private readonly IMonitorStreamsModel monitorStreamsModel;
@@ -43,7 +42,6 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (!Execute.InDesignMode)
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
-            ItemsPerPage = STREAM_TILES_PER_PAGE;
             Items.Add(new TopStreamResult());
         }
 
@@ -62,8 +60,6 @@ namespace Livestream.Monitor.WPF.ViewModels
             this.navigationService = navigationService ?? throw new ArgumentNullException(nameof(navigationService));
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
 
-            ItemsPerPage = STREAM_TILES_PER_PAGE;
-
             PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == nameof(Page))
@@ -75,7 +71,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         public override bool CanPrevious => Page > 1 && !LoadingItems;
 
-        public override bool CanNext => !LoadingItems && Items.Count == STREAM_TILES_PER_PAGE && hasNextPage;
+        public override bool CanNext => !LoadingItems && Items.Count == ItemsPerPage && hasNextPage;
 
         public bool CanRefreshItems => !LoadingItems;
 

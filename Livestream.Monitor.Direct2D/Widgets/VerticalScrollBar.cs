@@ -12,10 +12,8 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
 {
     public const float Width = 14;
 
-    // Each arrow button is 14 pixels square with a 1-pixel margin; its 12 by 6 arrow is centred in a 12-pixel box.
+    // A 14-pixel arrow button with a 1-pixel vertical margin on each side.
     private const float ButtonLength = 16;
-    private const float ArrowInset = 2;
-    private const float ArrowTop = 5;
     private const float ArrowWidth = 12;
     private const float ArrowHeight = 6;
     private const float ThumbInset = 1;
@@ -111,8 +109,9 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         // A held arrow shows pressed only while the pointer is on it, as a WPF repeat button does.
         void Arrow(RectangleF button, Part part, bool pointsUp)
         {
-            var top = pointsUp ? button.Y + ArrowTop : button.Bottom - ArrowTop - ArrowHeight;
-            var arrow = new RectangleF(x: button.X + ArrowInset, y: top, width: ArrowWidth, height: ArrowHeight);
+            var left = button.X + (button.Width - ArrowWidth) / 2;
+            var top = button.Y + (button.Height - ArrowHeight) / 2;
+            var arrow = new RectangleF(x: left, y: top, width: ArrowWidth, height: ArrowHeight);
             var color = hovered != part ? ArrowColor : pressed == part ? pressedArrow : hoveredArrow;
             ui.Triangle(arrow, color, pointsUp);
         }
