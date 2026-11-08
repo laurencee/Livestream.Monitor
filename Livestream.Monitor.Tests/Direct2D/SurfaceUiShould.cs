@@ -137,8 +137,10 @@ public sealed class SurfaceUiShould : IDisposable
         }
     }
 
-    [Fact]
-    public void SaveBannerDurationWithAnUnavailablePlaybackCommand()
+    [Theory]
+    [InlineData("settings.bannerduration.long", StreamNotificationImage.ChannelIcon, true)]
+    [InlineData("settings.notificationimage.thumbnail", StreamNotificationImage.LiveThumbnail, false)]
+    public void SaveNotificationOptionsWithAnUnavailablePlaybackCommand(string option, StreamNotificationImage image, bool longBanner)
     {
         var settings = new Settings();
         settings.YouTube.VodCommand.FilePath = "unavailable-vod-player.exe";
@@ -147,11 +149,12 @@ public sealed class SurfaceUiShould : IDisposable
         var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
 
         DrawSettings(pane);
-        ClickWidget("settings.bannerduration.long");
+        ClickWidget(option);
         DrawSettings(pane);
         ClickWidget("settings.save");
 
-        Assert.True(settings.UseLongStreamNotificationBanners);
+        Assert.Equal(image, settings.StreamNotificationImage);
+        Assert.Equal(longBanner, settings.UseLongStreamNotificationBanners);
         handler.Received(1).SaveSettings();
     }
 

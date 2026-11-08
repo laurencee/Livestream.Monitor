@@ -16,6 +16,12 @@ namespace Livestream.Monitor.WPF.Core.Utility
             return this;
         }
 
+        public WindowSettingsBuilder WithWidth(double width)
+        {
+            settings.Width = width;
+            return this;
+        }
+
         /// <summary> Convenience for setting WithResizeMode noresize and WindowStyle none </summary>
         public WindowSettingsBuilder NoResizeBorderless()
         {

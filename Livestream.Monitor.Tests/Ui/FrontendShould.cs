@@ -4,7 +4,10 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Windows.Automation;
+using Livestream.Monitor.Core.Settings;
+using Livestream.Monitor.Direct2D.Windows.Monitor;
 using Xunit;
+using Win32 = Livestream.Monitor.Direct2D.Native.Win32;
 
 namespace Livestream.Monitor.Tests.Ui;
 
@@ -287,6 +290,84 @@ public class FrontendShould
         window.DeclineAuthorizationAfter(ids.TopStreams);
     }
 
+    [Fact]
+    public void SaveTheTrayPopupOptOutAndUpdateOpenSettings()
+    {
+        using var profile = UiTestProfile.CreateWithoutToken();
+        using var window = FrontendWindow.Launch(FrontendKind.Direct2D, profile);
+        const string TrayPopupId = "settings.traypopup";
+        window.Element(window.Ids.OpenSettings, FrontendWindow.StartupTimeout);
+        // The readiness check completes before the window is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(TrayPopupId) != null, "The tray popup setting");
+        var checkbox = window.Element(TrayPopupId);
+        var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
+        Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
+
+        ToastActivationPipe.Forward(new ToastActivation(TrayToastAction.DisablePopup));
+
+        window.WaitFor(() => toggle.Current.ToggleState == ToggleState.On ? checkbox : null,
+            FrontendWindow.StepTimeout, "The tray popup setting checked");
+        Assert.True(ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void SaveTheWpfNotificationImageAndHandleTheTrayPopupAction(bool disablePopup)
+    {
+        using var profile = UiTestProfile.CreateWithoutToken();
+        using var window = FrontendWindow.Launch(FrontendKind.Wpf, profile);
+        const string ChannelIconId = "ChannelIconSelected";
+        var settingsButton = window.Element(window.Ids.OpenSettings, FrontendWindow.StartupTimeout);
+        var process = new PropertyCondition(AutomationElement.ProcessIdProperty, settingsButton.Current.ProcessId);
+        var main = AutomationElement.RootElement.FindFirst(TreeScope.Children, process);
+        var mainHandle = (nint)main.Current.NativeWindowHandle;
+        var mainWindow = FrontendWindow.Pattern<WindowPattern>(main, WindowPattern.Pattern);
+        // The readiness check completes before the window is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(ChannelIconId) != null, "The notification image setting");
+        var icon = window.Element(ChannelIconId);
+        Assert.True(FrontendWindow.Pattern<SelectionItemPattern>(icon, SelectionItemPattern.Pattern).Current.IsSelected);
+        var thumbnail = window.Element("LiveThumbnailSelected");
+        FrontendWindow.Pattern<SelectionItemPattern>(thumbnail, SelectionItemPattern.Pattern).Select();
+        window.InvokeUntil(window.Ids.SaveSettings, ThumbnailSaved, "The live thumbnail setting saved");
+
+        mainWindow.SetWindowVisualState(WindowVisualState.Minimized);
+        var action = window.WaitFor(FindTrayAction, FrontendWindow.StepTimeout, "The tray popup action");
+        Assert.False(Win32.IsWindowVisible(mainHandle));
+        FrontendWindow.Invoke(action);
+
+        if (disablePopup)
+        {
+            window.WaitFor(OptOutSaved, FrontendWindow.StepTimeout, "The tray popup opt-out saved");
+            Assert.False(Win32.IsWindowVisible(mainHandle));
+        }
+        else
+        {
+            window.WaitFor(() => Win32.IsWindowVisible(mainHandle) ? main : null, FrontendWindow.StepTimeout, "The main window restored");
+            Assert.NotEqual(true, ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)));
+        }
+
+        // The save check completes before the test profile is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        bool ThumbnailSaved() =>
+            ReadSetting(profile, nameof(Settings.StreamNotificationImage))?.GetString() == nameof(StreamNotificationImage.LiveThumbnail);
+
+        // The save check completes before the test profile is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        AutomationElement OptOutSaved() => ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)) == true ? action : null;
+
+        AutomationElement FindTrayAction()
+        {
+            var title = new PropertyCondition(AutomationElement.NameProperty, "Livestream Monitor minimized to tray");
+            var popup = AutomationElement.RootElement.FindFirst(TreeScope.Children, new AndCondition(process, title));
+            var actionId = disablePopup ? "DisableTrayPopup" : "RestoreTrayWindow";
+            var button = new PropertyCondition(AutomationElement.AutomationIdProperty, actionId);
+            return popup?.FindFirst(TreeScope.Descendants, button);
+        }
+    }
+
     /// <summary>The main journey through a launched frontend.</summary>
     private static void RunMainJourney(FrontendWindow window, UiTestProfile profile, FrontendKind kind)
     {
@@ -501,13 +582,15 @@ public class FrontendShould
         names.Length == expected.Length && !expected.Except(names).Any();
 
     // A file read while the application writes it is read again on the next poll.
-    private static bool? ReadFlag(UiTestProfile profile, string name)
+    private static bool? ReadFlag(UiTestProfile profile, string name) =>
+        ReadSetting(profile, name) is { ValueKind: JsonValueKind.True or JsonValueKind.False } flag ? flag.GetBoolean() : null;
+
+    private static JsonElement? ReadSetting(UiTestProfile profile, string name)
     {
         try
         {
             using var settings = JsonDocument.Parse(File.ReadAllText(profile.SettingsPath));
-            var found = settings.RootElement.TryGetProperty(name, out var flag);
-            return found && flag.ValueKind is JsonValueKind.True or JsonValueKind.False ? flag.GetBoolean() : null;
+            return settings.RootElement.TryGetProperty(name, out var value) ? value.Clone() : null;
         }
         catch (Exception exception) when (exception is IOException or JsonException)
         {

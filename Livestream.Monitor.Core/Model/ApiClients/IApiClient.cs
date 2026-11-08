@@ -39,6 +39,8 @@ namespace Livestream.Monitor.Model.ApiClients
 
         Task<string> GetStreamUrl(LivestreamModel livestreamModel);
 
+        Task<string> FindChannelIconUrl(ChannelIdentifier channel, CancellationToken cancellationToken);
+
         /// <summary> Returns null if <see cref="HasChatSupport"/> is false </summary>
         Task<string> GetChatUrl(LivestreamModel livestreamModel);
 

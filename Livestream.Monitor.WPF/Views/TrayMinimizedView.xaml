@@ -1,0 +1,21 @@
+<Window x:Class="Livestream.Monitor.WPF.Views.TrayMinimizedView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Livestream Monitor minimized to tray"
+        Width="320" Height="100" WindowStyle="None" ResizeMode="NoResize"
+        ShowActivated="False" Topmost="True" ShowInTaskbar="False"
+        Background="#FF0A1429">
+    <Grid>
+        <Button Click="RestoreWindow"
+                AutomationProperties.AutomationId="RestoreTrayWindow"
+                HorizontalContentAlignment="Left" VerticalContentAlignment="Top"
+                Background="Transparent" Foreground="White" BorderThickness="0" Padding="12">
+            <TextBlock Text="Livestream Monitor minimized to tray" TextWrapping="Wrap" />
+        </Button>
+        <Button Click="DisablePopup"
+                AutomationProperties.AutomationId="DisableTrayPopup"
+                HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12">
+            <TextBlock Text="Don't show me this again" TextWrapping="Wrap" />
+        </Button>
+    </Grid>
+</Window>

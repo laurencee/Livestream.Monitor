@@ -21,6 +21,12 @@ public class ChannelsRoot : ResponseRoot<List<Channel>>
     public ChannelsRoot() => Data = [];
 }
 
+public class User
+{
+    [JsonPropertyName("profile_picture")]
+    public string ProfilePicture { get; set; }
+}
+
 public class Livestream
 {
     [JsonPropertyName("broadcaster_user_id")]

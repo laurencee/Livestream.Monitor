@@ -13,16 +13,16 @@ internal sealed class ToastActivationPipe : IDisposable
     private readonly CancellationTokenSource stopping = new();
     private readonly Task listener;
 
-    public ToastActivationPipe(Func<StreamNotificationTarget, CancellationToken, Task<bool>> activate, string? pipeName = null) =>
+    public ToastActivationPipe(Func<ToastActivation, CancellationToken, Task<bool>> activate, string? pipeName = null) =>
         listener = Listen(pipeName ?? PipeName, activate, stopping.Token);
 
-    public static void Forward(StreamNotificationTarget target, string? pipeName = null)
+    public static void Forward(ToastActivation target, string? pipeName = null)
     {
         using var timeout = new CancellationTokenSource(RequestTimeout);
         ForwardToPrimary(pipeName ?? PipeName, target, timeout.Token).GetAwaiter().GetResult();
     }
 
-    private static async Task ForwardToPrimary(string pipeName, StreamNotificationTarget target, CancellationToken cancellation)
+    private static async Task ForwardToPrimary(string pipeName, ToastActivation target, CancellationToken cancellation)
     {
         var options = PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly;
         await using var pipe = new NamedPipeClientStream(serverName: ".", pipeName: pipeName, direction: PipeDirection.InOut, options: options);
@@ -39,7 +39,7 @@ internal sealed class ToastActivationPipe : IDisposable
 
     private static async Task Listen(
         string pipeName,
-        Func<StreamNotificationTarget, CancellationToken, Task<bool>> activate,
+        Func<ToastActivation, CancellationToken, Task<bool>> activate,
         CancellationToken stopping)
     {
         try
@@ -77,7 +77,7 @@ internal sealed class ToastActivationPipe : IDisposable
 
     private static async Task Receive(
         Stream pipe,
-        Func<StreamNotificationTarget, CancellationToken, Task<bool>> activate,
+        Func<ToastActivation, CancellationToken, Task<bool>> activate,
         CancellationToken cancellation)
     {
         var lengthBytes = new byte[sizeof(int)];
@@ -87,7 +87,7 @@ internal sealed class ToastActivationPipe : IDisposable
 
         var payload = new byte[length];
         await pipe.ReadExactlyAsync(payload, cancellation).ConfigureAwait(false);
-        if (!StreamNotificationTarget.TryDecode(Encoding.UTF8.GetString(payload), out var target)) return;
+        if (!ToastActivation.TryDecode(Encoding.UTF8.GetString(payload), out var target)) return;
 
         // A queued request can be abandoned when the primary closes. Acknowledge only UI acceptance.
         var accepted = await activate(target, cancellation).ConfigureAwait(false);

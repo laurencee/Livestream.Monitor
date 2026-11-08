@@ -89,6 +89,13 @@
                                   ToolTip="When checked, the first minimize-to-tray popup after launch is disabled." />
                         <CheckBox x:Name="HideStreamOutputOnLoad" Content="Hide stream output on load"
                                   ToolTip="When checked, the stream output box is hidden after a successful launch." />
+                        <TextBlock Text="Stream notification image" Margin="0,5,0,0" />
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Content="Channel icon" GroupName="StreamNotificationImage" IsChecked="{Binding ChannelIconSelected}"
+                                         AutomationProperties.AutomationId="ChannelIconSelected" Margin="0,0,16,0" />
+                            <RadioButton Content="Live thumbnail" GroupName="StreamNotificationImage" IsChecked="{Binding LiveThumbnailSelected}"
+                                         AutomationProperties.AutomationId="LiveThumbnailSelected" />
+                        </StackPanel>
                         <Button x:Name="OpenSettings" Content="Open settings file" Margin="0,5,0,0" />
                     </StackPanel>
                 </Expander>

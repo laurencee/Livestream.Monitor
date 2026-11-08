@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Windows;
@@ -64,9 +65,9 @@ internal static class Program
     {
         Dispatcher = new UiDispatcher();
 
-        StreamNotificationTarget? pending = null;
-        var primary = ClaimInstance();
-        if (primary == null && toastLaunch) (primary, pending) = ForwardToastActivation();
+        (SingleInstance? primary, ToastActivation? pending) = toastLaunch
+            ? ReceiveToastActivation()
+            : (ClaimInstance().Instance, null);
 
         using var instance = primary;
         if (instance == null) return 0;
@@ -136,7 +137,7 @@ internal static class Program
         SynchronizationContext.SetSynchronizationContext(null);
         return 0;
 
-        static bool Activate(StreamNotificationTarget target)
+        static bool Activate(ToastActivation target)
         {
             if (mainWindow is { } window) return window.ActivateNotification(target);
 
@@ -145,7 +146,7 @@ internal static class Program
         }
     }
 
-    private static Task<bool> AcceptForwardedActivation(StreamNotificationTarget target, CancellationToken cancellation)
+    private static Task<bool> AcceptForwardedActivation(ToastActivation target, CancellationToken cancellation)
     {
         var accepted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Dispatcher.Post(() =>
@@ -158,17 +159,53 @@ internal static class Program
         return accepted.Task.WaitAsync(cancellation);
     }
 
-    private static SingleInstance? ClaimInstance() =>
-        SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()));
-
-    private static (SingleInstance? Instance, StreamNotificationTarget? Target) ForwardToastActivation()
+    private static (bool Claimed, SingleInstance? Instance) ClaimInstance(ToastActivation? target = null)
     {
-        (SingleInstance?, StreamNotificationTarget?) takeover = default;
+        // A normal launch must wait for a cold opt-out to save and release its temporary instance.
+        using var startup = new Mutex(initiallyOwned: false, InstanceName + Environment.UserName + ".Startup");
+        try
+        {
+            startup.WaitOne();
+        }
+        catch (AbandonedMutexException)
+        {
+            // The process that owned startup exited. This caller now owns the mutex.
+        }
+
+        try
+        {
+            var instance = SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()), activateExisting: target == null);
+            if (instance == null) return (false, null);
+            if (target is not { TrayAction: TrayToastAction.DisablePopup }) return (true, instance);
+
+            using (instance)
+            {
+                var settingsHandler = new SettingsHandler
+                {
+                    Settings = { DisableMinimizeToTrayNotification = true },
+                };
+
+                settingsHandler.SaveSettings();
+            }
+
+            return (true, null);
+        }
+        finally
+        {
+            startup.ReleaseMutex();
+        }
+    }
+
+    private static (SingleInstance? Instance, ToastActivation? Target) ReceiveToastActivation()
+    {
+        (SingleInstance?, ToastActivation?) startup = default;
         using var completion = new ManualResetEvent(false);
         using var activator = StreamNotifications.RegisterActivator(target =>
         {
             try
             {
+                if (TryClaim(target)) return 0;
+
                 ToastActivationPipe.Forward(target);
                 return 0;
             }
@@ -180,11 +217,7 @@ internal static class Program
                 var deadline = Environment.TickCount64 + ClaimRetryMilliseconds;
                 do
                 {
-                    if (ClaimInstance() is { } replacement)
-                    {
-                        takeover = (replacement, target);
-                        return 0;
-                    }
+                    if (TryClaim(target)) return 0;
 
                     Thread.Sleep(ClaimPollMilliseconds);
                 } while (Environment.TickCount64 < deadline);
@@ -201,7 +234,16 @@ internal static class Program
         });
 
         ToastActivator.WaitForCallback(completion);
-        return takeover;
+        return startup;
+
+        bool TryClaim(ToastActivation target)
+        {
+            var claim = ClaimInstance(target);
+            if (!claim.Claimed) return false;
+
+            startup = (claim.Instance, target);
+            return true;
+        }
     }
 
     private static string? Option(string[] args, string name)

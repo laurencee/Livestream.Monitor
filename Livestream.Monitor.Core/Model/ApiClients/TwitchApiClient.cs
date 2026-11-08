@@ -107,6 +107,13 @@ namespace Livestream.Monitor.Model.ApiClients
                 $"Please make sure you copy the full url, it should start with '{RedirectUri}'");
         }
 
+        public async Task<string> FindChannelIconUrl(ChannelIdentifier channel, CancellationToken cancellationToken)
+        {
+            var query = new GetUsersQuery { UserIds = [channel.ChannelId] };
+            var users = await twitchTvHelixClient.GetUsers(query, cancellationToken);
+            return users.FirstOrDefault()?.ProfileImageUrl?.ToString();
+        }
+
         public async Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));

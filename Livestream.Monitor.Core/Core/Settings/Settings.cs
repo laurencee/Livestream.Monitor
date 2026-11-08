@@ -9,6 +9,13 @@ using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Core.Settings
 {
+    [JsonConverter(typeof(JsonStringEnumConverter<StreamNotificationImage>))]
+    public enum StreamNotificationImage
+    {
+        ChannelIcon,
+        LiveThumbnail,
+    }
+
     [ExternalAPIs.IgnoreNullProperties(
         nameof(SettingsVersion),
         nameof(CheckForNewVersions),
@@ -18,6 +25,7 @@ namespace Livestream.Monitor.Core.Settings
         nameof(MetroThemeAccentColour),
         nameof(MinimumEventViewers),
         nameof(DisableNotifications),
+        nameof(StreamNotificationImage),
         nameof(UseLongStreamNotificationBanners),
         nameof(HideStreamOutputMessageBoxOnLoad),
         nameof(FavoriteApiQualities),
@@ -91,6 +99,12 @@ namespace Livestream.Monitor.Core.Settings
         } = DefaultMinimumPopularEventViewers;
 
         public bool DisableNotifications
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
+        public StreamNotificationImage StreamNotificationImage
         {
             get;
             set => Set(ref field, value);

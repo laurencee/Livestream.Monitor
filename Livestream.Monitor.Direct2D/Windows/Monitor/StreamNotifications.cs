@@ -3,9 +3,68 @@ using System.Xml.Linq;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Model;
+using Livestream.Monitor.Model.Monitoring;
 using Microsoft.Win32;
 
 namespace Livestream.Monitor.Direct2D.Windows.Monitor;
+
+internal enum TrayToastAction
+{
+    None,
+    Restore,
+    DisablePopup,
+}
+
+internal readonly record struct ToastActivation
+{
+    private const string RestoreTrayArguments = "1|tray|restore";
+    private const string DisableTrayPopupArguments = "1|tray|disable";
+
+    public ToastActivation(StreamNotificationTarget stream) => Stream = stream;
+
+    public ToastActivation(TrayToastAction trayAction) => TrayAction = trayAction;
+
+    public StreamNotificationTarget? Stream { get; }
+
+    public TrayToastAction TrayAction { get; }
+
+    public string Encode()
+    {
+        if (Stream is { } stream) return stream.Encode();
+
+        return TrayAction switch
+        {
+            TrayToastAction.Restore => RestoreTrayArguments,
+            TrayToastAction.DisablePopup => DisableTrayPopupArguments,
+            _ => throw new InvalidOperationException("The notification has no activation target."),
+        };
+    }
+
+    public static bool TryDecode(string? arguments, out ToastActivation target)
+    {
+        var trayAction = arguments switch
+        {
+            RestoreTrayArguments => TrayToastAction.Restore,
+            DisableTrayPopupArguments => TrayToastAction.DisablePopup,
+            _ => TrayToastAction.None,
+        };
+
+        if (trayAction != TrayToastAction.None)
+        {
+            target = new ToastActivation(trayAction);
+            return true;
+        }
+
+        if (StreamNotificationTarget.TryDecode(arguments, out var stream))
+        {
+            target = new ToastActivation(stream);
+            return true;
+        }
+
+        target = default;
+        return false;
+    }
+}
 
 internal readonly record struct StreamNotificationTarget(UniqueStreamKey Key, string ChannelId, bool Followed)
 {
@@ -58,6 +117,8 @@ internal readonly record struct StreamNotificationTarget(UniqueStreamKey Key, st
 internal sealed class StreamNotifications : IDisposable
 {
     internal const string ActivationSwitch = "--toast-activated";
+    internal const string MinimizedTitle = "Livestream Monitor";
+    internal const string MinimizedMessage = "Livestream Monitor minimized to tray";
     private const string AppId = "Livestream.Monitor.Direct2D";
     private const string DisplayName = "Livestream Monitor Direct2D";
     private static readonly Guid ActivatorId = new("5b6bc679-f166-4ef8-a71a-dc0b716fa43b");
@@ -66,7 +127,7 @@ internal sealed class StreamNotifications : IDisposable
     private NotificationThumbnails? thumbnails;
     private bool registered;
 
-    public StreamNotifications(Func<StreamNotificationTarget, bool> activate)
+    public StreamNotifications(Func<ToastActivation, bool> activate)
     {
         try
         {
@@ -80,12 +141,12 @@ internal sealed class StreamNotifications : IDisposable
         }
     }
 
-    public static ToastActivator RegisterActivator(Func<StreamNotificationTarget, int> activate) =>
+    public static ToastActivator RegisterActivator(Func<ToastActivation, int> activate) =>
         new(ActivatorId, (appId, arguments) =>
         {
             const int InvalidArgument = unchecked((int)0x80070057);
             if (!string.Equals(appId, AppId, StringComparison.OrdinalIgnoreCase) ||
-                !StreamNotificationTarget.TryDecode(arguments, out var target)) return InvalidArgument;
+                !ToastActivation.TryDecode(arguments, out var target)) return InvalidArgument;
 
             return activate(target);
         });
@@ -107,11 +168,20 @@ internal sealed class StreamNotifications : IDisposable
         }
     }
 
-    public Task<Uri?> GetThumbnail(string? url)
+    public async Task<Uri?> FindChannelIcon(ChannelIdentifier channel)
     {
-        if (activator == null || string.IsNullOrWhiteSpace(url)) return Task.FromResult<Uri?>(null);
+        if (activator == null) return null;
 
-        return (thumbnails ??= new NotificationThumbnails()).Get(url);
+        var images = thumbnails ??= new NotificationThumbnails();
+        var iconUrl = await LivestreamNotification.FindChannelIconUrl(channel);
+        return await images.Find(iconUrl, channelIcon: true);
+    }
+
+    public Task<Uri?> FindThumbnail(string? url)
+    {
+        if (activator == null) return Task.FromResult<Uri?>(null);
+
+        return (thumbnails ??= new NotificationThumbnails()).Find(url);
     }
 
     public bool TryShow(
@@ -119,7 +189,13 @@ internal sealed class StreamNotifications : IDisposable
         string? message,
         StreamNotificationTarget target,
         Uri? thumbnail,
-        bool longBanner)
+        bool longBanner,
+        bool retryWithoutImage = true) =>
+        TryShowToast(() => BuildToast(title, message, target, thumbnail, longBanner), retryWithoutImage);
+
+    public bool TryShowMinimized() => TryShowToast(BuildMinimizedToast);
+
+    private bool TryShowToast(Func<XElement> buildToast, bool retryWithoutImage = false)
     {
         if (activator == null) return false;
 
@@ -127,13 +203,16 @@ internal sealed class StreamNotifications : IDisposable
         {
             if (!registered) RegisterCurrentSender();
 
+            var toast = buildToast();
+            var image = toast.Element("visual")?.Element("binding")?.Element("image");
             try
             {
-                Show(title, message, target, thumbnail, longBanner);
+                Show(toast);
             }
-            catch (COMException) when (thumbnail != null)
+            catch (COMException) when (retryWithoutImage && image != null)
             {
-                Show(title, message, target, thumbnail: null, longBanner);
+                image.Remove();
+                Show(toast);
             }
 
             return true;
@@ -208,15 +287,18 @@ internal sealed class StreamNotifications : IDisposable
         }
     }
 
-    private static void Show(
-        string? title,
-        string? message,
-        StreamNotificationTarget target,
-        Uri? thumbnail,
-        bool longBanner)
+    private static void Show(XElement toast) => WindowsToast.Show(AppId, toast.ToString(SaveOptions.DisableFormatting));
+
+    internal static XElement BuildMinimizedToast()
     {
-        var toast = BuildToast(title, message, target, thumbnail, longBanner);
-        WindowsToast.Show(AppId, toast.ToString(SaveOptions.DisableFormatting));
+        var restore = new ToastActivation(TrayToastAction.Restore);
+        var disable = new ToastActivation(TrayToastAction.DisablePopup);
+        var binding = new XElement("binding", new XAttribute("template", "ToastGeneric"),
+            new XElement("text", MinimizedTitle), new XElement("text", MinimizedMessage));
+        var action = new XElement("action", new XAttribute("content", "Don't show me this again"),
+            new XAttribute("arguments", disable.Encode()), new XAttribute("activationType", "foreground"));
+        return new XElement("toast", new XAttribute("launch", restore.Encode()),
+            new XElement("visual", binding), new XElement("actions", action));
     }
 
     internal static XElement BuildToast(

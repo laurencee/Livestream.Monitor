@@ -52,6 +52,12 @@ namespace Livestream.Monitor.Model.ApiClients
 
         public Task Authorize(IUserDialogs screen) => Task.FromResult(true);
 
+        public async Task<string> FindChannelIconUrl(ChannelIdentifier channel, CancellationToken cancellationToken)
+        {
+            var channels = await youtubeClient.GetChannelDetailsFromIds([channel.ChannelId], cancellationToken);
+            return channels?.Items?.FirstOrDefault()?.Snippet?.Thumbnails?.Default?.Url;
+        }
+
         public Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));

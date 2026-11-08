@@ -114,7 +114,7 @@ so we might as well just do machine-to-machine auth
     private async Task RenewAccessToken()
     {
         var authResponse = await requestAccessToken();
-        if (string.IsNullOrWhiteSpace(authResponse.AccessToken)) throw new InvalidDataException("Kick returned no app access token.");
+        if (string.IsNullOrWhiteSpace(authResponse?.AccessToken)) throw new InvalidDataException("Kick returned no app access token.");
 
         client.SetAccessToken(authResponse.AccessToken);
         IsAuthorized = true;
@@ -154,6 +154,13 @@ so we might as well just do machine-to-machine auth
             await RenewAccessToken();
             return await request();
         }
+    }
+
+    public Task<string> FindChannelIconUrl(ChannelIdentifier channel, CancellationToken cancellationToken)
+    {
+        if (!long.TryParse(channel.ChannelId, out var userId)) return Task.FromResult<string>(null);
+
+        return WithTokenRenewal(() => client.FindProfilePictureUrl(userId, cancellationToken));
     }
 
     public Task<string> GetStreamUrl(LivestreamModel livestreamModel) =>

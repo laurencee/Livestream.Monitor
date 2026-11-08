@@ -192,7 +192,13 @@ namespace Livestream.Monitor.WPF.ViewModels
             var showMinimizeNotification = firstMinimize && !settingsHandler.Settings.DisableMinimizeToTrayNotification;
             firstMinimize = false; // only show the notification max one time
             if (showMinimizeNotification)
-                taskbarIcon.NotifyMinimized();
+                taskbarIcon.NotifyMinimized(DisableTrayPopup);
+        }
+
+        private void DisableTrayPopup()
+        {
+            settingsHandler.Settings.DisableMinimizeToTrayNotification = true;
+            settingsHandler.SaveSettings();
         }
 
         private async Task InitializeMonitorStreamsModel()

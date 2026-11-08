@@ -18,6 +18,9 @@ public class SingleInstanceShould
         try
         {
             Assert.NotNull(first);
+            Assert.Null(SingleInstance.Claim(name, () => { }, activateExisting: false));
+            Assert.False(activated.Wait(TimeSpan.FromMilliseconds(250)), "A silent claim asked the first instance to show itself.");
+
             Assert.Null(SingleInstance.Claim(name, () => { }));
             Assert.True(activated.Wait(TimeSpan.FromSeconds(5)), "The first instance was not asked to show itself.");
         }

@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.Http.Headers;
 using System.Text;
@@ -98,6 +99,14 @@ public class KickReadonlyClient : IKickReadonlyClient
             Data = responses.SelectMany(x => x.Data).ToList(),
             Message = responses[0].Message,
         };
+    }
+
+    public async Task<string> FindProfilePictureUrl(long userId, CancellationToken cancellationToken)
+    {
+        var id = userId.ToString(CultureInfo.InvariantCulture);
+        var request = $"{RequestConstants.KickApiRoot}/users?id={id}";
+        var response = await ExecuteRequest<ResponseRoot<List<User>>>(request, cancellationToken);
+        return response?.Data?.FirstOrDefault()?.ProfilePicture;
     }
 
     public void SetAccessToken(string token)

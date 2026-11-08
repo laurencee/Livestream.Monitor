@@ -31,7 +31,18 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Image Grid.RowSpan="2" Source="{Binding ImageUrl}" Margin="4" Width="80" />
+                    <Image Grid.RowSpan="2" Margin="4" Width="80">
+                        <Image.Style>
+                            <Style TargetType="Image">
+                                <Setter Property="Source" Value="{Binding DataContext.ChannelIcon, RelativeSource={RelativeSource AncestorType=Window}}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding DataContext.ChannelIcon, RelativeSource={RelativeSource AncestorType=Window}}" Value="{x:Null}">
+                                        <Setter Property="Source" Value="{Binding ImageUrl}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Image.Style>
+                    </Image>
                     <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Title}"
                                    TextOptions.TextRenderingMode="ClearType"
                                    TextOptions.TextFormattingMode="Display" Foreground="White"

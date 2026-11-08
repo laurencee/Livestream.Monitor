@@ -131,7 +131,7 @@ namespace ExternalAPIs.TwitchTv.Helix
                     "id",
                     getUsersQuery.UserIds,
                     cancellationToken);
-                foreach (var response in responses) users.AddRange(response.Users);
+                foreach (var response in responses) AddUsers(response);
             }
 
             if (getUsersQuery.UserNames?.Any() == true)
@@ -141,10 +141,17 @@ namespace ExternalAPIs.TwitchTv.Helix
                     "login",
                     getUsersQuery.UserNames,
                     cancellationToken);
-                foreach (var response in responses) users.AddRange(response.Users);
+                foreach (var response in responses) AddUsers(response);
             }
 
             return users;
+
+            void AddUsers(UsersRoot response)
+            {
+                if (response?.Users == null) throw new System.IO.InvalidDataException("Twitch returned no user data.");
+
+                users.AddRange(response.Users);
+            }
         }
 
         public async Task<VideosRoot> GetVideos(GetVideosQuery getVideosQuery, CancellationToken cancellationToken = default)

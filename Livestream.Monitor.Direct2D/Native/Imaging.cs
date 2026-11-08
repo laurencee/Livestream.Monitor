@@ -11,6 +11,7 @@ internal sealed unsafe partial class WicFactory(void* pointer) : ComObject(point
     private const int CreateBitmapScalerSlot = 11;
     private const int CreateStreamSlot = 14;
 
+    public static readonly Guid PixelFormat32BppBgra = new("6fddc324-4e03-4bfe-b185-3d77768dc90f");
     public static readonly Guid PixelFormat32BppPbgra = new("6fddc324-4e03-4bfe-b185-3d77768dc910");
 
     private static readonly Guid ClassId = new("cacaf262-9370-4615-a13b-9f5539da4c0a");
@@ -29,16 +30,32 @@ internal sealed unsafe partial class WicFactory(void* pointer) : ComObject(point
     {
         const uint GenericWrite = 0x40000000;
         var stream = CreateStream();
-        stream.InitializeFromFilename(path, GenericWrite);
-        return stream;
+        try
+        {
+            stream.InitializeFromFilename(path, GenericWrite);
+            return stream;
+        }
+        catch
+        {
+            stream.Dispose();
+            throw;
+        }
     }
 
     /// <summary>A stream over memory that must stay pinned while the stream is used.</summary>
     public WicStream CreateMemoryStream(byte* data, int length)
     {
         var stream = CreateStream();
-        stream.InitializeFromMemory(data, (uint)length);
-        return stream;
+        try
+        {
+            stream.InitializeFromMemory(data, (uint)length);
+            return stream;
+        }
+        catch
+        {
+            stream.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Decodes the first frame of an image stream and converts it to the pixel format.</summary>

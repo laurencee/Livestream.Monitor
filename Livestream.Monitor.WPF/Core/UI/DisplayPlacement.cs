@@ -26,6 +26,20 @@ internal static class DisplayPlacement
         );
     }
 
+    public static Rect GetNotificationBounds(
+        Rect workArea,
+        Size preferredSize,
+        bool rightAligned,
+        int row = 1)
+    {
+        const double Margin = 5;
+        var columnWidth = Math.Max(0, workArea.Width / 2 - Margin * 2);
+        var width = Math.Min(preferredSize.Width, columnWidth);
+        var left = rightAligned ? workArea.Right - width - Margin : workArea.Left + Margin;
+        var top = workArea.Bottom - preferredSize.Height * row - Margin;
+        return new Rect(x: left, y: top, width: width, height: preferredSize.Height);
+    }
+
     private static Screen FindRequestedScreen()
     {
         var args = Environment.GetCommandLineArgs();

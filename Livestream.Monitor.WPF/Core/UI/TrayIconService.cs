@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Livestream.Monitor.Core;
+using Livestream.Monitor.WPF.Views;
 
 namespace Livestream.Monitor.WPF.Core.UI;
 
@@ -12,10 +13,13 @@ public sealed class TrayIconService : IDisposable
     private readonly NotifyIcon icon;
     private readonly Icon image;
     private readonly ContextMenuStrip menu;
+    private readonly Action show;
     private readonly Func<Task> exit;
+    private TrayMinimizedView minimizedPopup;
 
     public TrayIconService(Action show, Func<Task> exit)
     {
+        this.show = show;
         this.exit = exit;
 
         using var stream = EmbeddedImages.Open(EmbeddedImages.TrayIcon)
@@ -36,18 +40,16 @@ public sealed class TrayIconService : IDisposable
         icon.DoubleClick += (_, _) => show();
     }
 
-    public void NotifyMinimized()
+    public void NotifyMinimized(Action disablePopup)
     {
-        const int DurationMilliseconds = 5000;
-        icon.ShowBalloonTip(
-            DurationMilliseconds,
-            ProductName,
-            $"{ProductName} minimized to tray",
-            ToolTipIcon.Info);
+        minimizedPopup = new TrayMinimizedView(show, disablePopup);
+        minimizedPopup.Closed += (_, _) => minimizedPopup = null;
+        minimizedPopup.Show();
     }
 
     public void Dispose()
     {
+        minimizedPopup?.Close();
         icon.Dispose();
         menu.Dispose();
         image.Dispose();

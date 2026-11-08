@@ -66,6 +66,19 @@ public class MonitorWindowShould
         Assert.NotEqual(firstTarget.Key, secondTarget.Key);
     }
 
+    [Fact]
+    public void RestoreFromTheTrayToastBodyAndDisableFromItsButton()
+    {
+        var toast = StreamNotifications.BuildMinimizedToast();
+        var actions = Assert.IsType<XElement>(toast.Element("actions"));
+        var action = Assert.Single(actions.Elements("action"));
+        Assert.Equal("Don't show me this again", (string)action.Attribute("content"));
+        Assert.True(ToastActivation.TryDecode((string)toast.Attribute("launch"), out var body));
+        Assert.True(ToastActivation.TryDecode((string)action.Attribute("arguments"), out var button));
+        Assert.Equal(TrayToastAction.Restore, body.TrayAction);
+        Assert.Equal(TrayToastAction.DisablePopup, button.TrayAction);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("2|followed|youtube|video|channel")]
@@ -74,9 +87,11 @@ public class MonitorWindowShould
     [InlineData("1|followed|youtube||channel")]
     [InlineData("1|followed|youtube|bad%escape|channel")]
     [InlineData("1|followed|youtube|video|channel|extra")]
+    [InlineData("1|tray|disable|extra")]
+    [InlineData("1|tray|unknown")]
     public void RejectInvalidNotificationTargets(string arguments)
     {
-        Assert.False(StreamNotificationTarget.TryDecode(arguments, out _));
+        Assert.False(ToastActivation.TryDecode(arguments, out _));
     }
 
     [Fact]
@@ -100,20 +115,22 @@ public class MonitorWindowShould
     [Fact]
     public void HandOffDistinctNotificationTargetsToTheRunningInstance()
     {
-        var received = new ConcurrentQueue<StreamNotificationTarget>();
+        var received = new ConcurrentQueue<ToastActivation>();
         var pipeName = $"Livestream.Monitor.Direct2D.Test.{Guid.NewGuid():N}";
         using var primary = new ToastActivationPipe((target, _) =>
         {
             received.Enqueue(target);
             return Task.FromResult(true);
         }, pipeName);
-        var first = new StreamNotificationTarget(new UniqueStreamKey("youtube", "video"), "channel", Followed: true);
-        var second = new StreamNotificationTarget(new UniqueStreamKey("twitchtv", "stream"), "stream", Followed: false);
+        var first = new ToastActivation(new StreamNotificationTarget(new UniqueStreamKey("youtube", "video"), "channel", Followed: true));
+        var second = new ToastActivation(new StreamNotificationTarget(new UniqueStreamKey("twitchtv", "stream"), "stream", Followed: false));
+        var disable = new ToastActivation(TrayToastAction.DisablePopup);
 
         ToastActivationPipe.Forward(first, pipeName);
         ToastActivationPipe.Forward(second, pipeName);
+        ToastActivationPipe.Forward(disable, pipeName);
 
-        Assert.Equal(new[] { first, second }, received.ToArray());
+        Assert.Equal(new[] { first, second, disable }, received.ToArray());
     }
 
     [Fact]
@@ -121,7 +138,7 @@ public class MonitorWindowShould
     {
         var pipeName = $"Livestream.Monitor.Direct2D.Test.{Guid.NewGuid():N}";
         using var primary = new ToastActivationPipe((_, _) => Task.FromResult(false), pipeName);
-        var target = new StreamNotificationTarget(new UniqueStreamKey("youtube", "video"), "channel", Followed: true);
+        var target = new ToastActivation(new StreamNotificationTarget(new UniqueStreamKey("youtube", "video"), "channel", Followed: true));
 
         Assert.ThrowsAny<IOException>(() => ToastActivationPipe.Forward(target, pipeName));
     }

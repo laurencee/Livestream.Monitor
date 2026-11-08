@@ -27,10 +27,10 @@ public sealed class SingleInstance : IDisposable
     }
 
     /// <summary>
-    /// Claims the name for this user, or returns null after asking the instance holding it to show itself. The callback
-    /// runs on a thread-pool thread each time a later launch asks.
+    /// Claims the name for this user, or returns null and optionally asks the instance holding it to show itself.
+    /// The callback runs on a thread-pool thread each time a later launch asks.
     /// </summary>
-    public static SingleInstance Claim(string name, Action activate)
+    public static SingleInstance Claim(string name, Action activate, bool activateExisting = true)
     {
         var instanceName = name + Environment.UserName;
 
@@ -42,7 +42,7 @@ public sealed class SingleInstance : IDisposable
         // The launch was started by the user, so it may hand the foreground to the running instance, which Windows
         // otherwise stops from activating itself.
         AllowSetForegroundWindow(AnyProcess);
-        activation.Set();
+        if (activateExisting) activation.Set();
         activation.Dispose();
         mutex.Dispose();
         return null;

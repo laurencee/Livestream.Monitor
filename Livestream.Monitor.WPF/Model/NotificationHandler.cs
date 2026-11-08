@@ -19,8 +19,7 @@ namespace Livestream.Monitor.WPF.Model
     {
         private const double NotificationViewWindowHeight = 100;
         private const double NotificationViewWindowWidth = 400;
-        private const double BottomMargin = 5;
-        private const double RightMargin = 5;
+        private static readonly Size NotificationWindowSize = new(NotificationViewWindowWidth, NotificationViewWindowHeight);
         private const byte MAX_NOTIFICATIONS = 4;
 
         private readonly IWindowManager windowManager;
@@ -75,9 +74,12 @@ namespace Livestream.Monitor.WPF.Model
 
         private void ShowNotification(LivestreamNotification livestreamNotification)
         {
-            var vmTopLeft = GetNotificationTopLeft(livestreamNotification);
+            var workArea = DisplayPlacement.GetWorkArea(Application.Current.MainWindow);
+            var row = notifications.IndexOf(livestreamNotification) + 1;
+            var bounds = DisplayPlacement.GetNotificationBounds(workArea, NotificationWindowSize, rightAligned: true, row);
             var settings = new WindowSettingsBuilder().NoResizeBorderless()
-                                                      .WithTopLeft(vmTopLeft.Y, vmTopLeft.X)
+                                                      .WithTopLeft(bounds.Top, bounds.Left)
+                                                      .WithWidth(bounds.Width)
                                                       .TransparentBackground()
                                                       .AsTopmost()
                                                       .Create();
@@ -94,6 +96,9 @@ namespace Livestream.Monitor.WPF.Model
 
             Execute.OnUIThread(() =>
             {
+                if (settingsHandler.Settings.StreamNotificationImage == StreamNotificationImage.ChannelIcon)
+                    _ = notificationViewModel.LoadChannelIcon();
+
                 windowManager.ShowWindowAsync(notificationViewModel, null, settings);
 
                 // Close the popup after a brief duration
@@ -115,28 +120,17 @@ namespace Livestream.Monitor.WPF.Model
                                      .ToList();
 
             // drop all remaining windows down to the place of the previous window
+            var workArea = DisplayPlacement.GetWorkArea(Application.Current.MainWindow);
             for (int i = 0; i < windows.Count; i++)
             {
-                var workArea = DisplayPlacement.GetWorkArea(Application.Current.MainWindow);
-                windows[i].Top = workArea.Bottom - (NotificationViewWindowHeight * (i + 1)) - BottomMargin;
-                windows[i].Topmost = true;
+                var row = i + 1;
+                var bounds = DisplayPlacement.GetNotificationBounds(workArea, NotificationWindowSize, rightAligned: true, row);
+                var window = windows[i];
+                window.Left = bounds.Left;
+                window.Top = bounds.Top;
+                window.Width = bounds.Width;
+                window.Topmost = true;
             }
-        }
-
-        private Point GetNotificationTopLeft(LivestreamNotification livestreamNotification)
-        {
-            if (livestreamNotification == null) return new Point();
-
-            var index = notifications.IndexOf(livestreamNotification) + 1;
-            // we care about the order the notifications were added for vertical positioning
-            if (index == 0) return new Point();
-
-            var workArea = DisplayPlacement.GetWorkArea(Application.Current.MainWindow);
-            return new Point()
-            {
-                X = workArea.Right - NotificationViewWindowWidth - RightMargin,
-                Y = workArea.Bottom - (NotificationViewWindowHeight * index) - BottomMargin
-            };
         }
 
         private void RemoveNotification(LivestreamNotification livestreamNotification)

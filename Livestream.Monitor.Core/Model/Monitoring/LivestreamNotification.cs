@@ -1,6 +1,11 @@
 ﻿using Livestream.Monitor.Core;
 using System;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
@@ -8,6 +13,21 @@ namespace Livestream.Monitor.Model.Monitoring
     {
         public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(5);
         public static readonly TimeSpan MaxDuration = TimeSpan.FromSeconds(60);
+
+        public static async Task<string> FindChannelIconUrl(ChannelIdentifier channel)
+        {
+            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            try
+            {
+                var lookup = channel.ApiClient.FindChannelIconUrl(channel, deadline.Token);
+                return await lookup.WaitAsync(deadline.Token);
+            }
+            catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or TimeoutException or
+                                              InvalidDataException or JsonException)
+            {
+                return null;
+            }
+        }
 
         public static readonly Action<IMonitorStreamsModel, LivestreamNotification> DefaultClickAction = (model, notification) =>
         {

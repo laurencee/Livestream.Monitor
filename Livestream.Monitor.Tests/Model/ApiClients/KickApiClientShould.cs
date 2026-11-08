@@ -80,6 +80,22 @@ public sealed class KickApiClientShould : IDisposable
     }
 
     [Fact]
+    public async Task ReportAnInvalidTokenResponseWhenLookingUpAChannelIcon()
+    {
+        SaveToken("revoked", DateTimeOffset.UtcNow.AddDays(30));
+        var apiClient = new KickApiClient(client, cacheHandler, () => Task.FromResult<AuthResponse>(null));
+        await apiClient.Authorize(screen: null);
+
+        const int UserId = 42;
+        var unauthorized = new HttpRequestWithStatusException(HttpStatusCode.Unauthorized, "Unauthorized");
+        client.FindProfilePictureUrl(UserId, CancellationToken.None).Returns(Task.FromException<string>(unauthorized));
+        var channel = new ChannelIdentifier(apiClient, UserId.ToString());
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => apiClient.FindChannelIconUrl(channel, CancellationToken.None));
+        Assert.Equal("revoked", cacheHandler.Cache.KickAppAccessToken.Token);
+    }
+
+    [Fact]
     public async Task RetryAFailedAuthorizationOnTheNextQuery()
     {
         var apiClient = CreateApiClient();

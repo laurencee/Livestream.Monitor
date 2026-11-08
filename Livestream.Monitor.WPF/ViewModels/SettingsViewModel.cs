@@ -85,6 +85,37 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
         }
 
+        private StreamNotificationImage StreamNotificationImage
+        {
+            get;
+            set
+            {
+                if (!Set(ref field, value)) return;
+
+                NotifyOfPropertyChange(() => ChannelIconSelected);
+                NotifyOfPropertyChange(() => LiveThumbnailSelected);
+                NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
+        public bool ChannelIconSelected
+        {
+            get => StreamNotificationImage == StreamNotificationImage.ChannelIcon;
+            set
+            {
+                if (value) StreamNotificationImage = StreamNotificationImage.ChannelIcon;
+            }
+        }
+
+        public bool LiveThumbnailSelected
+        {
+            get => StreamNotificationImage == StreamNotificationImage.LiveThumbnail;
+            set
+            {
+                if (value) StreamNotificationImage = StreamNotificationImage.LiveThumbnail;
+            }
+        }
+
         public bool HideStreamOutputOnLoad
         {
             get;
@@ -128,7 +159,8 @@ namespace Livestream.Monitor.WPF.ViewModels
             get
             {
                 if (settingsHandler == null) return false;
-                if (!HasOtherChanges) return StreamQualities.HasChanges;
+                if (!HasOtherChanges)
+                    return StreamNotificationImage != settingsHandler.Settings.StreamNotificationImage || StreamQualities.HasChanges;
 
                 return !HasValidationErrors;
             }
@@ -175,6 +207,7 @@ namespace Livestream.Monitor.WPF.ViewModels
             if (!CanSave) return;
             if (!HasOtherChanges)
             {
+                settingsHandler.Settings.StreamNotificationImage = StreamNotificationImage;
                 StreamQualities.SaveChanges();
                 settingsHandler.SaveSettings();
                 NotifyOfPropertyChange(() => CanSave);
@@ -189,6 +222,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
+            settingsHandler.Settings.StreamNotificationImage = StreamNotificationImage;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
             settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
             settingsHandler.Settings.DisableRefreshErrorDialogs = DisableRefreshErrorDialogs;
@@ -257,6 +291,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
             MinimumEventViewers = settings.MinimumEventViewers;
             DisableNotifications = settings.DisableNotifications;
+            StreamNotificationImage = settings.StreamNotificationImage;
             HideStreamOutputOnLoad = settings.HideStreamOutputMessageBoxOnLoad;
             CheckForNewVersions = settings.CheckForNewVersions;
             DisableRefreshErrorDialogs = settings.DisableRefreshErrorDialogs;
@@ -281,6 +316,9 @@ namespace Livestream.Monitor.WPF.ViewModels
                     break;
                 case nameof(Settings.DisableNotifications):
                     DisableNotifications = settingsHandler.Settings.DisableNotifications;
+                    break;
+                case nameof(Settings.StreamNotificationImage):
+                    StreamNotificationImage = settingsHandler.Settings.StreamNotificationImage;
                     break;
                 case nameof(Settings.HideStreamOutputMessageBoxOnLoad):
                     HideStreamOutputOnLoad = settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad;

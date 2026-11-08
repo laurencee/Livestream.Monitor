@@ -26,6 +26,8 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
+        public Task<string> FindChannelIconUrl(ChannelIdentifier channel, CancellationToken cancellationToken) => Task.FromResult<string>(null);
+
         public Task<string> GetStreamUrl(LivestreamModel livestreamModel)
         {
             throw new NotImplementedException();

@@ -1563,8 +1563,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Win32.ShowWindow(Handle, Win32.SwMinimize);
         _ = HideAfterMinimizeAnimation(++minimizeCount);
 
-        if (firstMinimize && !state.SettingsHandler.Settings.DisableMinimizeToTrayNotification)
-            tray.Notify("Livestream Monitor", "Livestream Monitor minimized to tray", Restore);
+        if (firstMinimize && !state.SettingsHandler.Settings.DisableMinimizeToTrayNotification && !notifications.TryShowMinimized())
+            tray.Notify(StreamNotifications.MinimizedTitle, StreamNotifications.MinimizedMessage, Restore);
 
         firstMinimize = false;
     }
@@ -1595,11 +1595,20 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (SuppressNotification(stream)) return;
 
         var target = new StreamNotificationTarget(stream.UniqueStreamKey, stream.ChannelIdentifier.ChannelId, followed);
-        var thumbnail = await notifications.GetThumbnail(imageUrl);
+        var settings = state.SettingsHandler.Settings;
+        if (settings.StreamNotificationImage == StreamNotificationImage.ChannelIcon)
+        {
+            var icon = await notifications.FindChannelIcon(stream.ChannelIdentifier);
+            if (SuppressNotification(stream)) return;
+
+            var longBanner = settings.UseLongStreamNotificationBanners;
+            if (icon != null && notifications.TryShow(title, message, target, thumbnail: icon, longBanner, retryWithoutImage: false)) return;
+        }
+
+        var thumbnail = await notifications.FindThumbnail(imageUrl);
         if (SuppressNotification(stream)) return;
 
-        var longBanner = state.SettingsHandler.Settings.UseLongStreamNotificationBanners;
-        if (!notifications.TryShow(title, message, target, thumbnail, longBanner))
+        if (!notifications.TryShow(title, message, target, thumbnail, settings.UseLongStreamNotificationBanners))
             tray.Notify(title, message, () => ActivateNotification(target));
     }
 
@@ -1613,7 +1622,28 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey) || launcher.IsWatching(stream);
     }
 
-    internal bool ActivateNotification(StreamNotificationTarget target)
+    internal bool ActivateNotification(ToastActivation target)
+    {
+        if (IsClosed) return false;
+        if (target.Stream is { } stream) return ActivateNotification(stream);
+
+        switch (target.TrayAction)
+        {
+            case TrayToastAction.Restore:
+                Restore();
+                return true;
+            case TrayToastAction.DisablePopup:
+                state.SettingsHandler.Settings.DisableMinimizeToTrayNotification = true;
+                state.SettingsHandler.SaveSettings();
+                settingsPane?.SyncTrayPopupSetting();
+                Invalidate();
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private bool ActivateNotification(StreamNotificationTarget target)
     {
         if (IsClosed) return false;
 

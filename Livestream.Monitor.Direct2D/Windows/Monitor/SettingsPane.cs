@@ -72,6 +72,9 @@ internal sealed class SettingsPane
 
     public void DiscardQualityChanges(SurfaceUi ui) => streamQualities.Revert(ui);
 
+    public void SyncTrayPopupSetting() =>
+        draft.DisableMinimizeToTrayNotification = handler.Settings.DisableMinimizeToTrayNotification;
+
     public void Draw(SurfaceUi ui, RectangleF bounds)
     {
         ui.Overlay();
@@ -241,10 +244,30 @@ internal sealed class SettingsPane
         );
         EndGroup(ui, body, checkboxesTop, ref y);
 
-        var durationTop = y;
-        var durationBody = BeginGroup(body, ref y);
-        DrawTextRow(ui, text: "Stream notification popup duration", durationBody, ref y, spacing: LabelSpacing);
-        var duration = Row(durationBody, ref y, GeneralCheckHeight);
+        var notificationTop = y;
+        var notificationBody = BeginGroup(body, ref y);
+        DrawTextRow(ui, text: "Stream notification image", notificationBody, ref y, spacing: LabelSpacing);
+        var image = Row(notificationBody, ref y, GeneralCheckHeight);
+        var liveThumbnail = image with { Width = image.Width / 2 };
+        var channelIcon = liveThumbnail with { X = liveThumbnail.Right };
+        ui.Radio(
+            "settings.notificationimage.thumbnail",
+            "Live thumbnail",
+            draft.StreamNotificationImage == StreamNotificationImage.LiveThumbnail,
+            liveThumbnail,
+            _ => draft.StreamNotificationImage = StreamNotificationImage.LiveThumbnail,
+            group: "settings.notificationimage");
+        ui.Radio(
+            "settings.notificationimage.icon",
+            "Channel icon",
+            draft.StreamNotificationImage == StreamNotificationImage.ChannelIcon,
+            channelIcon,
+            _ => draft.StreamNotificationImage = StreamNotificationImage.ChannelIcon,
+            group: "settings.notificationimage");
+        y += InputSpacing;
+
+        DrawTextRow(ui, text: "Stream notification popup duration", notificationBody, ref y, spacing: LabelSpacing);
+        var duration = Row(notificationBody, ref y, GeneralCheckHeight);
         var shortBanner = duration with { Width = duration.Width / 2 };
         var longBanner = shortBanner with { X = shortBanner.Right };
         ui.Radio(
@@ -262,7 +285,7 @@ internal sealed class SettingsPane
             _ => draft.UseLongStreamNotificationBanners = true,
             group: "settings.bannerduration");
         y += GroupInputSpacing;
-        EndGroup(ui, body, durationTop, ref y);
+        EndGroup(ui, body, notificationTop, ref y);
 
         const float OpenFileGap = 4;
         y += OpenFileGap;
@@ -551,7 +574,9 @@ internal sealed class SettingsPane
         var current = handler.Settings;
         if (!EditableMatch(draft, current)) return Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube);
 
-        return draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners || streamQualities.HasChanges;
+        return draft.StreamNotificationImage != current.StreamNotificationImage ||
+               draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners ||
+               streamQualities.HasChanges;
     }
 
     private void Save()
@@ -560,7 +585,11 @@ internal sealed class SettingsPane
 
         var otherChanges = !EditableMatch(draft, handler.Settings);
         if (otherChanges) CopyEditable(draft, handler.Settings);
-        else handler.Settings.UseLongStreamNotificationBanners = draft.UseLongStreamNotificationBanners;
+        else
+        {
+            handler.Settings.StreamNotificationImage = draft.StreamNotificationImage;
+            handler.Settings.UseLongStreamNotificationBanners = draft.UseLongStreamNotificationBanners;
+        }
 
         streamQualities.SaveChanges();
         handler.SaveSettings();
@@ -568,12 +597,13 @@ internal sealed class SettingsPane
     }
 
     // The settings this pane edits and saves together; the theme applies at once instead. A setting added here is
-    // also compared in EditableMatch, except duration, which can be saved without validating playback commands.
+    // also compared in EditableMatch, except the banner options, which can be saved without validating playback commands.
     private static void CopyEditable(Settings source, Settings target)
     {
         target.MinimumEventViewers = source.MinimumEventViewers;
         target.CheckForNewVersions = source.CheckForNewVersions;
         target.DisableNotifications = source.DisableNotifications;
+        target.StreamNotificationImage = source.StreamNotificationImage;
         target.UseLongStreamNotificationBanners = source.UseLongStreamNotificationBanners;
         target.DisableRefreshErrorDialogs = source.DisableRefreshErrorDialogs;
         target.DisableMinimizeToTrayNotification = source.DisableMinimizeToTrayNotification;
