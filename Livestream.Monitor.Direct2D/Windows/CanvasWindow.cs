@@ -224,6 +224,8 @@ internal abstract class CanvasWindow : DesktopWindow
         if (!visible) surface.ReleaseIfStale();
         if (!NeedsPaint || rendered && !visible && !PaintsWhileHidden) return;
 
+        // Layout can request another frame, such as after clamping a settings pane's scroll offset.
+        NeedsPaint = false;
         previousPalette = palette;
         Win32.GetClientRect(Handle, out var bounds);
         ClientSize = new SizeF(bounds.Width / Scale, bounds.Height / Scale);
@@ -246,7 +248,7 @@ internal abstract class CanvasWindow : DesktopWindow
         Ui.End();
         var focusedDialog = ActiveDialog?.Focus(Ui) == true;
         Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
-        NeedsPaint = focusedDialog;
+        NeedsPaint |= focusedDialog;
 
         if (surfaceChanged || surface.PendingSnapshotPath != null || !IsPresented())
         {

@@ -89,6 +89,7 @@ internal sealed class PreviewWindow : PopupWindow
 
         image.Load(encoded, width, height);
         loadedSource = source;
+        if (image.Bitmap == null) Hide();
         NeedsPaint = true;
     }
 
@@ -97,7 +98,7 @@ internal sealed class PreviewWindow : PopupWindow
         if (!showPending || loadedSource != source) return;
 
         showPending = false;
-        Show();
+        if (image.Bitmap != null) Show();
     }
 
     protected override void Draw(SizeF size)
