@@ -48,7 +48,6 @@ internal sealed class OutputWindow : CanvasWindow
     private readonly BoundedOutputBuffer buffer = new();
     private readonly OutputScrollbar scrollbar;
     private long nextRefresh;
-    private bool positioned;
 
     // The window opens at the initial size and only grows, to fit wider or longer output up to the WPF limits; it is shown
     // no larger than the app's current size allows, so it grows back once the app does.
@@ -148,14 +147,27 @@ internal sealed class OutputWindow : CanvasWindow
     {
         RefreshOutput();
         Tick();
-        Show();
-        Activate();
+        ShowOutput();
     }
 
     public void ShowFinal()
     {
         RefreshOutput();
         NeedsPaint = true;
+        ShowOutput();
+    }
+
+    private void ShowOutput()
+    {
+        if (!IsVisible)
+        {
+            var dpi = Win32.GetDpiForWindow(Handle);
+            CenterOnOwner(owner);
+
+            // Moving between displays can resize the hidden window through WM_DPICHANGED.
+            if (Win32.GetDpiForWindow(Handle) != dpi) CenterOnOwner(owner);
+        }
+
         Show();
         Activate();
     }
@@ -378,28 +390,23 @@ internal sealed class OutputWindow : CanvasWindow
         var width = (int)Math.Ceiling(size.Width * Scale);
         var height = (int)Math.Ceiling(size.Height * Scale);
         var deviceSize = new SizeF(width / Scale, height / Scale);
-        if (previous.Width == width && previous.Height == height && positioned) return deviceSize;
+        if (previous.Width == width && previous.Height == height) return deviceSize;
 
-        var flags = Win32.SwpNoMove | Win32.SwpNoZOrder | Win32.SwpNoActivate | Win32.SwpFrameChanged;
-        Win32.SetWindowPos(Handle, insertAfter: 0, x: 0, y: 0, width, height, flags);
+        var flags = Win32.SwpNoZOrder | Win32.SwpNoActivate | Win32.SwpFrameChanged;
+        var x = previous.Left;
+        var y = previous.Top;
 
-        if (!positioned)
+        if (IsVisible)
         {
-            CenterOnOwner(owner);
-            positioned = true;
+            var workArea = Monitors.GetWindowWorkArea(Handle);
+            (x, y) = Monitors.ClampToWorkArea(x, y, width, height, workArea);
         }
         else
         {
-            var position = Monitors.ClampToWorkArea(
-                previous.Left,
-                previous.Top,
-                width,
-                height,
-                Program.MonitorName);
-
-            flags = Win32.SwpNoSize | Win32.SwpNoZOrder | Win32.SwpNoActivate;
-            Win32.SetWindowPos(Handle, insertAfter: 0, position.X, position.Y, width: 0, height: 0, flags);
+            flags |= Win32.SwpNoMove;
         }
+
+        Win32.SetWindowPos(Handle, insertAfter: 0, x, y, width, height, flags);
 
         return deviceSize;
     }

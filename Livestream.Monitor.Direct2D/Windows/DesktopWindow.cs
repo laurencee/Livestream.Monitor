@@ -355,9 +355,12 @@ internal abstract class DesktopWindow : IDisposable
     {
         if (!Win32.GetWindowRect(owner, out var parent) || !Win32.GetWindowRect(Handle, out var window)) return;
 
+        var workArea = Monitors.GetWindowWorkArea(owner);
+        if (Win32.IsIconic(owner)) parent = workArea;
+
         var x = parent.Left + (parent.Width - window.Width) / 2;
         var y = parent.Top + (parent.Height - window.Height) / 2;
-        var position = Monitors.ClampToWorkArea(x, y, window.Width, window.Height, Program.MonitorName);
+        var position = Monitors.ClampToWorkArea(x, y, window.Width, window.Height, workArea);
         var flags = Win32.SwpNoSize | Win32.SwpNoZOrder | Win32.SwpNoActivate;
         Win32.SetWindowPos(Handle, insertAfter: 0, position.X, position.Y, width: 0, height: 0, flags);
     }

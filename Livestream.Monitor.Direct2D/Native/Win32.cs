@@ -287,6 +287,9 @@ internal static unsafe partial class Win32
     [LibraryImport("user32.dll")]
     public static partial nint MonitorFromPoint(Point point, uint flags);
 
+    [LibraryImport("user32.dll")]
+    public static partial nint MonitorFromWindow(nint window, uint flags);
+
     [DllImport("user32.dll", EntryPoint = "GetMonitorInfoW", CharSet = CharSet.Unicode)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetMonitorInfo(nint monitor, ref MonitorInfoEx info);

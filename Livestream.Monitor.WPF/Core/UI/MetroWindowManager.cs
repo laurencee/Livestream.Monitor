@@ -36,7 +36,8 @@ namespace Livestream.Monitor.WPF.Core.UI
 
             ConfigureWindow(window);
             window.SetValue(View.IsGeneratedProperty, true);
-            inferOwnerOf = InferOwnerOf(window);
+            bool isOutputWindow = view is MessageBoxView;
+            inferOwnerOf = isOutputWindow ? Application.Current.MainWindow : InferOwnerOf(window);
             if (inferOwnerOf != null)
             {
                 window.WindowStartupLocation = WindowStartupLocation.CenterOwner;
@@ -49,12 +50,15 @@ namespace Livestream.Monitor.WPF.Core.UI
 
             if (DisplayPlacement.IsRequested)
             {
-                const double DisplayInset = 80;
-                var workArea = DisplayPlacement.GetWorkArea(window);
-                window.WindowStartupLocation = WindowStartupLocation.Manual;
-                window.Left = workArea.Left + DisplayInset;
-                window.Top = workArea.Top + DisplayInset;
                 window.ShowActivated = false;
+                if (!isOutputWindow)
+                {
+                    const double DisplayInset = 80;
+                    var workArea = DisplayPlacement.GetWorkArea(window);
+                    window.WindowStartupLocation = WindowStartupLocation.Manual;
+                    window.Left = workArea.Left + DisplayInset;
+                    window.Top = workArea.Top + DisplayInset;
+                }
             }
             else if (window is ShellView)
             {

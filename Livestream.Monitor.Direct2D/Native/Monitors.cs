@@ -13,6 +13,9 @@ internal static class Monitors
 
     public static Win32.Rect GetWorkArea(Win32.Point point) => GetInfo(FindMonitor(point)).WorkArea;
 
+    // Windows uses the pre-minimize bounds to find the monitor of a minimized window.
+    public static Win32.Rect GetWindowWorkArea(nint window) => GetInfo(Win32.MonitorFromWindow(window, Win32.MonitorDefaultToNearest)).WorkArea;
+
     /// <summary>The primary monitor's height in logical units at the system DPI, as WPF's SystemParameters.PrimaryScreenHeight.</summary>
     public static float PrimaryScreenHeight =>
         Win32.GetSystemMetrics(Win32.SmCyScreen) * Win32.UserDefaultScreenDpi / (float)Win32.GetDpiForSystem();
@@ -47,6 +50,16 @@ internal static class Monitors
         { X = ToDevicePixel(preferredX + width / 2d), Y = ToDevicePixel(preferredY + height / 2d) };
 
         var workArea = FindWorkArea(monitor) ?? GetWorkArea(center);
+        return ClampToWorkArea(preferredX, preferredY, width, height, workArea);
+    }
+
+    public static (int X, int Y) ClampToWorkArea(
+        double preferredX,
+        double preferredY,
+        int width,
+        int height,
+        Win32.Rect workArea)
+    {
         width = Math.Max(width, MinimumDeviceLength);
         height = Math.Max(height, MinimumDeviceLength);
         int x = width >= workArea.Width
