@@ -63,8 +63,9 @@ internal abstract class DesktopWindow : IDisposable
         Register();
         var work = Monitors.FindWorkArea(Program.MonitorName) ?? Monitors.GetWorkArea(new Win32.Point());
         const int WindowInset = 120;
-        var frame = Win32.WsPopup | Win32.WsThickFrame | Win32.WsSystemMenu | Win32.WsMinimizeBox;
-        var style = frame | Win32.WsClipChildren;
+
+        // WS_CLIPCHILDREN can cut a hole in the composed frame before a moving edit control repaints.
+        var style = Win32.WsPopup | Win32.WsThickFrame | Win32.WsSystemMenu | Win32.WsMinimizeBox;
         Handle = Win32.CreateWindowEx(
             extendedStyle: 0,
             className: ClassName,
