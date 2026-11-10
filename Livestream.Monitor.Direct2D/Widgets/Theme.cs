@@ -9,6 +9,8 @@ internal static class Theme
     private const uint White = 0xFFFFFFFF;
     private const uint Gray5 = 0xFFB9B9B9;
     private const uint Gray6 = 0xFFCCCCCC;
+    private const uint MediumGray = 0xFF767676;
+    private const uint DarkGray = 0xFF595959;
     private const uint AccentBrushMask = 0xCCFFFFFF;
 
     // The WPF data grid's line above and rule below its column headers, measured from the WPF frontend.
@@ -32,13 +34,9 @@ internal static class Theme
     // Dark control borders measured from the WPF frontend.
     private const uint DarkControlBorder = 0xFF7E7E7E;
     private const uint DarkControlBorderHover = 0xFF898989;
-    private const uint DarkInputBorder = 0xFF4F4F4F;
-    private const uint DarkInputBorderHover = 0xFF5C5C5C;
     private const uint DarkComboHover = 0xFF616161;
     // MahApps Gray9 composited over the light theme's white background.
     private const uint LightComboHover = 0xFFEBEBEB;
-    private const uint DarkComboHoverBorder = 0xFF686868;
-    private const uint DarkComboOpenBorder = 0xFF9C9C9C;
 
     // MahApps 2.4.11 colors and brush opacities used by the original WPF frontend:
     // https://github.com/MahApps/MahApps.Metro/blob/2.4.11/src/MahApps.Metro/Styles/Themes/GeneratorParameters.json
@@ -55,27 +53,36 @@ internal static class Theme
         var selection = Blend(background, accent, SelectionOpacity);
         var rowHover = Blend(background, accent, RowHoverOpacity);
         var tile = Blend(background, accent, TileOpacity);
+        var panel = isDark ? 0xFF2B2B2B : White;
+        var menuSelection = isDark ? 0xFF3C3C3C : 0xFFF0F0F0;
+        var contextMenuHover = isDark ? menuSelection : 0xFFDEDEDE;
 
         return new ThemePalette(
             IsDark: isDark,
             Background: background,
-            Panel: isDark ? 0xFF2B2B2B : White,
+            Panel: panel,
             Text: text,
             MutedText: isDark ? DarkMutedText : LightMutedText,
             Border: Gray6,
-            ControlBorder: isDark ? DarkControlBorder : Gray6,
-            ControlBorderHover: isDark ? DarkControlBorderHover : Gray6,
-            InputBorder: isDark ? DarkInputBorder : Gray6,
-            InputBorderHover: isDark ? DarkInputBorderHover : LightMutedText,
-            InputBorderFocus: isDark ? DarkInputBorderHover : Black,
+            ControlBorder: isDark ? DarkControlBorder : 0xFF888888,
+            ControlBorderHover: isDark ? DarkControlBorderHover : DarkGray,
+            ControlDisabled: isDark ? 0xFF393939 : 0xFFFBFBFB,
+            ControlDisabledBorder: isDark ? 0xFF535353 : 0xFFE3E3E3,
+            ControlDisabledText: isDark ? 0xFFA0A0A0 : 0xFF808080,
+            InputBorder: MediumGray,
+            InputBorderHover: isDark ? 0xFF999999 : DarkGray,
+            InputBorderFocus: isDark ? Gray5 : Black,
+            InputDisabled: isDark ? 0xFF333333 : 0xFFF1F1F1,
+            InputDisabledBorder: isDark ? 0xFF535353 : 0xFFB8B8B8,
+            InputDisabledText: isDark ? 0xFF969696 : MediumGray,
             ComboHover: isDark ? DarkComboHover : LightComboHover,
-            ComboHoverBorder: isDark ? DarkComboHoverBorder : LightMutedText,
-            ComboOpenBorder: isDark ? DarkComboOpenBorder : Black,
+            ComboHoverBorder: isDark ? Gray5 : DarkGray,
+            ComboOpenBorder: isDark ? Gray6 : Black,
             Input: background,
             Control: isDark ? 0xFF2F2F2F : 0xFFF7F7F7,
             Hover: isDark ? 0xFF454545 : 0xFFE0E0E0,
             Highlight: Highlight(accent),
-            Pressed: isDark ? DarkGray7 : LightGray7,
+            Pressed: isDark ? 0xFF6D6D6D : LightGray7,
             Accent: accent,
             AccentBrush: accent & AccentBrushMask,
             AccentText: accentText,
@@ -91,10 +98,14 @@ internal static class Theme
             ToolTipBorder: isDark ? DarkGray7 : LightGray7,
             ListBorder: ListBorderGray,
             ContextMenuBorder: isDark ? Gray6 : 0xE0717070,
-            ContextMenuHover: isDark ? 0xFF313131 : 0xFFDEDEDE,
+            MenuSelection: menuSelection,
+            ContextMenuHover: contextMenuHover,
+            MenuAccent: ContrastAccent(accent, contextMenuHover),
             ContextMenuDisabledText: isDark ? 0xFF7E7E7E : LightMutedText,
-            ChoiceBorder: isDark ? Gray6 : Gray5,
-            ChoiceBorderHover: isDark ? Gray6 : LightMutedText,
+            ChoiceBorder: isDark ? Gray6 : 0xFF707070,
+            ChoiceBorderHover: isDark ? 0xFFE5E5E5 : DarkGray,
+            ChoiceDisabledBorder: isDark ? DarkMutedText : Gray5,
+            ChoiceAccent: ContrastAccent(isDark ? accent : Highlight(accent), panel),
             ChoiceDisabledText: isDark ? DarkMutedText : 0x66000000
         );
     }
@@ -142,20 +153,44 @@ internal static class Theme
 
     public static uint ContrastingText(uint background)
     {
+        // At this luminance black and white have equal contrast against the background.
+        const double EqualContrastLuminance = 0.179128784747792;
+        return Luminance(background) >= EqualContrastLuminance ? Black : White;
+    }
+
+    public static uint ContrastAccent(uint accent, uint surface)
+    {
+        const double MinimumContrast = 3;
+        const double LuminanceOffset = 0.05;
+        const float ShadeStep = 0.25f;
+        var surfaceLuminance = Luminance(surface);
+        var shade = ContrastingText(surface);
+        var color = accent;
+
+        // Retain the accent hue when its base colour is too close to the surrounding surface.
+        while (true)
+        {
+            var luminance = Luminance(color);
+            var contrast = (Math.Max(luminance, surfaceLuminance) + LuminanceOffset) /
+                           (Math.Min(luminance, surfaceLuminance) + LuminanceOffset);
+            if (contrast >= MinimumContrast) return color;
+
+            color = Blend(color, shade, ShadeStep);
+        }
+    }
+
+    private static double Luminance(uint color)
+    {
         const uint ChannelMask = 0xFF;
         const int RedShift = 16;
         const int GreenShift = 8;
         const double RedWeight = 0.2126;
         const double GreenWeight = 0.7152;
         const double BlueWeight = 0.0722;
-        var red = LinearChannel((background >> RedShift) & ChannelMask);
-        var green = LinearChannel((background >> GreenShift) & ChannelMask);
-        var blue = LinearChannel(background & ChannelMask);
-        var luminance = RedWeight * red + GreenWeight * green + BlueWeight * blue;
-
-        // At this luminance black and white have equal contrast against the background.
-        const double EqualContrastLuminance = 0.179128784747792;
-        return luminance >= EqualContrastLuminance ? Black : White;
+        var red = LinearChannel((color >> RedShift) & ChannelMask);
+        var green = LinearChannel((color >> GreenShift) & ChannelMask);
+        var blue = LinearChannel(color & ChannelMask);
+        return RedWeight * red + GreenWeight * green + BlueWeight * blue;
 
         static double LinearChannel(uint channel)
         {
@@ -199,9 +234,15 @@ internal sealed record ThemePalette(
     uint Border,
     uint ControlBorder,
     uint ControlBorderHover,
+    uint ControlDisabled,
+    uint ControlDisabledBorder,
+    uint ControlDisabledText,
     uint InputBorder,
     uint InputBorderHover,
     uint InputBorderFocus,
+    uint InputDisabled,
+    uint InputDisabledBorder,
+    uint InputDisabledText,
     uint ComboHover,
     uint ComboHoverBorder,
     uint ComboOpenBorder,
@@ -235,9 +276,13 @@ internal sealed record ThemePalette(
     uint ListBorder,
 
     uint ContextMenuBorder,
+    uint MenuSelection,
     uint ContextMenuHover,
+    uint MenuAccent,
     uint ContextMenuDisabledText,
     uint ChoiceBorder,
     uint ChoiceBorderHover,
+    uint ChoiceDisabledBorder,
+    uint ChoiceAccent,
     uint ChoiceDisabledText
 );

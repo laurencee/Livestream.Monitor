@@ -24,6 +24,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
 
     private const uint ArrowColor = 0xFF9D9D9D;
     private const uint ThumbColor = 0xFFB9B9B9;
+    private const uint LightRestingColor = 0xFF888888;
     private const uint Black = 0xFF000000;
     private const uint White = 0xFFFFFFFF;
 
@@ -105,7 +106,8 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         // A dragged thumb stays pressed wherever the pointer goes, as the captured WPF thumb does.
         var overlay = palette.IsDark ? White : Black;
         var opacity = pressed == Part.Thumb ? PressedThumbOpacity : hovered == Part.Thumb ? HoveredThumbOpacity : 0;
-        ui.Fill(thumb, Theme.Blend(ThumbColor, overlay, opacity));
+        var thumbColor = opacity == 0 && !palette.IsDark ? LightRestingColor : Theme.Blend(ThumbColor, overlay, opacity);
+        ui.Fill(thumb, thumbColor);
 
         if (automationPrefix != null)
         {
@@ -131,7 +133,8 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
             var left = button.X + (button.Width - ArrowWidth) / 2;
             var top = button.Y + (button.Height - ArrowHeight) / 2;
             var arrow = new RectangleF(x: left, y: top, width: ArrowWidth, height: ArrowHeight);
-            var color = hovered != part ? ArrowColor : pressed == part ? pressedArrow : hoveredArrow;
+            var restingColor = palette.IsDark ? ArrowColor : LightRestingColor;
+            var color = hovered != part ? restingColor : pressed == part ? pressedArrow : hoveredArrow;
             ui.Triangle(arrow, color, pointsUp);
         }
     }

@@ -123,6 +123,7 @@ internal sealed class MonitorWindowState : ObservableModel
     }
 
     public bool HasNextPage { get; private set; }
+    public bool BrowsingResultIsEmpty { get; private set; }
     public bool Busy { get; private set => Set(ref field, value); }
     public bool IsContentLoading { get; private set; } = true;
     internal bool FollowedRowsSettled => StreamsModel.CanRefreshLivestreams || StreamsModel.Livestreams.Count == 0;
@@ -369,7 +370,11 @@ internal sealed class MonitorWindowState : ObservableModel
 
     public void InvalidateGameSuggestions() => gameSuggestionGeneration++;
 
-    public void InvalidateContentQuery() => contentQueryGeneration++;
+    public void InvalidateContentQuery()
+    {
+        contentQueryGeneration++;
+        BrowsingResultIsEmpty = false;
+    }
 
     public void AbandonBrowsingRequest()
     {
@@ -399,6 +404,7 @@ internal sealed class MonitorWindowState : ObservableModel
         {
             topStreams.Clear();
             HasNextPage = false;
+            BrowsingResultIsEmpty = false;
             Status = $"{PlatformNames.GetDisplayName(api.ApiName)} does not support Top Streams.";
             Changed?.Invoke();
             return;
@@ -429,6 +435,7 @@ internal sealed class MonitorWindowState : ObservableModel
 
             topStreams.AddRange(result.LivestreamModels);
             HasNextPage = result.HasNextPage;
+            BrowsingResultIsEmpty = topStreams.Count == 0;
         }
 
         ErrorDialog DescribeError(Exception exception)
@@ -446,6 +453,7 @@ internal sealed class MonitorWindowState : ObservableModel
         {
             Vods.Clear();
             HasNextPage = false;
+            BrowsingResultIsEmpty = false;
             Status = api.HasVodViewerSupport
                 ? VodChannelPrompt
                 : $"{PlatformNames.GetDisplayName(api.ApiName)} does not support VODs.";
@@ -480,6 +488,7 @@ internal sealed class MonitorWindowState : ObservableModel
 
             Vods.AddRange(result);
             HasNextPage = Vods.Count == query.Take;
+            BrowsingResultIsEmpty = Vods.Count == 0;
         }
 
         ErrorDialog DescribeError(Exception exception)
@@ -579,6 +588,7 @@ internal sealed class MonitorWindowState : ObservableModel
     {
         if (Busy) return;
 
+        BrowsingResultIsEmpty = false;
         IsContentLoading = true;
         try
         {

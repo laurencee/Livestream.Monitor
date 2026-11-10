@@ -150,7 +150,6 @@ internal sealed class DialogPane(
             text: affirmative,
             bounds: affirmativeBounds,
             action: Accept,
-            accent: true,
             weight: FontWeight.SemiBold,
             flat: true
         );

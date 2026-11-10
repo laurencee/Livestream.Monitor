@@ -77,9 +77,14 @@ public class MonitorWindowStateShould
 
         var query = model.QueryTop(api, "");
         Assert.True(model.IsContentLoading);
+        Assert.False(model.BrowsingResultIsEmpty);
         pending.SetResult(new TopStreamsResponse());
         await query;
         Assert.False(model.IsContentLoading);
+        Assert.True(model.BrowsingResultIsEmpty);
+
+        model.InvalidateContentQuery();
+        Assert.False(model.BrowsingResultIsEmpty);
     }
 
     [Fact]
@@ -97,6 +102,7 @@ public class MonitorWindowStateShould
         await query;
         Assert.False(model.IsContentLoading);
         Assert.False(model.Busy);
+        Assert.False(model.BrowsingResultIsEmpty);
     }
 
     [Theory]
@@ -116,6 +122,7 @@ public class MonitorWindowStateShould
         pending.SetResult([new VodDetails { Title = "Recorded" }]);
         await query;
         Assert.False(model.IsContentLoading);
+        Assert.False(model.BrowsingResultIsEmpty);
         Assert.Single(model.Vods);
     }
 
@@ -141,6 +148,7 @@ public class MonitorWindowStateShould
 
         Assert.Empty(model.Rows);
         Assert.False(model.HasNextPage);
+        Assert.False(model.BrowsingResultIsEmpty);
     }
 
     [Fact]

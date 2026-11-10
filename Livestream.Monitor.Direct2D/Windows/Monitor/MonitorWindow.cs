@@ -116,6 +116,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private long gameSuggestionsDue;
     private long vodQueryDue;
     private bool queryQueued;
+    private (UniqueStreamKey Key, bool Removing)? pendingFollowChange;
     private PreviewWindow? preview;
     private int hoveredRow = -1;
     private long previewDue;
@@ -533,6 +534,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 Ui.ToolTip(id: "game", gameBounds, GameToolTip);
             }
 
+            const float RefreshGlyphSize = 15;
             var refreshBounds = new RectangleF(x: 381, y: Y, width: 22, height: Height);
             Ui.Button(
                 id: "refresh",
@@ -540,6 +542,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 refreshBounds,
                 action: () => _ = Query(),
                 enabled: !state.Busy,
+                size: RefreshGlyphSize,
                 toolTip: "Refresh Top Streams",
                 name: "Refresh",
                 flat: true
@@ -707,9 +710,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             // As in WPF, the pointer's row shows the hover colour whether or not it is selected.
             var highlighted = selected && selectionActive;
-            if (Ui.IsPointerOver(bounds)) Ui.Fill(bounds, palette.RowHover);
+            var hovered = Ui.IsPointerOver(bounds);
+            if (hovered) Ui.Fill(bounds, palette.RowHover);
             else if (selected) Ui.Fill(bounds, highlighted ? palette.Selection : palette.Tile);
-            var color = highlighted ? palette.SelectionText : palette.Text;
+
+            var color = hovered ? Theme.ContrastingText(palette.RowHover) : highlighted ? palette.SelectionText : palette.Text;
             var liveImage = images.GetEmbedded(stream.Live ? EmbeddedImages.Live : EmbeddedImages.Offline);
             Ui.Image(liveImage, new RectangleF(x: liveLeft, y: y + 5, width: LiveImageSize, height: LiveImageSize));
             Cell(column: 1, stream.DisplayName);
@@ -795,16 +800,27 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private void DrawTiles(SizeF size)
     {
         // A queued query has not started yet, but its page shows the loader rather than stale results.
-        if (state.IsContentLoading || queryQueued)
+        var loading = state.IsContentLoading || queryQueued;
+        if (loading || state.BrowsingResultIsEmpty)
         {
-            var loadingBounds = new RectangleF(
+            var contentBounds = new RectangleF(
                 x: 0,
                 y: TileAreaTop,
                 width: size.Width,
                 height: size.Height - TileAreaTop - FooterHeight);
 
             scrollBar.Update(RectangleF.Empty, extent: 0, viewport: 1, offset: 0);
-            Ui.Spinner(loadingBounds, PanelSlide.NowMilliseconds);
+            if (loading)
+            {
+                Ui.Spinner(contentBounds, PanelSlide.NowMilliseconds);
+            }
+            else
+            {
+                scrollOffset = 0;
+                var message = state.Page == MonitorPage.Vods ? "No videos found" : "No streams found";
+                Ui.Text(message, contentBounds, alignment: TextAlign.Center);
+            }
+
             return;
         }
 
@@ -840,7 +856,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var background = hovered ? palette.Highlight : following ? palette.Selection : palette.Tile;
             var color = hovered || following ? palette.AccentText : palette.Text;
             Ui.Fill(bounds, background);
-            if (i == state.SelectedIndex) Ui.Border(bounds, palette.Accent, 2);
+
+            if (i == state.SelectedIndex)
+            {
+                const float SelectionBorderThickness = 2;
+                var border = Theme.ContrastAccent(palette.Accent, background);
+                Ui.Border(bounds, border, SelectionBorderThickness);
+            }
 
             if (stream != null)
             {
@@ -864,13 +886,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 var viewersBounds = gameBounds with { Y = gameBounds.Y + LineHeight * 2 };
                 Ui.Text(viewers, viewersBounds, color);
 
-                if (following)
+                var followLabel = following ? "FOLLOWING" : null;
+                var followColor = color;
+                if (pendingFollowChange is { } change && change.Key.Equals(stream.UniqueStreamKey))
+                {
+                    followLabel = change.Removing ? "UNFOLLOWING…" : "FOLLOWING…";
+                    followColor = Theme.ContrastingText(background);
+                }
+
+                if (followLabel != null)
                 {
                     var followingBounds = viewersBounds with { Y = viewersBounds.Y + LineHeight };
                     Ui.Text(
-                        "FOLLOWING",
+                        followLabel,
                         followingBounds,
-                        color,
+                        followColor,
                         weight: FontWeight.Bold,
                         alignment: TextAlign.Center
                     );
@@ -941,7 +971,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         var statusAlignment = isVodChannelPrompt ? TextAlign.Center : TextAlign.Leading;
-        if (statusTextBounds.Width > 0) Ui.Text(status, statusTextBounds, palette.MutedText, size: StatusTextSize, alignment: statusAlignment);
+        const uint LightTopStreamsFooterText = 0xFF707070;
+        var footerText = state.Page == MonitorPage.TopStreams && !palette.IsDark ? LightTopStreamsFooterText : palette.MutedText;
+        if (statusTextBounds.Width > 0) Ui.Text(status, statusTextBounds, footerText, size: StatusTextSize, alignment: statusAlignment);
 
         var control = new RectangleF(x: 0, y: y + ControlPadding, width: 0, height: FooterControlHeight);
         var pageSizeBounds = control with { X = size.Width - 217, Width = 53 };
@@ -959,7 +991,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var hintLeft = statusRight + HintGap;
             var hintBounds = statusBounds with { X = hintLeft, Width = itemsLeft - HintGap - hintLeft };
             if (MeasureWidth(TileActionHint, StatusTextSize) <= hintBounds.Width)
-                Ui.Text(TileActionHint, hintBounds, palette.MutedText, size: StatusTextSize, alignment: TextAlign.Center);
+                Ui.Text(TileActionHint, hintBounds, footerText, size: StatusTextSize, alignment: TextAlign.Center);
         }
 
         Ui.Text(ItemsLabel, itemsLabelBounds, size: ItemsLabelSize, alignment: TextAlign.Trailing);
@@ -1487,16 +1519,32 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private async Task ToggleFollow()
     {
-        if (state.SelectedStream is not { } stream) return;
+        if (state.Busy || state.SelectedStream is not { } stream) return;
 
-        if (state.IsFollowed(stream))
+        var removing = state.IsFollowed(stream);
+        var errorTitle = removing ? "Error Removing Livestream" : "Error Adding Livestream";
+        await state.Run(errorTitle, UpdateFollow);
+
+        async Task UpdateFollow()
         {
-            await state.Run("Error Removing Livestream", () => state.StreamsModel.RemoveLivestream(stream.ChannelIdentifier, dialogs));
-        }
-        else
-        {
-            var channel = new ChannelIdentifier(stream.ApiClient, stream.ChannelIdentifier.ChannelId);
-            await state.Run("Error Adding Livestream", () => state.StreamsModel.AddLivestream(channel, dialogs));
+            pendingFollowChange = (stream.UniqueStreamKey, removing);
+            try
+            {
+                if (removing)
+                {
+                    await state.StreamsModel.RemoveLivestream(stream.ChannelIdentifier, dialogs);
+                }
+                else
+                {
+                    var channel = new ChannelIdentifier(stream.ApiClient, stream.ChannelIdentifier.ChannelId);
+                    await state.StreamsModel.AddLivestream(channel, dialogs);
+                }
+            }
+            finally
+            {
+                pendingFollowChange = null;
+                NeedsPaint = true;
+            }
         }
     }
 

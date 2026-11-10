@@ -168,7 +168,7 @@ internal sealed class SettingsPane
             );
         }
 
-        ui.Button(id: "settings.save", text: "Save", bounds: saveBounds, action: Save, enabled: canSave, accent: canSave);
+        ui.Button(id: "settings.save", text: "Save", bounds: saveBounds, action: Save, enabled: canSave);
     }
 
     public void Scroll(int steps) => SetScroll(Math.Clamp(scroll - steps * ScrollStep, 0, maximumScroll));
