@@ -8,6 +8,7 @@ internal static unsafe partial class Win32
     public const uint WsPopup = 0x80000000;
     public const uint WsChild = 0x40000000;
     public const uint WsVisible = 0x10000000;
+    public const uint WsClipChildren = 0x02000000;
     public const uint WsCaption = 0x00C00000;
     public const uint WsSystemMenu = 0x00080000;
     public const uint WsThickFrame = 0x00040000;
@@ -15,7 +16,10 @@ internal static unsafe partial class Win32
     public const uint WsTabStop = 0x00010000;
     public const uint WsExTransparent = 0x00000020;
     public const uint WsExToolWindow = 0x00000080;
+    public const uint WsExLayered = 0x00080000;
     public const uint WsExNoActivate = 0x08000000;
+
+    public const uint LwaAlpha = 0x00000002;
     public const int GwlStyle = -16;
     public const int GwlExStyle = -20;
 

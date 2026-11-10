@@ -92,9 +92,10 @@ internal sealed class FrontendWindow : IDisposable
     /// Invokes the control, closing any message in its way, until it raises the Twitch authorization prompt, then
     /// declines the prompt.
     /// </summary>
-    public void DeclineAuthorizationAfter(string automationId)
+    public void DeclineAuthorizationAfter(string automationId, bool checkMessageRendering = false)
     {
         RetryUntil(CloseMessageOrInvoke, PromptShown, $"The Twitch authorization prompt after '{automationId}'");
+        if (checkMessageRendering) WaitForPaintedDialogMessage();
 
         // Declining again does nothing once the prompt has closed.
         var declined = "The declined authorization prompt closed";
@@ -291,6 +292,21 @@ internal sealed class FrontendWindow : IDisposable
             act();
             lastAct = DateTime.UtcNow;
             return false;
+        }
+    }
+
+    private void WaitForPaintedDialogMessage()
+    {
+        var lastSeen = "";
+        WaitUntil(HasVisibleText, "The dialog message has visible text on screen", () => lastSeen);
+
+        bool HasVisibleText()
+        {
+            var handle = application.MainWindow;
+            if (handle == 0) return false;
+
+            var edit = ScreenTextProbe.FindVisibleReadOnlyEdit(handle, "Edit");
+            return ScreenTextProbe.HasPaintedText(handle, edit, out lastSeen);
         }
     }
 

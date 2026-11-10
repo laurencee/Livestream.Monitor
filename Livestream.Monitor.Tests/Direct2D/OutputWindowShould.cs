@@ -1,8 +1,11 @@
+using System;
 using System.Drawing;
+using System.Windows.Forms;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Windows;
 using Livestream.Monitor.Direct2D.Windows.Output;
+using Livestream.Monitor.Tests.Ui;
 using NSubstitute;
 using Xunit;
 
@@ -11,6 +14,62 @@ namespace Livestream.Monitor.Tests.Direct2D;
 [Collection("Native widgets")]
 public class OutputWindowShould
 {
+    [Fact]
+    public void PaintBufferedTextWhenShownAndReopened()
+    {
+        var settings = Substitute.For<ISettingsHandler>();
+        settings.Settings.Returns(new Settings());
+
+        using var owner = new OwnerWindow();
+        using var output = new OutputWindow(owner: owner.Handle, title: "Stream output", settings: settings, theme: null);
+
+        var workArea = Monitors.GetWorkArea(new Win32.Point());
+        var width = workArea.Width / 2;
+        var height = workArea.Height / 2;
+        var left = workArea.Left + width / 2;
+        var top = workArea.Top + height / 2;
+        var positionFlags = Win32.SwpNoZOrder | Win32.SwpNoActivate;
+        Assert.True(Win32.SetWindowPos(owner.Handle, insertAfter: 0, left, top, width, height, flags: positionFlags));
+
+        const string FirstLine = "Representative stream output";
+        output.Append(FirstLine);
+        output.ShowInitial();
+
+        // Keep this isolated test window unobscured even when another application has keyboard focus.
+        const int TopmostWindow = -1;
+        var topmost = (nint)TopmostWindow;
+        var topmostFlags = Win32.SwpNoSize | Win32.SwpNoMove | Win32.SwpNoActivate;
+        Assert.True(Win32.SetWindowPos(window: output.Handle, insertAfter: topmost, x: 0, y: 0, width: 0, height: 0, flags: topmostFlags));
+
+        WaitForPaintedOutput(output, FirstLine);
+        output.Hide();
+
+        const string NextLine = "More output received while hidden";
+        output.Append(NextLine);
+        output.ShowInitial();
+
+        WaitForPaintedOutput(output, NextLine);
+
+        static void WaitForPaintedOutput(OutputWindow output, string line)
+        {
+            var observation = "";
+            UiApplication.WaitFor(Probe, TimeSpan.FromSeconds(5), "Painted Rich Edit output", () => observation);
+
+            OutputWindow Probe()
+            {
+                Application.DoEvents();
+                DesktopWindow.TickAll();
+                DesktopWindow.ThrowIfFailed();
+
+                var edit = ScreenTextProbe.FindVisibleReadOnlyEdit(output.Handle, "RICHEDIT50W");
+                observation = "The output control did not contain the buffered line.";
+                if (edit == 0 || !Win32.GetText(edit).Contains(line, StringComparison.Ordinal)) return null;
+
+                return ScreenTextProbe.HasPaintedText(output.Handle, edit, out observation) ? output : null;
+            }
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

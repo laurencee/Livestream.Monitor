@@ -64,7 +64,7 @@ internal abstract class DesktopWindow : IDisposable
         var work = Monitors.FindWorkArea(Program.MonitorName) ?? Monitors.GetWorkArea(new Win32.Point());
         const int WindowInset = 120;
 
-        // WS_CLIPCHILDREN can cut a hole in the composed frame before a moving edit control repaints.
+        // Leave the composed frame intact behind moving native controls so a delayed repaint cannot expose the desktop.
         var style = Win32.WsPopup | Win32.WsThickFrame | Win32.WsSystemMenu | Win32.WsMinimizeBox;
         Handle = Win32.CreateWindowEx(
             extendedStyle: 0,
@@ -384,10 +384,11 @@ internal abstract class DesktopWindow : IDisposable
         // Rich Edit keeps its original wrap width if created hidden.
         // Create it visible while the parent is hidden so it can't appear ahead of the frame.
         var visibility = IsVisible ? 0 : Win32.WsVisible;
+        var layered = (Win32.GetWindowLongPtr(Handle, Win32.GwlStyle) & Win32.WsClipChildren) == 0;
 
         var id = nextControlId++;
         var control = Win32.CreateWindowEx(
-            extendedStyle: 0,
+            extendedStyle: layered ? Win32.WsExLayered : 0,
             className: className,
             windowName: text,
             style: Win32.WsChild | visibility | style,
@@ -401,6 +402,14 @@ internal abstract class DesktopWindow : IDisposable
             parameter: 0);
 
         if (control == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
+
+        // Give native controls their own surface above the composed frame without clipping a hole in it.
+        if (layered && !Win32.SetLayeredWindowAttributes(window: control, colorKey: 0, alpha: byte.MaxValue, flags: Win32.LwaAlpha))
+        {
+            var error = Marshal.GetLastWin32Error();
+            Win32.DestroyWindow(control);
+            throw new Win32Exception(error);
+        }
 
         controls.Add((control, bounds, fontSize));
         if (command != null) commands.Add(id, command);

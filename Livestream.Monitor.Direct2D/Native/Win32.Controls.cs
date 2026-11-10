@@ -65,6 +65,14 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool InvalidateRect(nint window, nint rect, [MarshalAs(UnmanagedType.Bool)] bool erase);
 
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetLayeredWindowAttributes(
+        nint window,
+        uint colorKey,
+        byte alpha,
+        uint flags);
+
     [LibraryImport("user32.dll", EntryPoint = "SetWindowTextW", StringMarshalling = StringMarshalling.Utf16)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetWindowText(nint window, string text);

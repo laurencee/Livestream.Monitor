@@ -286,7 +286,7 @@ public class FrontendShould
 
         window.Element(ids.ChannelToAdd, FrontendWindow.StartupTimeout);
         window.SetText(ids.ChannelToAdd, UiTestProfile.FollowedChannels[0]);
-        window.DeclineAuthorizationAfter(ids.AddChannel);
+        window.DeclineAuthorizationAfter(ids.AddChannel, checkMessageRendering: kind == FrontendKind.Direct2D);
         window.DeclineAuthorizationAfter(ids.TopStreams);
     }
 

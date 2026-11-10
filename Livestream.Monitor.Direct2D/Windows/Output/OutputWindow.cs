@@ -79,6 +79,9 @@ internal sealed class OutputWindow : CanvasWindow
         ThemeSource = theme ?? (() => Theme.Create(settings.Settings));
         var windowStyle = Win32.GetWindowLongPtr(Handle, Win32.GwlStyle);
         windowStyle &= ~(nint)(Win32.WsThickFrame | Win32.WsMinimizeBox);
+
+        // Rich Edit paints into the parent surface. Clip the composed frame around the fixed output viewport.
+        windowStyle |= (nint)Win32.WsClipChildren;
         Win32.SetWindowLongPtr(Handle, Win32.GwlStyle, windowStyle);
         var style = Win32.EsMultiLine | Win32.EsReadOnly;
         text = Control(className: "RICHEDIT50W", text: "", bounds: Rectangle.Empty, style: style);
