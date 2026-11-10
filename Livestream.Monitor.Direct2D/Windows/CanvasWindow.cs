@@ -69,6 +69,7 @@ internal abstract class CanvasWindow : DesktopWindow
     private string? toolTipOwner;
     private string? toolTipText;
     private Win32.Point toolTipPointer;
+    private Rectangle toolTipObstacle;
     private long toolTipDue;
     private long toolTipClosedAt = long.MinValue / 2;
     private bool toolTipSuppressed;
@@ -250,10 +251,16 @@ internal abstract class CanvasWindow : DesktopWindow
         Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
         NeedsPaint |= focusedDialog;
 
-        if (surfaceChanged || surface.PendingSnapshotPath != null || !IsPresented())
+        var present = surfaceChanged || surface.PendingSnapshotPath != null || !IsPresented();
+        if (present)
         {
             painter.BeginFrame(Environment.TickCount64);
             painter.Render(surface.Begin(), drawCommands, Scale);
+        }
+
+        HideRetiredControls();
+        if (present)
+        {
             surface.EndAndPresent();
             rendered = true;
             presentedScale = Scale;
@@ -299,6 +306,7 @@ internal abstract class CanvasWindow : DesktopWindow
     protected abstract void Draw(SizeF size);
     protected virtual void BeforeFrame() { }
     protected virtual RectangleF? CoveredArea(SizeF size) => null;
+    protected virtual Rectangle ToolTipObstacle => Rectangle.Empty;
     protected virtual void OnPointerDown(PointF point) { }
     protected virtual void OnPointerUp(PointF point) { }
     protected virtual void OnPointerMove(PointF point) { }
@@ -461,7 +469,7 @@ internal abstract class CanvasWindow : DesktopWindow
     }
 
     /// <summary>Shows tooltips after a hover delay; leaving the region, pressing a key, scrolling or pressing the left mouse button hides them.</summary>
-    private void UpdateToolTip()
+    protected void UpdateToolTip(Rectangle? upcomingObstacle = null)
     {
         var now = Environment.TickCount64;
         var region = IsVisible && !HasDialog ? Ui.ToolTipAt(Pointer) : null;
@@ -475,13 +483,17 @@ internal abstract class CanvasWindow : DesktopWindow
             toolTipDue = reopening ? now : now + ToolTipInitialShowDelay;
         }
 
-        if (region is not { } active || toolTipSuppressed || now < toolTipDue || active.Text == toolTipText) return;
+        if (region is not { } active || toolTipSuppressed || now < toolTipDue) return;
 
-        // An open tooltip whose text changes, such as a refreshed stream title, stays where it opened.
+        var obstacle = upcomingObstacle ?? ToolTipObstacle;
+        if (active.Text == toolTipText && obstacle == toolTipObstacle) return;
+
+        // Keep the opening pointer as the placement anchor while the tooltip is open.
         if (toolTipText == null) Win32.GetCursorPos(out toolTipPointer);
         toolTip ??= new ToolTipWindow(Handle, ThemeSource);
-        toolTip.Display(active.Text, toolTipPointer);
+        toolTip.Display(active.Text, toolTipPointer, obstacle);
         toolTipText = active.Text;
+        toolTipObstacle = obstacle;
     }
 
     private void DismissToolTip()

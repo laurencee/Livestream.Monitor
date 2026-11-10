@@ -16,13 +16,15 @@ internal sealed class PreviewWindow : PopupWindow
     private const uint Black = 0xFF000000;
     private readonly ThumbnailStore thumbnails;
     private readonly ReusableBitmap image;
+    private readonly Action<PreviewWindow> beforeShow;
     private string? source;
     private string? loadedSource;
     private bool showPending;
 
-    public PreviewWindow(nint owner)
+    public PreviewWindow(nint owner, Action<PreviewWindow> beforeShow)
         : base(title: "Stream preview", width: PreviewWidth, height: PreviewHeight, owner: owner)
     {
+        this.beforeShow = beforeShow;
         thumbnails = new ThumbnailStore(loaded: Invalidate);
         image = new ReusableBitmap(Graphics);
     }
@@ -37,7 +39,11 @@ internal sealed class PreviewWindow : PopupWindow
         const int PointerOffset = 18;
         var x = pointer.X + PointerOffset;
         var y = pointer.Y + PointerOffset;
-        var position = Monitors.ClampToWorkArea(x, y, width, height, Program.MonitorName);
+        var workArea = Monitors.FindWorkArea(Program.MonitorName) ?? Monitors.GetWorkArea(pointer);
+        if (x + width > workArea.Right) x = pointer.X - PointerOffset - width;
+        if (y + height > workArea.Bottom) y = pointer.Y - PointerOffset - height;
+
+        var position = Monitors.ClampToWorkArea(x, y, width, height, workArea);
         var flags = Win32.SwpNoActivate | Win32.SwpFrameChanged;
         Win32.SetWindowPos(Handle, insertAfter: 0, position.X, position.Y, width, height, flags);
 
@@ -98,7 +104,10 @@ internal sealed class PreviewWindow : PopupWindow
         if (!showPending || loadedSource != source) return;
 
         showPending = false;
-        if (image.Bitmap != null) Show();
+        if (image.Bitmap == null) return;
+
+        beforeShow(this);
+        Show();
     }
 
     protected override void Draw(SizeF size)

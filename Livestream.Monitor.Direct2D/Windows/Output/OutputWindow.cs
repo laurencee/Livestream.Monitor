@@ -41,6 +41,7 @@ internal sealed class OutputWindow : CanvasWindow
 
     // The WPF limits alone, which bound the size the output asks for whatever the app's size.
     private static readonly SizeF WpfMaximumSize = MaximumSize(new SizeF(float.MaxValue, float.MaxValue));
+    private readonly nint textHost;
     private readonly nint text;
     private readonly nint owner;
     private readonly string title;
@@ -66,7 +67,7 @@ internal sealed class OutputWindow : CanvasWindow
         NativeLibrary.Load(library);
     }
 
-    public OutputWindow(
+    public unsafe OutputWindow(
         nint owner,
         string title,
         ISettingsHandler settings,
@@ -80,11 +81,24 @@ internal sealed class OutputWindow : CanvasWindow
         var windowStyle = Win32.GetWindowLongPtr(Handle, Win32.GwlStyle);
         windowStyle &= ~(nint)(Win32.WsThickFrame | Win32.WsMinimizeBox);
 
-        // Rich Edit paints into the parent surface. Clip the composed frame around the fixed output viewport.
-        windowStyle |= (nint)Win32.WsClipChildren;
         Win32.SetWindowLongPtr(Handle, Win32.GwlStyle, windowStyle);
-        var style = Win32.EsMultiLine | Win32.EsReadOnly;
-        text = Control(className: "RICHEDIT50W", text: "", bounds: Rectangle.Empty, style: style);
+
+        // Rich Edit paints into a native parent surface. Its host layers that surface over the intact frame.
+        try
+        {
+            textHost = Control(className: "STATIC", text: "", bounds: Rectangle.Empty, style: Win32.WsClipChildren);
+            if (!Win32.SetWindowSubclass(window: textHost, procedure: &TextHostProcedure, id: 0, data: (nuint)Handle))
+                throw new InvalidOperationException("Could not route Rich Edit notifications through its host.");
+
+            var style = Win32.EsMultiLine | Win32.EsReadOnly;
+            text = Control(className: "RICHEDIT50W", text: "", bounds: Rectangle.Empty, style: style, parent: textHost);
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
+
         const uint SetTextMode = 0x0459;
         const uint PlainText = 1;
         Win32.SendMessage(text, SetTextMode, PlainText, lParam: 0);
@@ -162,7 +176,8 @@ internal sealed class OutputWindow : CanvasWindow
 
     private void ShowOutput()
     {
-        if (!IsVisible)
+        var wasVisible = IsVisible;
+        if (!wasVisible)
         {
             var dpi = Win32.GetDpiForWindow(Handle);
             CenterOnOwner(owner);
@@ -173,6 +188,11 @@ internal sealed class OutputWindow : CanvasWindow
 
         Show();
         Activate();
+        if (!wasVisible)
+        {
+            Win32.InvalidateRect(text, 0, true);
+            Win32.UpdateWindow(text);
+        }
     }
 
     // Activates the window and draws it again at once, so it shows its active chrome rather than the inactive frame it
@@ -283,6 +303,21 @@ internal sealed class OutputWindow : CanvasWindow
     protected override void RequestClose() => Dismiss();
 
     protected override void OnClosed() => Dismissed?.Invoke();
+
+    [UnmanagedCallersOnly]
+    private static unsafe nint TextHostProcedure(
+        nint window,
+        uint message,
+        nuint wParam,
+        nint lParam,
+        nuint id,
+        nuint owner)
+    {
+        if (message is Win32.WmNotify or Win32.WmCommand) return Win32.SendMessage((nint)owner, message, wParam, lParam);
+        if (message == Win32.WmNonClientDestroy) Win32.RemoveWindowSubclass(window, &TextHostProcedure, id);
+
+        return Win32.DefSubclassProc(window, message, wParam, lParam);
+    }
 
     protected override unsafe nint? OnMessage(uint message, nuint wParam, nint lParam)
     {
@@ -474,7 +509,9 @@ internal sealed class OutputWindow : CanvasWindow
 
         var inner = RectangleF.Inflate(bounds, -TextInset, -TextInset);
         inner.Width = Math.Max(1, inner.Width - OutputScrollbar.Width);
-        PlaceInput(text, inner, visible: true, enabled: true);
+        PlaceInput(textHost, inner, visible: true, enabled: true);
+        var textBounds = new RectangleF(PointF.Empty, inner.Size);
+        PlaceInput(text, textBounds, visible: true, enabled: true);
         return bounds;
     }
 

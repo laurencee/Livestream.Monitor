@@ -37,6 +37,7 @@ internal static unsafe partial class Win32
     public const uint WmGetObject = 0x003D;
     public const uint WmNotify = 0x004E;
     public const uint WmContextMenu = 0x007B;
+    public const uint WmNonClientDestroy = 0x0082;
     public const uint WmNonClientCalculate = 0x0083;
     public const uint WmNonClientHitTest = 0x0084;
     public const uint WmKeyDown = 0x0100;

@@ -35,24 +35,6 @@ internal static class Monitors
         return foundWorkArea;
     }
 
-    /// <summary>
-    /// Keeps a window inside a work area: the named monitor's while it is attached, else that of the monitor under
-    /// the window's centre.
-    /// </summary>
-    public static (int X, int Y) ClampToWorkArea(
-        double preferredX,
-        double preferredY,
-        int width,
-        int height,
-        string? monitor = null)
-    {
-        var center = new Win32.Point
-        { X = ToDevicePixel(preferredX + width / 2d), Y = ToDevicePixel(preferredY + height / 2d) };
-
-        var workArea = FindWorkArea(monitor) ?? GetWorkArea(center);
-        return ClampToWorkArea(preferredX, preferredY, width, height, workArea);
-    }
-
     public static (int X, int Y) ClampToWorkArea(
         double preferredX,
         double preferredY,

@@ -142,15 +142,45 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
         foreach (var input in inputs.Values)
         {
-            var visible = input is { Visible: true, ShowPlaceholder: false } &&
-                          (menu == null || !input.Bounds.IntersectsWith(menu.Bounds));
-
             var inner = InputBounds(input.Bounds);
-            owner.PlaceInput(input.Handle, inner, visible, input.Enabled);
+            owner.PlaceInput(input.Handle, inner, ShowsNativeInput(input), input.Enabled);
         }
 
         Volatile.Write(ref automationTree, new AutomationTree(automation.ToArray()));
     }
+
+    internal float FindYClearOfNativeInputs(RectangleF bounds, float top, float bottom)
+    {
+        var lowerY = MovePastInputs(below: true);
+        if (lowerY + bounds.Height <= bottom) return lowerY;
+
+        var above = MovePastInputs(below: false);
+        return above >= top ? above : bounds.Y;
+
+        float MovePastInputs(bool below)
+        {
+            var candidate = bounds;
+            bool moved;
+            do
+            {
+                moved = false;
+                foreach (var input in inputs.Values)
+                {
+                    if (!ShowsNativeInput(input) || !candidate.IntersectsWith(input.Bounds)) continue;
+                    var nextY = below ? input.Bounds.Bottom : input.Bounds.Top - candidate.Height;
+                    if (below ? nextY <= candidate.Y : nextY >= candidate.Y) continue;
+
+                    candidate.Y = nextY;
+                    moved = true;
+                }
+            } while (moved);
+
+            return candidate.Y;
+        }
+    }
+
+    private bool ShowsNativeInput(TextInput input) =>
+        input is { Visible: true, ShowPlaceholder: false } && (menu == null || !input.Bounds.IntersectsWith(menu.Bounds));
 
     /// <summary>Starts a group, such as a list row or tile, whose elements become its automation children.</summary>
     public void BeginGroup(

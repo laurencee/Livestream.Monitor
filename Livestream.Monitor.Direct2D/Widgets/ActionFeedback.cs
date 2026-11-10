@@ -50,6 +50,7 @@ internal sealed class ActionFeedback
             width: width,
             height: height);
 
+        bounds.Y = ui.FindYClearOfNativeInputs(bounds, viewport.Top + Margin, viewport.Bottom - Margin);
         ui.Fill(bounds, Fade(ui.Palette.Panel), CornerRadius);
         ui.Border(bounds, Fade(ui.Palette.Border), radius: CornerRadius);
 

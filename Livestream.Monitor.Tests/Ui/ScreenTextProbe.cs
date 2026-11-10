@@ -15,6 +15,14 @@ internal static class ScreenTextProbe
             if ((Win32.GetWindowLongPtr(edit, Win32.GwlStyle) & Win32.EsReadOnly) != 0 && Win32.IsWindowVisible(edit))
                 return edit;
 
+        nint child = 0;
+        while ((child = FindWindowEx(parent, child, null, null)) != 0)
+        {
+            if (!Win32.IsWindowVisible(child)) continue;
+            edit = FindVisibleReadOnlyEdit(child, className);
+            if (edit != 0) return edit;
+        }
+
         return 0;
     }
 

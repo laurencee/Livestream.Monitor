@@ -261,6 +261,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     }
 
     protected override RectangleF? CoveredArea(SizeF size) => settingsPane == null ? null : SettingsBounds(size);
+
+    protected override Rectangle ToolTipObstacle =>
+        preview != null && Win32.IsWindowVisible(preview.Handle) ? PreviewBounds(preview) : Rectangle.Empty;
+
+    private static Rectangle PreviewBounds(PreviewWindow popup) =>
+        Win32.GetWindowRect(popup.Handle, out var bounds)
+            ? Rectangle.FromLTRB(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom)
+            : Rectangle.Empty;
+
     private RectangleF SettingsBounds(SizeF size)
     {
         var left = size.Width - SettingsWidth * settingsSlide.VisibleFraction;
@@ -325,13 +334,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (state.Busy) Ui.Fill(new RectangleF(x: 1, y: TitleHeight, width: size.Width - 2, height: 2), palette.Accent);
 
+        if (settingsPane != null)
+        {
+            Ui.Overlay();
+            settingsPane.Draw(Ui, SettingsBounds(size));
+        }
+
         var feedbackArea = new RectangleF(PointF.Empty, size);
         actionFeedback.Draw(Ui, feedbackArea);
-
-        if (settingsPane == null) return;
-
-        Ui.Overlay();
-        settingsPane.Draw(Ui, SettingsBounds(size));
     }
 
     private void DrawFollowedToolbar(float width)
@@ -1390,7 +1400,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (string.IsNullOrWhiteSpace(url)) return;
 
-        preview ??= new PreviewWindow(Handle);
+        preview ??= new PreviewWindow(Handle, popup => UpdateToolTip(PreviewBounds(popup)));
         preview.Display(url, screen);
         previewDue = long.MaxValue;
     }

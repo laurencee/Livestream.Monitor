@@ -30,7 +30,7 @@ internal sealed class ToolTipWindow : PopupWindow
 
     protected override uint? WindowBorderColor => ThemeSource().ToolTipBorder;
 
-    public void Display(string value, Win32.Point pointer)
+    public void Display(string value, Win32.Point pointer, Rectangle obstacle)
     {
         if (text != value)
         {
@@ -55,6 +55,35 @@ internal sealed class ToolTipWindow : PopupWindow
         var y = pointer.Y + PointerOffset;
         if (y + height > workArea.Bottom) y = pointer.Y - 1 - height;
         y = Math.Clamp(y, workArea.Top, workArea.Bottom - height);
+
+        if (obstacle.IntersectsWith(new Rectangle(x, y, width, height)))
+        {
+            // A clear placement lies on one side of each obstacle. Test their edges and the original anchor.
+            Span<int> xPositions = [x, obstacle.Left - width, obstacle.Right, pointer.X - width, pointer.X + 1];
+            Span<int> yPositions = [y, obstacle.Top - height, obstacle.Bottom, pointer.Y - height, pointer.Y + 1];
+            var best = new Rectangle(x, y, width, height);
+            var bestDistance = long.MaxValue;
+            var bestCoversPointer = true;
+            foreach (var candidateX in xPositions)
+            foreach (var candidateY in yPositions)
+            {
+                var left = Math.Clamp(candidateX, workArea.Left, workArea.Right - width);
+                var top = Math.Clamp(candidateY, workArea.Top, workArea.Bottom - height);
+                var candidate = new Rectangle(left, top, width, height);
+                if (candidate.IntersectsWith(obstacle)) continue;
+
+                var coversPointer = candidate.Contains(pointer.X, pointer.Y);
+                var distance = Math.Abs((long)left - x) + Math.Abs((long)top - y);
+                if (coversPointer == bestCoversPointer ? distance >= bestDistance : coversPointer) continue;
+
+                best = candidate;
+                bestDistance = distance;
+                bestCoversPointer = coversPointer;
+            }
+
+            x = best.X;
+            y = best.Y;
+        }
 
         const uint ShowFlags = Win32.SwpNoActivate | Win32.SwpFrameChanged;
         nint topmost = -1;

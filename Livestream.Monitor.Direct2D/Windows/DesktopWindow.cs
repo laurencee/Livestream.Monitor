@@ -38,7 +38,7 @@ internal abstract class DesktopWindow : IDisposable
     private readonly HashSet<nint> marginlessControls = [];
 
     // Child control changes can reach the screen before the frame they're drawn for.
-    // Wait for that frame before showing controls or revealing what's underneath them.
+    // Defer showing new controls and destroying retired controls until after the frame.
     private readonly HashSet<nint> controlsToShow = [];
     private readonly HashSet<nint> controlsToHide = [];
     private readonly HashSet<nint> controlsToDestroy = [];
@@ -256,7 +256,7 @@ internal abstract class DesktopWindow : IDisposable
         return control;
     }
 
-    /// <summary>Hides the control after the next frame, unless it is placed visible again first.</summary>
+    /// <summary>Hides the control before submitting the next frame, unless it is placed visible again first.</summary>
     internal void HideControl(nint control)
     {
         controlsToShow.Remove(control);
@@ -315,16 +315,23 @@ internal abstract class DesktopWindow : IDisposable
         if (shown) Win32.ShowWindow(input, Win32.SwHide);
     }
 
-    /// <summary>Waits for the frame, then applies queued control visibility changes and destruction.</summary>
+    /// <summary>Hides retired native text before submitting the replacement frame.</summary>
+    protected void HideRetiredControls()
+    {
+        foreach (var control in controlsToHide) Win32.ShowWindow(control, Win32.SwHide);
+        foreach (var control in controlsToDestroy) Win32.ShowWindow(control, Win32.SwHide);
+        controlsToHide.Clear();
+    }
+
+    /// <summary>Waits for the frame, then shows newly placed controls and destroys retired controls.</summary>
     internal void UpdatePlacedControls()
     {
-        if (controlsToShow.Count == 0 && controlsToHide.Count == 0 && controlsToDestroy.Count == 0) return;
+        if (controlsToShow.Count == 0 && controlsToDestroy.Count == 0) return;
 
         // Still update the controls if DwmFlush fails.
         Win32.DwmFlush();
 
         foreach (var control in controlsToShow) Win32.ShowWindow(control, Win32.SwShowNoActivate);
-        foreach (var control in controlsToHide) Win32.ShowWindow(control, Win32.SwHide);
 
         foreach (var control in controlsToDestroy)
         {
@@ -335,7 +342,6 @@ internal abstract class DesktopWindow : IDisposable
         }
 
         controlsToShow.Clear();
-        controlsToHide.Clear();
         controlsToDestroy.Clear();
     }
 
@@ -379,12 +385,13 @@ internal abstract class DesktopWindow : IDisposable
         Rectangle bounds,
         uint style,
         Action<int>? command = null,
-        float fontSize = ControlFontSize)
+        float fontSize = ControlFontSize,
+        nint parent = 0)
     {
         // Rich Edit keeps its original wrap width if created hidden.
         // Create it visible while the parent is hidden so it can't appear ahead of the frame.
         var visibility = IsVisible ? 0 : Win32.WsVisible;
-        var layered = (Win32.GetWindowLongPtr(Handle, Win32.GwlStyle) & Win32.WsClipChildren) == 0;
+        var layered = parent == 0;
 
         var id = nextControlId++;
         var control = Win32.CreateWindowEx(
@@ -396,7 +403,7 @@ internal abstract class DesktopWindow : IDisposable
             y: (int)(bounds.Y * Scale),
             width: (int)(bounds.Width * Scale),
             height: (int)(bounds.Height * Scale),
-            parent: Handle,
+            parent: layered ? Handle : parent,
             menu: id,
             instance: Win32.GetModuleHandle(0),
             parameter: 0);
