@@ -5,6 +5,7 @@ using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core.Utility;
+using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Rendering;
 using Livestream.Monitor.Direct2D.Widgets;
 
@@ -32,11 +33,15 @@ internal sealed class SettingsPane
     private const float GroupInputSpacing = 2;
     private const float GroupBorderThickness = 0.5f;
     private const float GroupBorderOpacity = 0.4f;
-    private const float ScrollbarSpace = 6;
+    private const float ScrollbarSpace = VerticalScrollBar.Width + 2;
     private const float SectionGap = 10;
-    private const float ScrollStep = 36;
+    private const int ScrollStep = 36;
     private const int MaximumViewerDigits = 7;
+    private const int TwitchSectionIndex = 1;
+    private const int KickSectionIndex = 2;
+    private const int YouTubeSectionIndex = 3;
     private const int StreamNotificationsSectionIndex = 5;
+    private const string MinimumViewersId = "settings.minimum";
     private static readonly string[] BaseNames = ["Base Light", "Base Dark"];
     private static readonly MetroThemeAccentColour[] Accents = Enum.GetValues<MetroThemeAccentColour>();
     private static readonly string[] AccentNames = Enum.GetNames<MetroThemeAccentColour>();
@@ -49,10 +54,13 @@ internal sealed class SettingsPane
     private readonly Dictionary<string, PathState> paths = new(StringComparer.Ordinal);
     private readonly bool[] expanded = [true, false, false, false, false, false];
     private readonly StreamQualityPane streamQualities;
-    private float scroll;
-    private float maximumScroll;
+    private int scroll;
+    private int maximumScroll;
     private string minimumViewersText;
     private bool validMinimumViewers = true;
+    private string? revealInput;
+    private RectangleF? revealBounds;
+    private string? focusRevealedInput;
 
     public SettingsPane(
         ISettingsHandler handler,
@@ -68,8 +76,10 @@ internal sealed class SettingsPane
         draft = new Settings();
         CopyEditable(handler.Settings, draft);
         minimumViewersText = draft.MinimumEventViewers.ToString(CultureInfo.InvariantCulture);
+        ScrollBar = new VerticalScrollBar(SetScroll);
     }
 
+    public VerticalScrollBar ScrollBar { get; }
     public bool HasQualityChanges => streamQualities.HasChanges;
 
     public void DiscardQualityChanges(SurfaceUi ui) => streamQualities.Revert(ui);
@@ -103,28 +113,30 @@ internal sealed class SettingsPane
         DrawExpander(ui, body, ref y, index: StreamNotificationsSectionIndex, title: "Stream Notifications");
         if (expanded[StreamNotificationsSectionIndex]) DrawStreamNotifications(ui, body, ref y);
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: 1, title: "Twitch");
-        if (expanded[1]) DrawPlatform(ui, body, ref y, name: "Twitch", draft.Twitch);
+        DrawExpander(ui, body, ref y, index: TwitchSectionIndex, title: "Twitch");
+        if (expanded[TwitchSectionIndex]) DrawPlatform(ui, body, ref y, name: "Twitch", draft.Twitch);
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: 2, title: "Kick");
-        if (expanded[2]) DrawPlatform(ui, body, ref y, name: "Kick", draft.Kick);
+        DrawExpander(ui, body, ref y, index: KickSectionIndex, title: "Kick");
+        if (expanded[KickSectionIndex]) DrawPlatform(ui, body, ref y, name: "Kick", draft.Kick);
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: 3, title: "YouTube");
-        if (expanded[3]) DrawPlatform(ui, body, ref y, name: "YouTube", draft.YouTube);
+        DrawExpander(ui, body, ref y, index: YouTubeSectionIndex, title: "YouTube");
+        if (expanded[YouTubeSectionIndex]) DrawPlatform(ui, body, ref y, name: "YouTube", draft.YouTube);
         y += SectionGap;
         DrawExpander(ui, body, ref y, index: 4, title: "Stream quality");
         if (expanded[4]) streamQualities.Draw(ui, body with { Width = body.Width - ScrollbarSpace }, ref y);
         ui.PopClip();
 
-        maximumScroll = Math.Max(0, y + scroll - body.Bottom);
+        var viewport = (int)body.Height;
+        var extent = (int)MathF.Ceiling(y + scroll - body.Top);
+        maximumScroll = Math.Max(0, extent - viewport);
 
-        if (scroll > maximumScroll)
-        {
-            scroll = maximumScroll;
-            ui.Invalidate?.Invoke();
-        }
+        RevealInvalidInput(ui, body);
 
-        DrawScrollbar(ui, body);
+        var barBounds = body with { X = body.Right - VerticalScrollBar.Width, Width = VerticalScrollBar.Width };
+        var scrollbarExtent = viewport >= VerticalScrollBar.MinimumDraggableHeight ? extent : viewport;
+        ScrollBar.Update(area: barBounds, extent: scrollbarExtent, viewport, offset: scroll, lineSize: ScrollStep);
+        ScrollBar.Draw(ui, automationPrefix: "settings");
+
         var footerTop = bounds.Bottom - FooterHeight;
         var divider = body with { Y = footerTop, Height = FooterDividerHeight };
         ui.Fill(divider, ui.Palette.Border);
@@ -136,11 +148,98 @@ internal sealed class SettingsPane
             height: SaveButtonHeight
         );
 
-        var canSave = CanSave();
-        ui.Button(id: "settings.save", text: "Save", bounds: saveBounds, action: Save, enabled: canSave);
+        var otherChanges = !EditableMatch(draft, handler.Settings);
+        var hasChanges = HasChanges(otherChanges);
+        var invalidField = hasChanges ? FindInvalidField(otherChanges) : null;
+        var canSave = hasChanges && invalidField == null;
+        if (invalidField is { } field)
+        {
+            const float ErrorButtonWidth = 105;
+            const float ButtonGap = 6;
+            var errorBounds = saveBounds with { X = saveBounds.Right - ErrorButtonWidth, Width = ErrorButtonWidth };
+            saveBounds.Width -= ErrorButtonWidth + ButtonGap;
+            ui.Button(
+                id: "settings.showerror",
+                text: "Show error",
+                bounds: errorBounds,
+                action: () => Reveal(field),
+                accent: true,
+                toolTip: "Show the field blocking Save"
+            );
+        }
+
+        ui.Button(id: "settings.save", text: "Save", bounds: saveBounds, action: Save, enabled: canSave, accent: canSave);
     }
 
-    public void Scroll(int steps) => scroll = Math.Clamp(scroll - steps * ScrollStep, 0, maximumScroll);
+    public void Scroll(int steps) => SetScroll(Math.Clamp(scroll - steps * ScrollStep, 0, maximumScroll));
+
+    public bool ScrollWithKey(int key)
+    {
+        var pageHeight = (int)ScrollBar.Bounds.Height;
+        var next = key switch
+        {
+            VirtualKey.PageUp => Math.Max(0, scroll - pageHeight),
+            VirtualKey.PageDown => Math.Min(maximumScroll, scroll + pageHeight),
+            VirtualKey.Home => 0,
+            VirtualKey.End => maximumScroll,
+            _ => scroll,
+        };
+
+        if (next == scroll) return false;
+
+        SetScroll(next);
+        return true;
+    }
+
+    private void SetScroll(int offset)
+    {
+        if (offset == scroll) return;
+
+        scroll = offset;
+        revealInput = null;
+        focusRevealedInput = null;
+    }
+
+    public void FocusRevealedInput(SurfaceUi ui)
+    {
+        if (focusRevealedInput is not { } id) return;
+
+        focusRevealedInput = null;
+        ui.FocusVisibleInput(id);
+    }
+
+    private void Reveal(InvalidField field)
+    {
+        expanded[field.SectionIndex] = true;
+        revealInput = field.Id;
+    }
+
+    private void RevealInvalidInput(SurfaceUi ui, RectangleF body)
+    {
+        var nextScroll = Math.Min(scroll, maximumScroll);
+        if (revealBounds is { } target)
+        {
+            if (!body.Contains(target))
+            {
+                var topMargin = Math.Max(0, (body.Height - target.Height) / 2);
+                var offset = target.Top - body.Top - topMargin;
+                nextScroll = Math.Clamp(scroll + (int)MathF.Round(offset), 0, maximumScroll);
+            }
+
+            if (nextScroll == scroll && body.Contains(target))
+            {
+                focusRevealedInput = revealInput;
+                ui.Invalidate?.Invoke();
+            }
+        }
+
+        if (nextScroll == scroll || revealBounds == null) revealInput = null;
+        revealBounds = null;
+        if (nextScroll == scroll) return;
+
+        scroll = nextScroll;
+        ui.Invalidate?.Invoke();
+    }
 
     private void DrawGeneral(SurfaceUi ui, RectangleF body, ref float y)
     {
@@ -234,16 +333,25 @@ internal sealed class SettingsPane
             "This helps you not miss out on special events or popular streams.";
 
         ui.ToolTip(id: "settings.minimum.label", label, MinimumToolTip);
-        DrawInput(
+        var inputBounds = DrawInput(
             ui,
             minimumBody,
             ref y,
-            id: "settings.minimum",
+            id: MinimumViewersId,
             minimumViewersText,
             placeholder: "",
             MinimumChanged,
             spacing: GroupInputSpacing,
             toolTip: MinimumToolTip);
+
+        if (!validMinimumViewers)
+        {
+            const string ErrorMessage = "Enter a viewer threshold, or 0 to turn it off.";
+            var errorColor = InvalidFieldColor(ui.Palette);
+            var error = DrawTextRow(ui: ui, text: ErrorMessage, body: minimumBody, y: ref y, spacing: GroupInputSpacing, color: errorColor);
+            MarkInvalidInput(ui: ui, id: MinimumViewersId, inputBounds: inputBounds, statusBounds: error, viewportHeight: body.Height);
+        }
+
         EndGroup(ui, body, minimumTop, ref y);
 
         var checkboxesTop = y;
@@ -319,7 +427,7 @@ internal sealed class SettingsPane
         {
             if (value.Length > MaximumViewerDigits || value.Any(character => !char.IsAsciiDigit(character)))
             {
-                ui.SetValue("settings.minimum", minimumViewersText);
+                ui.SetValue(MinimumViewersId, minimumViewersText);
                 return;
             }
 
@@ -396,11 +504,12 @@ internal sealed class SettingsPane
         var pathTop = y;
         var pathBody = BeginGroup(body, ref y);
         DrawTextRow(ui, text: "File path", pathBody, ref y, spacing: LabelSpacing);
-        DrawInput(
+        var pathId = id + ".path";
+        var inputBounds = DrawInput(
             ui,
             pathBody,
             ref y,
-            id + ".path",
+            pathId,
             command.FilePath,
             "",
             value => command.FilePath = value,
@@ -409,11 +518,10 @@ internal sealed class SettingsPane
         );
 
         var state = ResolvePath(command.FilePath);
-        const uint ValidPathColor = 0xFF008000;
-        const uint InvalidPathColor = 0xFFCD5C5C;
-        var statusColor = state.Valid ? ValidPathColor : InvalidPathColor;
+        var statusColor = state.Valid ? ui.Palette.Text : InvalidFieldColor(ui.Palette);
         const float HintFontSize = 11;
-        DrawTextRow(ui, state.Message, pathBody, ref y, spacing: GroupInputSpacing, color: statusColor, size: HintFontSize);
+        var status = DrawTextRow(ui, state.Message, pathBody, ref y, spacing: GroupInputSpacing, color: statusColor, size: HintFontSize);
+        if (!state.Valid) MarkInvalidInput(ui: ui, id: pathId, inputBounds: inputBounds, statusBounds: status, viewportHeight: body.Height);
         EndGroup(ui, body, pathTop, ref y);
 
         var argsTop = y;
@@ -498,7 +606,7 @@ internal sealed class SettingsPane
         if (expanded[index]) y += GroupGap;
     }
 
-    private void DrawInput(
+    private RectangleF DrawInput(
         SurfaceUi ui,
         RectangleF body,
         ref float y,
@@ -513,6 +621,7 @@ internal sealed class SettingsPane
         y += spacing;
         if (seededInputs.Add(id)) ui.SetValue(id, value ?? "");
         ui.Input(id, placeholder, bounds, changed, toolTip: toolTip);
+        return bounds;
     }
 
     private static void DrawCheck(
@@ -552,26 +661,25 @@ internal sealed class SettingsPane
         return ui.TextRow(text, content, ref y, spacing, color, size, weight);
     }
 
-    private void DrawScrollbar(SurfaceUi ui, RectangleF body)
+    private void MarkInvalidInput(
+        SurfaceUi ui,
+        string id,
+        RectangleF inputBounds,
+        RectangleF statusBounds,
+        float viewportHeight)
     {
-        if (maximumScroll <= 0 || body.Height <= 0) return;
+        ui.Border(RectangleF.Inflate(inputBounds, -1, -1), InvalidFieldColor(ui.Palette));
+        if (revealInput != id) return;
 
-        const float MinimumThumbHeight = 24;
-        const float ScrollbarWidth = 4;
-        var height = Math.Max(MinimumThumbHeight, body.Height * body.Height / (body.Height + maximumScroll));
-        var top = body.Y + (body.Height - height) * scroll / maximumScroll;
-        var thumb = new RectangleF(x: body.Right - ScrollbarWidth, y: top, width: ScrollbarWidth, height: height);
-        ui.Fill(thumb, ui.Palette.MutedText);
-        var up = new RectangleF(x: body.Right - ScrollbarWidth, y: body.Y, width: ScrollbarWidth, height: top - body.Y);
-        var down = new RectangleF(
-            x: body.Right - ScrollbarWidth,
-            y: thumb.Bottom,
-            width: ScrollbarWidth,
-            height: body.Bottom - thumb.Bottom
-        );
+        var target = RectangleF.Union(inputBounds, statusBounds);
+        revealBounds = target.Height <= viewportHeight ? target : inputBounds;
+    }
 
-        ui.Hit(id: "settings.scrollup", bounds: up, action: () => Scroll(1), name: "Scroll up");
-        ui.Hit(id: "settings.scrolldown", bounds: down, action: () => Scroll(-1), name: "Scroll down");
+    private static uint InvalidFieldColor(ThemePalette palette)
+    {
+        const uint DarkThemeError = 0xFFFFADAD;
+        const uint LightThemeError = 0xFFB00020;
+        return palette.IsDark ? DarkThemeError : LightThemeError;
     }
 
     private void SetBaseTheme(int index)
@@ -589,14 +697,11 @@ internal sealed class SettingsPane
         saved?.Invoke();
     }
 
-    private bool CanSave()
+    private bool HasChanges(bool otherChanges)
     {
-        if (!validMinimumViewers) return false;
-
         var current = handler.Settings;
-        if (!EditableMatch(draft, current)) return Valid(draft.Twitch) && Valid(draft.Kick) && Valid(draft.YouTube);
-
-        return draft.BringToForegroundOnStreamOnline != current.BringToForegroundOnStreamOnline ||
+        return otherChanges || !validMinimumViewers ||
+               draft.BringToForegroundOnStreamOnline != current.BringToForegroundOnStreamOnline ||
                draft.StreamNotificationImage != current.StreamNotificationImage ||
                draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners ||
                streamQualities.HasChanges;
@@ -604,9 +709,9 @@ internal sealed class SettingsPane
 
     private void Save()
     {
-        if (!CanSave()) return;
-
         var otherChanges = !EditableMatch(draft, handler.Settings);
+        if (!HasChanges(otherChanges) || FindInvalidField(otherChanges) != null) return;
+
         if (otherChanges) CopyEditable(draft, handler.Settings);
         else
         {
@@ -669,10 +774,24 @@ internal sealed class SettingsPane
         }
     }
 
-    private bool Valid(ApiPlatformSettings platform) =>
-        ResolvePath(platform.StreamCommand.FilePath).Valid &&
-        ResolvePath(platform.VodCommand.FilePath).Valid &&
-        ResolvePath(platform.ChatCommand.FilePath).Valid;
+    private InvalidField? FindInvalidField(bool otherChanges)
+    {
+        if (!validMinimumViewers) return new InvalidField(MinimumViewersId, StreamNotificationsSectionIndex);
+        if (!otherChanges) return null;
+
+        return FindInvalidPath(draft.Twitch, "Twitch", TwitchSectionIndex) ??
+               FindInvalidPath(draft.Kick, "Kick", KickSectionIndex) ??
+               FindInvalidPath(draft.YouTube, "YouTube", YouTubeSectionIndex);
+
+        InvalidField? FindInvalidPath(ApiPlatformSettings platform, string name, int sectionIndex)
+        {
+            if (!ResolvePath(platform.StreamCommand.FilePath).Valid) return new InvalidField(name + ".stream.path", sectionIndex);
+            if (!ResolvePath(platform.VodCommand.FilePath).Valid) return new InvalidField(name + ".vod.path", sectionIndex);
+            if (!ResolvePath(platform.ChatCommand.FilePath).Valid) return new InvalidField(name + ".chat.path", sectionIndex);
+
+            return null;
+        }
+    }
 
     private PathState ResolvePath(string? path)
     {
@@ -712,5 +831,6 @@ internal sealed class SettingsPane
         target.CaptureErrorOutput = source.CaptureErrorOutput;
     }
 
+    private readonly record struct InvalidField(string Id, int SectionIndex);
     private sealed record PathState(bool Valid, string Message);
 }

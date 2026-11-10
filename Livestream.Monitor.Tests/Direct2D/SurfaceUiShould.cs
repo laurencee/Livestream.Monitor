@@ -168,6 +168,103 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
+    public void RevealAnInvalidPlaybackPathBeforeSavingSettings()
+    {
+        const string InvalidPathId = "YouTube.vod.path";
+        var executable = Assert.IsType<string>(Environment.ProcessPath);
+        var settings = new Settings();
+
+        foreach (var platform in new ApiPlatformSettings[] { settings.Twitch, settings.Kick, settings.YouTube })
+        {
+            platform.StreamCommand.FilePath = executable;
+            platform.VodCommand.FilePath = executable;
+            platform.ChatCommand.FilePath = executable;
+        }
+
+        settings.YouTube.VodCommand.FilePath = "unavailable-vod-player.exe";
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(settings);
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+
+        Draw();
+        ClickWidget("settings.versions");
+        Draw();
+        Assert.Null(ui.Automation.Find(InvalidPathId));
+        Assert.True(ui.Automation.Find("settings.save")?.Has(AutomationStates.Disabled));
+
+        ClickWidget("settings.showerror");
+        Draw();
+        Draw();
+        var input = Assert.IsType<AutomationNode>(ui.Automation.Find(InvalidPathId));
+        var inputFill = Assert.Single(commands, command => command.Kind == DrawKind.Fill && command.Color == palette.Input &&
+            command.Bounds.IntersectsWith(input.Bounds));
+
+        Assert.Equal(inputFill.Bounds, input.Bounds);
+        handler.DidNotReceive().SaveSettings();
+
+        ui.SetValue(InvalidPathId, executable);
+        Draw();
+        ClickWidget("settings.save");
+        handler.Received(1).SaveSettings();
+        Assert.Equal(executable, settings.YouTube.VodCommand.FilePath);
+
+        void Draw()
+        {
+            commands.Clear();
+            ui.Begin(palette, viewport);
+            pane.Draw(ui, viewport);
+            ui.End();
+        }
+    }
+
+    [Fact]
+    public void HideTheSettingsScrollbarWhenItsThumbCannotMove()
+    {
+        const float ShortWindowHeight = 137;
+        var shortViewport = viewport with { Height = ShortWindowHeight };
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(new Settings());
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+
+        ui.Begin(palette, shortViewport);
+        pane.Draw(ui, shortViewport);
+        ui.End();
+
+        Assert.False(pane.ScrollBar.IsVisible);
+    }
+
+    [Fact]
+    public void InvokeAnAutomationOnlyButtonAsLongAsItIsAvailable()
+    {
+        const string ComboId = "combo";
+        const string ButtonId = "automation-only";
+        var comboBounds = new RectangleF(x: 10, y: 10, width: 100, height: 24);
+        var buttonBounds = comboBounds with { X = 200 };
+        var invocations = 0;
+        ui.Begin(palette, viewport);
+        ui.Combo(id: ComboId, text: "Option", choices: ["Option"], selectedIndex: 0, bounds: comboBounds, changed: _ => { });
+        ui.AddAutomationButton(id: ButtonId, name: "Scroll", bounds: buttonBounds, action: Scroll, enabled: true);
+        ui.End();
+
+        var button = Assert.IsType<AutomationNode>(ui.Automation.Find(ButtonId));
+        var invoke = Assert.IsType<Action>(button.Activate);
+        Assert.False(ui.ContainsHit(new PointF(buttonBounds.X + 1, buttonBounds.Y + 1)));
+        ClickWidget(ComboId);
+        Assert.True(ui.HasMenu);
+
+        invoke();
+        Assert.False(ui.HasMenu);
+        Assert.Equal(1, invocations);
+
+        ui.Begin(palette, viewport);
+        ui.End();
+        invoke();
+        Assert.Equal(1, invocations);
+
+        void Scroll() => invocations++;
+    }
+
+    [Fact]
     public void WrapBannerDurationArrowNavigationWithinItsOwnGroup()
     {
         var handler = Substitute.For<ISettingsHandler>();
@@ -404,6 +501,13 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.True(ui.HasMenu);
         Assert.Equal(-1, chosen);
         ui.MouseDown(enabledItem);
+        Assert.False(ui.HasMenu);
+        Assert.Equal(1, chosen);
+
+        chosen = -1;
+        ui.Popup(id: "context", position: new PointF(10, 10), choices, chosen: index => chosen = index);
+        Assert.True(ui.Key(VirtualKey.Down, shift: false));
+        Assert.True(ui.Key(VirtualKey.Enter, shift: false));
         Assert.False(ui.HasMenu);
         Assert.Equal(1, chosen);
     }

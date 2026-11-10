@@ -11,6 +11,7 @@ namespace Livestream.Monitor.Direct2D.Widgets;
 internal sealed class VerticalScrollBar(Action<int> scrollTo)
 {
     public const float Width = 14;
+    public const float MinimumDraggableHeight = ButtonLength * 2 + MinimumThumbLength + 1;
 
     // A 14-pixel arrow button with a 1-pixel vertical margin on each side.
     private const float ButtonLength = 16;
@@ -91,7 +92,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         thumb = new RectangleF(x: area.X + ThumbInset, y: top, width: Width - ThumbInset * 2, height: length);
     }
 
-    public void Draw(SurfaceUi ui)
+    public void Draw(SurfaceUi ui, string? automationPrefix = null)
     {
         if (!IsVisible) return;
 
@@ -105,6 +106,24 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         var overlay = palette.IsDark ? White : Black;
         var opacity = pressed == Part.Thumb ? PressedThumbOpacity : hovered == Part.Thumb ? HoveredThumbOpacity : 0;
         ui.Fill(thumb, Theme.Blend(ThumbColor, overlay, opacity));
+
+        if (automationPrefix != null)
+        {
+            ui.AddAutomationButton(
+                id: automationPrefix + ".scrollup",
+                name: "Scroll up",
+                bounds: up,
+                action: () => Step(Part.LineUp),
+                enabled: position > 0
+            );
+            ui.AddAutomationButton(
+                id: automationPrefix + ".scrolldown",
+                name: "Scroll down",
+                bounds: down,
+                action: () => Step(Part.LineDown),
+                enabled: position < maximum
+            );
+        }
 
         // A held arrow shows pressed only while the pointer is on it, as a WPF repeat button does.
         void Arrow(RectangleF button, Part part, bool pointsUp)

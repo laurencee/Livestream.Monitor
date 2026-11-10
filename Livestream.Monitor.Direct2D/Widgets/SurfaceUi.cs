@@ -40,6 +40,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private string? hovered;
     private string? pressed;
     private string? focused;
+    private bool focusVisible;
     private MenuState? menu;
     private RectangleF viewport;
     private RectangleF? clip;
@@ -56,6 +57,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     /// <summary>True while a widget or text input has keyboard focus, so a list's selection is shown inactive.</summary>
     public bool HasFocusedWidget => focused != null || HasFocusedInput;
+    public bool HasFocusIn(string idPrefix) => focused?.StartsWith(idPrefix, StringComparison.Ordinal) == true;
     public bool HasMenu => menu != null;
 
     /// <summary>The automation tree of the last drawn frame; read by UI Automation from its own threads.</summary>
@@ -432,8 +434,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var labelOffset = Diameter + LabelGap;
         var label = bounds with { X = bounds.X + labelOffset, Width = bounds.Width - labelOffset };
         Label(text, label, size: 14);
+        DrawFocus(id, bounds);
         Add(id, bounds, action: () => setExpanded(!expanded), enabled: true);
-        var states = AutomationStates.Expandable | (expanded ? AutomationStates.Expanded : AutomationStates.None);
+        var states = WidgetStates(id, enabled: true) | AutomationStates.Expandable;
+        if (expanded) states |= AutomationStates.Expanded;
         AddNode(
             id,
             AutomationRole.Button,
@@ -463,7 +467,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string? name = null,
         bool flat = false,
         bool focusable = true,
-        string? symbol = null)
+        string? symbol = null,
+        bool showToolTipWhenDisabled = false)
     {
         const float CornerRadius = 3;
         // Effective light colours after MahApps applies its disabled overlay and content opacity.
@@ -471,15 +476,18 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         const uint LightDisabledButtonBorder = 0xFFE3E3E3;
         const uint LightDisabledButtonText = 0xFFB0B0B0;
         var radius = flat ? 0 : CornerRadius;
-        var over = IsPointerOver(bounds);
+        var over = enabled && IsPointerOver(bounds);
+        var isPressed = enabled && pressed == id;
         var useLightDisabledColours = !enabled && !Palette.IsDark && !chrome && !accent;
         var background = useLightDisabledColours ? LightDisabledButtonBackground
-            : pressed == id ? Palette.Pressed : over ? Palette.Hover : Palette.Control;
-        if (accent) background = over ? Theme.Blend(Palette.Accent, Palette.AccentText, 0.15f) : Palette.Accent;
+            : isPressed ? Palette.Pressed : over ? Palette.Hover : Palette.Control;
+        const float AccentHoverOpacity = 0.15f;
+        if (enabled && accent) background = over ? Theme.Blend(Palette.Accent, Palette.AccentText, AccentHoverOpacity) : Palette.Accent;
 
         if (chrome)
         {
             if (over) Fill(bounds, Theme.Blend(TitleBarColor, Palette.TitleText, 0.18f));
+            if (enabled && focusable) DrawFocus(id, bounds, TitleBarColor);
         }
         else
         {
@@ -499,7 +507,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         const float CommandTextOpacity = 0.5f;
         var commandText = over ? Palette.TitleText : Theme.Blend(TitleBarColor, Palette.TitleText, CommandTextOpacity);
         var color = enabled
-            ? foreground ?? (chrome ? commandText : accent ? Palette.AccentText : Palette.Text)
+            ? foreground ?? (chrome ? commandText : accent ? Theme.ContrastingText(background) : Palette.Text)
             : useLightDisabledColours ? LightDisabledButtonText : Palette.MutedText;
 
         if (symbol != null)
@@ -522,7 +530,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         }
 
         Add(id, bounds, action, enabled, focusable);
-        if (enabled) ToolTip(id, bounds, toolTip);
+        if (enabled || showToolTipWhenDisabled) ToolTip(id, bounds, toolTip);
         var states = WidgetStates(id, enabled) | (focusable ? AutomationStates.None : AutomationStates.Unfocusable);
         AddNode(
             id,
@@ -541,9 +549,24 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action action,
         string name)
     {
+        DrawFocus(id, bounds);
         Add(id, bounds, action, enabled: true);
         var states = WidgetStates(id, enabled: true);
         AddNode(id, AutomationRole.Button, name, bounds, states, activate: () => InvokeWidget(id));
+    }
+
+    public void AddAutomationButton(
+        string id,
+        string name,
+        RectangleF bounds,
+        Action action,
+        bool enabled)
+    {
+        var states = WidgetStates(id, enabled) | AutomationStates.Unfocusable;
+        var index = AddNode(id, AutomationRole.Button, name, bounds, states, activate: () => InvokeWidget(id));
+
+        // The owner handles pointer interaction for this button.
+        if (enabled && index >= 0) widgets.Add(new Widget(Id: id, Bounds: RectangleF.Empty, Action: action, Focusable: false, RadioGroup: null));
     }
 
     public void Check(
@@ -573,6 +596,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
         var textBounds = bounds with { X = bounds.X + 19, Width = bounds.Width - 19 };
         Label(text, textBounds, enabled ? Palette.Text : Palette.ChoiceDisabledText);
+        if (enabled) DrawFocus(id, bounds);
         Add(id, bounds, action: () => changed(!value), enabled);
         if (enabled) ToolTip(id, bounds, toolTip);
         var states = WidgetStates(id, enabled) | (value ? AutomationStates.Checked : AutomationStates.None);
@@ -643,8 +667,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
         // As in WPF, an open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
         var open = menu?.Id == id;
-        var over = IsPointerOver(bounds);
-        var hasFocus = focused == id;
+        var over = enabled && IsPointerOver(bounds);
+        var hasFocus = enabled && focused == id;
         var border = open ? Palette.ComboOpenBorder
             : hasFocus && !Palette.IsDark ? Palette.InputBorderFocus
             : over ? Palette.ComboHoverBorder
@@ -658,6 +682,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var color = enabled ? Palette.Text : Palette.MutedText;
         Label(text, textBounds, color);
         DropDownArrow(arrowBounds, color);
+        if (enabled) DrawFocus(id, bounds);
         var expanded = menu?.Id == id ? AutomationStates.Expanded : AutomationStates.None;
         AddNode(
             id,
@@ -778,8 +803,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             setText: text => SetValue(id, text));
 
         Fill(bounds, Palette.Input);
-        var border = Win32.GetFocus() == input.Handle ? Palette.InputBorderFocus
-            : IsPointerOver(bounds) ? Palette.InputBorderHover
+        var border = enabled && Win32.GetFocus() == input.Handle ? (focusVisible ? Palette.Text : Palette.InputBorderFocus)
+            : enabled && IsPointerOver(bounds) ? Palette.InputBorderHover
             : Palette.InputBorder;
 
         Border(bounds, border);
@@ -837,6 +862,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool MouseDown(PointF position)
     {
         pointer = position;
+        focusVisible = false;
 
         if (menu != null)
         {
@@ -891,6 +917,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             var direction = key is VirtualKey.Left or VirtualKey.Up ? -1 : 1;
             var next = options[(index + direction + options.Length) % options.Length];
             focused = next.Id;
+            focusVisible = true;
             next.Action();
             return true;
         }
@@ -916,14 +943,16 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             }
             else
             {
-                active.Selected = Math.Clamp(
-                    active.Selected + (key == VirtualKey.Up ? -1 : 1),
-                    0,
-                    Math.Max(0, active.Choices.Count - 1)
-                );
+                var direction = key == VirtualKey.Up && active.Selected >= 0 ? -1 : 1;
+                for (var index = active.Selected + direction; index >= 0 && index < active.Choices.Count; index += direction)
+                {
+                    if (!active.Choices[index].Enabled) continue;
 
-                var visible = Math.Max(1, active.VisibleRows);
-                active.Offset = Math.Clamp(active.Offset, Math.Max(0, active.Selected - visible + 1), active.Selected);
+                    active.Selected = index;
+                    var visible = Math.Max(1, active.VisibleRows);
+                    active.Offset = Math.Clamp(active.Offset, Math.Max(0, index - visible + 1), index);
+                    break;
+                }
             }
 
             return true;
@@ -951,6 +980,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
             index = (index + (shift ? count - 1 : 1)) % count;
             focused = stops[index].Id;
+            focusVisible = true;
 
             if (inputs.TryGetValue(focused, out var nextInput)) FocusInput(nextInput);
             else Win32.SetFocus(owner.Handle);
@@ -1040,6 +1070,14 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return focused == id ? states | AutomationStates.Focused : states;
     }
 
+    private void DrawFocus(string id, RectangleF bounds, uint? background = null)
+    {
+        if (!focusVisible || focused != id || !IsWindowActive || Win32.GetFocus() != owner.Handle) return;
+
+        var color = background.HasValue ? Theme.ContrastingText(background.Value) : Palette.Text;
+        Border(RectangleF.Inflate(bounds, -1, -1), color);
+    }
+
     // Records an element for UI Automation and returns its index, or -1 when it is covered or scrolled out of view.
     private int AddNode(
         string automationId,
@@ -1097,11 +1135,17 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public void Focus(string id)
     {
         focused = id;
+        focusVisible = true;
 
         if (inputs.TryGetValue(id, out var input)) FocusInput(input);
         else Win32.SetFocus(owner.Handle);
 
         Invalidate?.Invoke();
+    }
+
+    public void FocusVisibleInput(string id)
+    {
+        if (inputs.TryGetValue(id, out var input) && input is { Visible: true, Enabled: true }) Focus(id);
     }
 
     /// <summary>
@@ -1116,22 +1160,28 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action action,
         string menuId,
         bool enabled = true,
-        string? name = null)
+        string? name = null,
+        string? toolTip = null)
     {
+        if (!enabled) CloseMenu(menuId);
+
         var open = menu?.Id == menuId;
-        var over = IsPointerOver(bounds);
+        var over = enabled && IsPointerOver(bounds);
         var inner = new RectangleF(x: bounds.X, y: bounds.Y + 1, width: bounds.Width - 1, height: bounds.Height - 2);
         Fill(inner, open || over ? Palette.ComboHover : Palette.Input);
         if (open || over) Border(frame, open ? Palette.ComboOpenBorder : Palette.ComboHoverBorder);
 
         DropDownArrow(RectangleF.Inflate(bounds, -3, 0), enabled ? Palette.Text : Palette.MutedText);
+        if (enabled) DrawFocus(id, bounds);
         Add(id, bounds, action, enabled);
+        ToolTip(id, bounds, toolTip);
         AddNode(
             id,
             AutomationRole.Button,
             name ?? "",
             bounds,
             WidgetStates(id, enabled),
+            toolTip,
             activate: () => InvokeWidget(id));
     }
 

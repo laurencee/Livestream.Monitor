@@ -373,6 +373,10 @@ internal static class VirtualKey
     public const int Control = 0x11;
     public const int Escape = 0x1B;
     public const int Space = 0x20;
+    public const int PageUp = 0x21;
+    public const int PageDown = 0x22;
+    public const int End = 0x23;
+    public const int Home = 0x24;
     public const int Left = 0x25;
     public const int Up = 0x26;
     public const int Right = 0x27;

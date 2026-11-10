@@ -291,6 +291,17 @@ public class FrontendShould
     }
 
     [Fact]
+    public void DisableTheKnownChannelPickerWhenThereAreNoFollowedChannels()
+    {
+        using var profile = UiTestProfile.CreateWithoutToken();
+        using var window = FrontendWindow.Launch(FrontendKind.Direct2D, profile);
+        var ids = window.Ids;
+        var vodViewer = window.Element(ids.VodViewer, FrontendWindow.StartupTimeout);
+        FrontendWindow.Invoke(vodViewer);
+        window.WaitUntilDisabled(ids.KnownChannelsOpener);
+    }
+
+    [Fact]
     public void SaveTheTrayPopupOptOutAndUpdateOpenSettings()
     {
         using var profile = UiTestProfile.CreateWithoutToken();

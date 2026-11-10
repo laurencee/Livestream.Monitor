@@ -31,6 +31,7 @@ internal readonly record struct ProgressDialog(string Title, string Message);
 internal sealed class MonitorWindowState : ObservableModel
 {
     private const string RefreshErrorTitle = "Error refreshing livestreams";
+    private const string VodChannelPrompt = "Enter or select a channel to browse VODs";
     private const int DefaultPageSize = 15;
     private readonly IUserDialogs dialogs;
     private readonly Func<string, string, IDisposable>? showProgress;
@@ -126,6 +127,7 @@ internal sealed class MonitorWindowState : ObservableModel
     public bool IsContentLoading { get; private set; } = true;
     internal bool FollowedRowsSettled => StreamsModel.CanRefreshLivestreams || StreamsModel.Livestreams.Count == 0;
     public string Status { get; private set => Set(ref field, value); } = "Initializing…";
+    public bool IsVodChannelPrompt => Page == MonitorPage.Vods && Status == VodChannelPrompt;
     public LivestreamModel? SelectedStream =>
         SelectedIndex >= 0 && SelectedIndex < Rows.Count ? Rows[SelectedIndex] : null;
     public event Action? Changed;
@@ -445,7 +447,7 @@ internal sealed class MonitorWindowState : ObservableModel
             Vods.Clear();
             HasNextPage = false;
             Status = api.HasVodViewerSupport
-                ? "Enter or select a channel to browse VODs."
+                ? VodChannelPrompt
                 : $"{PlatformNames.GetDisplayName(api.ApiName)} does not support VODs.";
 
             Changed?.Invoke();

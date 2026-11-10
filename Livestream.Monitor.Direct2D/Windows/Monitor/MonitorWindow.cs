@@ -194,7 +194,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     public MonitorWindowState State => state;
     protected override bool IsAnimating =>
         base.IsAnimating || settingsSlide.IsAnimating || state.IsContentLoading && !HasDialog ||
-        scrollBar.IsInteracting || actionFeedback.IsVisible;
+        scrollBar.IsInteracting || settingsPane?.ScrollBar.IsInteracting == true || actionFeedback.IsVisible;
     private IApiClient SelectedProvider => GetProviderChoices(state.Page).Selected;
     private int ItemCount => state.Page == MonitorPage.Vods ? state.Vods.Count : state.Rows.Count;
 
@@ -210,8 +210,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         if (settingsSlide is { IsOpen: false, IsAnimating: false }) settingsPane = null;
+        if (!HasDialog && settingsSlide.IsOpen) settingsPane?.FocusRevealedInput(Ui);
         if (state.IsContentLoading && !HasDialog) NeedsPaint = true;
         if (scrollBar.Repeat(now)) NeedsPaint = true;
+        if (settingsPane?.ScrollBar.Repeat(now) == true) NeedsPaint = true;
         if (actionFeedback.Tick(now)) NeedsPaint = true;
         UpdatePreview(now);
 
@@ -271,25 +273,29 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     protected override void Draw(SizeF size)
     {
         DrawCaption(CaptionTitle, size.Width, minimize: true);
+        var canBrowseTop = topStreamProviders.Clients.Length != 0;
         var topBounds = new RectangleF(x: size.Width - TitleCommandsWidth, y: 0, width: 84, height: TitleHeight);
         Ui.Button(
             "top",
             "Top Streams",
             topBounds,
             () => SwitchPage(MonitorPage.TopStreams),
-            enabled: topStreamProviders.Clients.Length != 0,
+            enabled: canBrowseTop,
             chrome: true,
-            toolTip: "Browse top streams"
+            toolTip: canBrowseTop ? "Browse top streams" : "No configured platform supports Top Streams.",
+            showToolTipWhenDisabled: true
         );
+        var canBrowseVods = vodProviders.Clients.Length != 0;
         var vodBounds = new RectangleF(x: size.Width - 208, y: 0, width: 78, height: TitleHeight);
         Ui.Button(
             "vod",
             "VOD browser",
             vodBounds,
             () => SwitchPage(MonitorPage.Vods),
-            enabled: vodProviders.Clients.Length != 0,
+            enabled: canBrowseVods,
             chrome: true,
-            toolTip: "Browse recorded videos"
+            toolTip: canBrowseVods ? "Browse recorded videos" : "No configured platform supports VOD browsing.",
+            showToolTipWhenDisabled: true
         );
         var settingsBounds = new RectangleF(x: size.Width - 129, y: 0, width: 35, height: TitleHeight);
         Ui.Button(
@@ -553,15 +559,19 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             trailing: DropDownArrowWidth
         );
         var channelsBounds = channelBounds with { X = channelBounds.Right - DropDownArrowWidth, Width = DropDownArrowWidth };
+        var provider = SelectedProvider;
+        var hasKnownChannels = state.StreamsModel.Livestreams.Any(stream => stream.ApiClient == provider);
         Ui.DropDownButton(
             id: "vod.channels",
             bounds: channelsBounds,
             frame: channelBounds,
             action: ShowKnownStreams,
             menuId: "vod.known",
-            name: "Known channels"
+            enabled: hasKnownChannels,
+            name: "Known channels",
+            toolTip: hasKnownChannels ? null : "No followed channels for this platform"
         );
-        var types = SelectedProvider.VodTypes;
+        var types = provider.VodTypes;
         var type = types.Count == 0 ? "" : types[Math.Clamp(vodTypeIndex, 0, types.Count - 1)];
         var typeBounds = new RectangleF(x: 319, y: Y, width: 100, height: Height);
         Ui.Combo(
@@ -908,16 +918,41 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void DrawFooter(SizeF size)
     {
+        const float StatusTextSize = 11;
         var y = size.Height - FooterHeight;
         var status = state.Status;
         var statusBounds = new RectangleF(x: 10, y: y, width: size.Width - 270, height: FooterHeight);
-        Ui.Text(status, statusBounds, palette.MutedText, size: 11);
+        var isVodChannelPrompt = state.IsVodChannelPrompt;
+        var statusTextBounds = statusBounds;
+        if (isVodChannelPrompt)
+        {
+            var promptLeft = size.Width - statusBounds.Right;
+            statusTextBounds = statusBounds with { X = promptLeft, Width = statusBounds.Right - promptLeft };
+        }
+
+        var statusAlignment = isVodChannelPrompt ? TextAlign.Center : TextAlign.Leading;
+        if (statusTextBounds.Width > 0) Ui.Text(status, statusTextBounds, palette.MutedText, size: StatusTextSize, alignment: statusAlignment);
+
         var control = new RectangleF(x: 0, y: y + ControlPadding, width: 0, height: FooterControlHeight);
         var pageSizeBounds = control with { X = size.Width - 217, Width = 53 };
+        const string ItemsLabel = "Items:";
+        const float ItemsLabelSize = 12;
         const float ItemsLabelGap = 5;
         var itemsLabelWidth = pageSizeBounds.Left - statusBounds.Right - ItemsLabelGap;
         var itemsLabelBounds = new RectangleF(x: statusBounds.Right, y: y, width: itemsLabelWidth, height: FooterHeight);
-        Ui.Text("Items:", itemsLabelBounds, alignment: TextAlign.Trailing);
+        if (state is { Page: MonitorPage.TopStreams, Busy: false, IsContentLoading: false, Rows.Count: > 0 } && !queryQueued)
+        {
+            const string TileActionHint = "Click a tile to follow or unfollow";
+            const float HintGap = 14;
+            var statusRight = statusBounds.Left + MathF.Ceiling(MeasureWidth(status, StatusTextSize));
+            var itemsLeft = itemsLabelBounds.Right - MathF.Ceiling(MeasureWidth(ItemsLabel, ItemsLabelSize));
+            var hintLeft = statusRight + HintGap;
+            var hintBounds = statusBounds with { X = hintLeft, Width = itemsLeft - HintGap - hintLeft };
+            if (MeasureWidth(TileActionHint, StatusTextSize) <= hintBounds.Width)
+                Ui.Text(TileActionHint, hintBounds, palette.MutedText, size: StatusTextSize, alignment: TextAlign.Center);
+        }
+
+        Ui.Text(ItemsLabel, itemsLabelBounds, size: ItemsLabelSize, alignment: TextAlign.Trailing);
         Ui.Combo(
             "page.size",
             state.PageSize.ToString(CultureInfo.InvariantCulture),
@@ -999,6 +1034,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private async Task ConfirmSettingsClose()
     {
         if (confirmingSettingsClose) return;
+
+        if (settingsPane is { ScrollBar.IsInteracting: true } pane)
+        {
+            pane.ScrollBar.MouseUp();
+            Win32.ReleaseCapture();
+        }
 
         confirmingSettingsClose = true;
         try
@@ -1259,8 +1300,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     protected override void OnPointerDown(PointF point)
     {
-        if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return;
         if (PressScrollBar(point)) return;
+        if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return;
 
         state.SelectedIndex = HitRow(point);
         Win32.SetFocus(Handle);
@@ -1269,7 +1310,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     // The mouse is captured, so a held arrow or dragged thumb keeps following the pointer beyond the window.
     private bool PressScrollBar(PointF point)
     {
-        if (!scrollBar.MouseDown(point, Environment.TickCount64)) return false;
+        var bar = settingsPane != null && SettingsBounds(ClientSize).Contains(point) ? settingsPane.ScrollBar : scrollBar;
+        if (!bar.MouseDown(point, Environment.TickCount64)) return false;
 
         Win32.SetCapture(Handle);
         NeedsPaint = true;
@@ -1287,9 +1329,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     protected override void OnPointerUp(PointF point)
     {
-        if (scrollBar.IsInteracting)
+        var bar = settingsPane is { ScrollBar.IsInteracting: true } pane ? pane.ScrollBar : scrollBar;
+        if (bar.IsInteracting)
         {
-            scrollBar.MouseUp();
+            bar.MouseUp();
             Win32.ReleaseCapture();
             NeedsPaint = true;
             return;
@@ -1311,7 +1354,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     protected override void OnPointerMove(PointF point)
     {
         if (scrollBar.MouseMove(point)) NeedsPaint = true;
-        if (scrollBar.IsInteracting) return;
+        if (settingsPane?.ScrollBar.MouseMove(point) == true) NeedsPaint = true;
+        if (scrollBar.IsInteracting || settingsPane?.ScrollBar.IsInteracting == true) return;
 
         var row = HitRow(point);
         if (row == hoveredRow) return;
@@ -1381,6 +1425,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (key == VirtualKey.Escape && settingsPane != null)
         {
             CloseSettings();
+            return true;
+        }
+
+        if (settingsPane is { } pane && !Ui.HasMenu && Ui.HasFocusIn("settings.") && pane.ScrollWithKey(key))
+        {
+            Ui.Focus("settings.close");
             return true;
         }
 
@@ -1464,7 +1514,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return 0;
         }
 
-        if (message == Win32.WmCaptureChanged) scrollBar.MouseUp();
+        if (message == Win32.WmCaptureChanged)
+        {
+            scrollBar.MouseUp();
+            settingsPane?.ScrollBar.MouseUp();
+        }
 
         if (message == Win32.WmRightButtonDown)
         {

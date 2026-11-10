@@ -140,6 +140,35 @@ internal static class Theme
         return Black | (red << RedShift) | (green << GreenShift) | blue;
     }
 
+    public static uint ContrastingText(uint background)
+    {
+        const uint ChannelMask = 0xFF;
+        const int RedShift = 16;
+        const int GreenShift = 8;
+        const double RedWeight = 0.2126;
+        const double GreenWeight = 0.7152;
+        const double BlueWeight = 0.0722;
+        var red = LinearChannel((background >> RedShift) & ChannelMask);
+        var green = LinearChannel((background >> GreenShift) & ChannelMask);
+        var blue = LinearChannel(background & ChannelMask);
+        var luminance = RedWeight * red + GreenWeight * green + BlueWeight * blue;
+
+        // At this luminance black and white have equal contrast against the background.
+        const double EqualContrastLuminance = 0.179128784747792;
+        return luminance >= EqualContrastLuminance ? Black : White;
+
+        static double LinearChannel(uint channel)
+        {
+            const double MaxChannel = 255;
+            const double LinearCutoff = 0.04045;
+            const double LinearScale = 12.92;
+            const double SrgbOffset = 0.055;
+            const double SrgbExponent = 2.4;
+            var srgb = channel / MaxChannel;
+            return srgb <= LinearCutoff ? srgb / LinearScale : Math.Pow((srgb + SrgbOffset) / (1 + SrgbOffset), SrgbExponent);
+        }
+    }
+
     /// <summary>Composites opaque RGB colors for both native controls and Direct2D surfaces.</summary>
     public static uint Blend(uint background, uint foreground, float opacity)
     {
