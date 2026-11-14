@@ -63,6 +63,7 @@ internal abstract class CanvasWindow : DesktopWindow
     private bool widgetPressed;
     private bool pressedInDialog;
     private bool pointerInWaitArea;
+    private bool shiftF10Down;
     private string? focusBeforeDialogs;
     private int wheelDelta;
     private ToolTipWindow? toolTip;
@@ -395,6 +396,7 @@ internal abstract class CanvasWindow : DesktopWindow
                 return HitTest(lParam);
             case Win32.WmActivate:
                 IsWindowActive = Win32.LowWord((nint)wParam) != 0;
+                shiftF10Down = false;
                 NeedsPaint = true;
                 break;
             case Win32.WmCaptureChanged:
@@ -402,8 +404,24 @@ internal abstract class CanvasWindow : DesktopWindow
                 ActiveDialog?.MouseUp();
                 break;
 
-            // The polled pointer can change without the user moving it, as when a pan leaves the cursor where the finger
-            // lifted or a window under it closes, so a move resumes hover suspended by a pan only for a mouse or pen.
+            // Shift+F10 opens the context menu as the Menu key does. Windows would also enter the system menu when F10 is
+            // released, leaving the drawn menu open behind it.
+            case Win32.WmSysKeyDown when (int)wParam == VirtualKey.F10 && Win32.IsKeyDown(VirtualKey.Shift):
+                shiftF10Down = true;
+                Win32.SendMessage(Handle, Win32.WmContextMenu, (nuint)Handle, Win32.KeyboardContextMenu);
+                return 0;
+            case Win32.WmSysKeyUp when (int)wParam == VirtualKey.F10 && shiftF10Down:
+                shiftF10Down = false;
+                return 0;
+
+            // Alt+Down and Alt+Up open and close a focused combo box, as in Win32. Windows still sees the key, so releasing
+            // Alt afterwards does not enter the system menu.
+            case Win32.WmSysKeyDown when (int)wParam is VirtualKey.Down or VirtualKey.Up && (lParam & Win32.AltHeld) != 0:
+                if (Ui.ToggleFocusedComboBox()) NeedsPaint = true;
+                break;
+
+            // The polled pointer can change without the user moving it, e.g. when a pan leaves the cursor where the finger lifted
+            // or a window under it closes. So a move resumes hover that a pan suspended only if the move came from a mouse or pen.
             case Win32.WmMouseMove:
                 if (!Win32.IsPromotedFromTouch()) ResumeHover();
                 UpdatePointer(ToLogical(lParam));
@@ -452,6 +470,20 @@ internal abstract class CanvasWindow : DesktopWindow
                 DismissToolTip();
                 Wheel(Win32.HighWord((nint)wParam));
                 return 0;
+
+            // A press on a native control, such as a text input, closes an open drawn menu, as a press outside a WPF menu does,
+            // so keys typed there do not act on the menu. The control still takes the press and the focus. The low word of wParam is
+            // the button message (https://learn.microsoft.com/windows/win32/inputmsg/wm-parentnotify).
+            case Win32.WmParentNotify when (uint)(ushort)wParam is Win32.WmLeftButtonDown or Win32.WmRightButtonDown or Win32.WmMiddleButtonDown
+                or Win32.WmXButtonDown:
+                if (Ui.CloseMenuForPress(ToLogical(lParam))) NeedsPaint = true;
+                break;
+
+            // A middle or side button press on the window also closes the menu; the drawn widgets ignore those buttons. That
+            // includes a quick second press, which arrives as a double-click.
+            case Win32.WmMiddleButtonDown or Win32.WmMiddleButtonDoubleClick or Win32.WmXButtonDown or Win32.WmXButtonDoubleClick:
+                if (Ui.CloseMenuForPress(ToLogical(lParam))) NeedsPaint = true;
+                break;
 
             // As in WPF, whose data grid and lists pan with touch, a touch drag pans content that allows it. Elsewhere
             // panning is turned off, so the drag arrives as mouse input, as on a scroll bar's thumb.

@@ -40,6 +40,8 @@ internal static unsafe partial class Win32
     public const uint WmNonClientCalculate = 0x0083;
     public const uint WmNonClientHitTest = 0x0084;
     public const uint WmKeyDown = 0x0100;
+    public const uint WmSysKeyDown = 0x0104;
+    public const uint WmSysKeyUp = 0x0105;
     public const uint WmCommand = 0x0111;
     public const uint WmSysCommand = 0x0112;
     public const uint WmVerticalScroll = 0x0115;
@@ -50,7 +52,12 @@ internal static unsafe partial class Win32
     public const uint WmLeftButtonUp = 0x0202;
     public const uint WmLeftButtonDoubleClick = 0x0203;
     public const uint WmRightButtonDown = 0x0204;
+    public const uint WmMiddleButtonDown = 0x0207;
+    public const uint WmMiddleButtonDoubleClick = 0x0209;
     public const uint WmMouseWheel = 0x020A;
+    public const uint WmXButtonDown = 0x020B;
+    public const uint WmXButtonDoubleClick = 0x020D;
+    public const uint WmParentNotify = 0x0210;
     public const uint WmCaptureChanged = 0x0215;
     public const uint WmEnterSizeMove = 0x0231;
     public const uint WmExitSizeMove = 0x0232;
@@ -72,6 +79,14 @@ internal static unsafe partial class Win32
 
     // The WM_SHOWWINDOW status sent when an owner window is restored.
     public const nint ShowParentOpening = 3;
+
+    // The WM_CONTEXTMENU position when the keyboard (Shift+F10 or the Menu key) opened the menu, not the pointer:
+    // https://learn.microsoft.com/windows/win32/menurc/wm-contextmenu
+    public const int KeyboardContextMenu = -1;
+
+    // The context code bit of a WM_SYSKEYDOWN lParam, set while Alt is held:
+    // https://learn.microsoft.com/windows/win32/inputdev/wm-syskeydown
+    public const nint AltHeld = 1 << 29;
 
     private const uint PmRemove = 0x0001;
     public const uint QsAllInput = 0x04FF;
@@ -387,4 +402,6 @@ internal static class VirtualKey
     public const int Down = 0x28;
     public const int Delete = 0x2E;
     public const int A = 0x41;
+    public const int F4 = 0x73;
+    public const int F10 = 0x79;
 }

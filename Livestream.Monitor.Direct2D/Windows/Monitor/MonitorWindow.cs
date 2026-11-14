@@ -102,6 +102,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private ThemePalette palette;
     private SettingsPane? settingsPane;
     private bool confirmingSettingsClose;
+
+    // Where key presses go while the settings pane is open. Opening the pane, a Tab that moves the focus, and a left press
+    // inside the pane send them to the pane; a left press beside it or a right press that selects a row sends them to the
+    // grid, as the WPF data grid takes them when clicked beside the flyout. A left press that only closes or uses a menu
+    // changes nothing.
+    private SettingsKeyTarget settingsKeyTarget;
     private readonly PanelSlide settingsSlide = new();
     private readonly ActionFeedback actionFeedback = new();
     private bool rowsDirty = true;
@@ -337,8 +343,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (settingsPane != null)
         {
+            // As in the WPF flyout, Tab stays inside the open pane.
             Ui.Overlay();
+            Ui.BeginFocusScope();
             settingsPane.Draw(Ui, SettingsBounds(size));
+            if (settingsSlide.IsOpen) Ui.EndFocusScope();
         }
 
         var feedbackArea = new RectangleF(PointF.Empty, size);
@@ -798,6 +807,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Extent: extent);
     }
 
+    private static RectangleF TileBounds(TileLayout layout, int index, int offset)
+    {
+        var x = TilesLeft + index % layout.Columns * layout.TilePitch;
+        var row = index / layout.Columns;
+        var y = TileAreaTop + row * layout.RowPitch - offset;
+
+        return new RectangleF(x: x, y: y, width: layout.TileWidth, height: layout.TileHeight);
+    }
+
     private void DrawTiles(SizeF size)
     {
         // A queued query has not started yet, but its page shows the loader rather than stale results.
@@ -841,12 +859,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var firstVisibleRow = (int)(scrollOffset / layout.RowPitch);
         for (var i = firstVisibleRow * columns; i < ItemCount; i++)
         {
-            var x = TilesLeft + i % columns * layout.TilePitch;
-            var row = i / columns;
-            var y = TileAreaTop + row * layout.RowPitch - scrollOffset;
+            var bounds = TileBounds(layout, i, scrollOffset);
+            var x = bounds.X;
+            var y = bounds.Y;
             if (y >= clipBounds.Bottom) break;
 
-            var bounds = new RectangleF(x: x, y: y, width: layout.TileWidth, height: layout.TileHeight);
             var stream = state.Page == MonitorPage.TopStreams ? state.Rows[i] : null;
             var tileName = stream != null ? stream.DisplayName : state.Vods[i].Title ?? "";
             var following = stream != null && state.IsFollowed(stream);
@@ -1080,6 +1097,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         CancelGameSuggestions();
         Ui.CloseMenu();
         preview?.Hide();
+
+        settingsKeyTarget = SettingsKeyTarget.Pane;
+
+        // As in the WPF flyout, the focus starts at the pane's back button.
+        Ui.MoveFocus("settings.close");
+
         settingsPane ??= new SettingsPane(
             handler: state.SettingsHandler,
             dialogs: dialogs,
@@ -1104,6 +1127,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         confirmingSettingsClose = true;
+        var keysWentToPane = KeysGoToSettingsPane;
         try
         {
             if (settingsPane is { HasQualityChanges: true })
@@ -1119,6 +1143,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Ui.CloseMenu();
             settingsPane?.DiscardQualityChanges(Ui);
             settingsSlide.SetOpen(false, PanelSlide.NowMilliseconds);
+
+            // As in the WPF flyout, the focus returns to Settings when it was in the pane.
+            if (keysWentToPane) Ui.MoveFocus("settings");
+
             NeedsPaint = true;
         }
         finally
@@ -1500,6 +1528,17 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         return read ? lines : WindowsDefaultLines;
     }
 
+    protected override bool PreprocessKey(int key)
+    {
+        // Tab moves the focus only among the open pane's widgets, so it sends key presses back to the pane, unless an open
+        // menu keeps it to move through its items.
+        if (key == VirtualKey.Tab && settingsSlide.IsOpen && !HasDialog && !Ui.MenuTakesTab) settingsKeyTarget = SettingsKeyTarget.Pane;
+
+        return base.PreprocessKey(key);
+    }
+
+    private bool KeysGoToSettingsPane => settingsSlide.IsOpen && settingsKeyTarget == SettingsKeyTarget.Pane;
+
     protected override bool OnKey(int key)
     {
         if (key == VirtualKey.Escape && settingsPane != null)
@@ -1514,15 +1553,46 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return true;
         }
 
-        if (key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.Enter or VirtualKey.Delete)) return false;
+        // Key presses for the settings pane do not reach the grid behind it.
+        if (KeysGoToSettingsPane) return false;
 
-        if (key == VirtualKey.Up) state.SelectedIndex = Math.Max(0, state.SelectedIndex - 1);
-        if (key == VirtualKey.Down) state.SelectedIndex = Math.Min(ItemCount - 1, state.SelectedIndex + 1);
+        // An open menu or list keeps the keys it does not use from the grid behind it, as in WPF.
+        if (Ui.HasMenu) return false;
+
+        if (key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.PageUp or VirtualKey.PageDown or VirtualKey.Home or VirtualKey.End
+            or VirtualKey.Enter or VirtualKey.Delete))
+        {
+            return false;
+        }
+
+        // An empty list keeps no selection.
+        var last = ItemCount - 1;
+        var first = Math.Min(0, last);
+        state.SelectedIndex = key switch
+        {
+            VirtualKey.Up => Math.Max(first, state.SelectedIndex - 1),
+            VirtualKey.Down => Math.Min(last, state.SelectedIndex + 1),
+            VirtualKey.PageUp => Math.Max(first, state.SelectedIndex - ItemsPerPage()),
+            VirtualKey.PageDown => Math.Min(last, state.SelectedIndex + ItemsPerPage()),
+            VirtualKey.Home => first,
+            VirtualKey.End => last,
+            _ => state.SelectedIndex,
+        };
+
         if (key == VirtualKey.Enter) _ = OpenSelected();
         var removable = state is { Busy: false, Page: MonitorPage.Followed } ? state.SelectedStream : null;
         if (key == VirtualKey.Delete && removable != null) _ = state.Remove(removable);
         KeepSelectionVisible();
         return true;
+
+        // The number of items that Page Up and Page Down move the selection by: the visible rows, or the tiles in the whole tile rows that fit.
+        int ItemsPerPage()
+        {
+            if (state.Page == MonitorPage.Followed) return VisibleRows(ClientSize);
+
+            var layout = LayoutTiles(ClientSize, ItemCount);
+            return Math.Max(1, (int)(layout.ViewportHeight / layout.RowPitch)) * layout.Columns;
+        }
     }
 
     private int HitRow(PointF point)
@@ -1592,6 +1662,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (HasDialog && message is Win32.WmRightButtonDown or Win32.WmContextMenu) return 0;
 
+        // A left press that only closes or uses a menu leaves the key target alone.
+        if (message == Win32.WmLeftButtonDown && !Ui.HasMenu && settingsSlide.IsOpen && !HasDialog)
+        {
+            var point = new PointF(Win32.LowWord(lParam) / Scale, Win32.HighWord(lParam) / Scale);
+            settingsKeyTarget = SettingsBounds(ClientSize).Contains(point) ? SettingsKeyTarget.Pane : SettingsKeyTarget.Grid;
+        }
+
         if (message == TrayIcon.CallbackMessage)
         {
             tray.OnMessage(lParam);
@@ -1622,11 +1699,20 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Ui.CloseMenu();
             state.SelectedIndex = HitRow(new PointF(Win32.LowWord(lParam) / Scale, Win32.HighWord(lParam) / Scale));
             NeedsPaint = true;
+
+            // The selected row takes the key presses, as after a left click on it.
+            if (state.SelectedIndex >= 0)
+            {
+                Ui.ClearFocus();
+                settingsKeyTarget = SettingsKeyTarget.Grid;
+            }
         }
 
         if (message == Win32.WmContextMenu && (state.Page == MonitorPage.Vods || !state.Busy))
         {
-            ShowContextMenu();
+            var fromKeyboard = (int)lParam == Win32.KeyboardContextMenu;
+            if (!fromKeyboard || !KeysGoToSettingsPane) ShowContextMenu(fromKeyboard);
+
             return 0;
         }
 
@@ -1969,14 +2055,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         NeedsPaint = true;
     }
 
-    // Keep menu items, text and order consistent with WPF.
-    private void ShowContextMenu()
+    // Keep menu items, text and order consistent with WPF. A menu opened with the keyboard appears beside the selected item.
+    private void ShowContextMenu(bool fromKeyboard)
     {
         if (state.Page == MonitorPage.Vods)
         {
             if (state.IsContentLoading || queryQueued) return;
 
-            if (state.SelectedIndex >= 0 && state.SelectedIndex < state.Vods.Count) ShowVodContextMenu(state.Vods[state.SelectedIndex]);
+            if (state.SelectedIndex >= 0 && state.SelectedIndex < state.Vods.Count)
+                ShowVodContextMenu(state.Vods[state.SelectedIndex], MenuAnchor(), fromKeyboard);
 
             return;
         }
@@ -2021,9 +2108,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
 
         var choices = Array.ConvertAll(items, item => item.Choice);
-        Ui.Popup(id: "context", Pointer, choices, chosen: Choose);
+        var anchor = MenuAnchor();
+        Ui.Popup(id: "context", anchor, choices, chosen: Choose);
 
-        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command, Pointer);
+        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command, FeedbackPosition(anchor, fromKeyboard));
+
+        RectangleF MenuAnchor() => fromKeyboard ? RevealSelectedItem() : new RectangleF(Pointer, SizeF.Empty);
 
         SurfaceUi.MenuChoice NotifyChoice(string toolTip)
         {
@@ -2032,7 +2122,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private void ShowVodContextMenu(VodDetails vod)
+    // Scrolls the selected row or tile into view and returns its bounds.
+    private RectangleF RevealSelectedItem()
+    {
+        KeepSelectionVisible();
+
+        if (state.Page == MonitorPage.Followed)
+        {
+            var rowTop = ToolbarBottom + HeaderHeight + (state.SelectedIndex - scrollOffset) * RowHeight;
+            return new RectangleF(x: WindowBorderThickness, y: rowTop, width: ClientSize.Width - 2 * WindowBorderThickness, height: RowHeight);
+        }
+
+        return TileBounds(LayoutTiles(ClientSize, ItemCount), state.SelectedIndex, scrollOffset);
+    }
+
+    private void ShowVodContextMenu(VodDetails vod, RectangleF anchor, bool fromKeyboard)
     {
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items =
         [
@@ -2041,8 +2145,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         ];
 
         var choices = Array.ConvertAll(items, item => item.Choice);
-        Ui.Popup(id: "context", Pointer, choices, chosen: index => _ = RunVodContextCommand(vod, items[index].Command, Pointer));
+        Ui.Popup(id: "context", anchor, choices, chosen: Choose);
+
+        void Choose(int index) => _ = RunVodContextCommand(vod, items[index].Command, FeedbackPosition(anchor, fromKeyboard));
     }
+
+    // The feedback for a command chosen from a menu the keyboard opened appears at the selected item, not at the pointer.
+    private PointF FeedbackPosition(RectangleF anchor, bool fromKeyboard) => fromKeyboard ? anchor.Location : Pointer;
 
     private async Task RunVodContextCommand(VodDetails vod, ContextCommand command, PointF clickPosition)
     {
@@ -2209,6 +2318,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         public int TilePitch => TileWidth + TileGap;
         public float RowPitch => TileHeight + TileGap;
         public int Viewport => (int)ViewportHeight;
+    }
+
+    private enum SettingsKeyTarget
+    {
+        Pane,
+        Grid,
     }
 
     private enum ContextCommand

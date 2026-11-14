@@ -47,6 +47,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private RectangleF? occlusion;
     private PointF pointer;
     private bool overlay;
+    private bool modal;
+    private int focusScopeStart;
+    private int focusScopeEnd;
 
     public ThemePalette Palette { get; private set; } = null!;
 
@@ -59,6 +62,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool HasFocusedWidget => focused != null || HasFocusedInput;
     public bool HasFocusIn(string idPrefix) => focused?.StartsWith(idPrefix, StringComparison.Ordinal) == true;
     public bool HasMenu => menu != null;
+
+    /// <summary>True while an open context menu, or the focused combo box's open list, moves its highlight with Tab, as in WPF.</summary>
+    public bool MenuTakesTab => menu is { IsList: false } || menu is { IsComboBox: true } && menu.Id == focused && !HasFocusedInput;
 
     /// <summary>The automation tree of the last drawn frame; read by UI Automation from its own threads.</summary>
     public AutomationTree Automation => Volatile.Read(ref automationTree);
@@ -98,6 +104,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         viewport = bounds;
         occlusion = coveredArea;
         overlay = false;
+        modal = false;
+        focusScopeStart = -1;
+        focusScopeEnd = -1;
         clip = null;
         ClearFrame();
         owner.ApplyControlTheme(palette);
@@ -106,9 +115,18 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public void Overlay() => overlay = true;
 
+    /// <summary>
+    /// Starts the widgets that Tab cycles among, which is how a modal pane keeps the focus inside it. A modal dialog drawn
+    /// over them has its own tab stops.
+    /// </summary>
+    public void BeginFocusScope() => focusScopeStart = widgets.Count;
+
+    public void EndFocusScope() => focusScopeEnd = widgets.Count;
+
     public void ModalOverlay()
     {
         overlay = true;
+        modal = true;
         menu = null;
         ClearFrame();
     }
@@ -705,6 +723,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     {
         if (!enabled) CloseMenu(id);
 
+        // The bound value can change while the list is open, e.g. when a stream coming online resets the platform filter.
+        if (menu is { } list && list.Id == id) list.Current = selectedIndex;
+
         // As in WPF, an open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
         var open = menu?.Id == id;
         var over = enabled && IsPointerOver(bounds);
@@ -757,8 +778,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                     width: MenuWidth(MenuKind.ComboBox, items, bounds.Width)
                 );
             },
-            enabled
+            enabled,
+            step: StepChoice
         );
+
+        void StepChoice(int direction)
+        {
+            var next = Math.Clamp(selectedIndex + direction, 0, choices.Count - 1);
+            if (next != selectedIndex) changed(next);
+        }
     }
 
     /// <summary>Shows the text as a tooltip while the pointer rests on the bounds; empty text shows none.</summary>
@@ -917,6 +945,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                 // As in WPF, clicking a disabled item leaves the menu open.
                 Choose(menu, MenuIndexAt(menu, position));
             }
+            else if (DropDownInputAt(position) is { } inputId)
+            {
+                // As in a WPF editable combo box, a press on a drop-down list's own text input keeps the list open.
+                focused = inputId;
+                FocusInput(inputs[inputId]);
+            }
             else
             {
                 menu = null;
@@ -950,7 +984,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public bool Key(int key, bool shift)
     {
-        if (!HasFocusedInput && focused != null &&
+        // An open menu keeps the arrow keys from a focused radio button, as in WPF.
+        if (!HasFocusedInput && focused != null && menu == null &&
             key is (VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down) &&
             widgets.Find(widget => widget.Id == focused) is { RadioGroup: { } group } selected)
         {
@@ -977,24 +1012,19 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             return true;
         }
 
+        if (key == VirtualKey.Tab && MenuTakesTab) key = shift ? VirtualKey.Up : VirtualKey.Down;
+
         if (menu is { } active && key is VirtualKey.Up or VirtualKey.Down or VirtualKey.Enter)
         {
             if (key == VirtualKey.Enter)
             {
                 Choose(active, active.Selected);
             }
-            else
+            else if (NextChoice(active, key == VirtualKey.Up ? -1 : 1) is var index and >= 0)
             {
-                var direction = key == VirtualKey.Up && active.Selected >= 0 ? -1 : 1;
-                for (var index = active.Selected + direction; index >= 0 && index < active.Choices.Count; index += direction)
-                {
-                    if (!active.Choices[index].Enabled) continue;
-
-                    active.Selected = index;
-                    var visible = Math.Max(1, active.VisibleRows);
-                    active.Offset = Math.Clamp(active.Offset, Math.Max(0, index - visible + 1), index);
-                    break;
-                }
+                active.Selected = index;
+                var visible = Math.Max(1, active.VisibleRows);
+                active.Offset = Math.Clamp(active.Offset, Math.Max(0, index - visible + 1), index);
             }
 
             return true;
@@ -1015,12 +1045,17 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         {
             var currentInput = inputs.FirstOrDefault(entry => entry.Value.Handle == Win32.GetFocus());
             if (currentInput.Value != null) focused = currentInput.Key;
-            var stops = widgets.FindAll(widget => widget.Focusable);
+            var stops = TabStops();
             var index = stops.FindIndex(widget => widget.Id == focused);
             var count = stops.Count;
             if (count == 0) return false;
 
-            index = (index + (shift ? count - 1 : 1)) % count;
+            // With no stop focused, Tab starts at the first stop and Shift+Tab at the last.
+            if (index < 0) index = shift ? count - 1 : 0;
+            else index = (index + (shift ? count - 1 : 1)) % count;
+
+            // The focus moves on and closes an open list without a choice, as WPF closes a combo box list that loses the focus.
+            menu = null;
             focused = stops[index].Id;
             focusVisible = true;
 
@@ -1034,9 +1069,22 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // input or a dialog's message.
         if (Win32.GetFocus() != owner.Handle) return false;
 
-        if (key is VirtualKey.Enter or VirtualKey.Space && focused != null)
+        if (key == VirtualKey.F4 && ToggleFocusedComboBox()) return true;
+
+        // A closed combo box steps through its choices with Up and Down, as in Win32.
+        if (key is VirtualKey.Up or VirtualKey.Down && FocusedWidget() is { Step: { } step })
+        {
+            focusVisible = true;
+            step(key == VirtualKey.Up ? -1 : 1);
+            return true;
+        }
+
+        // An open menu keeps Space from the focused widget, and a combo box ignores Space, as in WPF.
+        if (key is VirtualKey.Enter or VirtualKey.Space && focused != null && menu == null)
         {
             var widget = widgets.Find(value => value.Id == focused);
+            if (key == VirtualKey.Space && widget is { Step: not null }) return false;
+
             widget?.Action();
             return widget != null;
         }
@@ -1072,6 +1120,31 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public void CloseMenu() => menu = null;
 
+    /// <summary>
+    /// Closes an open menu for a press at the position that the drawn widgets do not take, such as on a native control or
+    /// with the middle or a side button, as a press outside a WPF menu does; a press on an open list's own control, such as
+    /// its combo box or a drop-down list's text input, keeps it open, as in a WPF combo box. True when a menu closed.
+    /// </summary>
+    public bool CloseMenuForPress(PointF position)
+    {
+        if (menu == null || menu.Bounds.Contains(position) || menu.IsList && menu.Anchor.Contains(position)) return false;
+
+        menu = null;
+        return true;
+    }
+
+    // The id of the open drop-down list's own text input at the position, or null.
+    private string? DropDownInputAt(PointF position)
+    {
+        if (menu is not { IsList: true, IsComboBox: false } list || !list.Anchor.Contains(position)) return null;
+
+        foreach (var (id, input) in inputs)
+            if (input is { Enabled: true, Visible: true } && input.Bounds.Contains(position))
+                return id;
+
+        return null;
+    }
+
     // Automation may ask to open or close a menu again before the next frame shows the first request, so opening and
     // closing change nothing when already done.
     private void OpenMenu(string id)
@@ -1100,14 +1173,40 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (widgets.Exists(widget => widget.Id == id)) set(value);
     }
 
-    // Chooses an enabled menu item; a menu that does not stay open closes first.
+    // Chooses an enabled menu item; a menu that does not stay open closes first. Choosing a combo box's current value
+    // changes nothing, as in WPF.
     private void Choose(MenuState active, int index)
     {
         if (index < 0 || index >= active.Choices.Count || !active.Choices[index].Enabled) return;
 
         if (!active.KeepOpen) menu = null;
         active.Selected = index;
+
+        if (active.IsComboBox && index == active.Current) return;
+
+        active.Current = index;
         active.Changed(index);
+    }
+
+    // The enabled choice the arrow keys move the highlight to, or -1 for none. A context menu wraps past its ends, as WPF's
+    // does, and Up with nothing highlighted starts at its last choice; a list stops at its ends and starts at its first.
+    private static int NextChoice(MenuState active, int direction)
+    {
+        var wraps = !active.IsList;
+        var count = active.Choices.Count;
+        if (active.Selected < 0 && !wraps) direction = 1;
+        var index = active.Selected >= 0 ? active.Selected : direction < 0 ? count : -1;
+
+        for (var i = 0; i < count; i++)
+        {
+            index += direction;
+            if (wraps) index = (index + count) % count;
+            else if (index < 0 || index >= count) return -1;
+
+            if (active.Choices[index].Enabled) return index;
+        }
+
+        return -1;
     }
 
     // A menu item chosen with the keyboard, or a combo box's current choice, has the focus while its menu is open, as in
@@ -1182,6 +1281,35 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Invalidate?.Invoke();
     }
 
+    /// <summary>
+    /// Opens the focused combo box, or closes its list choosing the highlighted item, as F4, Alt+Down and Alt+Up do in WPF;
+    /// false when none has the focus or another widget's menu is open.
+    /// </summary>
+    public bool ToggleFocusedComboBox()
+    {
+        if (FocusedWidget() is not { Step: not null } comboBox) return false;
+        if (menu != null && menu.Id != comboBox.Id) return false;
+
+        // Closing chooses the highlighted item; clearing the menu first also closes a list kept open after a choice.
+        if (menu is { } list)
+        {
+            menu = null;
+            Choose(list, list.Selected);
+            return true;
+        }
+
+        comboBox.Action();
+        return true;
+    }
+
+    /// <summary>Moves the focus to the widget. The focus is shown only if it was shown before, e.g. after keyboard use.</summary>
+    public void MoveFocus(string id)
+    {
+        var visible = focusVisible;
+        Focus(id);
+        focusVisible = visible;
+    }
+
     public void Focus(string id)
     {
         focused = id;
@@ -1242,16 +1370,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         IReadOnlyList<string> choices,
         Action<int> chosen) => ShowMenu(id, control, ToMenuChoices(choices), chosen, MenuKind.DropDown);
 
-    /// <summary>Shows a context menu at the position.</summary>
+    /// <summary>Shows a context menu below the anchor, or above it when there is no room below; a pointer's anchor is a point.</summary>
     public void Popup(
         string id,
-        PointF position,
+        RectangleF anchor,
         IReadOnlyList<MenuChoice> choices,
-        Action<int> chosen)
-    {
-        var anchor = new RectangleF(x: position.X, y: position.Y, width: 0, height: 0);
+        Action<int> chosen) =>
         ShowMenu(id, anchor, choices, chosen, MenuKind.ContextMenu);
-    }
 
     private void ShowMenu(
         string id,
@@ -1274,14 +1399,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Invalidate?.Invoke();
     }
 
-    // Like a WPF menu, a menu is as wide as its widest choice and at least as wide as its control.
+    // Like a WPF menu, a menu is as wide as its widest choice, and a list is at least as wide as its control.
     private float MenuWidth(MenuKind kind, IReadOnlyList<MenuChoice> choices, float controlWidth)
     {
         var style = StyleOf(kind);
         var widest = 0f;
         foreach (var choice in choices) widest = Math.Max(widest, MeasureWidth(choice.Text, style.TextSize));
 
-        return Math.Max(controlWidth, style.TextInset + widest + style.EndPadding);
+        var naturalWidth = style.TextInset + widest + style.EndPadding;
+        return kind == MenuKind.ContextMenu ? naturalWidth : Math.Max(controlWidth, naturalWidth);
     }
 
     private static MenuStyle StyleOf(MenuKind kind) => kind switch
@@ -1331,12 +1457,24 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action action,
         bool enabled,
         bool focusable = true,
-        string? radioGroup = null)
+        string? radioGroup = null,
+        Action<int>? step = null)
     {
         if (!enabled || !IsAvailable(bounds)) return;
 
         var hit = clip.HasValue ? RectangleF.Intersect(bounds, clip.Value) : bounds;
-        if (hit is { Width: > 0, Height: > 0 }) widgets.Add(new Widget(id, hit, action, focusable, radioGroup));
+        if (hit is { Width: > 0, Height: > 0 }) widgets.Add(new Widget(id, hit, action, focusable, radioGroup, step));
+    }
+
+    private Widget? FocusedWidget() => focused == null ? null : widgets.Find(widget => widget.Id == focused);
+
+    // A modal dialog drawn over the scope has its own tab stops.
+    private bool HasFocusScope => !modal && focusScopeStart >= 0 && focusScopeEnd >= focusScopeStart;
+
+    private List<Widget> TabStops()
+    {
+        var candidates = HasFocusScope ? widgets.GetRange(focusScopeStart, focusScopeEnd - focusScopeStart) : widgets;
+        return candidates.FindAll(widget => widget.Focusable);
     }
 
     private bool IsAvailable(RectangleF bounds) =>
@@ -1509,13 +1647,17 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return items;
     }
 
-    /// <summary>A clickable widget; one that is not focusable leaves the focus where it was and is no tab stop.</summary>
+    /// <summary>
+    /// A clickable widget; one that is not focusable leaves the focus where it was and is no tab stop. A combo box steps
+    /// to its next (1) or previous (-1) choice without opening.
+    /// </summary>
     private sealed record Widget(
         string Id,
         RectangleF Bounds,
         Action Action,
         bool Focusable,
-        string? RadioGroup);
+        string? RadioGroup,
+        Action<int>? Step = null);
 
     internal sealed record ToolTipRegion(string Id, RectangleF Bounds, string Text);
 
@@ -1569,6 +1711,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         public RectangleF Anchor { get; } = anchor;
         public IReadOnlyList<MenuChoice> Choices { get; } = choices;
         public int Selected = selected;
+
+        /// <summary>A combo box's value, kept current while its list is open.</summary>
+        public int Current = selected;
+
         public Action<int> Changed { get; } = changed;
         public bool KeepOpen { get; } = keepOpen;
         public float Width { get; } = width;

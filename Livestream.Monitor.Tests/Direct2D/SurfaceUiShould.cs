@@ -425,6 +425,36 @@ public sealed class SurfaceUiShould : IDisposable
         ui.End();
     }
 
+    // As in the WPF settings flyout, Tab cycles inside an open pane instead of reaching the toolbar behind it.
+    [Fact]
+    public void KeepTabInsideTheFocusScope()
+    {
+        DrawPaneBesideToolbar();
+        ui.Focus("pane.close");
+
+        ui.Key(VirtualKey.Tab, shift: false);
+        DrawPaneBesideToolbar();
+        ui.Key(VirtualKey.Tab, shift: false);
+        DrawPaneBesideToolbar();
+
+        Assert.True(ui.Automation.Find("pane.close")?.Has(AutomationStates.Focused));
+    }
+
+    // Widgets in drawing order: a toolbar button, then a pane's close and save buttons inside the focus scope.
+    private void DrawPaneBesideToolbar()
+    {
+        var toolbar = new RectangleF(x: 10, y: 10, width: 60, height: 24);
+        var close = new RectangleF(x: 300, y: 10, width: 60, height: 24);
+        var save = new RectangleF(x: 300, y: 50, width: 60, height: 24);
+        ui.Begin(palette, viewport);
+        ui.Button(id: "toolbar", text: "Toolbar", bounds: toolbar, action: () => { });
+        ui.BeginFocusScope();
+        ui.Button(id: "pane.close", text: "Close", bounds: close, action: () => { });
+        ui.Button(id: "pane.save", text: "Save", bounds: save, action: () => { });
+        ui.EndFocusScope();
+        ui.End();
+    }
+
     // The list opens below the control with whole rows: ten under a 230-pixel height limit, else the eleven that fit
     // in the 263 pixels below it.
     [Theory]
@@ -490,7 +520,7 @@ public sealed class SurfaceUiShould : IDisposable
             new("Enable Notifications", Checked: true, ToolTip: "Untick this"),
         ];
 
-        ui.Popup(id: "context", position: new PointF(10, 10), choices, chosen: index => chosen = index);
+        ui.Popup(id: "context", anchor: new RectangleF(new PointF(10, 10), SizeF.Empty), choices, chosen: index => chosen = index);
         ui.Begin(palette, viewport);
         var disabledItem = new PointF(40, 20);
         var enabledItem = new PointF(40, 45);
@@ -505,7 +535,7 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.Equal(1, chosen);
 
         chosen = -1;
-        ui.Popup(id: "context", position: new PointF(10, 10), choices, chosen: index => chosen = index);
+        ui.Popup(id: "context", anchor: new RectangleF(new PointF(10, 10), SizeF.Empty), choices, chosen: index => chosen = index);
         Assert.True(ui.Key(VirtualKey.Down, shift: false));
         Assert.True(ui.Key(VirtualKey.Enter, shift: false));
         Assert.False(ui.HasMenu);
