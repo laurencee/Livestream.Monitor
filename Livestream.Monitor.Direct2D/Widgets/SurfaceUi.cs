@@ -1048,6 +1048,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return true;
     }
 
+    /// <summary>The row height of an open, overflowing menu with choices at the position, which a touch drag pans as in WPF; null elsewhere.</summary>
+    public float? MenuPanStep(PointF position) =>
+        menu is { Scrolls: true } scrolling && MenuIndexAt(scrolling, position) >= 0 ? scrolling.RowHeight : null;
+
     public bool ContainsHit(PointF position) => menu != null || HitAt(position) != null;
 
     /// <summary>Repeats a held menu scroll bar step; true when the menu scrolled.</summary>

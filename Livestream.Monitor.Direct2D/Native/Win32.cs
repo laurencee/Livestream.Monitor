@@ -14,7 +14,6 @@ internal static unsafe partial class Win32
     public const uint WsThickFrame = 0x00040000;
     public const uint WsMinimizeBox = 0x00020000;
     public const uint WsTabStop = 0x00010000;
-    public const uint WsExTransparent = 0x00000020;
     public const uint WsExToolWindow = 0x00000080;
     public const uint WsExLayered = 0x00080000;
     public const uint WsExNoActivate = 0x08000000;

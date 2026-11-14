@@ -1398,6 +1398,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (scrollBar.MouseMove(point)) NeedsPaint = true;
         if (settingsPane?.ScrollBar.MouseMove(point) == true) NeedsPaint = true;
         if (scrollBar.IsInteracting || settingsPane?.ScrollBar.IsInteracting == true) return;
+        if (IsHoverSuspended) return;
 
         var row = HitRow(point);
         if (row == hoveredRow) return;
@@ -1416,7 +1417,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Win32.GetCursorPos(out var screen);
         var point = Pointer;
 
-        if (HasDialog || Ui.HasMenu || !Win32.IsWindowVisible(Handle) ||
+        if (HasDialog || Ui.HasMenu || IsHoverSuspended || !Win32.IsWindowVisible(Handle) ||
             !new RectangleF(PointF.Empty, ClientSize).Contains(point) || HitRow(point) != hoveredRow)
         {
             preview?.Hide();
@@ -1450,6 +1451,23 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var lineSize = followed ? RowLineSize : TileLineSize;
         scrollOffset = Math.Max(0, scrollOffset - steps * WheelDistance(lineSize, viewport));
     }
+
+    // As in WPF's data grid, a touch drag over the followed rows, or the space below them, scrolls them a row at a time.
+    // Unlike WPF, whose tile pages' scroll viewers do not pan, a drag over the tiles scrolls them by pixels, as their wheel
+    // and scroll bar do. The settings pane does not pan, as in WPF.
+    protected override float? ContentPanStep(PointF point)
+    {
+        var followed = state.Page == MonitorPage.Followed;
+        var top = followed ? ToolbarBottom + HeaderHeight : TileAreaTop;
+        var bottom = ClientSize.Height - (followed ? 0 : FooterHeight);
+        if (!Ui.IsContentPoint(point) || point.Y < top || point.Y >= bottom) return null;
+        if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return null;
+        if (scrollBar.IsVisible && scrollBar.Bounds.Contains(point)) return null;
+
+        return followed ? RowHeight : 1;
+    }
+
+    protected override void OnPan(int steps) => scrollOffset = Math.Max(0, scrollOffset - steps);
 
     private static int WheelDistance(int lineSize, int page) =>
         WheelScrollLines == WheelPageScroll ? page : WheelScrollLines * lineSize;

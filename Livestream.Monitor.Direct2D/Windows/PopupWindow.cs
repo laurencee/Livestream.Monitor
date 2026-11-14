@@ -13,7 +13,11 @@ internal abstract class PopupWindow : CanvasWindow
         : base(title: title, width: width, height: height, owner: owner)
     {
         Win32.SetWindowLongPtr(Handle, Win32.GwlStyle, unchecked((nint)Win32.WsPopup));
-        var extendedStyle = Win32.WsExToolWindow | Win32.WsExNoActivate | Win32.WsExTransparent;
+
+        // Not WS_EX_TRANSPARENT: with it, a touch that starts over the popup reaches none of the app's windows, so the
+        // owner beneath never gets it. The HTTRANSPARENT hit test passes mouse and touch input to the owner where it lies
+        // beneath the popup.
+        var extendedStyle = Win32.WsExToolWindow | Win32.WsExNoActivate;
         Win32.SetWindowLongPtr(Handle, Win32.GwlExStyle, (nint)extendedStyle);
     }
 

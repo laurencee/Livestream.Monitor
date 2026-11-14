@@ -74,6 +74,10 @@ internal abstract class CanvasWindow : DesktopWindow
     private long toolTipClosedAt = long.MinValue / 2;
     private bool toolTipSuppressed;
     private WindowAutomation? automation;
+    private PanTarget panTarget;
+    private float panStep;
+    private float panRemainder;
+    private int panLastY;
 
     protected CanvasWindow(
         string title,
@@ -115,6 +119,13 @@ internal abstract class CanvasWindow : DesktopWindow
     protected GraphicsDevice Graphics => graphics;
     protected SizeF ClientSize { get; private set; }
     protected PointF Pointer { get; private set; }
+
+    /// <summary>
+    /// True while hover is off: from the start of a touch pan until a mouse or pen moves over the canvas or the canvas gets
+    /// a left press, e.g. a tap.
+    /// </summary>
+    protected bool IsHoverSuspended { get; private set; }
+
     protected bool HasDialog => dialogs.Count != 0;
     protected virtual uint? WindowBorderColor => null;
     protected virtual bool CanResize => true;
@@ -312,6 +323,13 @@ internal abstract class CanvasWindow : DesktopWindow
     protected virtual void OnPointerMove(PointF point) { }
     protected virtual void OnDoubleClick(PointF point) { }
     protected virtual void OnScroll(int steps) { }
+
+    /// <summary>The scroll step, in logical pixels, of the content that a touch drag from the point pans; null where a drag does not pan.</summary>
+    protected virtual float? ContentPanStep(PointF point) => null;
+
+    /// <summary>Scrolls the panned content by whole steps; positive steps move it down, toward its start, as the wheel does.</summary>
+    protected virtual void OnPan(int steps) { }
+
     protected virtual bool OnKey(int key) => false;
     protected virtual bool OnDialogKey(int key) => false;
     protected virtual void RequestClose() => Close();
@@ -380,12 +398,20 @@ internal abstract class CanvasWindow : DesktopWindow
                 Ui.EndMenuScroll();
                 ActiveDialog?.MouseUp();
                 break;
+
+            // The polled pointer can change without the user moving it, as when a pan leaves the cursor where the finger
+            // lifted or a window under it closes, so a move resumes hover suspended by a pan only for a mouse or pen.
             case Win32.WmMouseMove:
+                if (!Win32.IsPromotedFromTouch()) ResumeHover();
                 UpdatePointer(ToLogical(lParam));
                 return 0;
             case Win32.WmLeftButtonDown:
                 DismissToolTip();
                 Pointer = ToLogical(lParam);
+
+                // A press, including a touch tap, is input at the pointer, so hover resumes as before the pan.
+                ResumeHover();
+
                 pressedInDialog = HasDialog;
                 widgetPressed = Ui.MouseDown(Pointer);
 
@@ -423,6 +449,15 @@ internal abstract class CanvasWindow : DesktopWindow
                 DismissToolTip();
                 Wheel(Win32.HighWord((nint)wParam));
                 return 0;
+
+            // As in WPF, whose data grid and lists pan with touch, a touch drag pans content that allows it. Elsewhere
+            // panning is turned off, so the drag arrives as mouse input, as on a scroll bar's thumb.
+            case Win32.WmGestureNotify:
+                ConfigurePan(Win32.ReadGestureNotification(lParam));
+                break;
+            case Win32.WmGesture:
+                if (Pan(lParam)) return 0;
+                break;
 
             // As in WPF, whose progress dialog sets the wait cursor, the wait cursor shows anywhere on a progress dialog's
             // panel, including over its native message control, which lets this window set the cursor first.
@@ -472,7 +507,7 @@ internal abstract class CanvasWindow : DesktopWindow
     protected void UpdateToolTip(Rectangle? upcomingObstacle = null)
     {
         var now = Environment.TickCount64;
-        var region = IsVisible && !HasDialog ? Ui.ToolTipAt(Pointer) : null;
+        var region = IsVisible && !HasDialog && !IsHoverSuspended ? Ui.ToolTipAt(Pointer) : null;
 
         if (region?.Id != toolTipOwner)
         {
@@ -586,6 +621,78 @@ internal abstract class CanvasWindow : DesktopWindow
         return caption;
     }
 
+    // Sent as a touch starts, before Windows decides between a pan and mouse input.
+    private void ConfigurePan(in Win32.GestureNotification notification)
+    {
+        panTarget = PanTarget.None;
+
+        // A child control, such as an edit control, handles its own touch input.
+        if (notification.Target != Handle) return;
+
+        var position = new Win32.Point { X = notification.Location.X, Y = notification.Location.Y };
+        Win32.ScreenToClient(Handle, ref position);
+        var point = new PointF(position.X / Scale, position.Y / Scale);
+
+        if (Ui.MenuPanStep(point) is { } menuStep)
+        {
+            panTarget = PanTarget.Menu;
+            panStep = menuStep;
+        }
+        else if (!HasDialog && !Ui.ContainsHit(point) && ContentPanStep(point) is { } contentStep)
+        {
+            panTarget = PanTarget.Content;
+            panStep = contentStep;
+        }
+
+        // Without the gutter, a diagonal drag still pans vertically, as WPF's panning in both directions does.
+        const uint PanWanted = Win32.GestureConfigPan | Win32.GestureConfigPanSingleFingerVertically |
+            Win32.GestureConfigPanSingleFingerHorizontally | Win32.GestureConfigPanWithInertia;
+
+        if (panTarget == PanTarget.None) Win32.SetPanConfig(Handle, want: 0, block: Win32.GestureConfigPan);
+        else Win32.SetPanConfig(Handle, PanWanted, block: Win32.GestureConfigPanWithGutter);
+    }
+
+    // Pan positions are in physical screen pixels; the content follows the finger in whole steps, including while the pan
+    // continues with inertia after the finger lifts.
+    private bool Pan(nint gesture)
+    {
+        if (panTarget == PanTarget.None || !Win32.TryGetGestureInfo(gesture, out var info)) return false;
+        if (info.Id != Win32.GestureIdPan || info.Target != Handle) return false;
+
+        if ((info.Flags & Win32.GestureFlagBegin) != 0)
+        {
+            DismissToolTip();
+            IsHoverSuspended = true;
+            panRemainder = 0;
+            panLastY = info.Location.Y;
+        }
+
+        panRemainder += (info.Location.Y - panLastY) / Scale;
+        panLastY = info.Location.Y;
+        var steps = (int)(panRemainder / panStep);
+        panRemainder -= steps * panStep;
+
+        if (steps != 0)
+        {
+            if (panTarget == PanTarget.Menu) Ui.ScrollMenu(steps);
+            else if (!HasDialog) OnPan(steps);
+
+            NeedsPaint = true;
+        }
+
+        Win32.CloseGestureInfoHandle(gesture);
+        return true;
+    }
+
+    // Hover tracking skipped the pointer's moves while suspended, so it restarts at the current point.
+    private void ResumeHover()
+    {
+        if (!IsHoverSuspended) return;
+
+        IsHoverSuspended = false;
+        if (!HasDialog) OnPointerMove(Pointer);
+    }
+
     // Precision touchpads report fractions of a notch; scroll once the accumulated delta reaches whole notches.
     private void Wheel(int delta)
     {
@@ -600,5 +707,12 @@ internal abstract class CanvasWindow : DesktopWindow
         else if (!Ui.ScrollMenu(steps)) OnScroll(steps);
 
         NeedsPaint = true;
+    }
+
+    private enum PanTarget
+    {
+        None,
+        Menu,
+        Content,
     }
 }
