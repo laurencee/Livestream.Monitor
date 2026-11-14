@@ -281,6 +281,9 @@ internal abstract class CanvasWindow : DesktopWindow
 
         UpdatePlacedControls();
         OnPresented();
+
+        // Raising an event can send WM_GETOBJECT to the window, so events follow the presented frame.
+        automation?.RaiseChanges();
     }
 
     public void Snapshot(string path)

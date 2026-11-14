@@ -390,7 +390,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 FilterChanged();
             },
             toolTip: "Show live channels only",
-            name: "Online only"
+            name: "Online only",
+            toggled: state.OnlineOnly
         );
         var onlineImage = images.GetEmbedded(state.OnlineOnly ? EmbeddedImages.Live : EmbeddedImages.Offline);
         const float OnlineImageSize = 13;
@@ -848,10 +849,29 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var bounds = new RectangleF(x: x, y: y, width: layout.TileWidth, height: layout.TileHeight);
             var stream = state.Page == MonitorPage.TopStreams ? state.Rows[i] : null;
             var tileName = stream != null ? stream.DisplayName : state.Vods[i].Title ?? "";
-            var tileStates = i == state.SelectedIndex ? AutomationStates.Selected : AutomationStates.None;
-            var tileId = $"tile.{i}";
-            Ui.BeginGroup(tileId, AutomationRole.ListItem, tileName, bounds, tileStates);
             var following = stream != null && state.IsFollowed(stream);
+            var tileStates = i == state.SelectedIndex ? AutomationStates.Selected : AutomationStates.None;
+            Action? toggleFollow = null;
+
+            if (stream != null)
+            {
+                // A Top Streams tile toggles following as a second click does, after selecting it as the first does.
+                var index = i;
+                tileStates |= AutomationStates.Checkable | AutomationStates.Unfocusable;
+                if (following) tileStates |= AutomationStates.Checked;
+                if (state.Busy) tileStates |= AutomationStates.Disabled;
+                toggleFollow = () =>
+                {
+                    // The action runs later, after any page switch that arrived first; only Top Streams tiles follow.
+                    if (state.Page != MonitorPage.TopStreams) return;
+
+                    state.SelectedIndex = index;
+                    _ = ToggleFollow();
+                };
+            }
+
+            var tileId = $"tile.{i}";
+            Ui.BeginGroup(tileId, AutomationRole.ListItem, tileName, bounds, tileStates, toggleFollow);
             var hovered = Ui.IsPointerOver(bounds);
             var background = hovered ? palette.Highlight : following ? palette.Selection : palette.Tile;
             var color = hovered || following ? palette.AccentText : palette.Text;

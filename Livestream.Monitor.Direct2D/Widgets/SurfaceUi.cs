@@ -188,9 +188,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         AutomationRole role,
         string name,
         RectangleF bounds,
-        AutomationStates states = AutomationStates.None)
+        AutomationStates states = AutomationStates.None,
+        Action? activate = null)
     {
-        var group = AddNode(id, role, name, bounds, states);
+        var group = AddNode(id, role, name, bounds, states, activate: activate);
         automationGroups.Push(group < 0 ? HiddenGroup : group);
     }
 
@@ -483,7 +484,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     /// <summary>
     /// A MahApps button with rounded corners. A <paramref name="chrome"/> button is a window command drawn on the title
-    /// bar; a <paramref name="flat"/> button is square.
+    /// bar; a <paramref name="flat"/> button is square. A <paramref name="toggled"/> button switches a setting on (true) and
+    /// off (false).
     /// </summary>
     public void Button(
         string id,
@@ -501,7 +503,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool flat = false,
         bool focusable = true,
         string? symbol = null,
-        bool showToolTipWhenDisabled = false)
+        bool showToolTipWhenDisabled = false,
+        bool? toggled = null)
     {
         const float CornerRadius = 3;
         var radius = flat ? 0 : CornerRadius;
@@ -557,6 +560,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Add(id, bounds, action, enabled, focusable);
         if (enabled || showToolTipWhenDisabled) ToolTip(id, bounds, toolTip);
         var states = WidgetStates(id, enabled) | (focusable ? AutomationStates.None : AutomationStates.Unfocusable);
+        if (toggled.HasValue) states |= AutomationStates.Checkable;
+        if (toggled == true) states |= AutomationStates.Checked;
         AddNode(
             id,
             AutomationRole.Button,
@@ -1105,10 +1110,14 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         active.Changed(index);
     }
 
+    // A menu item chosen with the keyboard, or a combo box's current choice, has the focus while its menu is open, as in
+    // WPF, unless a native text input keeps it while its suggestions are browsed.
+    private bool MenuHasFocus => menu is { Selected: >= 0 } && !HasFocusedInput;
+
     private AutomationStates WidgetStates(string id, bool enabled)
     {
         var states = enabled ? AutomationStates.None : AutomationStates.Disabled;
-        return focused == id ? states | AutomationStates.Focused : states;
+        return focused == id && !MenuHasFocus ? states | AutomationStates.Focused : states;
     }
 
     private void DrawFocus(string id, RectangleF bounds, uint? background = null)
@@ -1454,6 +1463,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (choice.Checked) states |= AutomationStates.Checked;
         if (choice.Checkable) states |= AutomationStates.Checkable;
         if (active.IsComboBox && index == active.Selected) states |= AutomationStates.Selected;
+        if (index == active.Selected && MenuHasFocus) states |= AutomationStates.Focused;
         var role = active.IsComboBox ? AutomationRole.ListItem : AutomationRole.MenuItem;
 
         AddNode(

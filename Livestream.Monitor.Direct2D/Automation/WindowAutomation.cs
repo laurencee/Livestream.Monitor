@@ -8,18 +8,24 @@ namespace Livestream.Monitor.Direct2D.Automation;
 
 /// <summary>
 /// Serves a canvas window's drawn widgets to UI Automation as a fragment tree hosted in the window. Providers read the
-/// last drawn frame's tree on UI Automation's threads; their actions are posted to the UI thread. No automation events
-/// are raised, so clients find changes by reading the tree again.
+/// last drawn frame's tree on UI Automation's threads; their actions are posted to the UI thread. After each frame, the UI
+/// thread compares the tree with the previous frame's and raises events for what changed.
 /// </summary>
 /// <remarks>https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-serversideprovider</remarks>
 internal sealed class WindowAutomation
 {
+    // When more parents than this have changed children, they are reported as one change of the window's children.
+    private const int MaxSeparateStructureChanges = 3;
+
     private readonly Func<AutomationTree> treeSource;
     private readonly Func<float> scaleSource;
     private readonly Action invalidate;
     private readonly SynchronizationContext uiContext;
     private readonly ConcurrentDictionary<string, int> runtimeIds = new(StringComparer.Ordinal);
+    private readonly List<int> changedParents = [];
     private int lastRuntimeId;
+    private AutomationTree raisedTree;
+    private string? raisedFocus;
     private volatile bool released;
 
     /// <summary>Created on the UI thread, whose synchronization context runs the providers' actions.</summary>
@@ -36,6 +42,7 @@ internal sealed class WindowAutomation
         uiContext = SynchronizationContext.Current ??
                     throw new InvalidOperationException("UI Automation must be created on the UI thread.");
 
+        raisedTree = treeSource();
         Root = new RootProvider(this);
     }
 
@@ -64,6 +71,49 @@ internal sealed class WindowAutomation
     {
         released = true;
         UiAutomation.UiaReturnRawElementProvider(Window, wParam: 0, lParam: 0, provider: 0);
+    }
+
+    /// <summary>
+    /// Raises UI Automation events for what changed since the previous frame: keyboard focus, toggle, expand and selection
+    /// states, menus opening and closing, and changed children. Called on the UI thread after each frame is presented.
+    /// </summary>
+    public void RaiseChanges()
+    {
+        var previous = raisedTree;
+        var current = Tree;
+        if (released || ReferenceEquals(previous, current)) return;
+
+        raisedTree = current;
+        if (!UiAutomation.UiaClientsAreListening()) return;
+
+        // A closed menu is no longer drawn, so the window reports that it closed. That comes before the opening of a menu that replaced it.
+        var previousNodes = previous.Nodes;
+        // ReSharper disable once ForCanBeConvertedToForeach - foreach over the IReadOnlyList allocates an enumerator per frame.
+        for (var i = 0; i < previousNodes.Count; i++)
+            if (previousNodes[i].Role == AutomationRole.Menu && current.IndexOf(previousNodes[i].Key) < 0)
+                RaiseEvent(Root, UiAutomation.MenuClosedEvent);
+
+        changedParents.Clear();
+        var nodes = current.Nodes;
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var node = nodes[i];
+            var before = previous.IndexOf(node.Key);
+
+            // A new menu is announced; any other new element is reported by its parent's changed children.
+            if (before < 0)
+            {
+                if (node.Role == AutomationRole.Menu) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.MenuOpenedEvent);
+                continue;
+            }
+
+            RaiseStateChanges(previousNodes[before], node);
+            if (!HasSameChildren(previous, before, current, i)) changedParents.Add(i);
+        }
+
+        var windowChildrenChanged = !HasSameChildren(before: previous, beforeParent: -1, after: current, afterParent: -1);
+        RaiseStructureChanges(current, windowChildrenChanged);
+        RaiseFocusChange(current);
     }
 
     /// <summary>A number unique to the key within the window, kept while the window exists.</summary>
@@ -107,6 +157,130 @@ internal sealed class WindowAutomation
         Win32.ScreenToClient(Window, ref point);
         var scale = scaleSource();
         return new PointF(point.X / scale, point.Y / scale);
+    }
+
+    // Raises the property events of patterns whose state changed, and the selection of a newly selected item.
+    private void RaiseStateChanges(AutomationNode before, AutomationNode after)
+    {
+        const AutomationStates PatternStates = AutomationStates.Checked | AutomationStates.Expanded | AutomationStates.Selected;
+        var changed = (before.States ^ after.States) & PatternStates;
+        if (changed == AutomationStates.None) return;
+
+        var element = new ElementProvider(this, after.Key);
+
+        if ((changed & AutomationStates.Checked) != 0 && ElementProvider.Supports(after, UiAutomation.TogglePattern))
+        {
+            var oldValue = Variant.FromInt32((int)ElementProvider.ToggleStateOf(before));
+            var newValue = Variant.FromInt32((int)ElementProvider.ToggleStateOf(after));
+            RaisePropertyChanged(element, UiAutomation.ToggleStateProperty, oldValue, newValue);
+        }
+
+        if ((changed & AutomationStates.Expanded) != 0 && ElementProvider.Supports(after, UiAutomation.ExpandCollapsePattern))
+        {
+            var oldValue = Variant.FromInt32((int)ElementProvider.ExpandCollapseStateOf(before));
+            var newValue = Variant.FromInt32((int)ElementProvider.ExpandCollapseStateOf(after));
+            RaisePropertyChanged(element, UiAutomation.ExpandCollapseStateProperty, oldValue, newValue);
+        }
+
+        if ((changed & AutomationStates.Selected) == 0 || !ElementProvider.Supports(after, UiAutomation.SelectionItemPattern)) return;
+
+        var selected = after.Has(AutomationStates.Selected);
+        var wasSelected = Variant.FromBoolean(!selected);
+        var isSelected = Variant.FromBoolean(selected);
+        RaisePropertyChanged(element, UiAutomation.IsSelectedProperty, wasSelected, isSelected);
+        if (selected) RaiseEvent(element, UiAutomation.ElementSelectedEvent);
+    }
+
+    // Reports changed children with few events: an element inside an invalidated one needs none, and many changed parents
+    // become one change of the window's children. UI Automation advises bulk events when several children of one element
+    // change at once; extending that across parents is this window's choice.
+    // https://learn.microsoft.com/en-us/windows/win32/api/uiautomationcore/ne-uiautomationcore-structurechangetype
+    private void RaiseStructureChanges(AutomationTree tree, bool windowChildrenChanged)
+    {
+        if (windowChildrenChanged || changedParents.Count > MaxSeparateStructureChanges)
+        {
+            RaiseChildrenInvalidated(Root);
+            return;
+        }
+
+        foreach (var index in changedParents)
+            if (!HasChangedAncestor(index))
+                RaiseChildrenInvalidated(new ElementProvider(this, tree.Nodes[index].Key));
+
+        bool HasChangedAncestor(int node)
+        {
+            for (var parent = tree.Nodes[node].Parent; parent >= 0; parent = tree.Nodes[parent].Parent)
+                if (changedParents.Contains(parent))
+                    return true;
+
+            return false;
+        }
+    }
+
+    // Announces the element with the keyboard focus when it changes or the window regains the focus. A native text input
+    // with the focus raises its own events, and an inactive window announces none.
+    private void RaiseFocusChange(AutomationTree tree)
+    {
+        var focus = Win32.GetFocus() == Window ? FocusKey(tree) : null;
+        if (focus != null && focus != raisedFocus) RaiseEvent(new ElementProvider(this, focus), UiAutomation.AutomationFocusChangedEvent);
+
+        raisedFocus = focus;
+    }
+
+    private static bool HasSameChildren(
+        AutomationTree before,
+        int beforeParent,
+        AutomationTree after,
+        int afterParent)
+    {
+        var beforeChildren = before.ChildrenOf(beforeParent);
+        var afterChildren = after.ChildrenOf(afterParent);
+        if (beforeChildren.Length != afterChildren.Length) return false;
+
+        for (var i = 0; i < afterChildren.Length; i++)
+            if (before.Nodes[beforeChildren[i]].Key != after.Nodes[afterChildren[i]].Key)
+                return false;
+
+        return true;
+    }
+
+    private static string? FocusKey(AutomationTree tree)
+    {
+        var index = tree.IndexOfFocus();
+        return index < 0 ? null : tree.Nodes[index].Key;
+    }
+
+    private static void RaiseEvent(IRawElementProviderSimple provider, int eventId) =>
+        Raise(provider, pointer => UiAutomation.UiaRaiseAutomationEvent(pointer, eventId));
+
+    private static void RaisePropertyChanged(
+        IRawElementProviderSimple provider,
+        int propertyId,
+        Variant oldValue,
+        Variant newValue) =>
+        Raise(provider, pointer => UiAutomation.UiaRaiseAutomationPropertyChangedEvent(pointer, propertyId, oldValue, newValue));
+
+    private static unsafe void RaiseChildrenInvalidated(IRawElementProviderSimple provider) =>
+        Raise(
+            provider,
+            pointer => UiAutomation.UiaRaiseStructureChangedEvent(
+                pointer,
+                StructureChangeType.ChildrenInvalidated,
+                runtimeId: null,
+                runtimeIdLength: 0));
+
+    private static unsafe void Raise(IRawElementProviderSimple provider, Func<nint, int> raise)
+    {
+        var pointer = (nint)ComInterfaceMarshaller<IRawElementProviderSimple>.ConvertToUnmanaged(provider);
+        try
+        {
+            // A client that misses an event reads the tree again, so a failed raise does not fail the frame.
+            _ = raise(pointer);
+        }
+        finally
+        {
+            Marshal.Release(pointer);
+        }
     }
 }
 
@@ -170,13 +344,7 @@ internal sealed partial class RootProvider(WindowAutomation owner) :
     IRawElementProviderFragment? IRawElementProviderFragmentRoot.GetFocus()
     {
         var tree = owner.Tree;
-        var nodes = tree.Nodes;
-
-        for (var i = 0; i < nodes.Count; i++)
-            if (nodes[i].Has(AutomationStates.Focused))
-                return owner.Element(tree, i);
-
-        return null;
+        return owner.Element(tree, tree.IndexOfFocus());
     }
 }
 
@@ -283,8 +451,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     void IToggleProvider.Toggle() => Activate(EnabledNode());
 
-    ToggleState IToggleProvider.get_ToggleState() =>
-        Node.Has(AutomationStates.Checked) ? ToggleState.On : ToggleState.Off;
+    ToggleState IToggleProvider.get_ToggleState() => ToggleStateOf(Node);
 
     void IExpandCollapseProvider.Expand()
     {
@@ -299,9 +466,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
         if (node.Has(AutomationStates.Expanded) && collapse != null) owner.Run(collapse);
     }
 
-    ExpandCollapseState IExpandCollapseProvider.get_ExpandCollapseState() => Node.Has(AutomationStates.Expanded)
-        ? ExpandCollapseState.Expanded
-        : ExpandCollapseState.Collapsed;
+    ExpandCollapseState IExpandCollapseProvider.get_ExpandCollapseState() => ExpandCollapseStateOf(Node);
 
     void IValueProvider.SetValue(string value)
     {
@@ -372,7 +537,14 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
         return parent >= 0 && tree.Nodes[parent].Role == AutomationRole.ComboBox ? owner.Element(tree, parent) : null;
     }
 
-    private static bool Supports(AutomationNode node, int patternId)
+    internal static ToggleState ToggleStateOf(AutomationNode node) =>
+        node.Has(AutomationStates.Checked) ? ToggleState.On : ToggleState.Off;
+
+    internal static ExpandCollapseState ExpandCollapseStateOf(AutomationNode node) => node.Has(AutomationStates.Expanded)
+        ? ExpandCollapseState.Expanded
+        : ExpandCollapseState.Collapsed;
+
+    internal static bool Supports(AutomationNode node, int patternId)
     {
         const AutomationStates OwnPatterns = AutomationStates.Expandable | AutomationStates.Checkable;
         var role = node.Role;
@@ -382,14 +554,15 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.InvokePattern => role is AutomationRole.Button or AutomationRole.MenuItem &&
                                           node.Activate != null &&
                                           !node.Has(OwnPatterns),
-            UiAutomation.TogglePattern => role == AutomationRole.CheckBox ||
-                                          role == AutomationRole.MenuItem && node.Has(AutomationStates.Checkable),
+            UiAutomation.TogglePattern => role == AutomationRole.CheckBox || node.Has(AutomationStates.Checkable),
             UiAutomation.ExpandCollapsePattern => role == AutomationRole.ComboBox ||
                                                   node.Has(AutomationStates.Expandable),
             UiAutomation.ValuePattern => role is AutomationRole.Edit or AutomationRole.ComboBox,
             UiAutomation.SelectionPattern => role == AutomationRole.ComboBox,
             UiAutomation.SelectionItemPattern => role == AutomationRole.RadioButton ||
-                                                 role == AutomationRole.ListItem && node.Activate != null,
+                                                 role == AutomationRole.ListItem &&
+                                                 node.Activate != null &&
+                                                 !node.Has(AutomationStates.Checkable),
             _ => false,
         };
     }

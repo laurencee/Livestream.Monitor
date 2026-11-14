@@ -124,7 +124,9 @@ internal partial interface IValueProvider
 [Flags]
 internal enum ProviderOptions
 {
-    ServerSideProvider = 0x1,
+    // ProviderOptions_ServerSideProvider. 0x1 is ProviderOptions_ClientSideProvider; UI Automation drops the raised events
+    // of an in-process provider that reports it.
+    ServerSideProvider = 0x2,
 }
 
 internal enum NavigateDirection
@@ -147,6 +149,11 @@ internal enum ToggleState
 {
     Off = 0,
     On = 1,
+}
+
+internal enum StructureChangeType
+{
+    ChildrenInvalidated = 2,
 }
 
 /// <summary>
@@ -215,6 +222,11 @@ internal static partial class UiAutomation
     public const int SelectionItemPattern = 10010;
     public const int TogglePattern = 10015;
 
+    public const int MenuOpenedEvent = 20003;
+    public const int AutomationFocusChangedEvent = 20005;
+    public const int MenuClosedEvent = 20007;
+    public const int ElementSelectedEvent = 20012;
+
     public const int ControlTypeProperty = 30003;
     public const int NameProperty = 30005;
     public const int HasKeyboardFocusProperty = 30008;
@@ -223,6 +235,9 @@ internal static partial class UiAutomation
     public const int AutomationIdProperty = 30011;
     public const int HelpTextProperty = 30013;
     public const int FrameworkIdProperty = 30024;
+    public const int ExpandCollapseStateProperty = 30070;
+    public const int IsSelectedProperty = 30079;
+    public const int ToggleStateProperty = 30086;
 
     public const int ButtonControl = 50000;
     public const int CheckBoxControl = 50002;
@@ -248,6 +263,32 @@ internal static partial class UiAutomation
 
     [LibraryImport("UIAutomationCore.dll")]
     public static partial int UiaHostProviderFromHwnd(nint window, out nint provider);
+
+    /// <summary>True while any client on the desktop listens for events, so a provider can skip raising them otherwise.</summary>
+    [LibraryImport("UIAutomationCore.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool UiaClientsAreListening();
+
+    [LibraryImport("UIAutomationCore.dll")]
+    public static partial int UiaRaiseAutomationEvent(nint provider, int eventId);
+
+    [LibraryImport("UIAutomationCore.dll")]
+    public static partial int UiaRaiseAutomationPropertyChangedEvent(
+        nint provider,
+        int propertyId,
+        Variant oldValue,
+        Variant newValue);
+
+    /// <summary>
+    /// Raises a structure change. A ChildrenInvalidated change is raised on the element whose children changed, with a
+    /// null runtime id: only StructureChangeType_ChildRemoved uses the id.
+    /// </summary>
+    [LibraryImport("UIAutomationCore.dll")]
+    public static unsafe partial int UiaRaiseStructureChangedEvent(
+        nint provider,
+        StructureChangeType type,
+        int* runtimeId,
+        int runtimeIdLength);
 
     /// <summary>A SAFEARRAY of 32-bit integers, owned by the caller.</summary>
     public static unsafe nint CreateInt32Array(ReadOnlySpan<int> values)

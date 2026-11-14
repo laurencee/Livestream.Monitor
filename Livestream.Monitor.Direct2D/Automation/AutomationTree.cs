@@ -28,7 +28,10 @@ internal enum AutomationStates
     Selected = 8,
     Focused = 16,
 
-    /// <summary>A menu item that can be ticked; its <see cref="Checked"/> state is then exposed as a toggle.</summary>
+    /// <summary>
+    /// An element that switches on and off, such as a tickable menu item, a toggle button or a followable tile; its
+    /// <see cref="Checked"/> state is then exposed as a toggle.
+    /// </summary>
     Checkable = 32,
 
     /// <summary>A button that opens and closes content, such as a settings section.</summary>
@@ -103,6 +106,9 @@ internal sealed class AutomationTree
         CollectionsMarshal.AsSpan(parent < 0 ? topLevel : children[parent]);
 
     public int IndexOf(string key) => indices.GetValueOrDefault(key, -1);
+
+    /// <summary>The index of the node with keyboard focus, or -1 when none has it.</summary>
+    public int IndexOfFocus() => Array.FindIndex(nodes, node => node.Has(AutomationStates.Focused));
 
     /// <summary>The index of the next (step 1) or previous (step -1) sibling, or -1 when there is none.</summary>
     public int SiblingOf(int index, int step)
