@@ -370,6 +370,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var filterBounds = new RectangleF(x: 50, y: Y, width: 100, height: Height);
         Ui.Input(
             "filter",
+            "Name filter",
             "Name...",
             filterBounds,
             value =>
@@ -383,6 +384,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var filterProviderBounds = new RectangleF(x: 154, y: Y, width: 47 + PlatformFilterExtraWidth, height: Height);
         Ui.Combo(
             "filter.provider",
+            "Platform filter",
             PlatformNames.GetDisplayName(state.ProviderFilter),
             filterDisplayNames,
             filterIndex,
@@ -440,7 +442,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Separator(328 + PlatformFilterExtraWidth);
         var extra = Math.Max(0, width - Program.WindowWidth);
         var channelBounds = new RectangleF(x: 336 + PlatformFilterExtraWidth, y: Y, width: 150 + extra, height: Height);
-        Ui.Input(id: "channel", placeholder: "Channel name or ID...", channelBounds, enter: () => _ = AddChannel());
+        Ui.Input(id: "channel", name: "New channel", placeholder: "Channel name or ID...", channelBounds, enter: () => _ = AddChannel());
         var providerBounds = new RectangleF(x: 490 + PlatformFilterExtraWidth + extra, y: Y, width: 80, height: Height);
         DrawProviderCombo(providerBounds);
         var addBounds = new RectangleF(x: 574 + PlatformFilterExtraWidth + extra, y: Y, width: 19, height: Height);
@@ -513,6 +515,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var gameBounds = new RectangleF(x: 201, y: Y, width: 175, height: Height);
             Ui.Input(
                 "game",
+                "Game filter",
                 "Partial game name...",
                 gameBounds,
                 _ =>
@@ -533,6 +536,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var choicesBounds = gameBounds with { X = gameBounds.Right - DropDownArrowWidth, Width = DropDownArrowWidth };
             Ui.DropDownButton(
                 id: "game.choices",
+                input: "game",
                 bounds: choicesBounds,
                 frame: gameBounds,
                 action: () => _ = FindGames(),
@@ -573,6 +577,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var channelBounds = new RectangleF(x: 173, y: Y, width: 140, height: Height);
         Ui.Input(
             "vod.channel",
+            "Channel",
             "Channel name/ID",
             channelBounds,
             _ =>
@@ -592,6 +597,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var hasKnownChannels = state.StreamsModel.Livestreams.Any(stream => stream.ApiClient == provider);
         Ui.DropDownButton(
             id: "vod.channels",
+            input: "vod.channel",
             bounds: channelsBounds,
             frame: channelBounds,
             action: ShowKnownStreams,
@@ -605,6 +611,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var typeBounds = new RectangleF(x: 319, y: Y, width: 100, height: Height);
         Ui.Combo(
             "vod.type",
+            "VOD type",
             type,
             types,
             vodTypeIndex,
@@ -1099,6 +1106,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Ui.Text(ItemsLabel, itemsLabelBounds, size: ItemsLabelSize, alignment: TextAlign.Trailing);
         Ui.Combo(
             "page.size",
+            "Items per page",
             state.PageSize.ToString(CultureInfo.InvariantCulture),
             PageSizeLabels,
             PageSizes.IndexOf(state.PageSize),
@@ -1280,6 +1288,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var index = choices.SelectedIndex;
         Ui.Combo(
             id: "provider",
+            name: "Platform",
             text: choices.Names[index],
             choices: choices.Names,
             selectedIndex: index,
@@ -1448,6 +1457,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var suggestions = games.Select(game => game.GameName).ToArray();
             Ui.DropDown(
                 GameSuggestionsMenuId,
+                "Game suggestions",
                 new RectangleF(x: 201, y: ToolbarTop, width: 175, height: ToolbarControlHeight),
                 suggestions,
                 index =>
@@ -1455,7 +1465,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     Ui.SetValue("game", suggestions[index]);
                     CancelGameSuggestions();
                     QueueQuery();
-                }
+                },
+                input: "game"
             );
         }
     }
@@ -1470,6 +1481,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // Below the stream name input and its known channels button.
         Ui.DropDown(
             "vod.known",
+            "Known channels",
             new RectangleF(x: 173, y: ToolbarTop, width: 140, height: ToolbarControlHeight),
             names,
             index =>
@@ -1477,7 +1489,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 Ui.SetValue("vod.channel", names[index]);
                 vodQueryDue = 0;
                 QueueQuery();
-            }
+            },
+            input: "vod.channel"
         );
     }
 

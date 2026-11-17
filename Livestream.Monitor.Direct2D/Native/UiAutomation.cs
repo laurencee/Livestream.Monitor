@@ -51,6 +51,17 @@ internal partial interface IRawElementProviderFragmentRoot
     IRawElementProviderFragment? GetFocus();
 }
 
+/// <summary>
+/// Lets a fragment root take a child window into its tree: UI Automation merges the provider returned for the window
+/// with the window's own providers, and shows the window only where the fragment places that provider.
+/// </summary>
+[GeneratedComInterface]
+[Guid("1d5df27c-8947-4425-b8d9-79787bb460b8")]
+internal partial interface IRawElementProviderHwndOverride
+{
+    IRawElementProviderSimple? GetOverrideProviderForHwnd(nint window);
+}
+
 [GeneratedComInterface]
 [Guid("54fcb24b-e18e-47a2-b4d3-eccbe77599a2")]
 internal partial interface IInvokeProvider
@@ -134,6 +145,9 @@ internal enum ProviderOptions
     // ProviderOptions_ServerSideProvider. 0x1 is ProviderOptions_ClientSideProvider; UI Automation drops the raised events
     // of an in-process provider that reports it.
     ServerSideProvider = 0x2,
+
+    /// <summary>The provider's properties and patterns take precedence over those of the window it is merged with.</summary>
+    OverrideProvider = 0x8,
 }
 
 internal enum NavigateDirection
@@ -164,9 +178,9 @@ internal enum StructureChangeType
 }
 
 /// <summary>
-/// The VARIANT layout (24 bytes on 64-bit Windows) holding the integer, boolean or BSTR property values a provider
-/// returns; the caller frees a BSTR with VariantClear. Built-in ComVariant marshalling would need runtime marshalling
-/// disabled for the whole assembly.
+/// The VARIANT layout (24 bytes on 64-bit Windows) holding the integer, boolean, BSTR or element array property
+/// values a provider returns; the caller frees a BSTR or array with VariantClear. Built-in ComVariant marshalling would
+/// need runtime marshalling disabled for the whole assembly.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
 internal readonly struct Variant
@@ -174,6 +188,9 @@ internal readonly struct Variant
     private const ushort Int32Type = 3;
     private const ushort StringType = 8;
     private const ushort BooleanType = 11;
+
+    // VT_ARRAY | VT_UNKNOWN: a SAFEARRAY of IUnknown pointers.
+    private const ushort UnknownArrayType = 0x2000 | 13;
 
     // VARIANT_TRUE: all bits set in the 16-bit boolean.
     private const short VariantTrue = -1;
@@ -198,6 +215,16 @@ internal readonly struct Variant
     public static Variant FromBoolean(bool flag) => new(BooleanType, flag ? VariantTrue : 0);
 
     public static Variant FromString(string text) => new(StringType, Marshal.StringToBSTR(text));
+
+    /// <summary>Takes ownership of a SAFEARRAY of IUnknown pointers, such as one from <see cref="UiAutomation.CreateUnknownArray"/>.</summary>
+    public static Variant FromUnknownArray(nint array) => new(UnknownArrayType, array);
+
+    /// <summary>Frees a string or array value the caller still owns, e.g. after passing it to a call that copies it.</summary>
+    public void Free()
+    {
+        if (type == StringType) Marshal.FreeBSTR(value);
+        if (type == UnknownArrayType) ComObject.Check(UiAutomation.SafeArrayDestroy(value));
+    }
 }
 
 /// <summary>A UiaRect: screen coordinates in device pixels.</summary>
@@ -233,6 +260,7 @@ internal static partial class UiAutomation
     public const int MenuOpenedEvent = 20003;
     public const int AutomationFocusChangedEvent = 20005;
     public const int MenuClosedEvent = 20007;
+    public const int LayoutInvalidatedEvent = 20008;
     public const int ElementSelectedEvent = 20012;
 
     public const int ControlTypeProperty = 30003;
@@ -244,9 +272,11 @@ internal static partial class UiAutomation
     public const int HelpTextProperty = 30013;
     public const int FrameworkIdProperty = 30024;
     public const int ItemStatusProperty = 30026;
+    public const int ValueValueProperty = 30045;
     public const int ExpandCollapseStateProperty = 30070;
     public const int IsSelectedProperty = 30079;
     public const int ToggleStateProperty = 30086;
+    public const int ControllerForProperty = 30104;
     public const int PositionInSetProperty = 30152;
     public const int SizeOfSetProperty = 30153;
 
@@ -324,6 +354,10 @@ internal static partial class UiAutomation
 
         return array;
     }
+
+    /// <summary>Destroys a SAFEARRAY and releases the references it holds.</summary>
+    [LibraryImport("oleaut32.dll")]
+    public static partial int SafeArrayDestroy(nint array);
 
     [LibraryImport("oleaut32.dll")]
     private static partial nint SafeArrayCreateVector(ushort variantType, int lowerBound, uint count);

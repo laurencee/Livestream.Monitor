@@ -278,6 +278,7 @@ internal sealed class SettingsPane
         var accentIndex = Array.IndexOf(Accents, handler.Settings.MetroThemeAccentColour);
         ui.Combo(
             id: "settings.base",
+            name: "Base Theme",
             text: "Base Theme",
             choices: BaseNames,
             selectedIndex: baseIndex,
@@ -287,6 +288,7 @@ internal sealed class SettingsPane
         );
         ui.Combo(
             id: "settings.accent",
+            name: "Accent Colour",
             text: "Accent Colour",
             choices: AccentNames,
             selectedIndex: accentIndex,
@@ -368,6 +370,7 @@ internal sealed class SettingsPane
             minimumBody,
             ref y,
             id: MinimumViewersId,
+            name: "Popular alert threshold",
             minimumViewersText,
             placeholder: "",
             MinimumChanged,
@@ -506,6 +509,7 @@ internal sealed class SettingsPane
                 authBody,
                 ref y,
                 TwitchAuthTokenId,
+                name: "Auth token",
                 twitch.AuthToken,
                 "",
                 value => twitch.AuthToken = value,
@@ -644,6 +648,7 @@ internal sealed class SettingsPane
             pathBody,
             ref y,
             pathId,
+            name: $"{title} file path",
             command.FilePath,
             "",
             value =>
@@ -671,6 +676,7 @@ internal sealed class SettingsPane
             argsBody,
             ref y,
             id + ".args",
+            name: $"{title} arguments",
             command.Args,
             "",
             value => command.Args = value,
@@ -755,6 +761,7 @@ internal sealed class SettingsPane
         RectangleF body,
         ref float y,
         string id,
+        string name,
         string? value,
         string placeholder,
         Action<string> changed,
@@ -765,7 +772,7 @@ internal sealed class SettingsPane
         var bounds = Row(body, ref y, InputHeight);
         y += spacing;
         if (seededInputs.Add(id)) ui.SetValue(id, value ?? "");
-        ui.Input(id, placeholder, bounds, changed, enter: commit, toolTip: toolTip, lostFocus: commit);
+        ui.Input(id, name, placeholder, bounds, changed, enter: commit, toolTip: toolTip, lostFocus: commit);
         return bounds;
     }
 

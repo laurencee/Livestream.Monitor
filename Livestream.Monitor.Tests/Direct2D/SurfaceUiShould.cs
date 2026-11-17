@@ -311,7 +311,7 @@ public sealed class SurfaceUiShould : IDisposable
         var buttonBounds = comboBounds with { X = 200 };
         var invocations = 0;
         ui.Begin(palette, viewport);
-        ui.Combo(id: ComboId, text: "Option", choices: ["Option"], selectedIndex: 0, bounds: comboBounds, changed: _ => { });
+        ui.Combo(id: ComboId, name: "Combo", text: "Option", choices: ["Option"], selectedIndex: 0, bounds: comboBounds, changed: _ => { });
         ui.AddAutomationButton(id: ButtonId, name: "Scroll", bounds: buttonBounds, action: Scroll, enabled: true);
         ui.End();
 
@@ -437,19 +437,39 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
-    public void FocusTheNativeInputWhenItsPlaceholderIsShowing()
+    public void NameTheInputAndHostItsElementOnTheNativeInputFocusedFromItsPlaceholder()
     {
-        var bounds = new RectangleF(x: 10, y: 10, width: 150, height: 24);
-        ui.Begin(palette, viewport);
-        ui.Input("add", "add livestream...", bounds);
-        ui.End();
+        const string Placeholder = "add livestream...";
+        DrawInput();
+        var drawn = Assert.IsType<AutomationNode>(ui.Automation.Find("add"));
 
+        Assert.Equal(AutomationRole.Edit, drawn.Role);
+        Assert.Equal("New channel", drawn.Name);
+        Assert.Equal(Placeholder, drawn.HelpText);
+        Assert.Equal(0, drawn.Window);
         ui.MouseDown(new PointF(20, 20));
         ui.MouseUp(new PointF(20, 20));
 
+        // The element is hosted as the focus moves, before the next frame, so clients reading the focused native input find
+        // its name.
         Assert.True(ui.HasFocusedInput);
+        Assert.NotEqual(0, ui.Automation.Find("add")!.Window);
         ui.SetValue("add", "channel");
         Assert.Equal("channel", ui.Value("add"));
+
+        // With text, the element stays hosted on the shown native input, which supplies its text.
+        DrawInput();
+        var hosted = Assert.IsType<AutomationNode>(ui.Automation.Find("add"));
+        Assert.Equal("New channel", hosted.Name);
+        Assert.NotEqual(0, hosted.Window);
+
+        void DrawInput()
+        {
+            var bounds = new RectangleF(x: 10, y: 10, width: 150, height: 24);
+            ui.Begin(palette, viewport);
+            ui.Input("add", "New channel", Placeholder, bounds);
+            ui.End();
+        }
     }
 
     // WPF's caption buttons are not focusable, so clicking one leaves the focus where it was, and a selected grid row keeps its
@@ -536,7 +556,7 @@ public sealed class SurfaceUiShould : IDisposable
         var choices = Enumerable.Range(1, 30).Select(i => "Stream " + i).Append(longChoice).ToArray();
         var control = new RectangleF(x: 10, y: 10, width: 140, height: 26);
         var chosen = -1;
-        listUi.DropDown(id: "known", control, choices, chosen: index => chosen = index);
+        listUi.DropDown(id: "known", name: "Known", control, choices, chosen: index => chosen = index);
         listUi.Begin(palette, viewport);
         listUi.End();
 
@@ -573,7 +593,7 @@ public sealed class SurfaceUiShould : IDisposable
         const string ToolTip = "Refresh Livestreams";
         ui.Button(id: "refresh", text: "↻", button, action: () => { }, enabled: enabled, toolTip: ToolTip);
         var control = new RectangleF(x: 10, y: 0, width: 80, height: 10);
-        if (menu) ui.DropDown(id: "menu", control, choices: ["Choice"], chosen: _ => { });
+        if (menu) ui.DropDown(id: "menu", name: "Menu", control, choices: ["Choice"], chosen: _ => { });
 
         Assert.Equal(expected, ui.ToolTipAt(new PointF(240, 110))?.Text);
         Assert.Null(ui.ToolTipAt(new PointF(100, 110)));
@@ -623,7 +643,7 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.False(ui.IsContentPoint(new PointF(240, 110)));
         Assert.True(ui.IsContentPoint(new PointF(40, 110)));
         var filter = new RectangleF(x: 10, y: 25, width: 80, height: 24);
-        ui.DropDown(id: "filter", filter, choices: ["All", "Twitch"], chosen: _ => { });
+        ui.DropDown(id: "filter", name: "Filter", filter, choices: ["All", "Twitch"], chosen: _ => { });
         ui.Begin(palette, viewport, covered);
         ui.MouseMove(new PointF(40, 110));
 
@@ -641,7 +661,7 @@ public sealed class SurfaceUiShould : IDisposable
         ui.Button(id: "underlying", text: "Control", button, action: () => { });
         ui.MouseMove(new PointF(240, 110));
         var control = new RectangleF(x: 220, y: 65, width: 80, height: 24);
-        if (dropdown) ui.DropDown(id: "menu", control, choices: ["Choice"], chosen: _ => { });
+        if (dropdown) ui.DropDown(id: "menu", name: "Menu", control, choices: ["Choice"], chosen: _ => { });
 
         commands.Clear();
         RectangleF? covered = dropdown ? null : new RectangleF(x: 200, y: 0, width: 200, height: 300);
@@ -709,7 +729,7 @@ public sealed class SurfaceUiShould : IDisposable
         ui.Begin(palette, viewport);
         ui.Button(id: "query", text: "Query", button, action: () => activations++);
         var gameFilter = new RectangleF(x: 10, y: 15, width: 80, height: 24);
-        ui.DropDown(id: "suggestions", gameFilter, choices: ["Game"], chosen: _ => activations++);
+        ui.DropDown(id: "suggestions", name: "Suggestions", gameFilter, choices: ["Game"], chosen: _ => activations++);
         Assert.True(ui.HasMenu);
 
         ui.ModalOverlay();
@@ -730,6 +750,7 @@ public sealed class SurfaceUiShould : IDisposable
 
         Assert.NotNull(closed);
         Assert.Equal(AutomationRole.ComboBox, closed.Role);
+        Assert.Equal("Platform", closed.Name);
         Assert.Equal("Twitch", closed.Value);
         Assert.False(closed.Has(AutomationStates.Expanded));
         closed.Activate!();
@@ -751,6 +772,7 @@ public sealed class SurfaceUiShould : IDisposable
             ui.Begin(palette, viewport);
             ui.Combo(
                 id: "provider",
+                name: "Platform",
                 text: "Twitch",
                 choices: ["Kick", "Twitch"],
                 selectedIndex: 1,
@@ -783,6 +805,7 @@ public sealed class SurfaceUiShould : IDisposable
             ui.Begin(palette, viewport);
             ui.Combo(
                 id: "provider",
+                name: "Platform",
                 text: "Twitch",
                 choices: ["Kick", "Twitch"],
                 selectedIndex: 1,

@@ -134,11 +134,19 @@ internal abstract class DesktopWindow : IDisposable
 
     /// <summary>
     /// Offers a key press to the window owning its target, and forwards wheel input aimed at a read-only text to that
-    /// text's window; returns true when the message was handled.
+    /// text's window; returns true when the message was handled. A native control's system key is offered to its window
+    /// without being handled.
     /// </summary>
     public static bool PreprocessMessage(in Win32.Message message)
     {
         if (message.Id == Win32.WmMouseWheel) return ForwardTextWheel(message);
+
+        if (message.Id == Win32.WmSysKeyDown)
+        {
+            OfferControlSystemKey(message);
+            return false;
+        }
+
         if (message.Id != Win32.WmKeyDown) return false;
 
         var target = message.Window;
@@ -150,6 +158,22 @@ internal abstract class DesktopWindow : IDisposable
         }
 
         return false;
+    }
+
+    // A system key pressed in a native control, e.g. Alt+Down in a text input, does not reach the window that owns the
+    // control: that window gets only its own system keys through its window procedure. The control still receives the key,
+    // so releasing Alt afterwards does not enter the system menu.
+    private static void OfferControlSystemKey(in Win32.Message message)
+    {
+        var target = message.Window;
+
+        foreach (var window in WindowsByHandle.Values)
+        {
+            if (!window.controls.Exists(control => control.Handle == target)) continue;
+
+            window.OnControlSystemKey((int)message.WParam, message.LParam);
+            return;
+        }
     }
 
     // A read-only text has no scrollbar and ignores the wheel, so its window receives the wheel and scrolls it instead.
@@ -220,7 +244,7 @@ internal abstract class DesktopWindow : IDisposable
     }
 
     /// <summary>A single-line native edit control, positioned later through <see cref="PlaceInput"/>.</summary>
-    internal nint CreateTextInput(Action changed, Action lostFocus)
+    internal nint CreateTextInput(Action changed, Action gotFocus, Action lostFocus)
     {
         var input = Control(
             "EDIT",
@@ -230,6 +254,7 @@ internal abstract class DesktopWindow : IDisposable
             code =>
             {
                 if (code == Win32.EnChange) changed();
+                if (code == Win32.EnSetFocus) gotFocus();
                 if (code == Win32.EnKillFocus) lostFocus();
             }
         );
@@ -481,6 +506,9 @@ internal abstract class DesktopWindow : IDisposable
     protected virtual void OnClosed() { }
 
     protected virtual bool PreprocessKey(int key) => false;
+
+    /// <summary>A WM_SYSKEYDOWN at one of the window's native controls, with its lParam.</summary>
+    protected virtual void OnControlSystemKey(int key, nint lParam) { }
 
     protected virtual nint? OnMessage(uint message, nuint wParam, nint lParam) => HandleMessage(message, wParam, lParam);
 

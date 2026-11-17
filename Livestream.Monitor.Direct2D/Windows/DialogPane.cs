@@ -111,6 +111,7 @@ internal sealed class DialogPane(
             var inputBounds = new RectangleF(x: left, y: contentBottom + 2, width: contentWidth, height: 30);
             ui.Input(
                 InputId,
+                title,
                 "",
                 inputBounds,
                 value => input = value,

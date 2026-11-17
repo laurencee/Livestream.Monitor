@@ -32,6 +32,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private static readonly string[] IconTexts = ["›", "‹", "◀", "▶", "↑", "↓", "×", "+", "↻", "⚙", "▴", "▲", "▼"];
     private readonly List<Widget> widgets = [];
     private readonly Dictionary<string, TextInput> inputs = [];
+
+    // For each editable combo box, keyed by the id of its text input: its drop-down button and the list that button shows,
+    // as last drawn.
+    private readonly Dictionary<string, (string Button, string Menu)> inputDropDowns = [];
     private readonly List<ToolTipRegion> toolTips = [];
     private readonly List<AutomationNode> automation = [];
     private readonly Dictionary<string, int> automationKeys = [];
@@ -40,6 +44,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private string? hovered;
     private string? pressed;
     private string? focused;
+    private string? deferredInputFocus;
     private bool focusVisible;
     private MenuState? menu;
     private RectangleF viewport;
@@ -145,6 +150,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         automation.Clear();
         automationKeys.Clear();
         automationGroups.Clear();
+        inputDropDowns.Clear();
         foreach (var input in inputs.Values) input.Visible = false;
     }
 
@@ -171,6 +177,16 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         }
 
         Volatile.Write(ref automationTree, new AutomationTree(automation.ToArray()));
+
+        // A deferred focus waits for a frame that lays its input out; a frame does not lay out an input that is under another
+        // dialog. A later focus change, e.g. a click, Tab or that dialog's own focus, replaces the deferred one.
+        if (deferredInputFocus is { } deferred && deferred != focused) deferredInputFocus = null;
+
+        if (deferredInputFocus is { } pending && Automation.IndexOf(pending) >= 0)
+        {
+            deferredInputFocus = null;
+            FocusNativeInput(pending, inputs[pending]);
+        }
     }
 
     internal float FindYClearOfNativeInputs(RectangleF bounds, float top, float bottom)
@@ -203,8 +219,11 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         }
     }
 
-    private bool ShowsNativeInput(TextInput input) =>
-        input is { Visible: true, Enabled: true, ShowPlaceholder: false } && (menu == null || !input.Bounds.IntersectsWith(menu.Bounds));
+    private bool ShowsNativeInput(TextInput input) => !input.ShowPlaceholder && CanShowNativeInput(input);
+
+    // Whether the native control may show, as it does once focused even while the placeholder shows.
+    private bool CanShowNativeInput(TextInput input) =>
+        input is { Visible: true, Enabled: true } && (menu == null || !input.Bounds.IntersectsWith(menu.Bounds));
 
     /// <summary>
     /// Starts a group, such as a list row or tile, whose elements become its automation children. A key identifies the
@@ -742,8 +761,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         AddNode(id, AutomationRole.RadioButton, text, bounds, states, activate: () => InvokeWidget(id));
     }
 
+    /// <summary>
+    /// A combo box showing <paramref name="text"/>, usually its choice. <paramref name="name"/> tells UI Automation what the
+    /// box chooses; the selected choice is its UI Automation value.
+    /// </summary>
     public void Combo(
         string id,
+        string name,
         string text,
         IReadOnlyList<string> choices,
         int selectedIndex,
@@ -777,13 +801,14 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         DropDownArrow(arrowBounds, color);
         if (enabled) DrawFocus(id, bounds);
         var expanded = menu?.Id == id ? AutomationStates.Expanded : AutomationStates.None;
+        var value = selectedIndex >= 0 && selectedIndex < choices.Count ? choices[selectedIndex] : text;
         AddNode(
             id,
             AutomationRole.ComboBox,
-            name: "",
+            name,
             bounds,
             WidgetStates(id, enabled) | expanded,
-            value: text,
+            value: value,
             activate: () => OpenMenu(id),
             collapse: () => CloseMenu(id));
         Add(
@@ -864,8 +889,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Invalidate?.Invoke();
     }
 
+    /// <summary>
+    /// A text input. <paramref name="name"/> says what it is for. <paramref name="placeholder"/> says what to type and is
+    /// shown while the input is empty; UI Automation reads it as help text when there is no tooltip.
+    /// </summary>
     public void Input(
         string id,
+        string name,
         string placeholder,
         RectangleF bounds,
         Action<string>? changed = null,
@@ -874,35 +904,42 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool clear = false,
         string? toolTip = null,
         float trailing = 0,
-        string? name = null,
         Action? lostFocus = null)
     {
         // A trailing area stays inside the box's frame but outside its text: an editable combo box's arrow goes there.
         var textBounds = bounds with { Width = bounds.Width - trailing };
         var input = GetInput(id);
+        var showsClear = clear && input.Value.Length != 0;
         input.Changed = changed;
         input.Enter = enter;
         input.LostFocus = lostFocus;
         input.Enabled = enabled;
-        input.Bounds = textBounds;
+        const float ClearWidth = 24;
+        input.Bounds = showsClear ? textBounds with { Width = textBounds.Width - ClearWidth } : textBounds;
         input.Visible = IsAvailable(bounds) && (!clip.HasValue || clip.Value.Contains(bounds));
         var hasFocus = enabled && Win32.GetFocus() == input.Handle;
         input.ShowPlaceholder = input.Value.Length == 0 && placeholder.Length != 0 && !hasFocus;
 
         // Focusing a clipped input would show its native control outside the clip.
-        Add(id, textBounds, action: () => FocusInput(input), enabled: enabled && input.Visible);
+        Add(id, textBounds, action: () => FocusInput(id, input), enabled: enabled && input.Visible);
         if (enabled) ToolTip(id, bounds, toolTip);
+        var helpText = toolTip ?? (placeholder.Length != 0 ? placeholder : null);
+
+        // While the native control is shown, the element is hosted on it: one element with the element's name, id and help
+        // text, and the control's Text pattern, focus and bounds. While it is hidden, e.g. when the placeholder is shown, the
+        // drawn element stands in for it.
         var inputFocus = hasFocus ? AutomationStates.Focused : AutomationStates.None;
         AddNode(
             id,
             AutomationRole.Edit,
-            name ?? placeholder,
+            name,
             textBounds,
             WidgetStates(id, enabled) | inputFocus,
-            toolTip,
+            helpText,
             input.Value,
             activate: () => InvokeWidget(id),
-            setText: text => SetValue(id, text));
+            setText: text => SetValue(id, text),
+            window: ShowsNativeInput(input) ? input.Handle : 0);
 
         Fill(bounds, enabled ? Palette.Input : Palette.InputDisabled);
         var border = !enabled ? Palette.InputDisabledBorder
@@ -919,12 +956,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             Label(placeholder, watermark, color);
         }
 
-        if (clear && input.Value.Length != 0)
+        if (showsClear)
         {
-            const float ClearWidth = 24;
             const float ClearIconSize = 10;
             const float ClearStroke = 2;
-            input.Bounds = textBounds with { Width = textBounds.Width - ClearWidth };
             var clearBounds = textBounds with { X = textBounds.Right - ClearWidth, Width = ClearWidth };
             Cross(clearBounds, ClearIconSize, ClearStroke, enabled ? Palette.MutedText : Palette.InputDisabledText);
             var clearId = id + ".clear";
@@ -982,7 +1017,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             {
                 // As in a WPF editable combo box, a press on a drop-down list's own text input keeps the list open.
                 focused = inputId;
-                FocusInput(inputs[inputId]);
+                FocusInput(inputId, inputs[inputId]);
             }
             else
             {
@@ -1092,17 +1127,18 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             focused = stops[index].Id;
             focusVisible = true;
 
-            if (inputs.TryGetValue(focused, out var nextInput)) FocusInput(nextInput);
+            if (inputs.TryGetValue(focused, out var nextInput)) FocusInput(focused, nextInput);
             else Win32.SetFocus(owner.Handle);
 
             return true;
         }
 
+        // An editable combo box's text input takes F4 as the combo box does.
+        if (key == VirtualKey.F4 && ToggleFocusedComboBox()) return true;
+
         // Drawn widgets take keys only while the window itself has keyboard focus, not a native control such as a text
         // input or a dialog's message.
         if (Win32.GetFocus() != owner.Handle) return false;
-
-        if (key == VirtualKey.F4 && ToggleFocusedComboBox()) return true;
 
         // A closed combo box steps through its choices with Up and Down, as in Win32.
         if (key is VirtualKey.Up or VirtualKey.Down && FocusedWidget() is { Step: { } step })
@@ -1271,7 +1307,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action? collapse = null,
         string? contentKey = null,
         AutomationItem? item = null,
-        bool partlyCoverable = false)
+        bool partlyCoverable = false,
+        nint window = 0)
     {
         // A covered group hides its elements too, rather than leaving them without their row or tile.
         var parent = automationGroups.Count == 0 ? -1 : automationGroups.Peek();
@@ -1302,7 +1339,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             Activate: activate,
             SetText: setText,
             Collapse: collapse,
-            Item: item);
+            Item: item,
+            Window: window);
 
         automation.Add(node);
         return automation.Count - 1;
@@ -1317,24 +1355,44 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     /// <summary>
-    /// Opens the focused combo box, or closes its list choosing the highlighted item, as F4, Alt+Down and Alt+Up do in WPF;
-    /// false when none has the focus or another widget's menu is open.
+    /// Opens the focused combo box, or closes its list choosing the highlighted item, as F4, Alt+Down and Alt+Up do in WPF.
+    /// A focused text input does the same with its drop-down button's list, keeping the focus, as the text box of a WPF
+    /// editable combo box does. False when neither has the focus, the button is unavailable or another widget's menu is open.
     /// </summary>
     public bool ToggleFocusedComboBox()
     {
-        if (FocusedWidget() is not { Step: not null } comboBox) return false;
-        if (menu != null && menu.Id != comboBox.Id) return false;
+        var focus = Win32.GetFocus();
 
-        // Closing chooses the highlighted item; clearing the menu first also closes a list kept open after a choice.
-        if (menu is { } list)
+        foreach (var (id, input) in inputs)
         {
-            menu = null;
-            Choose(list, list.Selected);
-            return true;
+            if (input.Handle != focus) continue;
+            if (!inputDropDowns.TryGetValue(id, out var dropDown)) return false;
+
+            var button = widgets.Find(widget => widget.Id == dropDown.Button);
+            return ToggleList(dropDown.Menu, button);
         }
 
-        comboBox.Action();
-        return true;
+        if (focus != owner.Handle || FocusedWidget() is not { Step: not null } comboBox) return false;
+
+        return ToggleList(comboBox.Id, comboBox);
+
+        // Closes the open list and chooses its highlighted item, or opens the list through the widget that shows it. False when
+        // another menu is open or the widget is not drawn, e.g. while disabled or covered.
+        bool ToggleList(string menuId, Widget? opener)
+        {
+            // Closing chooses the highlighted item; clearing the menu first also closes a list kept open after a choice.
+            if (menu is { } list && list.Id == menuId)
+            {
+                menu = null;
+                Choose(list, list.Selected);
+                return true;
+            }
+
+            if (menu != null || opener == null) return false;
+
+            opener.Action();
+            return true;
+        }
     }
 
     /// <summary>Moves the focus to the widget. The focus is shown only if it was shown before, e.g. after keyboard use.</summary>
@@ -1350,19 +1408,21 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         focused = id;
         focusVisible = true;
 
-        if (inputs.TryGetValue(id, out var input)) FocusInput(input);
+        if (inputs.TryGetValue(id, out var input)) FocusInput(id, input);
         else Win32.SetFocus(owner.Handle);
 
         Invalidate?.Invoke();
     }
 
     /// <summary>
-    /// The arrow of an editable combo box: a text input whose trailing area is <paramref name="bounds"/>, inside the
-    /// input's <paramref name="frame"/>. The arrow area takes the combo box fill, and the frame the combo box border,
-    /// while pointed or while the list known by <paramref name="menuId"/> is open, so the pair looks like a combo box.
+    /// The arrow of an editable combo box. The combo box is the text input with id <paramref name="input"/>; the arrow fills
+    /// <paramref name="bounds"/>, the trailing area inside the input's <paramref name="frame"/>. While the pointer is over the
+    /// arrow or the list with id <paramref name="menuId"/> is open, the arrow area takes the combo box fill and the frame takes
+    /// the combo box border, so the pair looks like a combo box. F4, Alt+Down and Alt+Up in the input open and close that list.
     /// </summary>
     public void DropDownButton(
         string id,
+        string input,
         RectangleF bounds,
         RectangleF frame,
         Action action,
@@ -1373,6 +1433,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     {
         if (!enabled) CloseMenu(menuId);
 
+        inputDropDowns[input] = (id, menuId);
         var open = menu?.Id == menuId;
         var over = enabled && IsPointerOver(bounds);
         var inner = new RectangleF(x: bounds.X, y: bounds.Y + 1, width: bounds.Width - 1, height: bounds.Height - 2);
@@ -1393,12 +1454,18 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             activate: () => InvokeWidget(id));
     }
 
-    /// <summary>Lists choices below the control, as wide as the larger of the control and the widest choice unless the list scrolls.</summary>
+    /// <summary>
+    /// Lists choices below the control. The list is as wide as the larger of the control and the widest choice, unless it
+    /// scrolls. <paramref name="name"/> names the list for UI Automation. <paramref name="input"/> is the id of the text input
+    /// whose suggestions the choices are; that input controls the list while it is open.
+    /// </summary>
     public void DropDown(
         string id,
+        string name,
         RectangleF control,
         IReadOnlyList<string> choices,
-        Action<int> chosen) => ShowMenu(id, control, ToMenuChoices(choices), chosen, MenuKind.DropDown);
+        Action<int> chosen,
+        string? input = null) => ShowMenu(id, control, ToMenuChoices(choices), chosen, MenuKind.DropDown, name, input);
 
     /// <summary>Shows a context menu below the anchor, or above it when there is no room below; a pointer's anchor is a point.</summary>
     public void Popup(
@@ -1413,7 +1480,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         RectangleF anchor,
         IReadOnlyList<MenuChoice> choices,
         Action<int> chosen,
-        MenuKind kind)
+        MenuKind kind,
+        string name = "",
+        string? input = null)
     {
         menu = new MenuState(
             id: id,
@@ -1424,7 +1493,11 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             keepOpen: false,
             kind: kind,
             width: MenuWidth(kind, choices, anchor.Width)
-        );
+        )
+        {
+            Name = name,
+            Input = input,
+        };
 
         Invalidate?.Invoke();
     }
@@ -1452,23 +1525,65 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (inputs.TryGetValue(id, out var existing)) return existing;
 
         var input = new TextInput();
-        input.Handle = owner.CreateTextInput(() =>
+        input.Handle = owner.CreateTextInput(Changed, GotFocus, () => input.LostFocus?.Invoke());
+
+        inputs.Add(id, input);
+        return input;
+
+        void Changed()
         {
             input.Value = Win32.GetText(input.Handle);
             input.Changed?.Invoke(input.Value);
             Invalidate?.Invoke();
-        }, () => input.LostFocus?.Invoke());
+        }
 
-        inputs.Add(id, input);
-        return input;
+        // A click on the shown native control focuses it without going through the app, and so can UI Automation's SetFocus.
+        // The focused widget therefore follows the native focus; otherwise the widget focused before would still report the focus.
+        void GotFocus()
+        {
+            focused = id;
+            Invalidate?.Invoke();
+        }
     }
 
-    private void FocusInput(TextInput input)
+    // SetFocus announces the native control at once, so the input's element must first be hosted on the control, which
+    // needs the element in the published tree. If the last frame left the input out, e.g. because it was under a dialog
+    // that just closed, the input takes the native focus once a frame lays it out, unless the focus has moved on by then.
+    // Until then the window holds the keyboard focus, so a closed dialog's own input cannot keep it.
+    private void FocusInput(string id, TextInput input)
+    {
+        if (Automation.IndexOf(id) >= 0)
+        {
+            FocusNativeInput(id, input);
+        }
+        else
+        {
+            deferredInputFocus = id;
+            Win32.SetFocus(owner.Handle);
+        }
+
+        Invalidate?.Invoke();
+    }
+
+    private void FocusNativeInput(string id, TextInput input)
     {
         var bounds = InputBounds(input.Bounds);
         owner.PlaceInput(input.Handle, bounds, visible: true, input.Enabled);
+        HostInputElement(id, input);
         Win32.SetFocus(input.Handle);
-        Invalidate?.Invoke();
+    }
+
+    // Until the next frame hosts the input's element on the focused native control, a client would read the control
+    // without the element's name.
+    private void HostInputElement(string id, TextInput input)
+    {
+        var tree = Automation;
+        var index = tree.IndexOf(id);
+        if (index < 0 || tree.Nodes[index].Window != 0 || !CanShowNativeInput(input)) return;
+
+        var nodes = tree.Nodes.ToArray();
+        nodes[index] = nodes[index] with { Window = input.Handle };
+        Volatile.Write(ref automationTree, new AutomationTree(nodes));
     }
 
     private static RectangleF InputBounds(RectangleF bounds)
@@ -1579,10 +1694,19 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             active.Bar.Draw(this);
         }
 
-        // A combo box's choices are its own children; a popup menu is an element of its own.
-        var container = active.IsComboBox
-            ? automation.FindIndex(node => node.Key == active.Id)
-            : AddNode(active.Id, AutomationRole.Menu, name: "", active.Bounds);
+        // A combo box's choices are its own children; a popup menu is an element of its own. A drop-down list of a text
+        // input's suggestions is a list. Its highlighted choice is selected while the input keeps the focus, as in a XAML
+        // AutoSuggestBox, so browsing it with the arrow keys raises selection events.
+        var selectedKey = active.Selected >= 0 ? ChoiceKey(active, active.Selected) : null;
+        var container = active.IsComboBox ? automation.FindIndex(node => node.Key == active.Id)
+            : active.IsList ? AddNode(active.Id, AutomationRole.List, active.Name, active.Bounds, value: selectedKey)
+            : AddNode(active.Id, AutomationRole.Menu, active.Name, active.Bounds);
+
+        // As Microsoft's auto-suggest guidance asks, the text input controls its suggestion list, so clients such as Narrator
+        // follow the list's events while the input keeps the focus.
+        // https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessible-text-requirements
+        var inputNode = active.Input is { } inputId ? automation.FindIndex(node => node.Key == inputId) : -1;
+        if (inputNode >= 0) automation[inputNode] = automation[inputNode] with { Controls = automation[container].Key };
 
         automationGroups.Push(container);
 
@@ -1630,12 +1754,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var states = choice.Enabled ? AutomationStates.None : AutomationStates.Disabled;
         if (choice.Checked) states |= AutomationStates.Checked;
         if (choice.Checkable) states |= AutomationStates.Checkable;
-        if (active.IsComboBox && index == active.Selected) states |= AutomationStates.Selected;
+        if (active.IsList && index == active.Selected) states |= AutomationStates.Selected;
         if (index == active.Selected && MenuHasFocus) states |= AutomationStates.Focused;
-        var role = active.IsComboBox ? AutomationRole.ListItem : AutomationRole.MenuItem;
+        var role = active.IsList ? AutomationRole.ListItem : AutomationRole.MenuItem;
 
         AddNode(
-            $"{active.Id}.choice.{index}",
+            ChoiceKey(active, index),
             role,
             choice.Text,
             row,
@@ -1649,6 +1773,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             if (menu == active) Choose(active, index);
         }
     }
+
+    private static string ChoiceKey(MenuState active, int index) => $"{active.Id}.choice.{index}";
 
     private static RectangleF MenuRow(MenuState active, int visibleRow) => new(
         x: active.Bounds.Left + active.Style.Inset,
@@ -1747,6 +1873,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         public int Current = selected;
 
         public Action<int> Changed { get; } = changed;
+
+        /// <summary>The name of a menu or drop-down list for UI Automation; a combo box's list is part of the combo box.</summary>
+        public string Name { get; init; } = "";
+
+        /// <summary>The id of the text input whose suggestions a drop-down list shows, or null.</summary>
+        public string? Input { get; init; }
+
         public bool KeepOpen { get; } = keepOpen;
         public float Width { get; } = width;
         public MenuStyle Style { get; } = StyleOf(kind);

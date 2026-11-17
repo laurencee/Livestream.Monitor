@@ -56,6 +56,11 @@ internal enum AutomationStates
 /// <param name="Activate">Clicks, toggles, selects or opens the element, or null when it has no action.</param>
 /// <param name="Collapse">Closes an expanded element, or null when activating it again closes it.</param>
 /// <param name="Item">A list row's or tile's place in its list, status and actions, or null for other elements.</param>
+/// <param name="Window">
+/// The native control shown in the element's place, e.g. a text input's edit control, or zero for a drawn element.
+/// The control's own providers supply what the element leaves out, e.g. the Text pattern.
+/// </param>
+/// <param name="Controls">The key of the element this one controls, such as a text input's open suggestion list, or null.</param>
 internal sealed record AutomationNode(
     string Key,
     string AutomationId,
@@ -69,7 +74,9 @@ internal sealed record AutomationNode(
     Action? Activate = null,
     Action<string>? SetText = null,
     Action? Collapse = null,
-    AutomationItem? Item = null)
+    AutomationItem? Item = null,
+    nint Window = 0,
+    string? Controls = null)
 {
     public bool Has(AutomationStates state) => (States & state) != 0;
 }
@@ -132,6 +139,12 @@ internal sealed class AutomationTree
         CollectionsMarshal.AsSpan(parent < 0 ? topLevel : children[parent]);
 
     public int IndexOf(string key) => indices.GetValueOrDefault(key, -1);
+
+    /// <summary>The index of the node shown by the native control, or -1 when none is.</summary>
+    public int IndexOfWindow(nint window) => Array.FindIndex(nodes, node => node.Window == window);
+
+    /// <summary>True when another node controls the node with the key, e.g. a suggestion list controlled by its text input.</summary>
+    public bool IsControlled(string key) => Array.Exists(nodes, node => node.Controls == key);
 
     /// <summary>The index of the node with keyboard focus, or -1 when none has it.</summary>
     public int IndexOfFocus() => Array.FindIndex(nodes, node => node.Has(AutomationStates.Focused));

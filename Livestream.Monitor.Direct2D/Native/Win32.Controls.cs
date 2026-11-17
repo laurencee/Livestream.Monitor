@@ -13,6 +13,7 @@ internal static unsafe partial class Win32
     public const uint EmSetMargins = 0x00D3;
     public const nuint EcLeftMargin = 0x0001;
     public const nuint EcRightMargin = 0x0002;
+    public const int EnSetFocus = 0x0100;
     public const int EnKillFocus = 0x0200;
     public const int EnChange = 0x0300;
     public const int SbVertical = 1;

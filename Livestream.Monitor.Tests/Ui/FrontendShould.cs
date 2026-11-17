@@ -388,16 +388,24 @@ public class FrontendShould
             Assert.True(ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)));
         }
 
-        // Shows the Kick section of the open Settings and returns its stream command arguments field.
+        // Shows the Kick section of the open Settings and returns its stream command arguments field. Direct2D fields are
+        // found by automation id and their names checked against WPF's; WPF fields are found by those names, which checks
+        // WPF's names.
         AutomationElement ShowKickArgs()
         {
             Section(GeneralSection).Collapse();
             Section(KickSection).Expand();
 
-            if (direct2D) return window.Element("Kick.stream.args");
-
             const string PathName = "Stream command file path";
             const string ArgsName = "Stream command arguments";
+            if (direct2D)
+            {
+                Assert.Equal(PathName, window.Element("Kick.stream.path").Current.Name);
+                var field = window.Element("Kick.stream.args");
+                Assert.Equal(ArgsName, field.Current.Name);
+                return field;
+            }
+
             var expander = window.Element(KickSection);
             var path = new PropertyCondition(AutomationElement.NameProperty, PathName);
             window.WaitFor(() => expander.FindFirst(TreeScope.Descendants, path), FrontendWindow.StepTimeout, PathName);

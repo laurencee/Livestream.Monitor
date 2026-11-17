@@ -379,6 +379,14 @@ internal abstract class CanvasWindow : DesktopWindow
         return false;
     }
 
+    // Alt+Down and Alt+Up in an editable combo box's text input open and close its list, as they do on a combo box.
+    protected override void OnControlSystemKey(int key, nint lParam)
+    {
+        if (IsAltArrow(key, lParam) && Ui.ToggleFocusedComboBox()) NeedsPaint = true;
+    }
+
+    private static bool IsAltArrow(int key, nint lParam) => key is VirtualKey.Down or VirtualKey.Up && (lParam & Win32.AltHeld) != 0;
+
     protected override nint? OnMessage(uint message, nuint wParam, nint lParam)
     {
         switch (message)
@@ -416,7 +424,7 @@ internal abstract class CanvasWindow : DesktopWindow
 
             // Alt+Down and Alt+Up open and close a focused combo box, as in Win32. Windows still sees the key, so releasing
             // Alt afterwards does not enter the system menu.
-            case Win32.WmSysKeyDown when (int)wParam is VirtualKey.Down or VirtualKey.Up && (lParam & Win32.AltHeld) != 0:
+            case Win32.WmSysKeyDown when IsAltArrow((int)wParam, lParam):
                 if (Ui.ToggleFocusedComboBox()) NeedsPaint = true;
                 break;
 

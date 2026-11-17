@@ -41,6 +41,7 @@ internal sealed class StreamQualityPane(Settings settings)
         ui.TextRow(text: "Platform", body, ref y, spacing: Gap);
         ui.Combo(
             id: "settings.quality.platform",
+            name: "Quality platform",
             text: PlatformNames[selectedPlatform],
             choices: PlatformNames,
             selectedIndex: selectedPlatform,
@@ -101,7 +102,7 @@ internal sealed class StreamQualityPane(Settings settings)
         const float AddWidth = 45;
         var input = inputRow with { Width = inputRow.Width - AddWidth - Gap };
         var add = inputRow with { X = input.Right + Gap, Width = AddWidth };
-        ui.Input(inputId, "Quality name, e.g. 480p", input, enter: Add);
+        ui.Input(id: inputId, name: "New quality", placeholder: "Quality name, e.g. 480p", bounds: input, enter: Add);
         var value = ui.Value(inputId).Trim();
         var canAdd = value.Length != 0 && !current.Qualities.Contains(value, StringComparer.OrdinalIgnoreCase);
         ui.Button(id: "settings.quality.add", text: "Add", bounds: add, action: Add, enabled: canAdd);

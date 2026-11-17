@@ -75,7 +75,8 @@ internal sealed class WindowAutomation
 
     /// <summary>
     /// Raises UI Automation events for what changed since the previous frame: keyboard focus, toggle, expand and selection
-    /// states, menus opening and closing, and changed children. Called on the UI thread after each frame is presented.
+    /// states, combo box and text values, controlled elements, menus opening and closing, suggestion list updates and
+    /// changed children. Called on the UI thread after each frame is presented.
     /// </summary>
     public void RaiseChanges()
     {
@@ -94,26 +95,42 @@ internal sealed class WindowAutomation
                 RaiseEvent(Root, UiAutomation.MenuClosedEvent);
 
         changedParents.Clear();
+        var windowChildrenChanged = false;
         var nodes = current.Nodes;
         for (var i = 0; i < nodes.Count; i++)
         {
             var node = nodes[i];
             var before = previous.IndexOf(node.Key);
 
-            // A new menu is announced, as is a list item drawn because it was just selected, such as after End; any other new
-            // element is reported by its parent's changed children.
+            // Three kinds of new element are announced directly: a menu, a list item drawn because it was just selected (e.g.
+            // after End) and a suggestion list that opens. Any other new element is reported by its parent's changed children.
             if (before < 0)
             {
                 if (node.Role == AutomationRole.Menu) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.MenuOpenedEvent);
                 else if (IsNewlySelected(previous, current, node)) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.ElementSelectedEvent);
+                else if (IsUnselectedSuggestionList(current, node))
+                    RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.LayoutInvalidatedEvent);
+
                 continue;
             }
 
             RaiseStateChanges(previousNodes[before], node);
-            if (!HasSameChildren(previous, before, current, i)) changedParents.Add(i);
+
+            if (!HasSameChildren(previous, before, current, i))
+            {
+                changedParents.Add(i);
+                if (IsUnselectedSuggestionList(current, node)) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.LayoutInvalidatedEvent);
+            }
+
+            // An element that moves onto or off a native control takes or drops the control's runtime id, so clients
+            // read its parent's children again. A parent precedes its children, so it may already be listed.
+            if (previousNodes[before].Window == node.Window) continue;
+
+            if (node.Parent < 0) windowChildrenChanged = true;
+            else if (!changedParents.Contains(node.Parent)) changedParents.Add(node.Parent);
         }
 
-        var windowChildrenChanged = !HasSameChildren(before: previous, beforeParent: -1, after: current, afterParent: -1);
+        windowChildrenChanged |= !HasSameChildren(before: previous, beforeParent: -1, after: current, afterParent: -1);
         RaiseStructureChanges(current, windowChildrenChanged);
         RaiseFocusChange(current);
     }
@@ -123,6 +140,25 @@ internal sealed class WindowAutomation
 
     internal ElementProvider? Element(AutomationTree tree, int index) =>
         index < 0 ? null : new ElementProvider(this, tree.Nodes[index].Key);
+
+    /// <summary>The ControllerFor value naming the controlled element, or an empty value when it is not drawn.</summary>
+    internal unsafe Variant ControllerFor(string? controlled)
+    {
+        var tree = Tree;
+        if (controlled == null || Element(tree, tree.IndexOf(controlled)) is not { } element) return Variant.Empty;
+
+        var pointer = (nint)ComInterfaceMarshaller<IRawElementProviderSimple>.ConvertToUnmanaged(element);
+
+        try
+        {
+            return Variant.FromUnknownArray(UiAutomation.CreateUnknownArray([pointer]));
+        }
+        finally
+        {
+            // The array holds its own reference.
+            Marshal.Release(pointer);
+        }
+    }
 
     /// <summary>
     /// Runs a node's action on the UI thread, where it acts on the window's state at that time; an action that arrives
@@ -161,14 +197,19 @@ internal sealed class WindowAutomation
         return new PointF(point.X / scale, point.Y / scale);
     }
 
-    // Raises the property events of patterns whose state changed, and the selection of a newly selected item.
+    // Raises property events for patterns whose state or value changed and for a changed controlled element, and a
+    // selection event for a newly selected item.
     private void RaiseStateChanges(AutomationNode before, AutomationNode after)
     {
         const AutomationStates PatternStates = AutomationStates.Checked | AutomationStates.Expanded | AutomationStates.Selected;
         var changed = (before.States ^ after.States) & PatternStates;
-        if (changed == AutomationStates.None) return;
+        var valueChanged = before.Value != after.Value && ElementProvider.Supports(after, UiAutomation.ValuePattern);
+        var controlsChanged = before.Controls != after.Controls;
+        if (changed == AutomationStates.None && !valueChanged && !controlsChanged) return;
 
         var element = new ElementProvider(this, after.Key);
+        if (valueChanged) RaiseValueChanged(element, before.Value ?? "", after.Value ?? "");
+        if (controlsChanged) RaiseControllerForChanged(element, after.Controls);
 
         if ((changed & AutomationStates.Checked) != 0 && ElementProvider.Supports(after, UiAutomation.TogglePattern))
         {
@@ -239,6 +280,12 @@ internal sealed class WindowAutomation
         return list.Role == AutomationRole.List && previous.Find(list.Key) is { } before && before.Value != node.Key;
     }
 
+    // Microsoft's auto-suggest guidance: a suggestion list without a selection raises LayoutInvalidated whenever it
+    // updates, and one with a selection raises ElementSelected instead.
+    // https://learn.microsoft.com/en-us/windows/apps/design/accessibility/accessible-text-requirements
+    private static bool IsUnselectedSuggestionList(AutomationTree tree, AutomationNode node) =>
+        node is { Role: AutomationRole.List, Value: null } && tree.IsControlled(node.Key);
+
     private static bool HasSameChildren(
         AutomationTree before,
         int beforeParent,
@@ -272,6 +319,39 @@ internal sealed class WindowAutomation
         Variant newValue) =>
         Raise(provider, pointer => UiAutomation.UiaRaiseAutomationPropertyChangedEvent(pointer, propertyId, oldValue, newValue));
 
+    // The old controlled element may no longer exist, so only the new one is sent.
+    private void RaiseControllerForChanged(IRawElementProviderSimple provider, string? controlled)
+    {
+        var newValue = ControllerFor(controlled);
+
+        try
+        {
+            RaisePropertyChanged(provider, UiAutomation.ControllerForProperty, Variant.Empty, newValue);
+        }
+        finally
+        {
+            // UI Automation copies the values it delivers.
+            newValue.Free();
+        }
+    }
+
+    private static void RaiseValueChanged(IRawElementProviderSimple provider, string oldText, string newText)
+    {
+        var oldValue = Variant.FromString(oldText);
+        var newValue = Variant.FromString(newText);
+
+        try
+        {
+            RaisePropertyChanged(provider, UiAutomation.ValueValueProperty, oldValue, newValue);
+        }
+        finally
+        {
+            // UI Automation copies the values it delivers.
+            oldValue.Free();
+            newValue.Free();
+        }
+    }
+
     private static unsafe void RaiseChildrenInvalidated(IRawElementProviderSimple provider) =>
         Raise(
             provider,
@@ -298,13 +378,15 @@ internal sealed class WindowAutomation
 
 /// <summary>
 /// The window's own element: the window's host provider supplies its name, bounds and other window properties, and
-/// this provider adds the drawn elements as its children.
+/// this provider adds the drawn elements as its children. A shown native text input appears only as its drawn element,
+/// which names it.
 /// </summary>
 [GeneratedComClass]
 internal sealed partial class RootProvider(WindowAutomation owner) :
     IRawElementProviderSimple,
     IRawElementProviderFragment,
-    IRawElementProviderFragmentRoot
+    IRawElementProviderFragmentRoot,
+    IRawElementProviderHwndOverride
 {
     ProviderOptions IRawElementProviderSimple.get_ProviderOptions() => ProviderOptions.ServerSideProvider;
 
@@ -358,6 +440,14 @@ internal sealed partial class RootProvider(WindowAutomation owner) :
         var tree = owner.Tree;
         return owner.Element(tree, tree.IndexOfFocus());
     }
+
+    // Other child windows, such as a dialog's selectable message text, stay children of the window.
+    // https://learn.microsoft.com/en-us/windows/win32/api/uiautomationcore/nn-uiautomationcore-irawelementproviderhwndoverride
+    IRawElementProviderSimple? IRawElementProviderHwndOverride.GetOverrideProviderForHwnd(nint window)
+    {
+        var tree = owner.Tree;
+        return window == 0 ? null : owner.Element(tree, tree.IndexOfWindow(window));
+    }
 }
 
 /// <summary>
@@ -380,7 +470,10 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     private AutomationNode Node => owner.Tree.Find(key) ?? throw NotAvailable();
 
-    ProviderOptions IRawElementProviderSimple.get_ProviderOptions() => ProviderOptions.ServerSideProvider;
+    // An element in a native control's place overrides the control's own properties with its own.
+    ProviderOptions IRawElementProviderSimple.get_ProviderOptions() => owner.Tree.Find(key) is { Window: not 0 }
+        ? ProviderOptions.ServerSideProvider | ProviderOptions.OverrideProvider
+        : ProviderOptions.ServerSideProvider;
 
     nint IRawElementProviderSimple.GetPatternProvider(int patternId)
     {
@@ -403,6 +496,19 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
     {
         if (owner.Tree.Find(key) is not { } node) return Variant.Empty;
 
+        // A native control's own providers supply the rest, such as its focus and enabled state.
+        if (node.Window != 0)
+        {
+            return propertyId switch
+            {
+                UiAutomation.NameProperty => Variant.FromString(node.Name),
+                UiAutomation.AutomationIdProperty when node.AutomationId.Length != 0 => Variant.FromString(node.AutomationId),
+                UiAutomation.HelpTextProperty when node.HelpText != null => Variant.FromString(node.HelpText),
+                UiAutomation.ControllerForProperty when node.Controls != null => owner.ControllerFor(node.Controls),
+                _ => Variant.Empty,
+            };
+        }
+
         var enabled = !node.Has(AutomationStates.Disabled);
         return propertyId switch
         {
@@ -418,12 +524,20 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.ItemStatusProperty when node.Item is { Status.Length: > 0 } item => Variant.FromString(item.Status),
             UiAutomation.PositionInSetProperty when node.Item != null => Variant.FromInt32(node.Item.Position),
             UiAutomation.SizeOfSetProperty when node.Item != null => Variant.FromInt32(node.Item.Count),
+            UiAutomation.ControllerForProperty when node.Controls != null => owner.ControllerFor(node.Controls),
             _ => Variant.Empty,
         };
     }
 
-    // Drawn elements belong to the window's fragment root, not to a window of their own.
-    nint IRawElementProviderSimple.get_HostRawElementProvider() => 0;
+    // Drawn elements belong to the window's fragment root, not to a window of their own; an element in a native control's
+    // place is merged with that control's providers.
+    nint IRawElementProviderSimple.get_HostRawElementProvider()
+    {
+        if (owner.Tree.Find(key) is not { Window: not 0 } node) return 0;
+
+        Native.ComObject.Check(UiAutomation.UiaHostProviderFromHwnd(node.Window, out var host));
+        return host;
+    }
 
     IRawElementProviderFragment? IRawElementProviderFragment.Navigate(NavigateDirection direction)
     {
@@ -446,11 +560,17 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
         };
     }
 
-    // UI Automation prefixes the window's runtime id.
-    nint IRawElementProviderFragment.GetRuntimeId() =>
-        UiAutomation.CreateInt32Array([UiAutomation.AppendRuntimeId, owner.RuntimeId(key)]);
+    // UI Automation prefixes the window's runtime id; a native control's host provider supplies the runtime id and
+    // bounds of an element in its place.
+    nint IRawElementProviderFragment.GetRuntimeId() => owner.Tree.Find(key) is { Window: not 0 }
+        ? 0
+        : UiAutomation.CreateInt32Array([UiAutomation.AppendRuntimeId, owner.RuntimeId(key)]);
 
-    UiaRect IRawElementProviderFragment.get_BoundingRectangle() => owner.ToScreen(Node.Bounds);
+    UiaRect IRawElementProviderFragment.get_BoundingRectangle()
+    {
+        var node = Node;
+        return node.Window != 0 ? default : owner.ToScreen(node.Bounds);
+    }
 
     nint IRawElementProviderFragment.GetEmbeddedFragmentRoots() => 0;
 
@@ -585,7 +705,8 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.TogglePattern => role == AutomationRole.CheckBox || node.Has(AutomationStates.Checkable),
             UiAutomation.ExpandCollapsePattern => role == AutomationRole.ComboBox ||
                                                   node.Has(AutomationStates.Expandable),
-            UiAutomation.ValuePattern => role is AutomationRole.Edit or AutomationRole.ComboBox,
+            // A shown native text input supplies its own Value and Text patterns.
+            UiAutomation.ValuePattern => role == AutomationRole.ComboBox || role == AutomationRole.Edit && node.Window == 0,
             UiAutomation.SelectionPattern => role is AutomationRole.ComboBox or AutomationRole.List,
             UiAutomation.SelectionItemPattern => role == AutomationRole.RadioButton ||
                                                  node.Item != null ||
