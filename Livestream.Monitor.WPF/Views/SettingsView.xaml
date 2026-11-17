@@ -94,6 +94,8 @@
                         </TextBox>
                         <CheckBox x:Name="DisableNotifications" Content="Disable notifications"
                                   ToolTip="When checked, all notifications are disabled." />
+                        <CheckBox x:Name="EnableCategoryChangeNotifications" Content="Enable category change notifications"
+                                  ToolTip="Show category changes for all followed streams with Enable Notifications turned on." />
                         <TextBlock Text="Stream notification image" Margin="0,5,0,0" />
                         <StackPanel Orientation="Horizontal">
                             <RadioButton Content="Channel icon" GroupName="StreamNotificationImage" IsChecked="{Binding ChannelIconSelected}"

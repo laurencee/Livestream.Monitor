@@ -43,6 +43,7 @@ namespace Livestream.Monitor.WPF.Model
             this.streamLauncher = streamLauncher ?? throw new ArgumentNullException(nameof(streamLauncher));
 
             monitorStreamsModel.LivestreamsRefreshComplete += MonitorStreamsModelOnLivestreamsRefreshComplete;
+            monitorStreamsModel.CategoryChangeNotification += AddNotification;
 
             if (monitorStreamsModel.Livestreams != null)
             {
@@ -209,14 +210,7 @@ namespace Livestream.Monitor.WPF.Model
             // we check the LastLiveTime for null to ensure we will always notify the first time a stream come online
             if (livestreamModel.LastLiveTime != null && livestreamModel.Uptime > TimeSpan.FromMinutes(5)) return;
 
-            var notification = new LivestreamNotification()
-            {
-                Title = $"{livestreamModel.DisplayName} Online",
-                Message = livestreamModel.Description,
-                ImageUrl = livestreamModel.ThumbnailUrls?.Small,
-                LivestreamModel = livestreamModel,
-            };
-
+            var notification = LivestreamNotification.CreateForFollowedStream(livestreamModel);
             AddNotification(notification);
         }
     }

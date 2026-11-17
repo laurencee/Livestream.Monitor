@@ -23,6 +23,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         event EventHandler LivestreamsRefreshComplete;
 
+        event Action<LivestreamNotification> CategoryChangeNotification;
+
         /// <summary>
         /// Raised after applying a provider's results, before <see cref="LivestreamsRefreshComplete"/>.
         /// Providers without followed channels are skipped. The first refresh can raise it for both quick and complete results

@@ -131,6 +131,108 @@ public class MonitorStreamsModelShould
         Assert.True(sut.Livestreams.Single().Live);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NotifyOptedInStreamsOrAllUnmutedStreamsWhenGloballyEnabled(bool globallyEnabled)
+    {
+        var provider = CreateProvider(TwitchApiClient.API_NAME);
+        var enabled = new ChannelIdentifier(provider, "enabled");
+        var defaultChannel = new ChannelIdentifier(provider, "default");
+        var muted = new ChannelIdentifier(provider, "muted");
+        var unchanged = new ChannelIdentifier(provider, "unchanged");
+        List<ChannelIdentifier> channels = [enabled, defaultChannel, muted, unchanged];
+        var initialResults = channels.Select(channel => CategoryResult(channel, "First category")).ToList();
+        var completeQuery = new TaskCompletionSource<List<LivestreamQueryResult>>();
+        provider.HasQuickQuerySupport.Returns(true);
+        provider.QueryChannelsQuickly(Arg.Any<CancellationToken>()).Returns(initialResults);
+        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(completeQuery.Task);
+        var settings = new Settings();
+        settings.ExcludeFromNotifying.Add(new UniqueStreamKey(provider.ApiName, muted.ChannelId));
+        var fileHandler = Substitute.For<IMonitoredStreamsFileHandler>();
+        var sut = CreateModel(channels, fileHandler, providers: [provider], settings: settings);
+        var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.SetResult();
+        var notifications = new List<LivestreamNotification>();
+        sut.CategoryChangeNotification += notifications.Add;
+
+        sut.BeginInitialQuery();
+        await sut.Initialize(Substitute.For<IUserDialogs>());
+        Assert.Empty(notifications);
+        var enabledStream = sut.Livestreams.Single(stream => stream.Id == enabled.ChannelId);
+        enabledStream.NotifyOnCategoryChange = true;
+        sut.Livestreams.Single(stream => stream.Id == muted.ChannelId).NotifyOnCategoryChange = true;
+        sut.Livestreams.Single(stream => stream.Id == unchanged.ChannelId).NotifyOnCategoryChange = true;
+        settings.EnableCategoryChangeNotifications = globallyEnabled;
+
+        const string NewCategory = "New category";
+        const string NewDescription = "A new stream description";
+        var newCategoryResult = CategoryResult(enabled, NewCategory);
+        newCategoryResult.LivestreamModel.Description = NewDescription;
+        newCategoryResult.LivestreamModel.ThumbnailUrls = new ThumbnailUrls { Small = "https://example.com/thumbnail.jpg" };
+        var defaultCategoryResult = CategoryResult(defaultChannel, NewCategory);
+        var mutedCategoryResult = CategoryResult(muted, NewCategory);
+        completeQuery.SetResult([newCategoryResult, defaultCategoryResult, mutedCategoryResult, initialResults[^1]]);
+        await refreshComplete.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.True(enabledStream.NotifyOnCategoryChange);
+        Assert.Equal(globallyEnabled ? 2 : 1, notifications.Count);
+        Assert.Equal(globallyEnabled, notifications.Any(item => item.LivestreamModel.Id == defaultChannel.ChannelId));
+        var notification = Assert.Single(notifications, item => ReferenceEquals(item.LivestreamModel, enabledStream));
+        var onlineNotification = LivestreamNotification.CreateForFollowedStream(enabledStream);
+        Assert.Equal($"{enabledStream.DisplayName} Online", onlineNotification.Title);
+        Assert.Equal($"{enabledStream.DisplayName} - {NewCategory}", notification.Title);
+        Assert.Equal(NewDescription, notification.Message);
+        Assert.Equal(onlineNotification.Message, notification.Message);
+        Assert.Equal(newCategoryResult.LivestreamModel.ThumbnailUrls.Small, notification.ImageUrl);
+        Assert.Equal(onlineNotification.ImageUrl, notification.ImageUrl);
+
+        static LivestreamQueryResult CategoryResult(ChannelIdentifier channel, string category)
+        {
+            var stream = new LivestreamModel(channel.ChannelId, channel)
+            {
+                DisplayName = channel.ChannelId,
+                Live = true,
+                Game = category,
+            };
+            return new LivestreamQueryResult(channel) { LivestreamModel = stream };
+        }
+    }
+
+    [Fact]
+    public void TrackKnownCategoriesWithinEachLiveSession()
+    {
+        var provider = CreateProvider(KickApiClient.API_NAME);
+        var channel = new ChannelIdentifier(provider, "channel");
+        var start = DateTimeOffset.UtcNow;
+        var stream = Snapshot(category: null, id: null);
+        var first = Snapshot("First category", "1");
+        var sameId = Snapshot("Renamed category", "1");
+        var second = Snapshot("Renamed category", "2");
+        var newSession = Snapshot("First category", "1");
+        newSession.StartTime = start.AddHours(1);
+        var offline = Snapshot("Offline category", "3");
+        offline.Live = false;
+
+        Assert.Null(stream.ApplyUpdate(first));
+        Assert.Null(stream.ApplyUpdate(sameId));
+        Assert.Null(stream.ApplyUpdate(Snapshot(category: null, id: null)));
+        Assert.Equal(second.Game, stream.ApplyUpdate(second));
+        Assert.Null(stream.ApplyUpdate(second));
+        Assert.Null(stream.ApplyUpdate(newSession));
+        Assert.Null(stream.ApplyUpdate(offline));
+        Assert.Null(stream.ApplyUpdate(second));
+
+        LivestreamModel Snapshot(string category, string id) => new(channel.ChannelId, channel)
+        {
+            DisplayName = channel.ChannelId,
+            Live = true,
+            StartTime = start,
+            Game = category,
+            GameId = id,
+        };
+    }
+
     [Fact]
     public async Task ReportAQuickQueryFailureFromInitializeWhileTheCompleteQueryRuns()
     {
@@ -200,7 +302,7 @@ public class MonitorStreamsModelShould
             return results;
         });
         var fileHandler = Substitute.For<IMonitoredStreamsFileHandler>();
-        var sut = CreateModel([channel], fileHandler, provider);
+        var sut = CreateModel([channel], fileHandler, [provider]);
         var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.TrySetResult();
 
@@ -220,7 +322,7 @@ public class MonitorStreamsModelShould
         List<LivestreamQueryResult> results = [new(channel) { LivestreamModel = stream }];
         provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(results);
         var fileHandler = Substitute.For<IMonitoredStreamsFileHandler>();
-        var sut = CreateModel([channel], fileHandler, provider);
+        var sut = CreateModel([channel], fileHandler, [provider]);
         var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.TrySetResult();
         await sut.Initialize(Substitute.For<IUserDialogs>());
@@ -244,11 +346,12 @@ public class MonitorStreamsModelShould
     private static MonitorStreamsModel CreateModel(
         List<ChannelIdentifier> channels,
         IMonitoredStreamsFileHandler fileHandler,
-        params IApiClient[] providers)
+        IApiClient[] providers,
+        Settings settings = null)
     {
         fileHandler.LoadFromDisk().Returns(channels);
         var settingsHandler = Substitute.For<ISettingsHandler>();
-        settingsHandler.Settings.Returns(new Settings());
+        settingsHandler.Settings.Returns(settings ?? new Settings());
         var factory = Substitute.For<IApiClientFactory>();
         factory.GetAll().Returns(providers);
         return new MonitorStreamsModel(fileHandler, settingsHandler, factory);

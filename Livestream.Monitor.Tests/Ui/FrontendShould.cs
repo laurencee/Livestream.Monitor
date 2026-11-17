@@ -323,6 +323,34 @@ public class FrontendShould
     }
 
     [Theory]
+    [InlineData(FrontendKind.Wpf)]
+    [InlineData(FrontendKind.Direct2D)]
+    public void EnableCategoryChangeNotificationsFromSettings(FrontendKind kind)
+    {
+        using var profile = UiTestProfile.CreateWithoutToken();
+        using var window = FrontendWindow.Launch(kind, profile);
+        const string StreamNotificationsId = "settings.section.5";
+        const string Setting = nameof(Settings.EnableCategoryChangeNotifications);
+        var checkboxId = kind == FrontendKind.Wpf ? Setting : "settings.categorychangenotifications";
+        window.Element(window.Ids.OpenSettings, FrontendWindow.StartupTimeout);
+        // The readiness check completes before the window is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(StreamNotificationsId) != null, "The Stream Notifications group");
+        var section = window.Element(StreamNotificationsId);
+        FrontendWindow.Pattern<ExpandCollapsePattern>(section, ExpandCollapsePattern.Pattern).Expand();
+        var checkbox = window.Element(checkboxId);
+        var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
+
+        Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
+        toggle.Toggle();
+        window.InvokeUntil(window.Ids.SaveSettings, Saved, "Category change notifications enabled in saved settings");
+
+        // The save check completes before the test profile is disposed.
+        // ReSharper disable once AccessToDisposedClosure
+        bool Saved() => ReadFlag(profile, Setting) == true;
+    }
+
+    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public void SaveTheWpfNotificationImageAndHandleTheTrayPopupAction(bool disablePopup)

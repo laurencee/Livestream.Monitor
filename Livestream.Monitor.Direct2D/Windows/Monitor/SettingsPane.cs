@@ -371,6 +371,17 @@ internal sealed class SettingsPane
             ui,
             checkboxesBody,
             ref y,
+            "categorychangenotifications",
+            "Enable category change notifications",
+            draft.EnableCategoryChangeNotifications,
+            value => draft.EnableCategoryChangeNotifications = value,
+            height: PreferenceCheckHeight,
+            toolTip: "Show category changes for all followed streams with Enable Notifications turned on."
+        );
+        DrawCheck(
+            ui,
+            checkboxesBody,
+            ref y,
             "foregroundonstreamonline",
             "Bring app forward on live alerts",
             draft.BringToForegroundOnStreamOnline,
@@ -732,6 +743,7 @@ internal sealed class SettingsPane
         target.MinimumEventViewers = source.MinimumEventViewers;
         target.CheckForNewVersions = source.CheckForNewVersions;
         target.DisableNotifications = source.DisableNotifications;
+        target.EnableCategoryChangeNotifications = source.EnableCategoryChangeNotifications;
         target.BringToForegroundOnStreamOnline = source.BringToForegroundOnStreamOnline;
         target.StreamNotificationImage = source.StreamNotificationImage;
         target.UseLongStreamNotificationBanners = source.UseLongStreamNotificationBanners;
@@ -749,6 +761,7 @@ internal sealed class SettingsPane
         first.MinimumEventViewers == second.MinimumEventViewers &&
         first.CheckForNewVersions == second.CheckForNewVersions &&
         first.DisableNotifications == second.DisableNotifications &&
+        first.EnableCategoryChangeNotifications == second.EnableCategoryChangeNotifications &&
         first.DisableRefreshErrorDialogs == second.DisableRefreshErrorDialogs &&
         first.DisableMinimizeToTrayNotification == second.DisableMinimizeToTrayNotification &&
         first.HideStreamOutputMessageBoxOnLoad == second.HideStreamOutputMessageBoxOnLoad &&

@@ -85,6 +85,7 @@ namespace Livestream.Monitor.Core.Settings
             // Later reads share this instance, so changes made through it are saved for the rest of the session.
             settings.PropertyChanged += SettingsOnPropertyChanged;
             settings.ExcludeFromNotifying.CollectionChanged += (_, _) => SaveSettings();
+            settings.CategoryChangeNotifications.CollectionChanged += (_, _) => SaveSettings();
             settingsLoaded = true;
 
             string ReadSettingsFile()

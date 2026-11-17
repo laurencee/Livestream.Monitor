@@ -19,7 +19,10 @@
                           cal:Message.Attach="[Sorting] = [OnDataGridSorting($eventArgs)]" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                           VirtualizingStackPanel.IsVirtualizing="True" IsSynchronizedWithCurrentItem="False">
                     <DataGrid.Resources>
-                        <ContextMenu x:Key="ContextMenu" x:Shared="False" cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
+                        <ContextMenu x:Key="ContextMenu" x:Shared="False"
+                                     DataContext="{Binding PlacementTarget.(FrameworkElement.DataContext), RelativeSource={RelativeSource Self}}"
+                                     d:DataContext="{d:DesignInstance Type=model:LivestreamModel}"
+                                     cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">
                             <MenuItem Header="Remove from list" cal:Message.Attach="[Click] = [RemoveLivestream]" />
                             <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyLivestreamUrl]" />
                             <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser]" />
@@ -27,7 +30,11 @@
                                       cal:Message.Attach="[Click] = [GotoVodViewer]" />
                             <MenuItem Header="Enable Notifications" cal:Message.Attach="[Click] = [ToggleNotify()]"
                                       IsChecked="{Binding DontNotify, Converter={StaticResource InvertedBoolenConverter}}"
-                                      ToolTip="Untick this to prevent popup notifications about this stream coming online or showing up as a popular stream"/>
+                                      ToolTip="Untick this to suppress popup notifications for this stream." />
+                            <MenuItem Header="Notify on Category Change" IsCheckable="True"
+                                      IsEnabled="{Binding SupportsCategoryChangeNotifications}"
+                                      IsChecked="{Binding NotifyOnCategoryChange, Mode=TwoWay}"
+                                      ToolTip="Show category changes for this stream even when global category change notifications are off." />
                         </ContextMenu>
                     </DataGrid.Resources>
                     <DataGrid.RowStyle >

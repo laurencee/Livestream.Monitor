@@ -25,12 +25,14 @@ namespace Livestream.Monitor.Core.Settings
         nameof(MetroThemeAccentColour),
         nameof(MinimumEventViewers),
         nameof(DisableNotifications),
+        nameof(EnableCategoryChangeNotifications),
         nameof(BringToForegroundOnStreamOnline),
         nameof(StreamNotificationImage),
         nameof(UseLongStreamNotificationBanners),
         nameof(HideStreamOutputMessageBoxOnLoad),
         nameof(FavoriteApiQualities),
         nameof(ExcludeFromNotifying),
+        nameof(CategoryChangeNotifications),
         nameof(ShowOnlineOnly),
         nameof(LivestreamListSortState))]
     public class Settings : ObservableModel
@@ -105,6 +107,12 @@ namespace Livestream.Monitor.Core.Settings
             set => Set(ref field, value);
         }
 
+        public bool EnableCategoryChangeNotifications
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
         public bool BringToForegroundOnStreamOnline
         {
             get;
@@ -140,6 +148,9 @@ namespace Livestream.Monitor.Core.Settings
         [JsonInclude]
         [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
         public ObservableList<UniqueStreamKey> ExcludeFromNotifying { get; private set; } = [];
+
+        [JsonInclude]
+        public ObservableList<UniqueStreamKey> CategoryChangeNotifications { get; private set; } = [];
 
         public bool ShowOnlineOnly
         {

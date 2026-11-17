@@ -88,6 +88,12 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
+        public event Action<LivestreamNotification> CategoryChangeNotification
+        {
+            add { }
+            remove { }
+        }
+
         public event EventHandler ProviderRefreshComplete;
 
         public Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)

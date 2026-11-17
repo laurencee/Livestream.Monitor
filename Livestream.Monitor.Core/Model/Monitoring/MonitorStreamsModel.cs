@@ -114,6 +114,8 @@ namespace Livestream.Monitor.Model.Monitoring
 
         public event EventHandler LivestreamsRefreshComplete;
 
+        public event Action<LivestreamNotification> CategoryChangeNotification;
+
         public event EventHandler ProviderRefreshComplete;
 
         /// <summary>
@@ -214,8 +216,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 }
 
                 livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
+                TrackLivestream(livestreamModel);
                 Livestreams.Add(livestreamModel);
-                livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
             }
 
             try
@@ -443,11 +445,19 @@ namespace Livestream.Monitor.Model.Monitoring
         /// <summary> Applies successful query results; only rows of the queried channels are replaced or removed. </summary>
         private void PopulateLivestreams(List<LivestreamQueryResult> successfulQueries)
         {
+            var settings = settingsHandler.Settings;
             var livestreamModels = successfulQueries.Select(x => x.LivestreamModel).ToList();
             foreach (var livestream in livestreamModels)
             {
                 var livestreamModel = Livestreams.FirstOrDefault(x => Equals(livestream, x));
-                if (!ReferenceEquals(livestreamModel, livestream)) livestreamModel?.PopulateSelf(livestream);
+                if (livestreamModel == null || ReferenceEquals(livestreamModel, livestream)) continue;
+
+                var category = livestreamModel.ApplyUpdate(livestream);
+                if (category == null) continue;
+                if (!settings.EnableCategoryChangeNotifications && !livestreamModel.NotifyOnCategoryChange) continue;
+                if (settings.ExcludeFromNotifying.Contains(livestreamModel.UniqueStreamKey)) continue;
+
+                CategoryChangeNotification?.Invoke(LivestreamNotification.CreateForFollowedStream(livestreamModel, category));
             }
 
             var newStreams = livestreamModels.Except(Livestreams).ToList();
@@ -500,7 +510,7 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 foreach (var livestreamModel in e.NewItems.Cast<LivestreamModel>())
                 {
-                    livestreamModel.PropertyChanged += LivestreamModelOnPropertyChanged;
+                    TrackLivestream(livestreamModel);
                 }
             }
 
@@ -513,6 +523,12 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
+        private void TrackLivestream(LivestreamModel livestream)
+        {
+            livestream.NotifyOnCategoryChange = settingsHandler.Settings.CategoryChangeNotifications.Contains(livestream.UniqueStreamKey);
+            livestream.PropertyChanged += LivestreamModelOnPropertyChanged;
+        }
+
         private void LivestreamModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             var livestream = (LivestreamModel)sender;
@@ -523,6 +539,13 @@ namespace Livestream.Monitor.Model.Monitoring
                     settingsHandler.Settings.ExcludeFromNotifying.Add(excludeNotify);
                 else
                     settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
+            }
+            else if (e.PropertyName == nameof(LivestreamModel.NotifyOnCategoryChange))
+            {
+                var preferences = settingsHandler.Settings.CategoryChangeNotifications;
+                var key = livestream.UniqueStreamKey;
+                if (livestream.NotifyOnCategoryChange && !preferences.Contains(key)) preferences.Add(key);
+                if (!livestream.NotifyOnCategoryChange) preferences.Remove(key);
             }
         }
     }

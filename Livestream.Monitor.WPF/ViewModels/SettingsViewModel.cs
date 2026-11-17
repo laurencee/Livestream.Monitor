@@ -85,6 +85,15 @@ namespace Livestream.Monitor.WPF.ViewModels
             }
         }
 
+        public bool EnableCategoryChangeNotifications
+        {
+            get;
+            set
+            {
+                if (Set(ref field, value)) NotifyOfPropertyChange(() => CanSave);
+            }
+        }
+
         private StreamNotificationImage StreamNotificationImage
         {
             get;
@@ -168,6 +177,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
         private bool HasOtherChanges => MinimumEventViewers != settingsHandler.Settings.MinimumEventViewers ||
                        DisableNotifications != settingsHandler.Settings.DisableNotifications ||
+                       EnableCategoryChangeNotifications != settingsHandler.Settings.EnableCategoryChangeNotifications ||
                        HideStreamOutputOnLoad != settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad ||
                        CheckForNewVersions != settingsHandler.Settings.CheckForNewVersions ||
                        DisableRefreshErrorDialogs != settingsHandler.Settings.DisableRefreshErrorDialogs ||
@@ -222,6 +232,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
             settingsHandler.Settings.MinimumEventViewers = MinimumEventViewers;
             settingsHandler.Settings.DisableNotifications = DisableNotifications;
+            settingsHandler.Settings.EnableCategoryChangeNotifications = EnableCategoryChangeNotifications;
             settingsHandler.Settings.StreamNotificationImage = StreamNotificationImage;
             settingsHandler.Settings.HideStreamOutputMessageBoxOnLoad = HideStreamOutputOnLoad;
             settingsHandler.Settings.CheckForNewVersions = CheckForNewVersions;
@@ -291,6 +302,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
             MinimumEventViewers = settings.MinimumEventViewers;
             DisableNotifications = settings.DisableNotifications;
+            EnableCategoryChangeNotifications = settings.EnableCategoryChangeNotifications;
             StreamNotificationImage = settings.StreamNotificationImage;
             HideStreamOutputOnLoad = settings.HideStreamOutputMessageBoxOnLoad;
             CheckForNewVersions = settings.CheckForNewVersions;
@@ -316,6 +328,9 @@ namespace Livestream.Monitor.WPF.ViewModels
                     break;
                 case nameof(Settings.DisableNotifications):
                     DisableNotifications = settingsHandler.Settings.DisableNotifications;
+                    break;
+                case nameof(Settings.EnableCategoryChangeNotifications):
+                    EnableCategoryChangeNotifications = settingsHandler.Settings.EnableCategoryChangeNotifications;
                     break;
                 case nameof(Settings.StreamNotificationImage):
                     StreamNotificationImage = settingsHandler.Settings.StreamNotificationImage;

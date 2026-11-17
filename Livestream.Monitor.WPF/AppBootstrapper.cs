@@ -107,7 +107,7 @@ namespace Livestream.Monitor.WPF
                 if (args.PropertyName == nameof(FilterModel.ShowOnlineOnly)) settings.ShowOnlineOnly = filter.ShowOnlineOnly;
             };
 
-            container.GetInstance<NotificationHandler>(); // make sure we initialize the notification handler at startup
+            container.GetInstance<INotificationHandler>(); // make sure we initialize the notification handler at startup
             await DisplayRootViewForAsync<ShellViewModel>();
             settings.PropertyChanged += (_, args) =>
             {

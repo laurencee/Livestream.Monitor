@@ -13,6 +13,7 @@ namespace Livestream.Monitor.Model
             // Helix includes the category name; no separate game lookup is needed.
             // https://dev.twitch.tv/docs/api/reference/#get-streams
             livestreamModel.Game = stream.GameName;
+            livestreamModel.GameId = stream.GameId;
             livestreamModel.Viewers = stream.ViewerCount;
             // the values here are what the v5 api returned for large/medium/small
             var largeThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "640").Replace("{height}", "360");
@@ -43,6 +44,7 @@ namespace Livestream.Monitor.Model
             livestreamModel.Description = consume.Description?.Trim();
             livestreamModel.DisplayName = consume.DisplayName;
             livestreamModel.Game = consume.Game;
+            livestreamModel.GameId = consume.GameId;
             livestreamModel.IsPartner = consume.IsPartner;
             livestreamModel.Language = consume.Language;
             livestreamModel.ThumbnailUrls = consume.ThumbnailUrls;

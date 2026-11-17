@@ -179,6 +179,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             (_, _) => palette = Theme.Create(state.SettingsHandler.Settings);
 
         state.StreamOnline += NotifyOnline;
+        state.StreamsModel.CategoryChangeNotification += AddNotification;
 
         if (Program.MonitorName == null)
         {
@@ -1761,6 +1762,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     public override void Dispose()
     {
+        state.StreamsModel.CategoryChangeNotification -= AddNotification;
         popularStreams.StopWatching();
         preview?.Dispose();
         images.Dispose();
@@ -1774,14 +1776,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Program.Dispatcher.Post(() =>
         {
             // Popular streams are usually not followed; their notifications open Top Streams, as in WPF.
-            var stream = notification.LivestreamModel;
-
-            _ = NotifyStream(
-                title: notification.Title,
-                message: notification.Message,
-                imageUrl: notification.ImageUrl,
-                stream: stream,
-                followed: state.IsFollowed(stream));
+            _ = NotifyStream(notification, followed: state.IsFollowed(notification.LivestreamModel));
         });
     }
 
@@ -1829,26 +1824,18 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void NotifyOnline(LivestreamModel stream)
     {
-        var title = $"{stream.DisplayName} Online";
-        _ = NotifyStream(
-            title,
-            message: stream.Description,
-            imageUrl: stream.ThumbnailUrls?.Small,
-            stream,
-            followed: true,
-            streamWentOnline: true);
+        var notification = LivestreamNotification.CreateForFollowedStream(stream);
+        _ = NotifyStream(notification, followed: true, streamWentOnline: true);
     }
 
-    private async Task NotifyStream(
-        string? title,
-        string? message,
-        string? imageUrl,
-        LivestreamModel stream,
-        bool followed,
-        bool streamWentOnline = false)
+    private async Task NotifyStream(LivestreamNotification notification, bool followed, bool streamWentOnline = false)
     {
+        var stream = notification.LivestreamModel;
         if (SuppressNotification(stream)) return;
 
+        var title = notification.Title;
+        var message = notification.Message;
+        var imageUrl = notification.ImageUrl;
         var target = new StreamNotificationTarget(stream.UniqueStreamKey, stream.ChannelIdentifier.ChannelId, followed);
         if (streamWentOnline && requestedNotification == null && requestedPage == null && CanSelectForegroundStream())
             requestedForegroundStream = target;
@@ -2063,7 +2050,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             if (state.IsContentLoading || queryQueued) return;
 
             if (state.SelectedIndex >= 0 && state.SelectedIndex < state.Vods.Count)
-                ShowVodContextMenu(state.Vods[state.SelectedIndex], MenuAnchor(), fromKeyboard);
+                ShowVodContextMenu(state.Vods[state.SelectedIndex], MenuAnchor());
 
             return;
         }
@@ -2077,9 +2064,14 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items;
         if (state.Page == MonitorPage.Followed)
         {
-            const string NotifyToolTip =
-                "Untick this to prevent popup notifications about this stream coming online or showing up as a " +
-                "popular stream";
+            const string NotifyToolTip = "Untick this to suppress popup notifications for this stream.";
+
+            var categoryChangeChoice = new SurfaceUi.MenuChoice(
+                Text: "Notify on Category Change",
+                Enabled: stream.SupportsCategoryChangeNotifications,
+                Checked: stream.NotifyOnCategoryChange,
+                ToolTip: "Show category changes for this stream even when global category change notifications are off.",
+                Checkable: true);
 
             items =
             [
@@ -2088,6 +2080,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 (new SurfaceUi.MenuChoice("Open in Browser"), ContextCommand.OpenInBrowser),
                 (openVods, ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
+                (categoryChangeChoice, ContextCommand.NotifyOnCategoryChange),
             ];
         }
         else
@@ -2111,7 +2104,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var anchor = MenuAnchor();
         Ui.Popup(id: "context", anchor, choices, chosen: Choose);
 
-        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command, FeedbackPosition(anchor, fromKeyboard));
+        void Choose(int index) => _ = RunContextCommand(stream, items[index].Command, anchor.Location);
 
         RectangleF MenuAnchor() => fromKeyboard ? RevealSelectedItem() : new RectangleF(Pointer, SizeF.Empty);
 
@@ -2136,7 +2129,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         return TileBounds(LayoutTiles(ClientSize, ItemCount), state.SelectedIndex, scrollOffset);
     }
 
-    private void ShowVodContextMenu(VodDetails vod, RectangleF anchor, bool fromKeyboard)
+    private void ShowVodContextMenu(VodDetails vod, RectangleF anchor)
     {
         (SurfaceUi.MenuChoice Choice, ContextCommand Command)[] items =
         [
@@ -2147,13 +2140,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var choices = Array.ConvertAll(items, item => item.Choice);
         Ui.Popup(id: "context", anchor, choices, chosen: Choose);
 
-        void Choose(int index) => _ = RunVodContextCommand(vod, items[index].Command, FeedbackPosition(anchor, fromKeyboard));
+        void Choose(int index) => _ = RunVodContextCommand(vod, items[index].Command, anchor.Location);
     }
 
-    // The feedback for a command chosen from a menu the keyboard opened appears at the selected item, not at the pointer.
-    private PointF FeedbackPosition(RectangleF anchor, bool fromKeyboard) => fromKeyboard ? anchor.Location : Pointer;
-
-    private async Task RunVodContextCommand(VodDetails vod, ContextCommand command, PointF clickPosition)
+    private async Task RunVodContextCommand(VodDetails vod, ContextCommand command, PointF feedbackPosition)
     {
         try
         {
@@ -2161,7 +2151,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             {
                 case ContextCommand.CopyUrl:
                     CopyToClipboard(vod.Url);
-                    ShowActionFeedback("Copied URL to clipboard", clickPosition);
+                    ShowActionFeedback("Copied URL to clipboard", feedbackPosition);
                     break;
                 case ContextCommand.OpenInBrowser:
                     var uri = vod.GetBrowserUri();
@@ -2179,7 +2169,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private async Task RunContextCommand(LivestreamModel stream, ContextCommand command, PointF clickPosition)
+    private async Task RunContextCommand(LivestreamModel stream, ContextCommand command, PointF feedbackPosition)
     {
         try
         {
@@ -2192,7 +2182,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     await OpenChat(stream);
                     break;
                 case ContextCommand.CopyUrl:
-                    await CopyStreamUrl(stream, clickPosition);
+                    await CopyStreamUrl(stream, feedbackPosition);
                     break;
                 case ContextCommand.OpenInBrowser:
                     OpenInBrowser(await stream.GetStreamUrl());
@@ -2207,6 +2197,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 case ContextCommand.Notify:
                     ToggleNotification(stream);
                     break;
+                case ContextCommand.NotifyOnCategoryChange:
+                    stream.NotifyOnCategoryChange = !stream.NotifyOnCategoryChange;
+                    break;
             }
         }
         catch (Exception exception)
@@ -2215,12 +2208,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private async Task CopyStreamUrl(LivestreamModel stream, PointF clickPosition)
+    private async Task CopyStreamUrl(LivestreamModel stream, PointF feedbackPosition)
     {
         try
         {
             CopyToClipboard(await stream.GetStreamUrl());
-            ShowActionFeedback("Copied URL to clipboard", clickPosition);
+            ShowActionFeedback("Copied URL to clipboard", feedbackPosition);
         }
         catch (Exception exception)
         {
@@ -2255,11 +2248,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private static void OpenInBrowser(string url) =>
         Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
 
-    private void ShowActionFeedback(string message, PointF clickPosition)
+    private void ShowActionFeedback(string message, PointF position)
     {
         if (IsClosed) return;
 
-        actionFeedback.Show(message, clickPosition, Environment.TickCount64);
+        actionFeedback.Show(message, position, Environment.TickCount64);
         NeedsPaint = true;
     }
 
@@ -2335,5 +2328,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         OpenVods,
         Remove,
         Notify,
+        NotifyOnCategoryChange,
     }
 }

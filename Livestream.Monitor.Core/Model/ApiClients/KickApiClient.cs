@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -300,7 +301,8 @@ so we might as well just do machine-to-machine auth
             {
                 DisplayName = channel.Slug,
                 Description = channel.StreamTitle,
-                Game = channel.Category.Name,
+                Game = channel.Category?.Name,
+                GameId = channel.Category is { Id: > 0 } category ? category.Id.ToString(CultureInfo.InvariantCulture) : null,
                 Viewers = channel.Stream.ViewerCount,
                 StartTime = channel.Stream.StartTime,
                 Language = channel.Stream.Language,

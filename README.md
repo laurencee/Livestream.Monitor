@@ -46,8 +46,9 @@ Memory and CPU were measured with about 380 followed streams during a short sess
   * You don't have to be monitoring channels to view their VODs.
   * Click a VOD tile to launch it in your configured player. Right click to copy its URL or open it in your browser.
 * Filter your channel list to find and manage streams quickly
-* Toast notifications for streams coming online
-* Toast notifications for popular streams (so you never miss a special event)
+* Notifications for streams coming online
+* Notifications for popular streams (so you never miss a special event)
+* Notifications for game or category changes on followed streams
 * Right click context menu for various options on livestream list and top streams tiles
 
 **TIP**: You can configure what is considered a "popular stream" in the settings menu (cog icon on right of titlebar)

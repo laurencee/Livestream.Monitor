@@ -10,6 +10,7 @@ namespace Livestream.Monitor.Model
     {
         private long viewers;
         private string displayName;
+        private (string Id, string Name) lastKnownCategory;
 
         public LivestreamModel()
         {
@@ -81,6 +82,8 @@ namespace Livestream.Monitor.Model
             set => Set(ref field, value);
         }
 
+        internal string GameId { get; set; }
+
         public long Viewers
         {
             get => viewers;
@@ -147,6 +150,14 @@ namespace Livestream.Monitor.Model
             set => Set(ref field, value);
         }
 
+        public bool SupportsCategoryChangeNotifications => ApiClient?.ApiName is TwitchApiClient.API_NAME or KickApiClient.API_NAME;
+
+        public bool NotifyOnCategoryChange
+        {
+            get;
+            set => Set(ref field, value);
+        }
+
         public bool IsChatDisabled
         {
             get;
@@ -159,6 +170,29 @@ namespace Livestream.Monitor.Model
             Live = false;
             Viewers = 0;
             StartTime = DateTimeOffset.MinValue;
+        }
+
+        /// <summary>Applies a provider snapshot and returns the new category if it changed during the same live session.</summary>
+        internal string ApplyUpdate(LivestreamModel update)
+        {
+            var sameSession = Live && update.Live && StartTime == update.StartTime;
+            var previous = lastKnownCategory;
+            if (previous.Name == null && !string.IsNullOrWhiteSpace(Game)) previous = (GameId, Game);
+
+            this.PopulateSelf(update);
+            if (!sameSession) lastKnownCategory = default;
+            if (!Live || string.IsNullOrWhiteSpace(Game)) return null;
+
+            lastKnownCategory = (GameId, Game);
+            if (!sameSession || previous.Name == null) return null;
+
+            var sameCategory = !string.IsNullOrEmpty(previous.Id) && !string.IsNullOrEmpty(GameId)
+                ? previous.Id == GameId
+                : previous.Name.Equals(Game, StringComparison.OrdinalIgnoreCase);
+
+            if (sameCategory && string.IsNullOrEmpty(GameId)) lastKnownCategory.Id = previous.Id;
+
+            return sameCategory ? null : Game;
         }
 
         public override string ToString() =>
