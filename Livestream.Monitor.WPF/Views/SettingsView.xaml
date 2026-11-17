@@ -12,11 +12,6 @@
              cal:Bind.AtDesignTime="True"
              d:DesignWidth="300">
     <Grid Margin="10,0">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
         <Grid.Resources>
             <Style TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">
                 <Setter Property="VerticalAlignment" Value="Center" />
@@ -32,23 +27,57 @@
                 <Setter Property="Margin" Value="0,10,0,0" />
             </Style>
 
+            <Style x:Key="SettingsErrorText" TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">
+                <Setter Property="Foreground" Value="#B00020" />
+                <Style.Triggers>
+                    <!-- The expander's data context is the Settings view model. -->
+                    <!-- ReSharper disable once Xaml.BindingWithContextNotResolved -->
+                    <DataTrigger Binding="{Binding DataContext.IsDarkTheme, RelativeSource={RelativeSource AncestorType={x:Type Expander}}}"
+                                 Value="True">
+                        <Setter Property="Foreground" Value="#FFADAD" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+
+            <DataTemplate x:Key="PlatformHeaderTemplate" DataType="{x:Type viewModels:ApiPlatformSettingsEditor}">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="{Binding DisplayName}" Margin="0" />
+                    <TextBlock Text="(unsaved)" FontWeight="Bold" Margin="6,0,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Setter Property="Foreground" Value="#8A4A00" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasChanges}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <!-- The expander's data context is the Settings view model. -->
+                                    <!-- ReSharper disable once Xaml.BindingWithContextNotResolved -->
+                                    <DataTrigger Binding="{Binding DataContext.IsDarkTheme, RelativeSource={RelativeSource AncestorType={x:Type Expander}}}"
+                                                 Value="True">
+                                        <Setter Property="Foreground" Value="#FFD166" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </DataTemplate>
+
             <DataTemplate x:Key="CommandSettingsTemplate" DataType="{x:Type viewModels:ExecCommandEditor}">
                 <Border Margin="0,8,0,0" Padding="0,0,0,8" BorderBrush="#33000000" BorderThickness="0,0,0,1">
                     <StackPanel>
                         <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold" Margin="0,0,0,2" />
                         <TextBlock Text="File path" />
                         <TextBox Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="{Binding DisplayName, StringFormat={}{0} file path}"
                                  ToolTip="Enter a command name on PATH or a full executable path." />
                         <TextBlock Text="{Binding FilePathStatusText}" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5">
                             <TextBlock.Style>
-                                <Style TargetType="TextBlock" BasedOn="{StaticResource MahApps.Styles.TextBlock}">
-                                    <Setter Property="Foreground" Value="DimGray" />
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsErrorText}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding HasValidFilePath}" Value="True">
-                                            <Setter Property="Foreground" Value="DarkGreen" />
-                                        </DataTrigger>
-                                        <DataTrigger Binding="{Binding HasValidFilePath}" Value="False">
-                                            <Setter Property="Foreground" Value="IndianRed" />
+                                            <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.ThemeForeground}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -56,8 +85,9 @@
                         </TextBlock>
                         <TextBlock Text="Arguments" />
                         <TextBlock Text="{Binding Tag, RelativeSource={RelativeSource AncestorType={x:Type Expander}}}"
-                                   FontSize="11" Foreground="DimGray" TextWrapping="Wrap" Margin="0,0,0,5" />
-                        <TextBox Text="{Binding Args, UpdateSourceTrigger=PropertyChanged}" />
+                                   FontSize="11" TextWrapping="Wrap" Margin="0,0,0,5" />
+                        <TextBox Text="{Binding Args, UpdateSourceTrigger=PropertyChanged}"
+                                 AutomationProperties.Name="{Binding DisplayName, StringFormat={}{0} arguments}" />
                         <CheckBox Content="Capture stdout" IsChecked="{Binding CaptureStandardOutput}" />
                         <CheckBox Content="Capture stderr" IsChecked="{Binding CaptureErrorOutput}" />
                     </StackPanel>
@@ -65,10 +95,11 @@
             </DataTemplate>
         </Grid.Resources>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel Orientation="Vertical">
                 <Expander Header="General settings" IsExpanded="True" Margin="0,0,0,0" AutomationProperties.AutomationId="settings.section.0">
                     <StackPanel Margin="0,5,0,0">
+                        <TextBlock Text="Changes save automatically." />
                         <ContentControl x:Name="ThemeSelector" cal:View.Model="{Binding ThemeSelector}" Margin="0,5,5,5" HorizontalAlignment="Left" />
                         <CheckBox x:Name="CheckForNewVersions" Content="Check for new app versions"
                                   ToolTip="When unchecked, app version checks on startup are disabled." />
@@ -84,14 +115,30 @@
 
                 <Expander Header="Stream Notifications" IsExpanded="False" AutomationProperties.AutomationId="settings.section.5">
                     <StackPanel Margin="0,5,0,0">
+                        <TextBlock Text="Changes save automatically." />
                         <TextBlock Text="Popular alert threshold (viewers; 0 = off)"
                                    ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams." />
                         <TextBox x:Name="MinimumEventViewers" MaxLength="7"
+                                 Text="{Binding ViewerThresholdText, UpdateSourceTrigger=PropertyChanged}"
+                                 LostFocus="CommitViewerThreshold" PreviewKeyDown="ViewerThresholdKeyDown"
+                                 AutomationProperties.Name="Popular alert threshold"
                                  ToolTip="Minimum number of viewers for a stream to be shown in a notification as a popular or event stream.&#10;This helps you not miss out on special events or popular streams.">
                             <i:Interaction.Behaviors>
                                 <ui:RestrictTextBoxInputBehavior RegularExpression="^\d+$" />
                             </i:Interaction.Behaviors>
                         </TextBox>
+                        <TextBlock Text="Saves on Enter or when you leave the field." TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ViewerThresholdError}" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsErrorText}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewerThresholdError}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                         <CheckBox x:Name="DisableNotifications" Content="Disable notifications"
                                   ToolTip="When checked, all notifications are disabled." />
                         <CheckBox x:Name="EnableCategoryChangeNotifications" Content="Enable category change notifications"
@@ -106,7 +153,9 @@
                     </StackPanel>
                 </Expander>
 
-                <Expander Header="Twitch" IsExpanded="False" Tag="Args support {url} and {auth_token}.">
+                <Expander x:Name="TwitchSection" Header="{Binding Twitch}" HeaderTemplate="{StaticResource PlatformHeaderTemplate}" IsExpanded="False"
+                          AutomationProperties.Name="{Binding Twitch.SectionTitle}"
+                          AutomationProperties.AutomationId="settings.section.1" Tag="Args support {url} and {auth_token}.">
                     <StackPanel Margin="0,5,0,0">
                         <TextBlock Text="Auth token" />
                         <TextBox Text="{Binding Twitch.AuthToken, UpdateSourceTrigger=PropertyChanged}"
@@ -117,30 +166,65 @@
                         <ContentControl Content="{Binding Twitch.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding Twitch.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding Twitch.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <StackPanel x:Name="TwitchActions" DataContext="{Binding Twitch}" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
+                            <UniformGrid Columns="2">
+                                <Button x:Name="TwitchSave" Content="Save" IsEnabled="{Binding CanSave}" Click="SavePlatform" Margin="0,0,3,0"
+                                        AutomationProperties.AutomationId="settings.Twitch.save" AutomationProperties.Name="Save Twitch settings" />
+                                <Button x:Name="TwitchRevert" Content="Revert" IsEnabled="{Binding HasChanges}" Click="RevertPlatform" Margin="3,0,0,0"
+                                        AutomationProperties.AutomationId="settings.Twitch.revert" AutomationProperties.Name="Revert Twitch changes" />
+                            </UniformGrid>
+                        </StackPanel>
                     </StackPanel>
                 </Expander>
 
-                <Expander Header="Kick" IsExpanded="False" Tag="Args support {url}.">
+                <Expander x:Name="KickSection" Header="{Binding Kick}" HeaderTemplate="{StaticResource PlatformHeaderTemplate}" IsExpanded="False"
+                          AutomationProperties.Name="{Binding Kick.SectionTitle}"
+                          AutomationProperties.AutomationId="settings.section.2" Tag="Args support {url}.">
                     <StackPanel Margin="0,5,0,0">
                         <ContentControl Content="{Binding Kick.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding Kick.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding Kick.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <StackPanel x:Name="KickActions" DataContext="{Binding Kick}" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
+                            <UniformGrid Columns="2">
+                                <Button x:Name="KickSave" Content="Save" IsEnabled="{Binding CanSave}" Click="SavePlatform" Margin="0,0,3,0"
+                                        AutomationProperties.AutomationId="settings.Kick.save" AutomationProperties.Name="Save Kick settings" />
+                                <Button x:Name="KickRevert" Content="Revert" IsEnabled="{Binding HasChanges}" Click="RevertPlatform" Margin="3,0,0,0"
+                                        AutomationProperties.AutomationId="settings.Kick.revert" AutomationProperties.Name="Revert Kick changes" />
+                            </UniformGrid>
+                        </StackPanel>
                     </StackPanel>
                 </Expander>
 
-                <Expander Header="YouTube" IsExpanded="False" Tag="Args support {url}.">
+                <Expander x:Name="YouTubeSection" Header="{Binding YouTube}" HeaderTemplate="{StaticResource PlatformHeaderTemplate}" IsExpanded="False"
+                          AutomationProperties.Name="{Binding YouTube.SectionTitle}"
+                          AutomationProperties.AutomationId="settings.section.3" Tag="Args support {url}.">
                     <StackPanel Margin="0,5,0,0">
                         <ContentControl Content="{Binding YouTube.StreamCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding YouTube.VodCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
                         <ContentControl Content="{Binding YouTube.ChatCommand}" ContentTemplate="{StaticResource CommandSettingsTemplate}" />
+                        <StackPanel x:Name="YouTubeActions" DataContext="{Binding YouTube}" Margin="0,4,0,0">
+                            <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap"
+                                       AutomationProperties.LiveSetting="Polite" />
+                            <UniformGrid Columns="2">
+                                <Button x:Name="YouTubeSave" Content="Save" IsEnabled="{Binding CanSave}" Click="SavePlatform" Margin="0,0,3,0"
+                                        AutomationProperties.AutomationId="settings.YouTube.save" AutomationProperties.Name="Save YouTube settings" />
+                                <Button x:Name="YouTubeRevert" Content="Revert" IsEnabled="{Binding HasChanges}" Click="RevertPlatform" Margin="3,0,0,0"
+                                        AutomationProperties.AutomationId="settings.YouTube.revert" AutomationProperties.Name="Revert YouTube changes" />
+                            </UniformGrid>
+                        </StackPanel>
                     </StackPanel>
                 </Expander>
                 <Expander Header="Stream quality" IsExpanded="False" AutomationProperties.AutomationId="settings.section.4">
-                    <ContentControl cal:View.Model="{Binding StreamQualities}" />
+                    <StackPanel>
+                        <ContentControl cal:View.Model="{Binding StreamQualities}" />
+                        <Button x:Name="Save" Content="Save stream quality" Margin="0,5,0,10" />
+                    </StackPanel>
                 </Expander>
             </StackPanel>
         </ScrollViewer>
-
-        <Button Grid.Row="1" x:Name="Save" Content="Save" Margin="20,5,20,20" />
     </Grid>
 </UserControl>

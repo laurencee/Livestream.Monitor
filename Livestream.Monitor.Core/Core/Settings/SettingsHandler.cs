@@ -14,6 +14,7 @@ namespace Livestream.Monitor.Core.Settings
     {
         public const string SettingsFileName = "settings.json";
 
+        private readonly Lock saveGate = new();
         private bool settingsLoaded;
         private Settings settings;
 
@@ -28,14 +29,53 @@ namespace Livestream.Monitor.Core.Settings
 
         public void SaveSettings()
         {
-            try
+            lock (saveGate)
             {
-                var json = JsonSerializer.Serialize(settings, ExternalAPIs.JsonDefaults.IndentedOptions);
-                File.WriteAllText(SettingsFileName, json);
+                try
+                {
+                    var json = JsonSerializer.Serialize(settings, ExternalAPIs.JsonDefaults.IndentedOptions);
+                    File.WriteAllText(SettingsFileName, json);
+                }
+                catch (Exception)
+                {
+                    // Existing callers have no UI to report an unsuccessful write.
+                }
             }
-            catch (Exception)
+        }
+
+        public bool TrySavePlatformSettings(ApiPlatformSettings platform)
+        {
+            var property = platform switch
             {
-                // can't do much...
+                TwitchSettings => nameof(Settings.Twitch),
+                KickSettings => nameof(Settings.Kick),
+                YouTubeSettings => nameof(Settings.YouTube),
+                _ => throw new ArgumentOutOfRangeException(nameof(platform)),
+            };
+
+            var current = Settings;
+            lock (saveGate)
+            {
+                try
+                {
+                    var options = ExternalAPIs.JsonDefaults.IndentedOptions;
+                    var document = JsonSerializer.SerializeToNode(current, options)!.AsObject();
+                    document[property] = JsonSerializer.SerializeToNode(platform, platform.GetType(), options);
+                    var json = document.ToJsonString(options);
+
+                    // Write in place instead of replacing the file, so a profile shared through a link keeps its file identity and protections.
+                    File.WriteAllText(SettingsFileName, json);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return false;
+                }
+
+                if (platform is TwitchSettings twitch) current.Twitch = twitch;
+                if (platform is KickSettings kick) current.Kick = kick;
+                if (platform is YouTubeSettings youTube) current.YouTube = youTube;
+
+                return true;
             }
         }
 

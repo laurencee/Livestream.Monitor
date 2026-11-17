@@ -220,7 +220,7 @@ internal abstract class DesktopWindow : IDisposable
     }
 
     /// <summary>A single-line native edit control, positioned later through <see cref="PlaceInput"/>.</summary>
-    internal nint CreateTextInput(Action changed)
+    internal nint CreateTextInput(Action changed, Action lostFocus)
     {
         var input = Control(
             "EDIT",
@@ -230,6 +230,7 @@ internal abstract class DesktopWindow : IDisposable
             code =>
             {
                 if (code == Win32.EnChange) changed();
+                if (code == Win32.EnKillFocus) lostFocus();
             }
         );
 

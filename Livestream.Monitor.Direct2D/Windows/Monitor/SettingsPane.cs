@@ -15,9 +15,6 @@ internal sealed class SettingsPane
 {
     private const float HeaderHeight = 46;
     private const float SaveButtonHeight = 28;
-    private const float SaveButtonPadding = 5;
-    private const float FooterDividerHeight = 1;
-    private const float FooterHeight = FooterDividerHeight + SaveButtonHeight + SaveButtonPadding * 2;
     private const float Margin = 10;
     private const float RowHeight = 28;
     private const float InputHeight = 26;
@@ -42,14 +39,17 @@ internal sealed class SettingsPane
     private const int YouTubeSectionIndex = 3;
     private const int StreamNotificationsSectionIndex = 5;
     private const string MinimumViewersId = "settings.minimum";
+    private const string TwitchAuthTokenId = "settings.auth";
     private static readonly string[] BaseNames = ["Base Light", "Base Dark"];
     private static readonly MetroThemeAccentColour[] Accents = Enum.GetValues<MetroThemeAccentColour>();
     private static readonly string[] AccentNames = Enum.GetNames<MetroThemeAccentColour>();
     private readonly ISettingsHandler handler;
     private readonly IUserDialogs dialogs;
     private readonly Action close;
-    private readonly Action? saved;
-    private readonly Settings draft;
+    private readonly Action? twitchAuthChanged;
+    private readonly TwitchSettings twitchDraft = new();
+    private readonly KickSettings kickDraft = new();
+    private readonly YouTubeSettings youTubeDraft = new();
     private readonly HashSet<string> seededInputs = [];
     private readonly Dictionary<string, PathState> paths = new(StringComparer.Ordinal);
     private readonly bool[] expanded = [true, false, false, false, false, false];
@@ -57,25 +57,29 @@ internal sealed class SettingsPane
     private int scroll;
     private int maximumScroll;
     private string minimumViewersText;
+    private string? savedTwitchAuthToken;
     private bool validMinimumViewers = true;
-    private string? revealInput;
+    private string? revealTarget;
     private RectangleF? revealBounds;
-    private string? focusRevealedInput;
+    private string? focusRevealedControl;
 
     public SettingsPane(
         ISettingsHandler handler,
         IUserDialogs dialogs,
         Action close,
-        Action? saved = null)
+        Action? twitchAuthChanged = null)
     {
         this.handler = handler;
         this.dialogs = dialogs;
         this.close = close;
-        this.saved = saved;
+        this.twitchAuthChanged = twitchAuthChanged;
         streamQualities = new StreamQualityPane(handler.Settings);
-        draft = new Settings();
-        CopyEditable(handler.Settings, draft);
-        minimumViewersText = draft.MinimumEventViewers.ToString(CultureInfo.InvariantCulture);
+        var current = handler.Settings;
+        CopyPlatform(current.Twitch ?? new TwitchSettings(), twitchDraft);
+        savedTwitchAuthToken = twitchDraft.AuthToken;
+        CopyPlatform(current.Kick ?? new KickSettings(), kickDraft);
+        CopyPlatform(current.YouTube ?? new YouTubeSettings(), youTubeDraft);
+        minimumViewersText = current.MinimumEventViewers.ToString(CultureInfo.InvariantCulture);
         ScrollBar = new VerticalScrollBar(SetScroll);
     }
 
@@ -84,8 +88,27 @@ internal sealed class SettingsPane
 
     public void DiscardQualityChanges(SurfaceUi ui) => streamQualities.Revert(ui);
 
-    public void SyncTrayPopupSetting() =>
-        draft.DisableMinimizeToTrayNotification = handler.Settings.DisableMinimizeToTrayNotification;
+    public bool OwnsInput(string id) => seededInputs.Contains(id) || id.StartsWith("settings.", StringComparison.Ordinal);
+
+    public bool RevealPendingPlatform(SurfaceUi ui)
+    {
+        var current = handler.Settings;
+        SyncTwitchAuth(ui, current.Twitch);
+        if (RevealIfEdited(TwitchSectionIndex, "Twitch", twitchDraft, current.Twitch ?? new TwitchSettings())) return true;
+        if (RevealIfEdited(KickSectionIndex, "Kick", kickDraft, current.Kick ?? new KickSettings())) return true;
+        return RevealIfEdited(YouTubeSectionIndex, "YouTube", youTubeDraft, current.YouTube ?? new YouTubeSettings());
+
+        bool RevealIfEdited(int index, string name, ApiPlatformSettings platform, ApiPlatformSettings saved)
+        {
+            if (Matches(platform, saved)) return false;
+
+            // Executable availability can change while this draft is open.
+            paths.Clear();
+            var action = FindInvalidPath(platform, name) == null ? ".save" : ".revert";
+            Reveal(index, "settings." + name + action);
+            return true;
+        }
+    }
 
     public void Draw(SurfaceUi ui, RectangleF bounds)
     {
@@ -101,7 +124,7 @@ internal sealed class SettingsPane
             x: bounds.X + Margin,
             y: bounds.Y + HeaderHeight,
             width: bounds.Width - Margin * 2,
-            height: Math.Max(0, bounds.Height - HeaderHeight - FooterHeight)
+            height: Math.Max(0, bounds.Height - HeaderHeight - Margin)
         );
 
         scroll = Math.Clamp(scroll, 0, maximumScroll);
@@ -113,62 +136,65 @@ internal sealed class SettingsPane
         DrawExpander(ui, body, ref y, index: StreamNotificationsSectionIndex, title: "Stream Notifications");
         if (expanded[StreamNotificationsSectionIndex]) DrawStreamNotifications(ui, body, ref y);
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: TwitchSectionIndex, title: "Twitch");
-        if (expanded[TwitchSectionIndex]) DrawPlatform(ui, body, ref y, name: "Twitch", draft.Twitch);
+        var current = handler.Settings;
+        SyncTwitchAuth(ui, current.Twitch);
+        DrawPlatformSection(
+            ui,
+            body,
+            ref y,
+            index: TwitchSectionIndex,
+            name: "Twitch",
+            platform: twitchDraft,
+            saved: current.Twitch ?? new TwitchSettings()
+        );
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: KickSectionIndex, title: "Kick");
-        if (expanded[KickSectionIndex]) DrawPlatform(ui, body, ref y, name: "Kick", draft.Kick);
+        DrawPlatformSection(
+            ui,
+            body,
+            ref y,
+            index: KickSectionIndex,
+            name: "Kick",
+            platform: kickDraft,
+            saved: current.Kick ?? new KickSettings()
+        );
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: YouTubeSectionIndex, title: "YouTube");
-        if (expanded[YouTubeSectionIndex]) DrawPlatform(ui, body, ref y, name: "YouTube", draft.YouTube);
+        DrawPlatformSection(
+            ui,
+            body,
+            ref y,
+            index: YouTubeSectionIndex,
+            name: "YouTube",
+            platform: youTubeDraft,
+            saved: current.YouTube ?? new YouTubeSettings()
+        );
         y += SectionGap;
-        DrawExpander(ui, body, ref y, index: 4, title: "Stream quality");
-        if (expanded[4]) streamQualities.Draw(ui, body with { Width = body.Width - ScrollbarSpace }, ref y);
+        const int StreamQualitySectionIndex = 4;
+        DrawExpander(ui, body, ref y, index: StreamQualitySectionIndex, title: "Stream quality");
+        if (expanded[StreamQualitySectionIndex])
+        {
+            streamQualities.Draw(ui, body with { Width = body.Width - ScrollbarSpace }, ref y);
+            var saveBounds = Row(body, ref y, SaveButtonHeight);
+            ui.Button(
+                id: "settings.save",
+                text: "Save stream quality",
+                bounds: saveBounds,
+                action: SaveStreamQuality,
+                enabled: streamQualities.HasChanges
+            );
+        }
+
         ui.PopClip();
 
         var viewport = (int)body.Height;
         var extent = (int)MathF.Ceiling(y + scroll - body.Top);
         maximumScroll = Math.Max(0, extent - viewport);
 
-        RevealInvalidInput(ui, body);
+        ScrollToRevealedControl(ui, body);
 
         var barBounds = body with { X = body.Right - VerticalScrollBar.Width, Width = VerticalScrollBar.Width };
         var scrollbarExtent = viewport >= VerticalScrollBar.MinimumDraggableHeight ? extent : viewport;
         ScrollBar.Update(area: barBounds, extent: scrollbarExtent, viewport, offset: scroll, lineSize: ScrollStep);
         ScrollBar.Draw(ui, automationPrefix: "settings");
-
-        var footerTop = bounds.Bottom - FooterHeight;
-        var divider = body with { Y = footerTop, Height = FooterDividerHeight };
-        ui.Fill(divider, ui.Palette.Border);
-
-        var saveBounds = new RectangleF(
-            x: bounds.X + 30,
-            y: divider.Bottom + SaveButtonPadding,
-            width: bounds.Width - 60,
-            height: SaveButtonHeight
-        );
-
-        var otherChanges = !EditableMatch(draft, handler.Settings);
-        var hasChanges = HasChanges(otherChanges);
-        var invalidField = hasChanges ? FindInvalidField(otherChanges) : null;
-        var canSave = hasChanges && invalidField == null;
-        if (invalidField is { } field)
-        {
-            const float ErrorButtonWidth = 105;
-            const float ButtonGap = 6;
-            var errorBounds = saveBounds with { X = saveBounds.Right - ErrorButtonWidth, Width = ErrorButtonWidth };
-            saveBounds.Width -= ErrorButtonWidth + ButtonGap;
-            ui.Button(
-                id: "settings.showerror",
-                text: "Show error",
-                bounds: errorBounds,
-                action: () => Reveal(field),
-                accent: true,
-                toolTip: "Show the field blocking Save"
-            );
-        }
-
-        ui.Button(id: "settings.save", text: "Save", bounds: saveBounds, action: Save, enabled: canSave);
     }
 
     public void Scroll(int steps) => SetScroll(Math.Clamp(scroll - steps * ScrollStep, 0, maximumScroll));
@@ -196,25 +222,25 @@ internal sealed class SettingsPane
         if (offset == scroll) return;
 
         scroll = offset;
-        revealInput = null;
-        focusRevealedInput = null;
+        revealTarget = null;
+        focusRevealedControl = null;
     }
 
-    public void FocusRevealedInput(SurfaceUi ui)
+    public void FocusRevealedControl(SurfaceUi ui)
     {
-        if (focusRevealedInput is not { } id) return;
+        if (focusRevealedControl is not { } id) return;
 
-        focusRevealedInput = null;
-        ui.FocusVisibleInput(id);
+        focusRevealedControl = null;
+        ui.Focus(id);
     }
 
-    private void Reveal(InvalidField field)
+    private void Reveal(int index, string id)
     {
-        expanded[field.SectionIndex] = true;
-        revealInput = field.Id;
+        expanded[index] = true;
+        revealTarget = id;
     }
 
-    private void RevealInvalidInput(SurfaceUi ui, RectangleF body)
+    private void ScrollToRevealedControl(SurfaceUi ui, RectangleF body)
     {
         var nextScroll = Math.Min(scroll, maximumScroll);
         if (revealBounds is { } target)
@@ -228,12 +254,12 @@ internal sealed class SettingsPane
 
             if (nextScroll == scroll && body.Contains(target))
             {
-                focusRevealedInput = revealInput;
+                focusRevealedControl = revealTarget;
                 ui.Invalidate?.Invoke();
             }
         }
 
-        if (nextScroll == scroll || revealBounds == null) revealInput = null;
+        if (nextScroll == scroll || revealBounds == null) revealTarget = null;
         revealBounds = null;
         if (nextScroll == scroll) return;
 
@@ -243,6 +269,8 @@ internal sealed class SettingsPane
 
     private void DrawGeneral(SurfaceUi ui, RectangleF body, ref float y)
     {
+        DrawTextRow(ui, "Changes save automatically.", body, ref y, spacing: GroupGap, color: ui.Palette.MutedText);
+        var current = handler.Settings;
         var themes = Row(body, ref y, InputHeight);
         var baseBounds = new RectangleF(x: themes.X + 5, y: themes.Y, width: 108, height: InputHeight);
         var accentBounds = new RectangleF(x: themes.X + 123, y: themes.Y, width: 132, height: InputHeight);
@@ -276,8 +304,8 @@ internal sealed class SettingsPane
             ref y,
             "versions",
             "Check for new app versions",
-            draft.CheckForNewVersions,
-            value => draft.CheckForNewVersions = value,
+            current.CheckForNewVersions,
+            value => SavePreference(() => current.CheckForNewVersions = value),
             height: PreferenceCheckHeight,
             toolTip: "When unchecked, app version checks on startup are disabled."
         );
@@ -287,8 +315,8 @@ internal sealed class SettingsPane
             ref y,
             "refresherrors",
             "Disable refresh error dialogs",
-            draft.DisableRefreshErrorDialogs,
-            value => draft.DisableRefreshErrorDialogs = value,
+            current.DisableRefreshErrorDialogs,
+            value => SavePreference(() => current.DisableRefreshErrorDialogs = value),
             height: PreferenceCheckHeight,
             toolTip: "When checked, refresh failure dialogs are disabled."
         );
@@ -298,8 +326,8 @@ internal sealed class SettingsPane
             ref y,
             "traypopup",
             "Disable minimize to tray popup",
-            draft.DisableMinimizeToTrayNotification,
-            value => draft.DisableMinimizeToTrayNotification = value,
+            current.DisableMinimizeToTrayNotification,
+            value => SavePreference(() => current.DisableMinimizeToTrayNotification = value),
             height: PreferenceCheckHeight,
             toolTip: "When checked, the first minimize-to-tray popup after launch is disabled."
         );
@@ -309,8 +337,8 @@ internal sealed class SettingsPane
             ref y,
             "output",
             "Hide stream output on load",
-            draft.HideStreamOutputMessageBoxOnLoad,
-            value => draft.HideStreamOutputMessageBoxOnLoad = value,
+            current.HideStreamOutputMessageBoxOnLoad,
+            value => SavePreference(() => current.HideStreamOutputMessageBoxOnLoad = value),
             height: PreferenceCheckHeight,
             toolTip: "When checked, the stream output box is hidden after a successful launch."
         );
@@ -325,6 +353,8 @@ internal sealed class SettingsPane
 
     private void DrawStreamNotifications(SurfaceUi ui, RectangleF body, ref float y)
     {
+        DrawTextRow(ui, "Changes save automatically.", body, ref y, spacing: GroupGap, color: ui.Palette.MutedText);
+        var current = handler.Settings;
         var minimumTop = y;
         var minimumBody = BeginGroup(body, ref y);
         var label = DrawTextRow(ui, text: "Popular alert threshold (viewers; 0 = off)", minimumBody, ref y, spacing: LabelSpacing);
@@ -342,7 +372,10 @@ internal sealed class SettingsPane
             placeholder: "",
             MinimumChanged,
             spacing: GroupInputSpacing,
-            toolTip: MinimumToolTip);
+            toolTip: MinimumToolTip,
+            commit: SaveMinimumViewers);
+
+        DrawTextRow(ui, "Saves on Enter or when you leave the field.", minimumBody, ref y, spacing: GroupInputSpacing, color: ui.Palette.MutedText);
 
         if (!validMinimumViewers)
         {
@@ -362,8 +395,8 @@ internal sealed class SettingsPane
             ref y,
             "notifications",
             "Disable notifications",
-            draft.DisableNotifications,
-            value => draft.DisableNotifications = value,
+            current.DisableNotifications,
+            value => SavePreference(() => current.DisableNotifications = value),
             height: PreferenceCheckHeight,
             toolTip: "When checked, all notifications are disabled."
         );
@@ -373,8 +406,8 @@ internal sealed class SettingsPane
             ref y,
             "categorychangenotifications",
             "Enable category change notifications",
-            draft.EnableCategoryChangeNotifications,
-            value => draft.EnableCategoryChangeNotifications = value,
+            current.EnableCategoryChangeNotifications,
+            value => SavePreference(() => current.EnableCategoryChangeNotifications = value),
             height: PreferenceCheckHeight,
             toolTip: "Show category changes for all followed streams with Enable Notifications turned on."
         );
@@ -384,8 +417,8 @@ internal sealed class SettingsPane
             ref y,
             "foregroundonstreamonline",
             "Bring app forward on live alerts",
-            draft.BringToForegroundOnStreamOnline,
-            value => draft.BringToForegroundOnStreamOnline = value,
+            current.BringToForegroundOnStreamOnline,
+            value => SavePreference(() => current.BringToForegroundOnStreamOnline = value),
             height: PreferenceCheckHeight,
             toolTip: "When a followed stream goes live and the app isn't minimized, bring the app window to the foreground."
         );
@@ -400,16 +433,16 @@ internal sealed class SettingsPane
         ui.Radio(
             "settings.notificationimage.icon",
             "Channel icon",
-            draft.StreamNotificationImage == StreamNotificationImage.ChannelIcon,
+            current.StreamNotificationImage == StreamNotificationImage.ChannelIcon,
             channelIcon,
-            _ => draft.StreamNotificationImage = StreamNotificationImage.ChannelIcon,
+            _ => SavePreference(() => current.StreamNotificationImage = StreamNotificationImage.ChannelIcon),
             group: "settings.notificationimage");
         ui.Radio(
             "settings.notificationimage.thumbnail",
             "Live thumbnail",
-            draft.StreamNotificationImage == StreamNotificationImage.LiveThumbnail,
+            current.StreamNotificationImage == StreamNotificationImage.LiveThumbnail,
             liveThumbnail,
-            _ => draft.StreamNotificationImage = StreamNotificationImage.LiveThumbnail,
+            _ => SavePreference(() => current.StreamNotificationImage = StreamNotificationImage.LiveThumbnail),
             group: "settings.notificationimage");
         y += InputSpacing;
 
@@ -420,16 +453,16 @@ internal sealed class SettingsPane
         ui.Radio(
             "settings.bannerduration.short",
             "Short",
-            !draft.UseLongStreamNotificationBanners,
+            !current.UseLongStreamNotificationBanners,
             shortBanner,
-            _ => draft.UseLongStreamNotificationBanners = false,
+            _ => SavePreference(() => current.UseLongStreamNotificationBanners = false),
             group: "settings.bannerduration");
         ui.Radio(
             "settings.bannerduration.long",
             "Long",
-            draft.UseLongStreamNotificationBanners,
+            current.UseLongStreamNotificationBanners,
             longBanner,
-            _ => draft.UseLongStreamNotificationBanners = true,
+            _ => SavePreference(() => current.UseLongStreamNotificationBanners = true),
             group: "settings.bannerduration");
         y += GroupInputSpacing;
         EndGroup(ui, body, notificationTop, ref y);
@@ -443,18 +476,23 @@ internal sealed class SettingsPane
             }
 
             minimumViewersText = value;
-            validMinimumViewers = int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var minimum);
-            if (validMinimumViewers) draft.MinimumEventViewers = minimum;
+            validMinimumViewers = value.Length != 0;
         }
     }
 
-    private void DrawPlatform(
+    private void DrawPlatformSection(
         SurfaceUi ui,
         RectangleF body,
         ref float y,
+        int index,
         string name,
-        ApiPlatformSettings platform)
+        ApiPlatformSettings platform,
+        ApiPlatformSettings saved)
     {
+        var edited = !Matches(platform, saved);
+        DrawExpander(ui, body, ref y, index, name, edited);
+        if (!expanded[index]) return;
+
         if (platform is TwitchSettings twitch)
         {
             var authTop = y;
@@ -467,7 +505,7 @@ internal sealed class SettingsPane
                 ui,
                 authBody,
                 ref y,
-                "settings.auth",
+                TwitchAuthTokenId,
                 twitch.AuthToken,
                 "",
                 value => twitch.AuthToken = value,
@@ -500,6 +538,91 @@ internal sealed class SettingsPane
         DrawCommand(ui, body, ref y, vodId, title: "VOD command", platform.VodCommand, hint);
         y += SectionGap;
         DrawCommand(ui, body, ref y, chatId, title: "Chat command", platform.ChatCommand, hint);
+        y += SectionGap;
+
+        var invalidPath = edited ? FindInvalidPath(platform, name) : null;
+        var status = !edited ? $"{name} settings saved." :
+            invalidPath == null ? $"{name} has unsaved changes." : $"{name} has an invalid command path.";
+
+        var statusBounds = DrawTextRow(ui, status, body, ref y, spacing: LabelSpacing);
+        var actions = Row(body, ref y, SaveButtonHeight);
+        const float ActionGap = 6;
+        var actionWidth = (actions.Width - ActionGap * 2) / 3;
+        var saveBounds = actions with { Width = actionWidth };
+        var revertBounds = saveBounds with { X = saveBounds.Right + ActionGap };
+        var saveId = "settings." + name + ".save";
+        var revertId = "settings." + name + ".revert";
+        var canSave = edited && invalidPath == null;
+        var saveName = $"Save {name} settings";
+        var revertName = $"Revert {name} changes";
+        ui.Button(id: saveId, text: "Save", bounds: saveBounds, action: Save, enabled: canSave, name: saveName);
+        ui.Button(id: revertId, text: "Revert", bounds: revertBounds, action: Revert, enabled: edited, name: revertName);
+
+        if (invalidPath is { } path)
+        {
+            var errorBounds = saveBounds with { X = revertBounds.Right + ActionGap };
+            ui.Button(
+                id: "settings." + name + ".showerror",
+                text: "Show error",
+                bounds: errorBounds,
+                action: () => Reveal(index, path),
+                accent: true,
+                toolTip: "Show the command path blocking Save"
+            );
+        }
+
+        if (revealTarget == saveId || revealTarget == revertId)
+        {
+            var target = RectangleF.Union(statusBounds, actions);
+            revealBounds = target.Height <= body.Height ? target : actions;
+        }
+
+        void Save()
+        {
+            if (saved is TwitchSettings currentTwitch) SyncTwitchAuth(ui, currentTwitch);
+            if (Matches(platform, saved)) return;
+
+            paths.Clear();
+            if (FindInvalidPath(platform, name) != null) return;
+
+            var updated = platform switch
+            {
+                TwitchSettings => (ApiPlatformSettings)new TwitchSettings(),
+                KickSettings => new KickSettings(),
+                YouTubeSettings => new YouTubeSettings(),
+                _ => throw new ArgumentOutOfRangeException(nameof(platform)),
+            };
+
+            CopyPlatform(platform, updated);
+            if (!handler.TrySavePlatformSettings(updated))
+            {
+                _ = dialogs.ShowMessage("Unable to save settings", "Check that settings.json is writable and try again.");
+                return;
+            }
+
+            if (updated is TwitchSettings updatedTwitch && saved is TwitchSettings previous &&
+                (updatedTwitch.AuthToken != previous.AuthToken || updatedTwitch.PassthroughClientId != previous.PassthroughClientId))
+            {
+                twitchAuthChanged?.Invoke();
+            }
+        }
+
+        void Revert()
+        {
+            if (platform is TwitchSettings)
+                ui.SetValue(TwitchAuthTokenId, ((TwitchSettings)saved).AuthToken ?? "");
+
+            ResetCommand(streamId, saved.StreamCommand);
+            ResetCommand(vodId, saved.VodCommand);
+            ResetCommand(chatId, saved.ChatCommand);
+            CopyPlatform(saved, platform);
+        }
+
+        void ResetCommand(string id, ExecCommand? command)
+        {
+            ui.SetValue(id + ".path", command?.FilePath ?? "");
+            ui.SetValue(id + ".args", command?.Args ?? "");
+        }
     }
 
     private void DrawCommand(
@@ -523,7 +646,11 @@ internal sealed class SettingsPane
             pathId,
             command.FilePath,
             "",
-            value => command.FilePath = value,
+            value =>
+            {
+                paths.Remove(value);
+                command.FilePath = value;
+            },
             spacing: GroupInputSpacing,
             toolTip: "Enter a command name on PATH or a full executable path."
         );
@@ -605,15 +732,21 @@ internal sealed class SettingsPane
         RectangleF body,
         ref float y,
         int index,
-        string title)
+        string title,
+        bool edited = false)
     {
+        const uint DarkThemeUnsaved = 0xFFFFD166;
+        const uint LightThemeUnsaved = 0xFF8A4A00;
+        var statusColor = ui.Palette.IsDark ? DarkThemeUnsaved : LightThemeUnsaved;
         var bounds = Row(body, ref y, RowHeight);
         ui.Expander(
             "settings.section." + index,
             title,
             expanded[index],
             bounds,
-            value => expanded[index] = value);
+            value => expanded[index] = value,
+            status: edited ? "(unsaved)" : null,
+            statusColor: statusColor);
         if (expanded[index]) y += GroupGap;
     }
 
@@ -626,12 +759,13 @@ internal sealed class SettingsPane
         string placeholder,
         Action<string> changed,
         float spacing = InputSpacing,
-        string? toolTip = null)
+        string? toolTip = null,
+        Action? commit = null)
     {
         var bounds = Row(body, ref y, InputHeight);
         y += spacing;
         if (seededInputs.Add(id)) ui.SetValue(id, value ?? "");
-        ui.Input(id, placeholder, bounds, changed, toolTip: toolTip);
+        ui.Input(id, placeholder, bounds, changed, enter: commit, toolTip: toolTip, lostFocus: commit);
         return bounds;
     }
 
@@ -680,7 +814,7 @@ internal sealed class SettingsPane
         float viewportHeight)
     {
         ui.Border(RectangleF.Inflate(inputBounds, -1, -1), InvalidFieldColor(ui.Palette));
-        if (revealInput != id) return;
+        if (revealTarget != id) return;
 
         var target = RectangleF.Union(inputBounds, statusBounds);
         revealBounds = target.Height <= viewportHeight ? target : inputBounds;
@@ -698,78 +832,53 @@ internal sealed class SettingsPane
         var baseTheme = index == 0 ? MetroThemeBaseColour.BaseLight : MetroThemeBaseColour.BaseDark;
         handler.Settings.MetroThemeBaseColour = baseTheme;
         handler.SaveSettings();
-        saved?.Invoke();
     }
 
     private void SetAccent(int index)
     {
         handler.Settings.MetroThemeAccentColour = Accents[index];
         handler.SaveSettings();
-        saved?.Invoke();
     }
 
-    private bool HasChanges(bool otherChanges)
+    private void SyncTwitchAuth(SurfaceUi ui, TwitchSettings? saved)
     {
-        var current = handler.Settings;
-        return otherChanges || !validMinimumViewers ||
-               draft.BringToForegroundOnStreamOnline != current.BringToForegroundOnStreamOnline ||
-               draft.StreamNotificationImage != current.StreamNotificationImage ||
-               draft.UseLongStreamNotificationBanners != current.UseLongStreamNotificationBanners ||
-               streamQualities.HasChanges;
-    }
+        var authToken = saved?.AuthToken;
+        if (authToken == savedTwitchAuthToken) return;
 
-    private void Save()
-    {
-        var otherChanges = !EditableMatch(draft, handler.Settings);
-        if (!HasChanges(otherChanges) || FindInvalidField(otherChanges) != null) return;
-
-        if (otherChanges) CopyEditable(draft, handler.Settings);
-        else
+        // Browser authorization can update the saved token while Settings is open.
+        if ((twitchDraft.AuthToken ?? "") == (savedTwitchAuthToken ?? ""))
         {
-            handler.Settings.BringToForegroundOnStreamOnline = draft.BringToForegroundOnStreamOnline;
-            handler.Settings.StreamNotificationImage = draft.StreamNotificationImage;
-            handler.Settings.UseLongStreamNotificationBanners = draft.UseLongStreamNotificationBanners;
+            twitchDraft.AuthToken = authToken!;
+            if (seededInputs.Contains(TwitchAuthTokenId)) ui.SetValue(TwitchAuthTokenId, authToken ?? "");
         }
+
+        savedTwitchAuthToken = authToken;
+    }
+
+    private void SavePreference(Action change)
+    {
+        change();
+        handler.SaveSettings();
+    }
+
+    private void SaveMinimumViewers()
+    {
+        if (!int.TryParse(minimumViewersText, NumberStyles.None, CultureInfo.InvariantCulture, out var minimum)) return;
+
+        var current = handler.Settings;
+        if (current.MinimumEventViewers == minimum) return;
+
+        current.MinimumEventViewers = minimum;
+        handler.SaveSettings();
+    }
+
+    private void SaveStreamQuality()
+    {
+        if (!streamQualities.HasChanges) return;
 
         streamQualities.SaveChanges();
         handler.SaveSettings();
-        if (otherChanges) saved?.Invoke();
     }
-
-    // The settings this pane edits and saves together; the theme applies at once instead. A setting added here is
-    // also compared in EditableMatch, except the foreground and banner options, which can be saved without validating playback commands.
-    private static void CopyEditable(Settings source, Settings target)
-    {
-        target.MinimumEventViewers = source.MinimumEventViewers;
-        target.CheckForNewVersions = source.CheckForNewVersions;
-        target.DisableNotifications = source.DisableNotifications;
-        target.EnableCategoryChangeNotifications = source.EnableCategoryChangeNotifications;
-        target.BringToForegroundOnStreamOnline = source.BringToForegroundOnStreamOnline;
-        target.StreamNotificationImage = source.StreamNotificationImage;
-        target.UseLongStreamNotificationBanners = source.UseLongStreamNotificationBanners;
-        target.DisableRefreshErrorDialogs = source.DisableRefreshErrorDialogs;
-        target.DisableMinimizeToTrayNotification = source.DisableMinimizeToTrayNotification;
-        target.HideStreamOutputMessageBoxOnLoad = source.HideStreamOutputMessageBoxOnLoad;
-        CopyPlatform(source.Twitch, target.Twitch);
-        CopyPlatform(source.Kick, target.Kick);
-        CopyPlatform(source.YouTube, target.YouTube);
-        target.Twitch.AuthToken = source.Twitch.AuthToken;
-        target.Twitch.PassthroughClientId = source.Twitch.PassthroughClientId;
-    }
-
-    private static bool EditableMatch(Settings first, Settings second) =>
-        first.MinimumEventViewers == second.MinimumEventViewers &&
-        first.CheckForNewVersions == second.CheckForNewVersions &&
-        first.DisableNotifications == second.DisableNotifications &&
-        first.EnableCategoryChangeNotifications == second.EnableCategoryChangeNotifications &&
-        first.DisableRefreshErrorDialogs == second.DisableRefreshErrorDialogs &&
-        first.DisableMinimizeToTrayNotification == second.DisableMinimizeToTrayNotification &&
-        first.HideStreamOutputMessageBoxOnLoad == second.HideStreamOutputMessageBoxOnLoad &&
-        first.Twitch.AuthToken == second.Twitch.AuthToken &&
-        first.Twitch.PassthroughClientId == second.Twitch.PassthroughClientId &&
-        Matches(first.Twitch, second.Twitch) &&
-        Matches(first.Kick, second.Kick) &&
-        Matches(first.YouTube, second.YouTube);
 
     private async Task OpenSettings()
     {
@@ -787,23 +896,13 @@ internal sealed class SettingsPane
         }
     }
 
-    private InvalidField? FindInvalidField(bool otherChanges)
+    private string? FindInvalidPath(ApiPlatformSettings platform, string name)
     {
-        if (!validMinimumViewers) return new InvalidField(MinimumViewersId, StreamNotificationsSectionIndex);
-        if (!otherChanges) return null;
+        if (!ResolvePath(platform.StreamCommand.FilePath).Valid) return name + ".stream.path";
+        if (!ResolvePath(platform.VodCommand.FilePath).Valid) return name + ".vod.path";
+        if (!ResolvePath(platform.ChatCommand.FilePath).Valid) return name + ".chat.path";
 
-        return FindInvalidPath(draft.Twitch, "Twitch", TwitchSectionIndex) ??
-               FindInvalidPath(draft.Kick, "Kick", KickSectionIndex) ??
-               FindInvalidPath(draft.YouTube, "YouTube", YouTubeSectionIndex);
-
-        InvalidField? FindInvalidPath(ApiPlatformSettings platform, string name, int sectionIndex)
-        {
-            if (!ResolvePath(platform.StreamCommand.FilePath).Valid) return new InvalidField(name + ".stream.path", sectionIndex);
-            if (!ResolvePath(platform.VodCommand.FilePath).Valid) return new InvalidField(name + ".vod.path", sectionIndex);
-            if (!ResolvePath(platform.ChatCommand.FilePath).Valid) return new InvalidField(name + ".chat.path", sectionIndex);
-
-            return null;
-        }
+        return null;
     }
 
     private PathState ResolvePath(string? path)
@@ -822,28 +921,36 @@ internal sealed class SettingsPane
     private static bool Matches(ApiPlatformSettings first, ApiPlatformSettings second) =>
         MatchesCommand(first.StreamCommand, second.StreamCommand) &&
         MatchesCommand(first.VodCommand, second.VodCommand) &&
-        MatchesCommand(first.ChatCommand, second.ChatCommand);
+        MatchesCommand(first.ChatCommand, second.ChatCommand) &&
+        (first is not TwitchSettings twitch ||
+         second is TwitchSettings saved && (twitch.AuthToken ?? "") == (saved.AuthToken ?? "") &&
+         twitch.PassthroughClientId == saved.PassthroughClientId);
 
-    private static bool MatchesCommand(ExecCommand first, ExecCommand second) =>
-        first.FilePath == second.FilePath && first.Args == second.Args &&
-        first.CaptureStandardOutput == second.CaptureStandardOutput &&
-        first.CaptureErrorOutput == second.CaptureErrorOutput;
+    private static bool MatchesCommand(ExecCommand first, ExecCommand? second) =>
+        (first.FilePath ?? "") == (second?.FilePath ?? "") && (first.Args ?? "") == (second?.Args ?? "") &&
+        first.CaptureStandardOutput == (second?.CaptureStandardOutput ?? false) &&
+        first.CaptureErrorOutput == (second?.CaptureErrorOutput ?? false);
 
     private static void CopyPlatform(ApiPlatformSettings source, ApiPlatformSettings target)
     {
-        CopyCommand(source.StreamCommand, target.StreamCommand);
-        CopyCommand(source.VodCommand, target.VodCommand);
-        CopyCommand(source.ChatCommand, target.ChatCommand);
+        CopyCommand(source.StreamCommand, target.StreamCommand ??= new ExecCommand());
+        CopyCommand(source.VodCommand, target.VodCommand ??= new ExecCommand());
+        CopyCommand(source.ChatCommand, target.ChatCommand ??= new ExecCommand());
+
+        if (source is TwitchSettings twitch && target is TwitchSettings saved)
+        {
+            saved.AuthToken = twitch.AuthToken;
+            saved.PassthroughClientId = twitch.PassthroughClientId;
+        }
     }
 
-    private static void CopyCommand(ExecCommand source, ExecCommand target)
+    private static void CopyCommand(ExecCommand? source, ExecCommand target)
     {
-        target.FilePath = source.FilePath;
-        target.Args = source.Args;
-        target.CaptureStandardOutput = source.CaptureStandardOutput;
-        target.CaptureErrorOutput = source.CaptureErrorOutput;
+        target.FilePath = (source?.FilePath)!;
+        target.Args = (source?.Args)!;
+        target.CaptureStandardOutput = source?.CaptureStandardOutput ?? false;
+        target.CaptureErrorOutput = source?.CaptureErrorOutput ?? false;
     }
 
-    private readonly record struct InvalidField(string Id, int SectionIndex);
     private sealed record PathState(bool Valid, string Message);
 }

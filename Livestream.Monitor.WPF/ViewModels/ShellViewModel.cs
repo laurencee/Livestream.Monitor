@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Caliburn.Micro;
@@ -40,6 +41,7 @@ namespace Livestream.Monitor.WPF.ViewModels
                 throw new InvalidOperationException("Constructor only accessible from design time");
 
             Settings = new SettingsViewModel();
+            CloseSettings = new CloseSettingsCommand(this);
             ActiveItem = new MainViewModel();
         }
 
@@ -63,6 +65,7 @@ namespace Livestream.Monitor.WPF.ViewModels
 
             eventAggregator.SubscribeOnUIThread(this);
             Settings.ActivateWith(this);
+            CloseSettings = new CloseSettingsCommand(this);
 
             currentAppVersion = GetType().Assembly.GetName().Version;
             DisplayName = $"LIVESTREAM MONITOR V{currentAppVersion.Major}.{currentAppVersion.Minor}.{currentAppVersion.Build}";
@@ -75,6 +78,7 @@ namespace Livestream.Monitor.WPF.ViewModels
         public override string DisplayName { get; set; }
 
         public SettingsViewModel Settings { get; set; }
+        public ICommand CloseSettings { get; }
 
         public WindowState WindowState
         {
@@ -94,7 +98,15 @@ namespace Livestream.Monitor.WPF.ViewModels
             get;
             set
             {
-                if (!value && field && Settings.StreamQualities.HasChanges)
+                if (value == field) return;
+
+                if (value) Settings.LoadDrafts();
+                else if (Settings.RevealPendingPlatform())
+                {
+                    NotifyOfPropertyChange(() => IsSettingsOpen);
+                    return;
+                }
+                else if (Settings.StreamQualities.HasChanges)
                 {
                     _ = ConfirmSettingsClose();
                     return;
@@ -102,6 +114,18 @@ namespace Livestream.Monitor.WPF.ViewModels
 
                 Set(ref field, value);
             }
+        }
+
+        private sealed class CloseSettingsCommand(ShellViewModel shell) : ICommand
+        {
+            public event EventHandler CanExecuteChanged
+            {
+                add => CommandManager.RequerySuggested += value;
+                remove => CommandManager.RequerySuggested -= value;
+            }
+
+            public bool CanExecute(object parameter) => shell.IsSettingsOpen;
+            public void Execute(object parameter) => shell.IsSettingsOpen = false;
         }
 
         private async Task ConfirmSettingsClose()

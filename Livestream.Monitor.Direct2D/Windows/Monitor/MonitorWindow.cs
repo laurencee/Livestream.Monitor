@@ -102,6 +102,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private ThemePalette palette;
     private SettingsPane? settingsPane;
     private bool confirmingSettingsClose;
+    private double? settingsShakeStarted;
+    private float settingsShakeOffset;
 
     // Where key presses go while the settings pane is open. Opening the pane, a Tab that moves the focus, and a left press
     // inside the pane send them to the pane; a left press beside it or a right press that selects a row sends them to the
@@ -201,7 +203,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     public MonitorWindowState State => state;
     protected override bool IsAnimating =>
-        base.IsAnimating || settingsSlide.IsAnimating || state.IsContentLoading && !HasDialog ||
+        base.IsAnimating || settingsSlide.IsAnimating || settingsShakeStarted.HasValue || state.IsContentLoading && !HasDialog ||
         scrollBar.IsInteracting || settingsPane?.ScrollBar.IsInteracting == true || actionFeedback.IsVisible;
     private IApiClient SelectedProvider => GetProviderChoices(state.Page).Selected;
     private int ItemCount => state.Page == MonitorPage.Vods ? state.Vods.Count : state.Rows.Count;
@@ -211,14 +213,16 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (!isImporting) state.Tick();
         var now = Environment.TickCount64;
 
-        if (settingsSlide.Tick(PanelSlide.NowMilliseconds))
+        var animationTime = PanelSlide.NowMilliseconds;
+        UpdateSettingsShake(animationTime);
+        if (settingsSlide.Tick(animationTime))
         {
             NeedsPaint = true;
             OnPointerMove(Pointer);
         }
 
         if (settingsSlide is { IsOpen: false, IsAnimating: false }) settingsPane = null;
-        if (!HasDialog && settingsSlide.IsOpen) settingsPane?.FocusRevealedInput(Ui);
+        if (!HasDialog && settingsSlide.IsOpen) settingsPane?.FocusRevealedControl(Ui);
         if (state.IsContentLoading && !HasDialog) NeedsPaint = true;
         if (scrollBar.Repeat(now)) NeedsPaint = true;
         if (settingsPane?.ScrollBar.Repeat(now) == true) NeedsPaint = true;
@@ -280,7 +284,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private RectangleF SettingsBounds(SizeF size)
     {
-        var left = size.Width - SettingsWidth * settingsSlide.VisibleFraction;
+        var left = size.Width - SettingsWidth * settingsSlide.VisibleFraction + settingsShakeOffset;
         return new RectangleF(x: left, y: 0, width: SettingsWidth, height: size.Height);
     }
 
@@ -1108,7 +1112,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             handler: state.SettingsHandler,
             dialogs: dialogs,
             close: CloseSettings,
-            saved: () => _ = ApplySettings()
+            twitchAuthChanged: () => _ = ApplyTwitchSettings()
         );
 
         settingsSlide.SetOpen(true, PanelSlide.NowMilliseconds);
@@ -1127,8 +1131,20 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Win32.ReleaseCapture();
         }
 
+        if (settingsPane?.RevealPendingPlatform(Ui) == true)
+        {
+            settingsKeyTarget = SettingsKeyTarget.Pane;
+            Ui.CloseMenu();
+            const uint GetClientAreaAnimation = 0x1042;
+            if (Win32.SystemParametersInfo(GetClientAreaAnimation, parameter: 0, out var enabled, update: 0) && enabled != 0)
+                settingsShakeStarted = PanelSlide.NowMilliseconds;
+
+            NeedsPaint = true;
+            return;
+        }
+
         confirmingSettingsClose = true;
-        var keysWentToPane = KeysGoToSettingsPane;
+        var keysWentToPane = Ui.HasFocusedInput ? FocusedInputBelongsToSettings : KeysGoToSettingsPane;
         try
         {
             if (settingsPane is { HasQualityChanges: true })
@@ -1143,6 +1159,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             Ui.CloseMenu();
             settingsPane?.DiscardQualityChanges(Ui);
+            settingsShakeStarted = null;
+            settingsShakeOffset = 0;
             settingsSlide.SetOpen(false, PanelSlide.NowMilliseconds);
 
             // As in the WPF flyout, the focus returns to Settings when it was in the pane.
@@ -1156,7 +1174,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    private async Task ApplySettings()
+    private void UpdateSettingsShake(double now)
+    {
+        if (settingsShakeStarted is not { } started) return;
+
+        const double DurationMilliseconds = 220;
+        const float Amplitude = 4;
+        const int Oscillations = 2;
+        var progress = Math.Clamp((now - started) / DurationMilliseconds, 0, 1);
+        settingsShakeOffset = (float)(Math.Sin(progress * Math.Tau * Oscillations) * (1 - progress) * Amplitude);
+        if (progress >= 1) settingsShakeStarted = null;
+
+        NeedsPaint = true;
+    }
+
+    private async Task ApplyTwitchSettings()
     {
         try
         {
@@ -1529,25 +1561,38 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         return read ? lines : WindowsDefaultLines;
     }
 
-    protected override bool PreprocessKey(int key)
-    {
-        // Tab moves the focus only among the open pane's widgets, so it sends key presses back to the pane, unless an open
-        // menu keeps it to move through its items.
-        if (key == VirtualKey.Tab && settingsSlide.IsOpen && !HasDialog && !Ui.MenuTakesTab) settingsKeyTarget = SettingsKeyTarget.Pane;
-
-        return base.PreprocessKey(key);
-    }
-
     private bool KeysGoToSettingsPane => settingsSlide.IsOpen && settingsKeyTarget == SettingsKeyTarget.Pane;
 
-    protected override bool OnKey(int key)
+    private bool FocusedInputBelongsToSettings => Ui.FocusedId is { } id && settingsPane?.OwnsInput(id) == true;
+
+    protected override bool PreprocessKey(int key)
     {
-        if (key == VirtualKey.Escape && settingsPane != null)
+        // Tab sends subsequent keys to the pane unless the open menu handles it.
+        if (key == VirtualKey.Tab && settingsSlide.IsOpen && !HasDialog && !Ui.MenuTakesTab) settingsKeyTarget = SettingsKeyTarget.Pane;
+
+        if (base.PreprocessKey(key)) return true;
+        if (settingsPane is not { } pane || !settingsSlide.IsOpen || HasDialog) return false;
+
+        if (key == VirtualKey.Escape)
         {
             CloseSettings();
             return true;
         }
 
+        // A native edit can take focus without an owner-window mouse event.
+        if (key is not (VirtualKey.PageUp or VirtualKey.PageDown) || Ui.HasMenu ||
+            !Ui.HasFocusedInput || !FocusedInputBelongsToSettings || !pane.ScrollWithKey(key))
+        {
+            return false;
+        }
+
+        settingsKeyTarget = SettingsKeyTarget.Pane;
+        Ui.Focus("settings.close");
+        return true;
+    }
+
+    protected override bool OnKey(int key)
+    {
         if (settingsPane is { } pane && !Ui.HasMenu && Ui.HasFocusIn("settings.") && pane.ScrollWithKey(key))
         {
             Ui.Focus("settings.close");
@@ -1882,7 +1927,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             case TrayToastAction.DisablePopup:
                 state.SettingsHandler.Settings.DisableMinimizeToTrayNotification = true;
                 state.SettingsHandler.SaveSettings();
-                settingsPane?.SyncTrayPopupSetting();
                 Invalidate();
                 return true;
             default:

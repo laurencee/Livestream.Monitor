@@ -64,7 +64,7 @@ public class ShellViewModelShould
             settingsHandler: settings);
 
         var main = new MainViewModel(header, list);
-        var settingsPage = new SettingsViewModel(settings, new ThemeSelectorViewModel(settings));
+        var settingsPage = new SettingsViewModel(settings, new ThemeSelectorViewModel(settings), Substitute.For<IApiClientFactory>());
         var popular = new PopularLivestreamWatcher(
             settingsHandler: settings,
             notificationHandler: Substitute.For<INotificationHandler>(),

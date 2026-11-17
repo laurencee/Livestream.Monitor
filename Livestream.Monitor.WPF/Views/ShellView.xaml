@@ -25,7 +25,14 @@
 
     <mah:MetroWindow.Flyouts>
         <mah:FlyoutsControl>
-            <mah:Flyout Header="Settings" Position="Right" Width="300" IsOpen="{Binding IsSettingsOpen}" Theme="Adapt">
+            <mah:Flyout Header="Settings" Position="Right" Width="300" IsOpen="{Binding IsSettingsOpen}" Theme="Adapt"
+                        CloseCommand="{Binding CloseSettings}">
+                <mah:Flyout.RenderTransform>
+                    <TranslateTransform />
+                </mah:Flyout.RenderTransform>
+                <mah:Flyout.InputBindings>
+                    <KeyBinding Key="Escape" Command="{Binding CloseSettings}" />
+                </mah:Flyout.InputBindings>
                 <ContentControl x:Name="Settings" cal:View.Model="{Binding Settings}" />
             </mah:Flyout>
         </mah:FlyoutsControl>

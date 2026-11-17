@@ -455,7 +455,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string text,
         bool expanded,
         RectangleF bounds,
-        Action<bool> setExpanded)
+        Action<bool> setExpanded,
+        string? status = null,
+        uint? statusColor = null)
     {
         const float Diameter = 18;
         const float Stroke = 1;
@@ -485,7 +487,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Line(middle, new PointF(right, edge), Palette.Text);
         var labelOffset = Diameter + LabelGap;
         var label = bounds with { X = bounds.X + labelOffset, Width = bounds.Width - labelOffset };
-        Label(text, label, size: 14);
+        const float LabelSize = 14;
+        Label(text, label, size: LabelSize);
+        if (status != null)
+        {
+            var statusOffset = MeasureWidth(text, LabelSize) + LabelGap;
+            var statusBounds = label with { X = label.X + statusOffset, Width = Math.Max(0, label.Width - statusOffset) };
+            Label(status, statusBounds, statusColor, size: LabelSize, weight: FontWeight.Bold);
+        }
+
         DrawFocus(id, bounds);
         Add(id, bounds, action: () => setExpanded(!expanded), enabled: true);
         var states = WidgetStates(id, enabled: true) | AutomationStates.Expandable;
@@ -493,7 +503,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         AddNode(
             id,
             AutomationRole.Button,
-            text,
+            status == null ? text : $"{text} {status}",
             bounds,
             states,
             activate: () => SetIfAvailable(id, setExpanded, value: true),
@@ -843,13 +853,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         bool clear = false,
         string? toolTip = null,
         float trailing = 0,
-        string? name = null)
+        string? name = null,
+        Action? lostFocus = null)
     {
         // A trailing area stays inside the box's frame but outside its text: an editable combo box's arrow goes there.
         var textBounds = bounds with { Width = bounds.Width - trailing };
         var input = GetInput(id);
         input.Changed = changed;
         input.Enter = enter;
+        input.LostFocus = lostFocus;
         input.Enabled = enabled;
         input.Bounds = textBounds;
         input.Visible = IsAvailable(bounds) && (!clip.HasValue || clip.Value.Contains(bounds));
@@ -1321,11 +1333,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Invalidate?.Invoke();
     }
 
-    public void FocusVisibleInput(string id)
-    {
-        if (inputs.TryGetValue(id, out var input) && input is { Visible: true, Enabled: true }) Focus(id);
-    }
-
     /// <summary>
     /// The arrow of an editable combo box: a text input whose trailing area is <paramref name="bounds"/>, inside the
     /// input's <paramref name="frame"/>. The arrow area takes the combo box fill, and the frame the combo box border,
@@ -1427,7 +1434,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             input.Value = Win32.GetText(input.Handle);
             input.Changed?.Invoke(input.Value);
             Invalidate?.Invoke();
-        });
+        }, () => input.LostFocus?.Invoke());
 
         inputs.Add(id, input);
         return input;
@@ -1680,6 +1687,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         public bool Enabled;
         public Action<string>? Changed;
         public Action? Enter;
+        public Action? LostFocus;
     }
 
     private enum MenuKind

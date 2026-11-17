@@ -15,7 +15,8 @@ namespace Livestream.Monitor.Tests.Ui;
 /// End-to-end user journeys through each frontend, driven through UI Automation. The main journey runs as most users
 /// do, with a Twitch token and followed streams, and covers in one launch what updates most often break: loading
 /// saved data, list bindings and drawing, enabled states, provider queries, paging, data shared between pages and
-/// saving settings. A short journey without a token checks that Twitch asks for authorization where it needs it.
+/// saving settings. A journey without a token, also in one launch, covers autosaved preferences and saving or
+/// reverting a platform draft, and checks that Twitch asks for authorization where it needs it.
 /// </summary>
 [Trait("Category", "UI")]
 [Collection(UiApplicationCollection.Name)]
@@ -64,12 +65,14 @@ public class FrontendShould
             var section = window.Element("settings.section.4");
             var expand = FrontendWindow.Pattern<ExpandCollapsePattern>(section, ExpandCollapsePattern.Pattern);
             Assert.Equal(ExpandCollapseState.Collapsed, expand.Current.ExpandCollapseState);
+            Assert.True(window.Find(ids.SaveSettings) is null or { Current.IsOffscreen: true });
             expand.Expand();
             if (kind == FrontendKind.Direct2D)
                 window.InvokeUntil("settings.scrolldown", () => window.Find("settings.quality.best") != null, "Fallback scrolled into view");
 
             var best = window.Element("settings.quality.best");
             Assert.True(FrontendWindow.Pattern<SelectionItemPattern>(best, SelectionItemPattern.Pattern).Current.IsSelected);
+            RevealQualitySave(window);
             window.WaitUntilDisabled(ids.SaveSettings);
             var allInput = kind == FrontendKind.Wpf ? "NewQuality" : "settings.quality.input.all";
             if (kind == FrontendKind.Direct2D)
@@ -78,9 +81,11 @@ public class FrontendShould
             window.SetText(allInput, "global-source");
             var allAdd = kind == FrontendKind.Wpf ? "AddQuality" : "settings.quality.add";
             window.InvokeUntil(allAdd, () => window.ShowsText("global-source") || window.ShowsText("1   global-source"), "All quality added");
+            RevealQualitySave(window);
             window.InvokeUntil(ids.SaveSettings, AllSaved, "All quality saved");
             SelectPlatform(window, "Twitch");
             Assert.True(window.ShowsText("Custom preferences here replace 'All'."));
+            RevealQualitySave(window);
             window.WaitUntilDisabled(ids.SaveSettings);
             var inputId = kind == FrontendKind.Wpf ? "NewQuality" : "settings.quality.input.twitchtv";
 
@@ -153,6 +158,7 @@ public class FrontendShould
 
             var worst = window.Element("settings.quality.worst");
             FrontendWindow.Choose(worst, worst);
+            RevealQualitySave(window);
             window.InvokeUntil(ids.SaveSettings, Saved, "Quality preferences saved");
             window.WaitUntilDisabled(ids.SaveSettings);
 
@@ -203,6 +209,7 @@ public class FrontendShould
 
         var restoredWorst = restored.Element("settings.quality.worst");
         Assert.True(FrontendWindow.Pattern<SelectionItemPattern>(restoredWorst, SelectionItemPattern.Pattern).Current.IsSelected);
+        RevealQualitySave(restored);
         restored.WaitUntilDisabled(restored.Ids.SaveSettings);
 
         var restoredInput = kind == FrontendKind.Wpf ? "NewQuality" : "settings.quality.input.twitchtv";
@@ -222,6 +229,7 @@ public class FrontendShould
         restored.Element(restoredInput);
         restored.InvokeUntil(close, () => restored.Find(restored.Ids.AcceptMessage) != null, "Discard quality confirmation");
         restored.InvokeUntil(restored.Ids.AcceptMessage, () => restored.Find(restored.Ids.AcceptMessage) == null, "Discarded quality changes");
+        restored.WaitFor(() => restored.Find(close) == null ? restored : null, FrontendWindow.StepTimeout, "Settings closed after discard");
         restored.Element(restored.Ids.OpenSettings);
         restored.InvokeUntil(restored.Ids.OpenSettings, () => restored.Find("settings.section.0") != null, "Settings reopened after discard");
         var generalAfterDiscard = restored.Element("settings.section.0");
@@ -229,12 +237,13 @@ public class FrontendShould
         var qualityAfterDiscard = restored.Element("settings.section.4");
         FrontendWindow.Pattern<ExpandCollapsePattern>(qualityAfterDiscard, ExpandCollapsePattern.Pattern).Expand();
         SelectPlatform(restored, "Twitch");
+        RevealQualitySave(restored);
         restored.WaitUntilDisabled(restored.Ids.SaveSettings);
         Assert.False(restored.ShowsText("360p"));
         Assert.False(restored.ShowsText("1   360p"));
         if (kind == FrontendKind.Direct2D)
-            restored.InvokeUntil("settings.scrolldown", () => restored.Find(restoredInput) != null, "Discarded input scrolled into view");
-        else
+            restored.InvokeUntil("settings.scrollup", () => restored.Find(restoredInput) != null, "Discarded input scrolled into view");
+        else if (restored.Element(restoredInput).Current.IsOffscreen)
         {
             var bar = restored.Element("PART_VerticalScrollBar");
             var range = FrontendWindow.Pattern<RangeValuePattern>(bar, RangeValuePattern.Pattern);
@@ -243,6 +252,160 @@ public class FrontendShould
 
         var discardedInput = restored.Element(restoredInput);
         Assert.Equal("", FrontendWindow.Pattern<ValuePattern>(discardedInput, ValuePattern.Pattern).Current.Value);
+
+        void RevealQualitySave(FrontendWindow target)
+        {
+            if (kind != FrontendKind.Direct2D) return;
+
+            target.InvokeUntil("settings.scrolldown", () => target.Find(target.Ids.SaveSettings) != null, "Quality save scrolled into view");
+        }
+    }
+
+    [Theory]
+    [InlineData(FrontendKind.Wpf)]
+    [InlineData(FrontendKind.Direct2D)]
+    public void SaveSettingsAndAskForTwitchAuthorizationWithoutAToken(FrontendKind kind)
+    {
+        const string GeneralSection = "settings.section.0";
+        const string KickSection = "settings.section.2";
+        const string StreamNotificationsSection = "settings.section.5";
+        const string KickSave = "settings.Kick.save";
+        const string KickRevert = "settings.Kick.revert";
+        const string InitialArgs = "{url}";
+        const string SavedArgs = "{url} --example";
+        const string HideOutputSetting = nameof(Settings.HideStreamOutputMessageBoxOnLoad);
+        const string CategoryChangesSetting = nameof(Settings.EnableCategoryChangeNotifications);
+        var executable = Assert.IsType<string>(Environment.ProcessPath);
+        var direct2D = kind == FrontendKind.Direct2D;
+        var hideOutput = direct2D ? "settings.output" : "HideStreamOutputOnLoad";
+        var categoryChanges = direct2D ? "settings.categorychangenotifications" : CategoryChangesSetting;
+        var close = direct2D ? "settings.close" : "PART_BackButton";
+
+        using var profile = UiTestProfile.CreateWithoutToken();
+        var settings = JsonNode.Parse(File.ReadAllText(profile.SettingsPath))!.AsObject();
+        foreach (var platform in new[] { "Twitch", "Kick", "YouTube" })
+        {
+            var commands = new JsonObject();
+            foreach (var command in new[] { "StreamCommand", "VodCommand", "ChatCommand" })
+                commands[command] = new JsonObject { ["FilePath"] = executable, ["Args"] = InitialArgs };
+
+            settings[platform] = commands;
+        }
+
+        File.WriteAllText(profile.SettingsPath, settings.ToJsonString());
+
+        using var window = FrontendWindow.Launch(kind, profile);
+        var ids = window.Ids;
+
+        if (direct2D)
+        {
+            // Without followed channels the VOD viewer has none to pick.
+            FrontendWindow.Invoke(window.Element(ids.VodViewer, FrontendWindow.StartupTimeout));
+            window.WaitUntilDisabled(ids.KnownChannelsOpener);
+            window.InvokeUntil("back", () => window.Find(ids.ChannelToAdd) != null, "The followed channels page");
+        }
+
+        // Independent preferences save as they change; in Direct2D, so does one changed from the tray popup while Settings
+        // is open.
+        Open();
+        ToggleAndCheckTheSave(hideOutput, HideOutputSetting);
+        Section(StreamNotificationsSection).Expand();
+        ToggleAndCheckTheSave(categoryChanges, CategoryChangesSetting);
+        Section(StreamNotificationsSection).Collapse();
+        if (direct2D) DisableTheTrayPopupFromItsToast();
+
+        window.InvokeUntil(close, () => window.Find(close) == null, "Settings dismissed after autosave");
+
+        Open();
+        var shownPreference = FrontendWindow.Pattern<TogglePattern>(window.Element(hideOutput), TogglePattern.Pattern);
+        Assert.Equal(ToggleState.On, shownPreference.Current.ToggleState);
+
+        // A platform draft blocks closing Settings until it is saved or reverted.
+        var kickArgs = ShowKickArgs();
+        FrontendWindow.Pattern<ValuePattern>(kickArgs, ValuePattern.Pattern).SetValue(SavedArgs);
+        window.WaitFor(() => window.Element(KickSection).Current.Name.Contains("unsaved", StringComparison.Ordinal) ? kickArgs : null,
+            FrontendWindow.StepTimeout, "Kick draft marked unsaved");
+        Section(KickSection).Collapse();
+        Assert.Equal(InitialArgs, ReadKickArgs());
+        window.InvokeUntil(close, () => window.Find(KickSave) is { Current.IsEnabled: true }, "Close reveals the edited platform");
+        window.InvokeUntil(KickSave, () => window.Find(KickSave) is { Current.IsEnabled: false }, "Kick saved");
+        Assert.Equal(SavedArgs, ReadKickArgs());
+        window.InvokeUntil(close, () => window.Find(close) == null, "Settings dismissed after saving");
+
+        Open();
+        var editedArgs = ShowKickArgs();
+        var kickArgsValue = FrontendWindow.Pattern<ValuePattern>(editedArgs, ValuePattern.Pattern);
+        Assert.Equal(SavedArgs, kickArgsValue.Current.Value);
+        kickArgsValue.SetValue("second edit");
+        Section(KickSection).Collapse();
+        window.InvokeUntil(close, () => window.Find(KickRevert) is { Current.IsEnabled: true }, "Kick draft blocks close again");
+        window.InvokeUntil(KickRevert, () => window.Find(KickRevert) is { Current.IsEnabled: false }, "Kick reverted");
+        Assert.Equal(SavedArgs, ReadKickArgs());
+        window.InvokeUntil(close, () => window.Find(close) == null, "Settings dismissed after reverting");
+
+        Open();
+        var revertedArgs = ShowKickArgs();
+        Assert.Equal(SavedArgs, FrontendWindow.Pattern<ValuePattern>(revertedArgs, ValuePattern.Pattern).Current.Value);
+        window.InvokeUntil(close, () => window.Find(close) == null, "Settings dismissed after checking the reverted draft");
+
+        // Twitch asks for authorization to add a channel or browse top streams.
+        window.SetText(ids.ChannelToAdd, UiTestProfile.FollowedChannels[0]);
+        window.DeclineAuthorizationAfter(ids.AddChannel, checkMessageRendering: direct2D);
+        window.DeclineAuthorizationAfter(ids.TopStreams);
+
+        void Open()
+        {
+            window.Element(ids.OpenSettings, FrontendWindow.StartupTimeout);
+            window.InvokeUntil(ids.OpenSettings, () => window.Find(close) != null, "Settings opened");
+        }
+
+        ExpandCollapsePattern Section(string id) =>
+            FrontendWindow.Pattern<ExpandCollapsePattern>(window.Element(id), ExpandCollapsePattern.Pattern);
+
+        // Each frontend shows the new state only after its synchronous save, so the file is read once after that.
+        void ToggleAndCheckTheSave(string checkboxId, string setting)
+        {
+            var checkbox = window.Element(checkboxId);
+            var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
+            Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
+
+            toggle.Toggle();
+
+            window.WaitFor(() => toggle.Current.ToggleState == ToggleState.On ? checkbox : null, FrontendWindow.StepTimeout, $"{setting} shown on");
+            Assert.True(ReadFlag(profile, setting));
+        }
+
+        void DisableTheTrayPopupFromItsToast()
+        {
+            var checkbox = window.Element("settings.traypopup");
+            var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
+            Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
+
+            ToastActivationPipe.Forward(new ToastActivation(TrayToastAction.DisablePopup));
+
+            window.WaitFor(() => toggle.Current.ToggleState == ToggleState.On ? checkbox : null,
+                FrontendWindow.StepTimeout, "The tray popup setting checked");
+            Assert.True(ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)));
+        }
+
+        // Shows the Kick section of the open Settings and returns its stream command arguments field.
+        AutomationElement ShowKickArgs()
+        {
+            Section(GeneralSection).Collapse();
+            Section(KickSection).Expand();
+
+            if (direct2D) return window.Element("Kick.stream.args");
+
+            const string PathName = "Stream command file path";
+            const string ArgsName = "Stream command arguments";
+            var expander = window.Element(KickSection);
+            var path = new PropertyCondition(AutomationElement.NameProperty, PathName);
+            window.WaitFor(() => expander.FindFirst(TreeScope.Descendants, path), FrontendWindow.StepTimeout, PathName);
+            var args = new PropertyCondition(AutomationElement.NameProperty, ArgsName);
+            return window.WaitFor(() => expander.FindFirst(TreeScope.Descendants, args), FrontendWindow.StepTimeout, ArgsName);
+        }
+
+        string ReadKickArgs() => ReadSetting(profile, "Kick")?.GetProperty("StreamCommand").GetProperty("Args").GetString();
     }
 
     private static void SelectPlatform(FrontendWindow window, string name)
@@ -276,81 +439,6 @@ public class FrontendShould
     }
 
     [Theory]
-    [InlineData(FrontendKind.Wpf)]
-    [InlineData(FrontendKind.Direct2D)]
-    public void AskForTwitchAuthorizationToAddAStreamOrBrowseTopStreamsWithoutAToken(FrontendKind kind)
-    {
-        using var profile = UiTestProfile.CreateWithoutToken();
-        using var window = FrontendWindow.Launch(kind, profile);
-        var ids = window.Ids;
-
-        window.Element(ids.ChannelToAdd, FrontendWindow.StartupTimeout);
-        window.SetText(ids.ChannelToAdd, UiTestProfile.FollowedChannels[0]);
-        window.DeclineAuthorizationAfter(ids.AddChannel, checkMessageRendering: kind == FrontendKind.Direct2D);
-        window.DeclineAuthorizationAfter(ids.TopStreams);
-    }
-
-    [Fact]
-    public void DisableTheKnownChannelPickerWhenThereAreNoFollowedChannels()
-    {
-        using var profile = UiTestProfile.CreateWithoutToken();
-        using var window = FrontendWindow.Launch(FrontendKind.Direct2D, profile);
-        var ids = window.Ids;
-        var vodViewer = window.Element(ids.VodViewer, FrontendWindow.StartupTimeout);
-        FrontendWindow.Invoke(vodViewer);
-        window.WaitUntilDisabled(ids.KnownChannelsOpener);
-    }
-
-    [Fact]
-    public void SaveTheTrayPopupOptOutAndUpdateOpenSettings()
-    {
-        using var profile = UiTestProfile.CreateWithoutToken();
-        using var window = FrontendWindow.Launch(FrontendKind.Direct2D, profile);
-        const string TrayPopupId = "settings.traypopup";
-        window.Element(window.Ids.OpenSettings, FrontendWindow.StartupTimeout);
-        // The readiness check completes before the window is disposed.
-        // ReSharper disable once AccessToDisposedClosure
-        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(TrayPopupId) != null, "The tray popup setting");
-        var checkbox = window.Element(TrayPopupId);
-        var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
-        Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
-
-        ToastActivationPipe.Forward(new ToastActivation(TrayToastAction.DisablePopup));
-
-        window.WaitFor(() => toggle.Current.ToggleState == ToggleState.On ? checkbox : null,
-            FrontendWindow.StepTimeout, "The tray popup setting checked");
-        Assert.True(ReadFlag(profile, nameof(Settings.DisableMinimizeToTrayNotification)));
-    }
-
-    [Theory]
-    [InlineData(FrontendKind.Wpf)]
-    [InlineData(FrontendKind.Direct2D)]
-    public void EnableCategoryChangeNotificationsFromSettings(FrontendKind kind)
-    {
-        using var profile = UiTestProfile.CreateWithoutToken();
-        using var window = FrontendWindow.Launch(kind, profile);
-        const string StreamNotificationsId = "settings.section.5";
-        const string Setting = nameof(Settings.EnableCategoryChangeNotifications);
-        var checkboxId = kind == FrontendKind.Wpf ? Setting : "settings.categorychangenotifications";
-        window.Element(window.Ids.OpenSettings, FrontendWindow.StartupTimeout);
-        // The readiness check completes before the window is disposed.
-        // ReSharper disable once AccessToDisposedClosure
-        window.InvokeUntil(window.Ids.OpenSettings, () => window.Find(StreamNotificationsId) != null, "The Stream Notifications group");
-        var section = window.Element(StreamNotificationsId);
-        FrontendWindow.Pattern<ExpandCollapsePattern>(section, ExpandCollapsePattern.Pattern).Expand();
-        var checkbox = window.Element(checkboxId);
-        var toggle = FrontendWindow.Pattern<TogglePattern>(checkbox, TogglePattern.Pattern);
-
-        Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
-        toggle.Toggle();
-        window.InvokeUntil(window.Ids.SaveSettings, Saved, "Category change notifications enabled in saved settings");
-
-        // The save check completes before the test profile is disposed.
-        // ReSharper disable once AccessToDisposedClosure
-        bool Saved() => ReadFlag(profile, Setting) == true;
-    }
-
-    [Theory]
     [InlineData(true)]
     [InlineData(false)]
     public void SaveTheWpfNotificationImageAndHandleTheTrayPopupAction(bool disablePopup)
@@ -373,7 +461,7 @@ public class FrontendShould
         Assert.True(FrontendWindow.Pattern<SelectionItemPattern>(icon, SelectionItemPattern.Pattern).Current.IsSelected);
         var thumbnail = window.Element("LiveThumbnailSelected");
         FrontendWindow.Pattern<SelectionItemPattern>(thumbnail, SelectionItemPattern.Pattern).Select();
-        window.InvokeUntil(window.Ids.SaveSettings, ThumbnailSaved, "The live thumbnail setting saved");
+        window.WaitFor(() => ThumbnailSaved() ? thumbnail : null, FrontendWindow.StepTimeout, "The live thumbnail setting saved");
 
         mainWindow.SetWindowVisualState(WindowVisualState.Minimized);
         var action = window.WaitFor(FindTrayAction, FrontendWindow.StepTimeout, "The tray popup action");
@@ -496,7 +584,7 @@ public class FrontendShould
         var toggle = FrontendWindow.Pattern<TogglePattern>(versionCheck, TogglePattern.Pattern);
         Assert.Equal(ToggleState.Off, toggle.Current.ToggleState);
         window.RetryUntil(toggle.Toggle, Ticked, "The version check ticked");
-        window.InvokeUntil(ids.SaveSettings, Saved, "The version check saved");
+        window.WaitFor(() => Saved() ? versionCheck : null, FrontendWindow.StepTimeout, "The version check saved");
 
         bool Ticked() => toggle.Current.ToggleState == ToggleState.On;
         bool Saved() => ReadFlag(profile, "CheckForNewVersions") == true;
@@ -623,10 +711,11 @@ public class FrontendShould
     private static bool SameNames(string[] names, string[] expected) =>
         names.Length == expected.Length && !expected.Except(names).Any();
 
-    // A file read while the application writes it is read again on the next poll.
     private static bool? ReadFlag(UiTestProfile profile, string name) =>
         ReadSetting(profile, name) is { ValueKind: JsonValueKind.True or JsonValueKind.False } flag ? flag.GetBoolean() : null;
 
+    // Holding the file open can make a concurrent save by the frontend fail, and the frontend then drops that save, so read it
+    // only once the frontend shows the saved outcome. A read that meets a write in progress returns null.
     private static JsonElement? ReadSetting(UiTestProfile profile, string name)
     {
         try

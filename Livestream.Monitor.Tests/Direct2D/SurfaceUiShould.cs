@@ -159,7 +159,6 @@ public sealed class SurfaceUiShould : IDisposable
         DrawSettings(pane);
         ClickWidget(option);
         DrawSettings(pane);
-        ClickWidget("settings.save");
 
         Assert.Equal(image, settings.StreamNotificationImage);
         Assert.Equal(longBanner, settings.UseLongStreamNotificationBanners);
@@ -168,12 +167,14 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
-    public void RevealAnInvalidPlaybackPathBeforeSavingSettings()
+    public void SaveAndRevertOnePlatformWhileAnotherHasAnInvalidDraft()
     {
         const string InvalidPathId = "YouTube.vod.path";
+        const string MissingPlayer = "unavailable-vod-player.exe";
+        const string SavedArgs = "saved args";
         var executable = Assert.IsType<string>(Environment.ProcessPath);
-        var settings = new Settings();
-
+        var settings = new Settings { MetroThemeBaseColour = MetroThemeBaseColour.BaseLight };
+        var twitchArgs = settings.Twitch.StreamCommand.Args;
         foreach (var platform in new ApiPlatformSettings[] { settings.Twitch, settings.Kick, settings.YouTube })
         {
             platform.StreamCommand.FilePath = executable;
@@ -181,38 +182,106 @@ public sealed class SurfaceUiShould : IDisposable
             platform.ChatCommand.FilePath = executable;
         }
 
-        settings.YouTube.VodCommand.FilePath = "unavailable-vod-player.exe";
         var handler = Substitute.For<ISettingsHandler>();
         handler.Settings.Returns(settings);
+        handler.TrySavePlatformSettings(Arg.Any<TwitchSettings>()).Returns(call =>
+        {
+            settings.Twitch = call.Arg<TwitchSettings>();
+            return true;
+        });
         var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+        var testPalette = Theme.Create(settings);
 
         Draw();
-        ClickWidget("settings.versions");
+        ClickWidget("settings.section.0");
         Draw();
-        Assert.Null(ui.Automation.Find(InvalidPathId));
-        Assert.True(ui.Automation.Find("settings.save")?.Has(AutomationStates.Disabled));
+        ClickWidget("settings.section.3");
+        Draw();
+        ui.SetValue(InvalidPathId, MissingPlayer);
+        ClickWidget("settings.section.3");
+        Draw();
+        ClickWidget("settings.section.1");
+        Draw();
+        ui.SetValue("Twitch.stream.args", SavedArgs);
+        Draw();
 
-        ClickWidget("settings.showerror");
+        Assert.Equal(twitchArgs, settings.Twitch.StreamCommand.Args);
+        Assert.True(pane.RevealPendingPlatform(ui));
+        Draw();
+        Draw();
+        pane.FocusRevealedControl(ui);
+        ClickWidget("settings.Twitch.save");
+        handler.Received(1).TrySavePlatformSettings(Arg.Any<TwitchSettings>());
+        Assert.Equal(SavedArgs, settings.Twitch.StreamCommand.Args);
+        Assert.Equal(executable, settings.YouTube.VodCommand.FilePath);
+
+        ui.SetValue("Twitch.stream.args", "second draft");
+        Draw();
+        ClickWidget("settings.Twitch.revert");
+        Assert.Equal(SavedArgs, ui.Value("Twitch.stream.args"));
+        Assert.Equal(SavedArgs, settings.Twitch.StreamCommand.Args);
+        pane.ScrollWithKey(VirtualKey.Home);
+        Draw();
+        ClickWidget("settings.section.1");
+        Draw();
+
+        Assert.True(pane.RevealPendingPlatform(ui));
+        Draw();
+        Draw();
+        Assert.True(ui.Automation.Find("settings.YouTube.save")?.Has(AutomationStates.Disabled));
+        ClickWidget("settings.YouTube.showerror");
         Draw();
         Draw();
         var input = Assert.IsType<AutomationNode>(ui.Automation.Find(InvalidPathId));
-        var inputFill = Assert.Single(commands, command => command.Kind == DrawKind.Fill && command.Color == palette.Input &&
-            command.Bounds.IntersectsWith(input.Bounds));
+        var inputFill = Assert.Single(commands, command => command.Kind == DrawKind.Fill && command.Color == testPalette.Input &&
+            command.Bounds.Height.Equals(input.Bounds.Height) && command.Bounds.IntersectsWith(input.Bounds));
 
         Assert.Equal(inputFill.Bounds, input.Bounds);
-        handler.DidNotReceive().SaveSettings();
-
-        ui.SetValue(InvalidPathId, executable);
+        Assert.True(pane.RevealPendingPlatform(ui));
         Draw();
-        ClickWidget("settings.save");
-        handler.Received(1).SaveSettings();
-        Assert.Equal(executable, settings.YouTube.VodCommand.FilePath);
+        Draw();
+        pane.FocusRevealedControl(ui);
+        ClickWidget("settings.YouTube.revert");
+        Assert.Equal(executable, ui.Value(InvalidPathId));
+        Assert.False(pane.RevealPendingPlatform(ui));
+        handler.Received(1).TrySavePlatformSettings(Arg.Any<TwitchSettings>());
 
         void Draw()
         {
             commands.Clear();
-            ui.Begin(palette, viewport);
-            pane.Draw(ui, viewport);
+            ui.Begin(testPalette, viewport with { Height = 900 });
+            pane.Draw(ui, viewport with { Height = 900 });
+            ui.End();
+        }
+    }
+
+    [Fact]
+    public void RevealAndFocusTheRecoveryActionInAShortSettingsPane()
+    {
+        const string RevertId = "settings.Kick.revert";
+        const float ShortWindowHeight = 100;
+        var handler = Substitute.For<ISettingsHandler>();
+        handler.Settings.Returns(new Settings());
+        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
+
+        DrawSettings(pane);
+        ClickWidget("settings.section.2");
+        DrawSettings(pane);
+        ui.SetValue("Kick.stream.path", "unavailable-kick-player.exe");
+
+        var shortViewport = viewport with { Height = ShortWindowHeight };
+        Assert.True(pane.RevealPendingPlatform(ui));
+        DrawShortPane();
+        DrawShortPane();
+        pane.FocusRevealedControl(ui);
+        DrawShortPane();
+
+        Assert.True(ui.Automation.Find(RevertId)?.Has(AutomationStates.Focused));
+
+        void DrawShortPane()
+        {
+            ui.Begin(palette, shortViewport);
+            pane.Draw(ui, shortViewport);
             ui.End();
         }
     }
@@ -220,7 +289,7 @@ public sealed class SurfaceUiShould : IDisposable
     [Fact]
     public void HideTheSettingsScrollbarWhenItsThumbCannotMove()
     {
-        const float ShortWindowHeight = 137;
+        const float ShortWindowHeight = 100;
         var shortViewport = viewport with { Height = ShortWindowHeight };
         var handler = Substitute.For<ISettingsHandler>();
         handler.Settings.Returns(new Settings());
