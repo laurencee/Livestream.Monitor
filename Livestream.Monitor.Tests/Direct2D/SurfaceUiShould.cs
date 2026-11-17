@@ -799,22 +799,32 @@ public sealed class SurfaceUiShould : IDisposable
         var covered = new RectangleF(x: 200, y: 0, width: 200, height: 300);
         var coveredButton = new RectangleF(x: 230, y: 10, width: 80, height: 25);
         var addButton = new RectangleF(x: 10, y: 10, width: 25, height: 25);
+        var list = new RectangleF(x: 0, y: 100, width: 400, height: 100);
         var row = new RectangleF(x: 0, y: 100, width: 190, height: 25);
         ui.Begin(palette, viewport, covered);
         ui.Button(id: "covered", text: "Covered", coveredButton, action: () => { });
         ui.Button(id: "add", text: "+", addButton, action: () => { }, enabled: false);
-        ui.BeginGroup(id: "row.0", AutomationRole.DataItem, name: "shroud", row, AutomationStates.Selected);
+        const string RowKey = "row:twitch:shroud";
+        ui.BeginList(id: "rows", name: "Livestreams", list, selectedKey: RowKey);
+        ui.BeginGroup(id: "row.0", AutomationRole.DataItem, name: "shroud", row, AutomationStates.Selected, key: RowKey);
         ui.Text(text: "shroud", row);
+        ui.EndGroup();
         ui.EndGroup();
         ui.End();
         var tree = ui.Automation;
 
         Assert.Null(tree.Find("covered"));
         Assert.True(tree.Find("add")?.Has(AutomationStates.Disabled));
-        var text = Assert.Single(tree.ChildrenOf(tree.IndexOf("row.0")).ToArray());
+
+        // The partly covered list keeps its uncovered row, which is keyed by its content rather than its id.
+        Assert.Equal(RowKey, tree.Find("rows")?.Value);
+        var rowIndex = tree.IndexOf(RowKey);
+        Assert.Equal(tree.IndexOf("rows"), tree.Nodes[rowIndex].Parent);
+        Assert.Equal("row.0", tree.Nodes[rowIndex].AutomationId);
+        Assert.True(tree.Nodes[rowIndex].Has(AutomationStates.Selected));
+        var text = Assert.Single(tree.ChildrenOf(rowIndex).ToArray());
         Assert.Equal(AutomationRole.Text, tree.Nodes[text].Role);
         Assert.Equal("shroud", tree.Nodes[text].Name);
-        Assert.True(tree.Find("row.0")?.Has(AutomationStates.Selected));
     }
 
     private sealed class HiddenWindow() : DesktopWindow("Widget regression check", 400, 300);

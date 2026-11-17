@@ -13,6 +13,7 @@ internal enum AutomationRole
     ComboBox,
     Edit,
     ListItem,
+    List,
     DataItem,
     Menu,
     MenuItem,
@@ -47,12 +48,14 @@ internal enum AutomationStates
 /// such as the next dialog's buttons.
 /// </summary>
 /// <param name="Key">
-/// Unique within the window; it forms the runtime id. List rows, tiles and menu items are keyed by position, so a key
-/// can name other content after a sort, filter or page change.
+/// Unique within the window; it forms the runtime id. List rows and tiles are keyed by the item they show; menu items are
+/// keyed by position, so a menu item's key can name another item in the next menu.
 /// </param>
 /// <param name="Parent">The parent node's index, or -1 for a top-level element.</param>
+/// <param name="Value">A text box's text or a combo box's choice; for a list, the key of its selected item, drawn or not.</param>
 /// <param name="Activate">Clicks, toggles, selects or opens the element, or null when it has no action.</param>
 /// <param name="Collapse">Closes an expanded element, or null when activating it again closes it.</param>
+/// <param name="Item">A list row's or tile's place in its list, status and actions, or null for other elements.</param>
 internal sealed record AutomationNode(
     string Key,
     string AutomationId,
@@ -65,10 +68,33 @@ internal sealed record AutomationNode(
     string? Value = null,
     Action? Activate = null,
     Action<string>? SetText = null,
-    Action? Collapse = null)
+    Action? Collapse = null,
+    AutomationItem? Item = null)
 {
     public bool Has(AutomationStates state) => (States & state) != 0;
 }
+
+/// <summary>What UI Automation asks of a list row or tile.</summary>
+internal enum ItemRequest
+{
+    Select,
+    Deselect,
+    ScrollIntoView,
+
+    /// <summary>Selects the item, brings it into view and gives its list the keyboard focus.</summary>
+    Focus,
+}
+
+/// <summary>A list row's or tile's place in its list, its status and the requests UI Automation makes of it.</summary>
+/// <param name="Position">The 1-based position in the whole list, including items not drawn.</param>
+/// <param name="Count">The number of items in the whole list.</param>
+/// <param name="Status">What UI Automation reads after the item's name, such as a stream's live state.</param>
+/// <param name="Act">Runs on the UI thread and finds the item again, since a refresh may have moved it.</param>
+internal sealed record AutomationItem(
+    int Position,
+    int Count,
+    string Status,
+    Action<ItemRequest> Act);
 
 /// <summary>
 /// An immutable snapshot of a window's automation tree. UI Automation reads it from its own threads while the UI

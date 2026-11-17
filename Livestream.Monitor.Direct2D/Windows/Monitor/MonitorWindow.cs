@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
+using System.Text;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
@@ -703,7 +704,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             return;
         }
 
-        Ui.PushClip(new RectangleF(x: 0, y: top, width: tableWidth, height: Math.Max(0, size.Height - top)));
+        var listBounds = new RectangleF(x: 0, y: top, width: tableWidth, height: Math.Max(0, size.Height - top));
+        Ui.PushClip(listBounds);
+        var selectedKey = state.SelectedStream is { } chosen ? RowKey(chosen) : null;
+        Ui.BeginList(id: "rows", name: "Livestreams", listBounds, selectedKey);
 
         // As in WPF, the live image is centred in its column.
         const float LiveImageSize = 15;
@@ -712,6 +716,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // As in WPF, the selected row fades to the 40% accent once another control takes keyboard focus or the
         // window is no longer active.
         var selectionActive = Ui is { IsWindowActive: true, HasFocusedWidget: false };
+        var listFocused = ListHasFocus;
 
         for (var i = scrollOffset; i < state.Rows.Count && i - scrollOffset <= visible; i++)
         {
@@ -720,8 +725,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var bounds = new RectangleF(x: 0, y: y, width: tableWidth, height: RowHeight);
             var selected = i == state.SelectedIndex;
             var rowStates = selected ? AutomationStates.Selected : AutomationStates.None;
+            if (selected && listFocused) rowStates |= AutomationStates.Focused;
+            var viewers = stream.Viewers.ToString(CultureInfo.CurrentCulture);
+            var uptime = state.GetDisplayedUptime(stream);
+            var liveState = stream.Live ? "Live" : "Offline";
+            var viewerCount = viewers + " viewers";
+            var status = ItemStatus(liveState, stream.Description, stream.Game, viewerCount, uptime);
+            var item = new AutomationItem(Position: i + 1, Count: state.Rows.Count, Status: status, Act: ItemAction(MonitorPage.Followed, stream));
             var rowId = $"row.{i}";
-            Ui.BeginGroup(rowId, AutomationRole.DataItem, stream.DisplayName, bounds, rowStates);
+            Ui.BeginGroup(rowId, AutomationRole.DataItem, stream.DisplayName, bounds, rowStates, key: RowKey(stream), item: item);
 
             // As in WPF, the pointer's row shows the hover colour whether or not it is selected.
             var highlighted = selected && selectionActive;
@@ -735,8 +747,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Cell(column: 1, stream.DisplayName);
             Cell(column: 2, stream.Description ?? "");
             Cell(column: 3, stream.Game ?? "");
-            Cell(column: 4, stream.Viewers.ToString(CultureInfo.CurrentCulture));
-            Cell(column: 5, state.GetDisplayedUptime(stream));
+            Cell(column: 4, viewers);
+            Cell(column: 5, uptime);
             Ui.EndGroup();
 
             void Cell(int column, string text)
@@ -754,6 +766,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
         }
 
+        Ui.EndGroup();
         Ui.PopClip();
         scrollBar.Draw(Ui);
     }
@@ -860,7 +873,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollBar.Update(barBounds, layout.Extent, layout.Viewport, scrollOffset, TileLineSize);
         var clipBounds = new RectangleF(x: 0, y: TileAreaTop, width: layout.ClipWidth, height: layout.ViewportHeight);
         Ui.PushClip(clipBounds);
+        var listName = state.Page == MonitorPage.Vods ? "VODs" : "Top Streams";
+        var selectedKey = state.SelectedIndex >= 0 && state.SelectedIndex < ItemCount ? TileKey(state.SelectedIndex) : null;
+        Ui.BeginList(id: "tiles", listName, clipBounds, selectedKey);
 
+        var listFocused = ListHasFocus;
         var firstVisibleRow = (int)(scrollOffset / layout.RowPitch);
         for (var i = firstVisibleRow * columns; i < ItemCount; i++)
         {
@@ -873,19 +890,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var tileName = stream != null ? stream.DisplayName : state.Vods[i].Title ?? "";
             var following = stream != null && state.IsFollowed(stream);
             var tileStates = i == state.SelectedIndex ? AutomationStates.Selected : AutomationStates.None;
+            if (i == state.SelectedIndex && listFocused) tileStates |= AutomationStates.Focused;
             Action? toggleFollow = null;
 
             if (stream != null)
             {
-                // A Top Streams tile toggles following as a second click does, after selecting it as the first does.
-                var index = i;
-                tileStates |= AutomationStates.Checkable | AutomationStates.Unfocusable;
+                // Toggling a Top Streams tile selects it, as a first click does, then toggles following, as a second click does.
+                tileStates |= AutomationStates.Checkable;
                 if (following) tileStates |= AutomationStates.Checked;
                 if (state.Busy) tileStates |= AutomationStates.Disabled;
                 toggleFollow = () =>
                 {
-                    // The action runs later, after any page switch that arrived first; only Top Streams tiles follow.
-                    if (state.Page != MonitorPage.TopStreams) return;
+                    // The action runs later, after any page switch or refresh that arrived first, so the page is checked and the
+                    // tile's stream is found again. Only Top Streams tiles toggle following.
+                    var index = state.Page == MonitorPage.TopStreams ? state.Rows.IndexOf(stream) : -1;
+                    if (index < 0) return;
 
                     state.SelectedIndex = index;
                     _ = ToggleFollow();
@@ -893,7 +912,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
 
             var tileId = $"tile.{i}";
-            Ui.BeginGroup(tileId, AutomationRole.ListItem, tileName, bounds, tileStates, toggleFollow);
+            var tileKey = TileKey(i);
+            var status = stream != null ? TopStreamStatus(stream) : VodStatus(state.Vods[i]);
+            var act = stream != null ? ItemAction(MonitorPage.TopStreams, stream) : ItemAction(state.Vods[i]);
+            var item = new AutomationItem(Position: i + 1, Count: ItemCount, Status: status, Act: act);
+            Ui.BeginGroup(tileId, AutomationRole.ListItem, tileName, bounds, tileStates, toggleFollow, tileKey, item);
             var hovered = Ui.IsPointerOver(bounds);
             var background = hovered ? palette.Highlight : following ? palette.Selection : palette.Tile;
             var color = hovered || following ? palette.AccentText : palette.Text;
@@ -980,10 +1003,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
                 var gameBounds = new RectangleF(x: contentLeft, y: y + GameTop, width: contentWidth, height: 18);
                 Ui.Text(game, gameBounds, color, size: 11);
-                var length = vod.IsUpcoming ? "Upcoming" : vod.Length.ToTotalHoursText();
+                var length = VodLength(vod);
                 var lengthBounds = new RectangleF(x: contentLeft, y: y + LengthTop, width: contentWidth, height: 16);
                 Ui.Text(length, lengthBounds, color, size: 11);
-                var recordedAt = vod.RecordedAt.ToString("MMM dd, yyyy", WpfBindingCulture);
+                var recordedAt = RecordedDate(vod);
                 var recordedBounds = new RectangleF(x: contentLeft, y: y + 101, width: contentWidth, height: 16);
                 Ui.Text(recordedAt, recordedBounds, color, size: 11);
             }
@@ -991,8 +1014,45 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Ui.EndGroup();
         }
 
+        Ui.EndGroup();
         Ui.PopClip();
         scrollBar.Draw(Ui);
+    }
+
+    // Rows and tiles are keyed by the stream or VOD they show, so UI Automation follows the item after a refresh or sort.
+    private static string RowKey(LivestreamModel stream) => $"row:{stream.UniqueStreamKey}";
+
+    private string TileKey(int index) =>
+        state.Page == MonitorPage.TopStreams ? $"tile:{state.Rows[index].UniqueStreamKey}" : $"tile:{state.Vods[index].Url}";
+
+    private static string VodLength(VodDetails vod) => vod.IsUpcoming ? "Upcoming" : vod.Length.ToTotalHoursText();
+
+    private static string RecordedDate(VodDetails vod) => vod.RecordedAt.ToString("MMM dd, yyyy", WpfBindingCulture);
+
+    private static string TopStreamStatus(LivestreamModel stream) =>
+        ItemStatus(stream.Description, stream.Game, stream.Viewers.ToString(CultureInfo.CurrentCulture) + " viewers");
+
+    private static string VodStatus(VodDetails vod)
+    {
+        var length = VodLength(vod);
+        var recordedAt = RecordedDate(vod);
+
+        return ItemStatus(vod.Description, vod.Game, length, recordedAt);
+    }
+
+    // The non-empty parts of a row's or tile's status, which UI Automation reads after its name.
+    private static string ItemStatus(params ReadOnlySpan<string?> parts)
+    {
+        var status = new StringBuilder();
+        foreach (var part in parts)
+        {
+            if (string.IsNullOrEmpty(part)) continue;
+
+            if (status.Length != 0) status.Append(", ");
+            status.Append(part);
+        }
+
+        return status.ToString();
     }
 
     // YouTube's uploads endpoint accepts at most 50 results per request.
@@ -1563,6 +1623,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private bool KeysGoToSettingsPane => settingsSlide.IsOpen && settingsKeyTarget == SettingsKeyTarget.Pane;
 
+    // The followed rows or the tiles have the keyboard focus, shown on the selected one, while no drawn widget, text input or
+    // menu item has it and key presses do not go to the settings pane.
+    private bool ListHasFocus => Ui is { HasFocusedWidget: false, MenuHasFocus: false } && !KeysGoToSettingsPane;
+
     private bool FocusedInputBelongsToSettings => Ui.FocusedId is { } id && settingsPane?.OwnsInput(id) == true;
 
     protected override bool PreprocessKey(int key)
@@ -1605,19 +1669,20 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // An open menu or list keeps the keys it does not use from the grid behind it, as in WPF.
         if (Ui.HasMenu) return false;
 
-        if (key is not (VirtualKey.Up or VirtualKey.Down or VirtualKey.PageUp or VirtualKey.PageDown or VirtualKey.Home or VirtualKey.End
-            or VirtualKey.Enter or VirtualKey.Delete))
-        {
-            return false;
-        }
+        // Left and Right move between tiles, not rows, and only while the tiles have the focus. Otherwise they are left to the focused widget.
+        var tiles = state.Page != MonitorPage.Followed;
+        var arrow = key is VirtualKey.Up or VirtualKey.Down || tiles && !Ui.HasFocusedWidget && key is VirtualKey.Left or VirtualKey.Right;
+        var paging = key is VirtualKey.PageUp or VirtualKey.PageDown or VirtualKey.Home or VirtualKey.End;
+        if (!arrow && !paging && key is not (VirtualKey.Enter or VirtualKey.Delete)) return false;
 
         // An empty list keeps no selection.
         var last = ItemCount - 1;
         var first = Math.Min(0, last);
+
+        var columns = tiles ? LayoutTiles(ClientSize, ItemCount).Columns : 1;
         state.SelectedIndex = key switch
         {
-            VirtualKey.Up => Math.Max(first, state.SelectedIndex - 1),
-            VirtualKey.Down => Math.Min(last, state.SelectedIndex + 1),
+            _ when arrow => ArrowTarget(key, state.SelectedIndex, ItemCount, columns),
             VirtualKey.PageUp => Math.Max(first, state.SelectedIndex - ItemsPerPage()),
             VirtualKey.PageDown => Math.Min(last, state.SelectedIndex + ItemsPerPage()),
             VirtualKey.Home => first,
@@ -1629,6 +1694,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var removable = state is { Busy: false, Page: MonitorPage.Followed } ? state.SelectedStream : null;
         if (key == VirtualKey.Delete && removable != null) _ = state.Remove(removable);
         KeepSelectionVisible();
+
+        // The list takes the keyboard focus from a drawn widget, such as a column header, when the keys select one of its items.
+        if (key is not (VirtualKey.Enter or VirtualKey.Delete) && Ui.HasFocusedWidget && state.SelectedIndex >= 0) Ui.ClearFocus();
         return true;
 
         // The number of items that Page Up and Page Down move the selection by: the visible rows, or the tiles in the whole tile rows that fit.
@@ -1639,6 +1707,27 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var layout = LayoutTiles(ClientSize, ItemCount);
             return Math.Max(1, (int)(layout.ViewportHeight / layout.RowPitch)) * layout.Columns;
         }
+    }
+
+    /// <summary>
+    /// The item an arrow key selects in a list laid out in rows of the given number of columns. Left and Right move one
+    /// item. Up and Down move one row; Up stays in the first row, and Down moves to the last item from above a gap in a
+    /// shorter last row. With no selection, an arrow selects the first item.
+    /// </summary>
+    internal static int ArrowTarget(int key, int selected, int count, int columns)
+    {
+        if (count == 0) return -1;
+        if (selected < 0) return 0;
+
+        var last = count - 1;
+        return key switch
+        {
+            VirtualKey.Left => Math.Max(0, selected - 1),
+            VirtualKey.Right => Math.Min(last, selected + 1),
+            VirtualKey.Up => selected >= columns ? selected - columns : selected,
+            VirtualKey.Down => selected / columns < last / columns ? Math.Min(last, selected + columns) : selected,
+            _ => selected,
+        };
     }
 
     private int HitRow(PointF point)
@@ -1765,21 +1854,55 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         return base.OnMessage(message, wParam, lParam);
     }
 
-    private void KeepSelectionVisible()
+    // UI Automation's requests for a row or tile run later, after any page switch or refresh that arrived first, so they find
+    // its item again.
+    private Action<ItemRequest> ItemAction(MonitorPage page, LivestreamModel stream) =>
+        request => ActOnItem(state.Page == page ? state.Rows.IndexOf(stream) : -1, request);
+
+    private Action<ItemRequest> ItemAction(VodDetails vod) =>
+        request => ActOnItem(state.Page == MonitorPage.Vods ? state.Vods.IndexOf(vod) : -1, request);
+
+    private void ActOnItem(int index, ItemRequest request)
     {
-        if (state.SelectedIndex < 0) return;
+        if (index < 0) return;
+
+        switch (request)
+        {
+            case ItemRequest.Select:
+                state.SelectedIndex = index;
+                break;
+            case ItemRequest.Deselect when state.SelectedIndex == index:
+                state.SelectedIndex = -1;
+                break;
+            case ItemRequest.ScrollIntoView:
+                KeepVisible(index);
+                break;
+            case ItemRequest.Focus:
+                // As after a click on the item, the list takes the key presses.
+                state.SelectedIndex = index;
+                KeepVisible(index);
+                Ui.ClearFocus();
+                settingsKeyTarget = SettingsKeyTarget.Grid;
+                break;
+        }
+    }
+
+    private void KeepSelectionVisible() => KeepVisible(state.SelectedIndex);
+
+    private void KeepVisible(int index)
+    {
+        if (index < 0) return;
 
         if (state.Page == MonitorPage.Followed)
         {
-            var selected = state.SelectedIndex;
-            var end = selected + 1;
+            var end = index + 1;
             var visibleRows = VisibleRows(ClientSize);
-            scrollOffset = GetVisibleOffset(selected, end, scrollOffset, visibleRows);
+            scrollOffset = GetVisibleOffset(index, end, scrollOffset, visibleRows);
             return;
         }
 
         var layout = LayoutTiles(ClientSize, ItemCount);
-        var row = state.SelectedIndex / layout.Columns;
+        var row = index / layout.Columns;
         var tileTop = row * layout.RowPitch;
         var tileBottom = tileTop + layout.TileHeight;
         var top = (int)tileTop;

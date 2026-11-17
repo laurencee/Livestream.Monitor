@@ -63,6 +63,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool HasFocusIn(string idPrefix) => focused?.StartsWith(idPrefix, StringComparison.Ordinal) == true;
     public bool HasMenu => menu != null;
 
+    /// <summary>
+    /// True while a menu item chosen with the keyboard, or a combo box's current choice, has the focus in its open menu, as in
+    /// WPF, unless a native text input keeps it while its suggestions are browsed.
+    /// </summary>
+    public bool MenuHasFocus => menu is { Selected: >= 0 } && !HasFocusedInput;
+
     /// <summary>True while an open context menu, or the focused combo box's open list, moves its highlight with Tab, as in WPF.</summary>
     public bool MenuTakesTab => menu is { IsList: false } || menu is { IsComboBox: true } && menu.Id == focused && !HasFocusedInput;
 
@@ -200,17 +206,32 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private bool ShowsNativeInput(TextInput input) =>
         input is { Visible: true, Enabled: true, ShowPlaceholder: false } && (menu == null || !input.Bounds.IntersectsWith(menu.Bounds));
 
-    /// <summary>Starts a group, such as a list row or tile, whose elements become its automation children.</summary>
+    /// <summary>
+    /// Starts a group, such as a list row or tile, whose elements become its automation children. A key identifies the
+    /// group across frames, such as by the stream a row shows; without one, the group is keyed by its id.
+    /// </summary>
     public void BeginGroup(
         string id,
         AutomationRole role,
         string name,
         RectangleF bounds,
         AutomationStates states = AutomationStates.None,
-        Action? activate = null)
+        Action? activate = null,
+        string? key = null,
+        AutomationItem? item = null)
     {
-        var group = AddNode(id, role, name, bounds, states, activate: activate);
+        var group = AddNode(id, role, name, bounds, states, activate: activate, contentKey: key, item: item);
         automationGroups.Push(group < 0 ? HiddenGroup : group);
+    }
+
+    /// <summary>
+    /// Starts a list of rows or tiles, ended with <see cref="EndGroup"/>. Unlike other elements, it stays exposed while
+    /// partly covered, as its uncovered items do. The selected key is the key of its selected item, drawn or not.
+    /// </summary>
+    public void BeginList(string id, string name, RectangleF bounds, string? selectedKey)
+    {
+        var list = AddNode(id, AutomationRole.List, name, bounds, value: selectedKey, partlyCoverable: true);
+        automationGroups.Push(list < 0 ? HiddenGroup : list);
     }
 
     public void EndGroup() => automationGroups.Pop();
@@ -1221,10 +1242,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return -1;
     }
 
-    // A menu item chosen with the keyboard, or a combo box's current choice, has the focus while its menu is open, as in
-    // WPF, unless a native text input keeps it while its suggestions are browsed.
-    private bool MenuHasFocus => menu is { Selected: >= 0 } && !HasFocusedInput;
-
     private AutomationStates WidgetStates(string id, bool enabled)
     {
         var states = enabled ? AutomationStates.None : AutomationStates.Disabled;
@@ -1239,7 +1256,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Border(RectangleF.Inflate(bounds, -1, -1), color);
     }
 
-    // Records an element for UI Automation and returns its index, or -1 when it is covered or scrolled out of view.
+    // Records an element for UI Automation and returns its index, or -1 when it is covered or scrolled out of view; a
+    // partly coverable element is left out only when wholly covered. A content key, when given, replaces the id as the key.
     private int AddNode(
         string automationId,
         AutomationRole role,
@@ -1250,11 +1268,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         string? value = null,
         Action? activate = null,
         Action<string>? setText = null,
-        Action? collapse = null)
+        Action? collapse = null,
+        string? contentKey = null,
+        AutomationItem? item = null,
+        bool partlyCoverable = false)
     {
         // A covered group hides its elements too, rather than leaving them without their row or tile.
         var parent = automationGroups.Count == 0 ? -1 : automationGroups.Peek();
-        if (parent == HiddenGroup || !IsAvailable(bounds)) return -1;
+        var uncovered = partlyCoverable ? overlay || occlusion?.Contains(bounds) != true : IsAvailable(bounds);
+        if (parent == HiddenGroup || !uncovered) return -1;
 
         var visible = clip.HasValue ? RectangleF.Intersect(bounds, clip.Value) : bounds;
         if (visible.Width <= 0 || visible.Height <= 0) return -1;
@@ -1262,7 +1284,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // Elements without an id, such as text, are keyed by their group and role in drawing order, so text that
         // changes, such as a viewer count, keeps its key and runtime id.
         var scope = parent < 0 ? "" : automation[parent].Key;
-        var baseKey = automationId.Length != 0 ? automationId : $"{scope}/{role}";
+        var baseKey = contentKey ?? (automationId.Length != 0 ? automationId : $"{scope}/{role}");
         var occurrence = automationKeys.GetValueOrDefault(baseKey);
         automationKeys[baseKey] = occurrence + 1;
         var key = occurrence == 0 ? baseKey : $"{baseKey}#{occurrence}";
@@ -1279,7 +1301,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             Value: value,
             Activate: activate,
             SetText: setText,
-            Collapse: collapse);
+            Collapse: collapse,
+            Item: item);
 
         automation.Add(node);
         return automation.Count - 1;

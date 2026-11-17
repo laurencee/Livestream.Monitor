@@ -100,10 +100,12 @@ internal sealed class WindowAutomation
             var node = nodes[i];
             var before = previous.IndexOf(node.Key);
 
-            // A new menu is announced; any other new element is reported by its parent's changed children.
+            // A new menu is announced, as is a list item drawn because it was just selected, such as after End; any other new
+            // element is reported by its parent's changed children.
             if (before < 0)
             {
                 if (node.Role == AutomationRole.Menu) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.MenuOpenedEvent);
+                else if (IsNewlySelected(previous, current, node)) RaiseEvent(new ElementProvider(this, node.Key), UiAutomation.ElementSelectedEvent);
                 continue;
             }
 
@@ -225,6 +227,16 @@ internal sealed class WindowAutomation
         if (focus != null && focus != raisedFocus) RaiseEvent(new ElementProvider(this, focus), UiAutomation.AutomationFocusChangedEvent);
 
         raisedFocus = focus;
+    }
+
+    // A list records its selected item's key whether or not the item is drawn, so an item that scrolls into view while
+    // already selected is not announced again. A list that just appeared, such as after a reload, keeps its selection.
+    private static bool IsNewlySelected(AutomationTree previous, AutomationTree current, AutomationNode node)
+    {
+        if (!node.Has(AutomationStates.Selected) || node.Parent < 0) return false;
+
+        var list = current.Nodes[node.Parent];
+        return list.Role == AutomationRole.List && previous.Find(list.Key) is { } before && before.Value != node.Key;
     }
 
     private static bool HasSameChildren(
@@ -361,7 +373,8 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
     IExpandCollapseProvider,
     IValueProvider,
     ISelectionProvider,
-    ISelectionItemProvider
+    ISelectionItemProvider,
+    IScrollItemProvider
 {
     public const string FrameworkId = "Direct2D";
 
@@ -381,6 +394,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.ValuePattern => Unknown<IValueProvider>(this),
             UiAutomation.SelectionPattern => Unknown<ISelectionProvider>(this),
             UiAutomation.SelectionItemPattern => Unknown<ISelectionItemProvider>(this),
+            UiAutomation.ScrollItemPattern => Unknown<IScrollItemProvider>(this),
             _ => 0,
         };
     }
@@ -398,10 +412,12 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
                 Variant.FromString(node.AutomationId),
             UiAutomation.IsEnabledProperty => Variant.FromBoolean(enabled),
             UiAutomation.HasKeyboardFocusProperty => Variant.FromBoolean(node.Has(AutomationStates.Focused)),
-            UiAutomation.IsKeyboardFocusableProperty =>
-                Variant.FromBoolean(enabled && node.Activate != null && !node.Has(AutomationStates.Unfocusable)),
+            UiAutomation.IsKeyboardFocusableProperty => Variant.FromBoolean(enabled && IsFocusable(node)),
             UiAutomation.HelpTextProperty when node.HelpText != null => Variant.FromString(node.HelpText),
             UiAutomation.FrameworkIdProperty => Variant.FromString(FrameworkId),
+            UiAutomation.ItemStatusProperty when node.Item is { Status.Length: > 0 } item => Variant.FromString(item.Status),
+            UiAutomation.PositionInSetProperty when node.Item != null => Variant.FromInt32(node.Item.Position),
+            UiAutomation.SizeOfSetProperty when node.Item != null => Variant.FromInt32(node.Item.Count),
             _ => Variant.Empty,
         };
     }
@@ -438,11 +454,12 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     nint IRawElementProviderFragment.GetEmbeddedFragmentRoots() => 0;
 
-    // Only text boxes take focus without acting; other widgets would run their action.
+    // Only text boxes, list rows and tiles take focus without acting; other widgets would run their action.
     void IRawElementProviderFragment.SetFocus()
     {
         var node = EnabledNode();
         if (node is { Role: AutomationRole.Edit, Activate: { } focus }) owner.Run(focus);
+        else Request(node, ItemRequest.Focus);
     }
 
     IRawElementProviderFragmentRoot IRawElementProviderFragment.get_FragmentRoot() => owner.Root;
@@ -509,9 +526,15 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     bool ISelectionProvider.get_CanSelectMultiple() => false;
 
-    bool ISelectionProvider.get_IsSelectionRequired() => true;
+    // A combo box always shows a value; a list can have no selection, e.g. after a click below its last row.
+    bool ISelectionProvider.get_IsSelectionRequired() => Node.Role == AutomationRole.ComboBox;
 
-    void ISelectionItemProvider.Select() => Activate(EnabledNode());
+    void ISelectionItemProvider.Select()
+    {
+        var node = EnabledNode();
+        if (node.Item != null) Request(node, ItemRequest.Select);
+        else Activate(node);
+    }
 
     void ISelectionItemProvider.AddToSelection()
     {
@@ -521,8 +544,11 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     void ISelectionItemProvider.RemoveFromSelection()
     {
-        if (Node.Has(AutomationStates.Selected))
-            throw new COMException("A selection is required.", UiAutomation.InvalidOperation);
+        var node = Node;
+        if (!node.Has(AutomationStates.Selected)) return;
+        if (node.Item == null) throw new COMException("A selection is required.", UiAutomation.InvalidOperation);
+
+        Request(node, ItemRequest.Deselect);
     }
 
     bool ISelectionItemProvider.get_IsSelected() => Node.Has(AutomationStates.Selected);
@@ -534,8 +560,10 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
         if (index < 0) return null;
 
         var parent = tree.Nodes[index].Parent;
-        return parent >= 0 && tree.Nodes[parent].Role == AutomationRole.ComboBox ? owner.Element(tree, parent) : null;
+        return parent >= 0 && Supports(tree.Nodes[parent], UiAutomation.SelectionPattern) ? owner.Element(tree, parent) : null;
     }
+
+    void IScrollItemProvider.ScrollIntoView() => Request(Node, ItemRequest.ScrollIntoView);
 
     internal static ToggleState ToggleStateOf(AutomationNode node) =>
         node.Has(AutomationStates.Checked) ? ToggleState.On : ToggleState.Off;
@@ -558,11 +586,13 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.ExpandCollapsePattern => role == AutomationRole.ComboBox ||
                                                   node.Has(AutomationStates.Expandable),
             UiAutomation.ValuePattern => role is AutomationRole.Edit or AutomationRole.ComboBox,
-            UiAutomation.SelectionPattern => role == AutomationRole.ComboBox,
+            UiAutomation.SelectionPattern => role is AutomationRole.ComboBox or AutomationRole.List,
             UiAutomation.SelectionItemPattern => role == AutomationRole.RadioButton ||
+                                                 node.Item != null ||
                                                  role == AutomationRole.ListItem &&
                                                  node.Activate != null &&
                                                  !node.Has(AutomationStates.Checkable),
+            UiAutomation.ScrollItemPattern => node.Item != null,
             _ => false,
         };
     }
@@ -576,11 +606,15 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
         AutomationRole.ComboBox => UiAutomation.ComboBoxControl,
         AutomationRole.Edit => UiAutomation.EditControl,
         AutomationRole.ListItem => UiAutomation.ListItemControl,
+        AutomationRole.List => UiAutomation.ListControl,
         AutomationRole.DataItem => UiAutomation.DataItemControl,
         AutomationRole.Menu => UiAutomation.MenuControl,
         AutomationRole.MenuItem => UiAutomation.MenuItemControl,
         _ => throw new ArgumentOutOfRangeException(nameof(role)),
     };
+
+    private static bool IsFocusable(AutomationNode node) =>
+        (node.Activate != null || node.Item != null) && !node.Has(AutomationStates.Unfocusable);
 
     private static unsafe nint Unknown<T>(T provider) => (nint)ComInterfaceMarshaller<T>.ConvertToUnmanaged(provider);
 
@@ -600,5 +634,10 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
     private void Activate(AutomationNode node)
     {
         if (node.Activate is { } activate) owner.Run(activate);
+    }
+
+    private void Request(AutomationNode node, ItemRequest request)
+    {
+        if (node.Item is { } item) owner.Run(() => item.Act(request));
     }
 }

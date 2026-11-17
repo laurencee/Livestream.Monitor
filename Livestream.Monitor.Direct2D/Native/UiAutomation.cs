@@ -100,6 +100,13 @@ internal partial interface ISelectionItemProvider
 }
 
 [GeneratedComInterface]
+[Guid("2360c714-4bf1-4b26-ba65-9b21316127eb")]
+internal partial interface IScrollItemProvider
+{
+    void ScrollIntoView();
+}
+
+[GeneratedComInterface]
 [Guid("56d00bd0-c4f4-433c-a836-1a52a57e0892")]
 internal partial interface IToggleProvider
 {
@@ -221,6 +228,7 @@ internal static partial class UiAutomation
     public const int ExpandCollapsePattern = 10005;
     public const int SelectionItemPattern = 10010;
     public const int TogglePattern = 10015;
+    public const int ScrollItemPattern = 10017;
 
     public const int MenuOpenedEvent = 20003;
     public const int AutomationFocusChangedEvent = 20005;
@@ -235,15 +243,19 @@ internal static partial class UiAutomation
     public const int AutomationIdProperty = 30011;
     public const int HelpTextProperty = 30013;
     public const int FrameworkIdProperty = 30024;
+    public const int ItemStatusProperty = 30026;
     public const int ExpandCollapseStateProperty = 30070;
     public const int IsSelectedProperty = 30079;
     public const int ToggleStateProperty = 30086;
+    public const int PositionInSetProperty = 30152;
+    public const int SizeOfSetProperty = 30153;
 
     public const int ButtonControl = 50000;
     public const int CheckBoxControl = 50002;
     public const int ComboBoxControl = 50003;
     public const int EditControl = 50004;
     public const int ListItemControl = 50007;
+    public const int ListControl = 50008;
     public const int MenuControl = 50009;
     public const int MenuItemControl = 50011;
     public const int RadioButtonControl = 50013;

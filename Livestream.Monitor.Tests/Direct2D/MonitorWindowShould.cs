@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
 using ExternalAPIs.Youtube.Query;
+using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Windows.Monitor;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
@@ -176,5 +177,24 @@ public class MonitorWindowShould
         const int Viewport = 250;
         var next = MonitorWindow.GetVisibleOffset(SelectedTop, SelectedBottom, Offset, Viewport);
         Assert.Equal(Offset, next);
+    }
+
+    // Seven tiles in rows of three: 0 1 2 / 3 4 5 / 6.
+    [Theory]
+    [InlineData(VirtualKey.Right, 2, 3)]
+    [InlineData(VirtualKey.Left, 3, 2)]
+    [InlineData(VirtualKey.Left, 0, 0)]
+    [InlineData(VirtualKey.Right, 6, 6)]
+    [InlineData(VirtualKey.Up, 4, 1)]
+    [InlineData(VirtualKey.Up, 1, 1)]
+    [InlineData(VirtualKey.Down, 1, 4)]
+    [InlineData(VirtualKey.Down, 4, 6)]
+    [InlineData(VirtualKey.Down, 6, 6)]
+    [InlineData(VirtualKey.Up, -1, 0)]
+    public void MoveTheTileSelectionWithTheArrowKeys(int key, int selected, int expected)
+    {
+        const int Count = 7;
+        const int Columns = 3;
+        Assert.Equal(expected, MonitorWindow.ArrowTarget(key, selected, Count, Columns));
     }
 }
