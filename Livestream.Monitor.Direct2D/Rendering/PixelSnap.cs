@@ -28,7 +28,7 @@ internal static class PixelSnap
     /// <summary>
     /// The centre of a line of the thickness across the coordinate, placed so both edges are on the pixel grid.
     /// </summary>
-    public static float LineCentre(float coordinate, float thickness, float scale)
+    public static float CalculateSnappedLineCentre(float coordinate, float thickness, float scale)
     {
         var pixels = DevicePixels(thickness * scale);
         var start = MathF.Round(coordinate * scale - pixels / 2f);

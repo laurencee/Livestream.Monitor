@@ -263,7 +263,7 @@ internal abstract class CanvasWindow : DesktopWindow
         Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
         NeedsPaint |= focusedDialog;
 
-        var present = surfaceChanged || surface.PendingSnapshotPath != null || !IsPresented();
+        var present = surfaceChanged || surface.PendingSnapshotPath != null || !MatchesPresentedFrame();
         if (present)
         {
             painter.BeginFrame(Environment.TickCount64);
@@ -535,7 +535,7 @@ internal abstract class CanvasWindow : DesktopWindow
         }
     }
 
-    private bool IsPresented()
+    private bool MatchesPresentedFrame()
     {
         if (!rendered || !presentedScale.Equals(Scale) || presentedCommands.Count != drawCommands.Count) return false;
 

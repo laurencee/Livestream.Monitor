@@ -38,7 +38,7 @@ internal sealed class DialogPane(
     private int drawnFirstLine;
     private int maximumFirstLine;
     private string input = "";
-    private bool synchronizeInput = true;
+    private bool inputTextNeedsSeeding = true;
     private bool focusRequested = true;
     private bool disposed;
 
@@ -118,10 +118,10 @@ internal sealed class DialogPane(
                 Accept
             );
 
-            if (synchronizeInput)
+            if (inputTextNeedsSeeding)
             {
                 ui.SetValue(InputId, input);
-                synchronizeInput = false;
+                inputTextNeedsSeeding = false;
             }
 
             contentBottom = inputBounds.Bottom;
@@ -260,7 +260,7 @@ internal sealed class DialogPane(
 
     public void Resume()
     {
-        synchronizeInput = true;
+        inputTextNeedsSeeding = true;
         focusRequested = true;
     }
 

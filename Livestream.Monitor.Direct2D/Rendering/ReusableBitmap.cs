@@ -14,7 +14,7 @@ internal sealed class ReusableBitmap(GraphicsDevice graphics) : IDisposable
     private byte[] pixels = [];
     private D2DBitmap? bitmap;
     private int bitmapGeneration;
-    private bool hasImage;
+    private bool hasDecodedPixels;
 
     public int PixelWidth { get; private set; }
     public int PixelHeight { get; private set; }
@@ -27,7 +27,7 @@ internal sealed class ReusableBitmap(GraphicsDevice graphics) : IDisposable
     {
         get
         {
-            if (!hasImage) return null;
+            if (!hasDecodedPixels) return null;
             if (bitmap != null && bitmapGeneration == graphics.Generation) return bitmap;
 
             bitmap?.Dispose();
@@ -41,7 +41,7 @@ internal sealed class ReusableBitmap(GraphicsDevice graphics) : IDisposable
     public unsafe void Load(byte[] encoded, int width, int height)
     {
         Resize(width, height);
-        hasImage = false;
+        hasDecodedPixels = false;
         Revision++;
         try
         {
@@ -59,16 +59,16 @@ internal sealed class ReusableBitmap(GraphicsDevice graphics) : IDisposable
             return;
         }
 
-        hasImage = true;
+        hasDecodedPixels = true;
         if (bitmap != null && bitmapGeneration == graphics.Generation) Upload();
     }
 
     /// <summary>Shows nothing until the next image loads.</summary>
     public void Clear()
     {
-        if (!hasImage) return;
+        if (!hasDecodedPixels) return;
 
-        hasImage = false;
+        hasDecodedPixels = false;
         Revision++;
     }
 

@@ -10,7 +10,7 @@ namespace Livestream.Monitor.Core.Settings;
 /// <summary>Reads current stream keys and the legacy array of Twitch stream IDs.</summary>
 public sealed class ExcludeNotifyJsonConverter : JsonConverter<ObservableList<UniqueStreamKey>>
 {
-    public static bool SaveRequired;
+    public static bool LegacyExclusionsNeedSave;
 
     public override bool HandleNull => true;
 
@@ -40,7 +40,7 @@ public sealed class ExcludeNotifyJsonConverter : JsonConverter<ObservableList<Un
                     JsonTokenType.Number => reader.GetInt64().ToString(CultureInfo.InvariantCulture),
                     _ => throw new JsonException("Invalid notification exclusion."),
                 };
-                SaveRequired = true;
+                LegacyExclusionsNeedSave = true;
                 exclusions.Add(new UniqueStreamKey(TwitchApiClient.API_NAME, id));
             }
         }

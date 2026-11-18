@@ -109,7 +109,7 @@ namespace Livestream.Monitor.Core.Settings
                 }
                 else
                 {
-                    saveSettings = ExcludeNotifyJsonConverter.SaveRequired;
+                    saveSettings = ExcludeNotifyJsonConverter.LegacyExclusionsNeedSave;
                     saveSettings = MigrateSettingsVersion(fullSettingsRaw, saveSettings);
                 }
 
@@ -131,7 +131,7 @@ namespace Livestream.Monitor.Core.Settings
             string ReadSettingsFile()
             {
                 var text = File.ReadAllText(SettingsFileName);
-                ExcludeNotifyJsonConverter.SaveRequired = false;
+                ExcludeNotifyJsonConverter.LegacyExclusionsNeedSave = false;
                 // An empty file, e.g. left by an interrupted save, starts from defaults like a missing one.
                 if (!string.IsNullOrWhiteSpace(text))
                     settings = JsonSerializer.Deserialize<Settings>(text, ExternalAPIs.JsonDefaults.Options);

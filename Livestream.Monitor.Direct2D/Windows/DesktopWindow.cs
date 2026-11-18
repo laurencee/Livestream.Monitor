@@ -19,7 +19,7 @@ internal abstract class DesktopWindow : IDisposable
     private const float ControlFontSize = 12;
     private static readonly Dictionary<nint, DesktopWindow> WindowsByHandle = [];
     private static DesktopWindow[] tickWindows = [];
-    private static bool windowsChanged;
+    private static bool tickWindowListNeedsRebuild;
     private static ExceptionDispatchInfo? failure;
     private static bool registered;
 
@@ -83,7 +83,7 @@ internal abstract class DesktopWindow : IDisposable
         if (Handle == 0) throw new Win32Exception(Marshal.GetLastWin32Error());
 
         WindowsByHandle.Add(Handle, this);
-        windowsChanged = true;
+        tickWindowListNeedsRebuild = true;
         Scale = Win32.GetDpiForWindow(Handle) / (float)Win32.UserDefaultScreenDpi;
         var flags = Win32.SwpNoMove | Win32.SwpNoZOrder | Win32.SwpNoActivate | Win32.SwpFrameChanged;
         Win32.SetWindowPos(
@@ -110,10 +110,10 @@ internal abstract class DesktopWindow : IDisposable
 
     public static void TickAll()
     {
-        if (windowsChanged)
+        if (tickWindowListNeedsRebuild)
         {
             tickWindows = WindowsByHandle.Values.ToArray();
-            windowsChanged = false;
+            tickWindowListNeedsRebuild = false;
         }
 
         foreach (var window in tickWindows)
@@ -212,7 +212,7 @@ internal abstract class DesktopWindow : IDisposable
         IsClosed = true;
         Win32.DestroyWindow(Handle);
         WindowsByHandle.Remove(Handle);
-        windowsChanged = true;
+        tickWindowListNeedsRebuild = true;
         OnClosed();
     }
 
