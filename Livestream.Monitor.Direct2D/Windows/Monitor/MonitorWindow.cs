@@ -125,6 +125,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private long gameSuggestionsDue;
     private long vodQueryDue;
     private bool queryQueued;
+    private string? pageFocusFallback;
     private (UniqueStreamKey Key, bool Removing)? pendingFollowChange;
     private PreviewWindow? preview;
     private int hoveredRow = -1;
@@ -355,6 +356,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             settingsPane.Draw(Ui, SettingsBounds(size));
             if (settingsSlide.IsOpen) Ui.EndFocusScope();
         }
+
+        if (!HasDialog && !KeysGoToSettingsPane && pageFocusFallback is { } fallback && Ui.TryReplaceMissingFocus(fallback, ContentListKey))
+            pageFocusFallback = null;
 
         var feedbackArea = new RectangleF(PointF.Empty, size);
         actionFeedback.Draw(Ui, feedbackArea);
@@ -704,17 +708,20 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Ui.Fill(separator, palette.HeaderRule);
         }
 
+        var listBounds = new RectangleF(x: 0, y: top, width: tableWidth, height: Math.Max(0, size.Height - top));
+        var selectedKey = state.SelectedStream is { } chosen ? RowKey(chosen) : null;
+        Action focusList = () => FocusContentList(MonitorPage.Followed);
+
         if (state.IsContentLoading)
         {
-            var loadingBounds = new RectangleF(x: 0, y: top, width: size.Width, height: size.Height - top);
-            Ui.Spinner(loadingBounds, PanelSlide.NowMilliseconds);
+            Ui.BeginList(id: ContentListKey, name: "Livestreams", bounds: listBounds, selectedKey, focus: focusList);
+            Ui.Spinner(listBounds, PanelSlide.NowMilliseconds);
+            Ui.EndList();
             return;
         }
 
-        var listBounds = new RectangleF(x: 0, y: top, width: tableWidth, height: Math.Max(0, size.Height - top));
         Ui.PushClip(listBounds);
-        var selectedKey = state.SelectedStream is { } chosen ? RowKey(chosen) : null;
-        Ui.BeginList(id: "rows", name: "Livestreams", listBounds, selectedKey);
+        Ui.BeginList(id: ContentListKey, name: "Livestreams", bounds: listBounds, selectedKey, focus: focusList);
 
         // As in WPF, the live image is centred in its column.
         const float LiveImageSize = 15;
@@ -722,8 +729,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         // As in WPF, the selected row fades to the 40% accent once another control takes keyboard focus or the
         // window is no longer active.
-        var selectionActive = Ui is { IsWindowActive: true, HasFocusedWidget: false };
         var listFocused = ListHasFocus;
+        var selectionActive = Ui.IsWindowActive && ListOwnsWidgetFocus;
 
         for (var i = scrollOffset; i < state.Rows.Count && i - scrollOffset <= visible; i++)
         {
@@ -773,7 +780,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
         }
 
-        Ui.EndGroup();
+        Ui.EndList();
         Ui.PopClip();
         scrollBar.Draw(Ui);
     }
@@ -845,6 +852,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         // A queued query has not started yet, but its page shows the loader rather than stale results.
         var loading = state.IsContentLoading || queryQueued;
+        var page = state.Page;
+        var listName = page == MonitorPage.Vods ? "VODs" : "Top Streams";
+        var selectedKey = state.SelectedIndex >= 0 && state.SelectedIndex < ItemCount ? TileKey(state.SelectedIndex) : null;
+        Action focusList = () => FocusContentList(page);
+
         if (loading || state.BrowsingResultIsEmpty)
         {
             var contentBounds = new RectangleF(
@@ -854,6 +866,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 height: size.Height - TileAreaTop - FooterHeight);
 
             scrollBar.Update(RectangleF.Empty, extent: 0, viewport: 1, offset: 0);
+            Ui.BeginList(id: "tiles", name: listName, bounds: contentBounds, selectedKey, focus: focusList, contentKey: ContentListKey);
             if (loading)
             {
                 Ui.Spinner(contentBounds, PanelSlide.NowMilliseconds);
@@ -865,6 +878,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 Ui.Text(message, contentBounds, alignment: TextAlign.Center);
             }
 
+            Ui.EndList();
             return;
         }
 
@@ -880,9 +894,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollBar.Update(barBounds, layout.Extent, layout.Viewport, scrollOffset, TileLineSize);
         var clipBounds = new RectangleF(x: 0, y: TileAreaTop, width: layout.ClipWidth, height: layout.ViewportHeight);
         Ui.PushClip(clipBounds);
-        var listName = state.Page == MonitorPage.Vods ? "VODs" : "Top Streams";
-        var selectedKey = state.SelectedIndex >= 0 && state.SelectedIndex < ItemCount ? TileKey(state.SelectedIndex) : null;
-        Ui.BeginList(id: "tiles", listName, clipBounds, selectedKey);
+        Ui.BeginList(id: "tiles", name: listName, bounds: clipBounds, selectedKey, focus: focusList, contentKey: ContentListKey);
 
         var listFocused = ListHasFocus;
         var firstVisibleRow = (int)(scrollOffset / layout.RowPitch);
@@ -1021,7 +1033,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             Ui.EndGroup();
         }
 
-        Ui.EndGroup();
+        Ui.EndList();
         Ui.PopClip();
         scrollBar.Draw(Ui);
     }
@@ -1343,6 +1355,19 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (provider != null) GetProviderChoices(page).Select(provider);
 
+        if (state.Page != page)
+        {
+            var destinationList = ContentListKeyFor(page);
+            var keepListFocus = Ui.TryTransferListFocus(ContentListKey, destinationList, allowImplicitFocus: ListHasFocus);
+            var launchButton = state.Page == MonitorPage.Vods ? "vod" : "top";
+            var buttonFallback = page == MonitorPage.Followed ? launchButton : "back";
+
+            // UI Automation can focus a page's native input without the pointer message that routes keys to the page.
+            if (settingsPane != null && Ui.HasFocusedInput && !FocusedInputBelongsToSettings) settingsKeyTarget = SettingsKeyTarget.Grid;
+
+            pageFocusFallback = keepListFocus ? destinationList : buttonFallback;
+        }
+
         vodTypeIndex = 0;
         state.Page = page;
         state.PageNumber = 0;
@@ -1500,7 +1525,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         if (settingsPane != null && SettingsBounds(ClientSize).Contains(point)) return;
 
         state.SelectedIndex = HitRow(point);
-        Win32.SetFocus(Handle);
+        if (state.SelectedIndex >= 0) Ui.MoveFocus(ContentListKey);
+        else Win32.SetFocus(Handle);
     }
 
     // The mouse is captured, so a held arrow or dragged thumb keeps following the pointer beyond the window.
@@ -1636,9 +1662,30 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private bool KeysGoToSettingsPane => settingsSlide.IsOpen && settingsKeyTarget == SettingsKeyTarget.Pane;
 
-    // The followed rows or the tiles have the keyboard focus, shown on the selected one, while no drawn widget, text input or
-    // menu item has it and key presses do not go to the settings pane.
-    private bool ListHasFocus => Ui is { HasFocusedWidget: false, MenuHasFocus: false } && !KeysGoToSettingsPane;
+    private string ContentListKey => ContentListKeyFor(state.Page);
+
+    private static string ContentListKeyFor(MonitorPage page) => page switch
+    {
+        MonitorPage.Followed => "rows",
+        MonitorPage.TopStreams => "tiles",
+        _ => "vod.tiles",
+    };
+
+    private bool ListOwnsWidgetFocus => !Ui.HasFocusedWidget || Ui.HasFocus(ContentListKey);
+
+    // The list takes keys while the window routes them to the page and no menu item or other widget has focus.
+    private bool ListHasFocus => !Ui.MenuHasFocus && !KeysGoToSettingsPane && ListOwnsWidgetFocus;
+
+    private void FocusContentList(MonitorPage page)
+    {
+        // UI Automation requests run on the UI thread, after any navigation or dialog that arrived first.
+        if (state.Page != page || HasDialog) return;
+
+        Ui.CloseMenu();
+        settingsKeyTarget = SettingsKeyTarget.Grid;
+        KeepSelectionVisible();
+        Ui.Focus(ContentListKey);
+    }
 
     private bool FocusedInputBelongsToSettings => Ui.FocusedId is { } id && settingsPane?.OwnsInput(id) == true;
 
@@ -1684,7 +1731,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         // Left and Right move between tiles, not rows, and only while the tiles have the focus. Otherwise they are left to the focused widget.
         var tiles = state.Page != MonitorPage.Followed;
-        var arrow = key is VirtualKey.Up or VirtualKey.Down || tiles && !Ui.HasFocusedWidget && key is VirtualKey.Left or VirtualKey.Right;
+        var arrow = key is VirtualKey.Up or VirtualKey.Down || tiles && ListHasFocus && key is VirtualKey.Left or VirtualKey.Right;
         var paging = key is VirtualKey.PageUp or VirtualKey.PageDown or VirtualKey.Home or VirtualKey.End;
         if (!arrow && !paging && key is not (VirtualKey.Enter or VirtualKey.Delete)) return false;
 
@@ -1709,7 +1756,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         KeepSelectionVisible();
 
         // The list takes the keyboard focus from a drawn widget, such as a column header, when the keys select one of its items.
-        if (key is not (VirtualKey.Enter or VirtualKey.Delete) && Ui.HasFocusedWidget && state.SelectedIndex >= 0) Ui.ClearFocus();
+        if (key is not (VirtualKey.Enter or VirtualKey.Delete) && state.SelectedIndex >= 0) Ui.Focus(ContentListKey);
         return true;
 
         // The number of items that Page Up and Page Down move the selection by: the visible rows, or the tiles in the whole tile rows that fit.
@@ -1851,7 +1898,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             // The selected row takes the key presses, as after a left click on it.
             if (state.SelectedIndex >= 0)
             {
-                Ui.ClearFocus();
+                Ui.MoveFocus(ContentListKey);
                 settingsKeyTarget = SettingsKeyTarget.Grid;
             }
         }
@@ -1894,7 +1941,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 // As after a click on the item, the list takes the key presses.
                 state.SelectedIndex = index;
                 KeepVisible(index);
-                Ui.ClearFocus();
+                Ui.Focus(ContentListKey);
                 settingsKeyTarget = SettingsKeyTarget.Grid;
                 break;
         }

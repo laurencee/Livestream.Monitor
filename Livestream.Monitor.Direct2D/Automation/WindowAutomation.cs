@@ -208,7 +208,23 @@ internal sealed class WindowAutomation
         if (changed == AutomationStates.None && !valueChanged && !controlsChanged) return;
 
         var element = new ElementProvider(this, after.Key);
-        if (valueChanged) RaiseValueChanged(element, before.Value ?? "", after.Value ?? "");
+        if (valueChanged)
+        {
+            RaiseValueChanged(element, before.Value ?? "", after.Value ?? "");
+            if (before is { Role: AutomationRole.Edit, Window: 0 } && after is { Role: AutomationRole.Edit, Window: 0 })
+            {
+                var hadText = ElementProvider.Supports(before, UiAutomation.TextPattern);
+                var hasText = ElementProvider.Supports(after, UiAutomation.TextPattern);
+
+                if (hadText != hasText)
+                {
+                    var oldValue = Variant.FromBoolean(hadText);
+                    var newValue = Variant.FromBoolean(hasText);
+                    RaisePropertyChanged(element, UiAutomation.IsTextPatternAvailableProperty, oldValue, newValue);
+                }
+            }
+        }
+
         if (controlsChanged) RaiseControllerForChanged(element, after.Controls);
 
         if ((changed & AutomationStates.Checked) != 0 && ElementProvider.Supports(after, UiAutomation.TogglePattern))
@@ -462,6 +478,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
     IToggleProvider,
     IExpandCollapseProvider,
     IValueProvider,
+    ITextProvider,
     ISelectionProvider,
     ISelectionItemProvider,
     IScrollItemProvider
@@ -485,6 +502,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
             UiAutomation.TogglePattern => Unknown<IToggleProvider>(this),
             UiAutomation.ExpandCollapsePattern => Unknown<IExpandCollapseProvider>(this),
             UiAutomation.ValuePattern => Unknown<IValueProvider>(this),
+            UiAutomation.TextPattern => Unknown<ITextProvider>(this),
             UiAutomation.SelectionPattern => Unknown<ISelectionProvider>(this),
             UiAutomation.SelectionItemPattern => Unknown<ISelectionItemProvider>(this),
             UiAutomation.ScrollItemPattern => Unknown<IScrollItemProvider>(this),
@@ -574,15 +592,48 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
 
     nint IRawElementProviderFragment.GetEmbeddedFragmentRoots() => 0;
 
-    // Only text boxes, list rows and tiles take focus without acting; other widgets would run their action.
+    // Only text boxes, page lists and their items take focus without invoking a command.
     void IRawElementProviderFragment.SetFocus()
     {
         var node = EnabledNode();
-        if (node is { Role: AutomationRole.Edit, Activate: { } focus }) owner.Run(focus);
+        if (node is { Role: AutomationRole.Edit or AutomationRole.List, Activate: { } focus }) owner.Run(focus);
         else Request(node, ItemRequest.Focus);
     }
 
     IRawElementProviderFragmentRoot IRawElementProviderFragment.get_FragmentRoot() => owner.Root;
+
+    nint ITextProvider.GetSelection() => 0;
+
+    nint ITextProvider.GetVisibleRanges()
+    {
+        var range = TextDocument();
+        var pointer = Unknown<ITextRangeProvider>(range);
+
+        try
+        {
+            return UiAutomation.CreateUnknownArray([pointer]);
+        }
+        finally
+        {
+            Marshal.Release(pointer);
+        }
+    }
+
+    ITextRangeProvider ITextProvider.RangeFromChild(IRawElementProviderSimple? child) =>
+        throw new ArgumentException("The input has no text children.", nameof(child));
+
+    ITextRangeProvider ITextProvider.RangeFromPoint(UiaPoint point) => TextDocument();
+
+    ITextRangeProvider ITextProvider.get_DocumentRange() => TextDocument();
+
+    SupportedTextSelection ITextProvider.get_SupportedTextSelection() => SupportedTextSelection.None;
+
+    private DrawnTextRange TextDocument()
+    {
+        if (!Supports(Node, UiAutomation.TextPattern)) throw NotAvailable();
+
+        return new DrawnTextRange(owner, key);
+    }
 
     void IInvokeProvider.Invoke() => Activate(EnabledNode());
 
@@ -707,6 +758,7 @@ internal sealed partial class ElementProvider(WindowAutomation owner, string key
                                                   node.Has(AutomationStates.Expandable),
             // A shown native text input supplies its own Value and Text patterns.
             UiAutomation.ValuePattern => role == AutomationRole.ComboBox || role == AutomationRole.Edit && node.Window == 0,
+            UiAutomation.TextPattern => role == AutomationRole.Edit && node.Window == 0 && string.IsNullOrEmpty(node.Value),
             UiAutomation.SelectionPattern => role is AutomationRole.ComboBox or AutomationRole.List,
             UiAutomation.SelectionItemPattern => role == AutomationRole.RadioButton ||
                                                  node.Item != null ||

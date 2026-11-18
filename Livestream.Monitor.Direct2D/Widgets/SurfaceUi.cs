@@ -63,8 +63,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public uint TitleBarColor => IsWindowActive ? Palette.TitleBar : Palette.InactiveChrome;
 
-    /// <summary>True while a widget or text input has keyboard focus, so a list's selection is shown inactive.</summary>
+    /// <summary>True while a drawn widget or native text input has the keyboard focus.</summary>
     public bool HasFocusedWidget => focused != null || HasFocusedInput;
+    public bool HasFocus(string id) => focused == id;
     public bool HasFocusIn(string idPrefix) => focused?.StartsWith(idPrefix, StringComparison.Ordinal) == true;
     public bool HasMenu => menu != null;
 
@@ -244,13 +245,36 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     /// <summary>
-    /// Starts a list of rows or tiles, ended with <see cref="EndGroup"/>. Unlike other elements, it stays exposed while
-    /// partly covered, as its uncovered items do. The selected key is the key of its selected item, drawn or not.
+    /// Starts a list of rows or tiles, ended with <see cref="EndList"/>. Unlike other elements, it stays exposed while
+    /// partly covered, and so do its uncovered items. The selected key is the key of its selected item, drawn or not.
+    /// A content key can distinguish lists that share an automation id.
     /// </summary>
-    public void BeginList(string id, string name, RectangleF bounds, string? selectedKey)
+    public void BeginList(
+        string id,
+        string name,
+        RectangleF bounds,
+        string? selectedKey,
+        Action focus,
+        string? contentKey = null)
     {
-        var list = AddNode(id, AutomationRole.List, name, bounds, value: selectedKey, partlyCoverable: true);
+        var list = AddNode(id, AutomationRole.List, name, bounds, value: selectedKey, activate: focus, contentKey: contentKey, partlyCoverable: true);
         automationGroups.Push(list < 0 ? HiddenGroup : list);
+        if (list < 0) return;
+
+        var key = automation[list].Key;
+        widgets.Add(new Widget(Id: key, Bounds: RectangleF.Empty, Action: focus, Focusable: true, RadioGroup: null, FocusOnly: true));
+    }
+
+    public void EndList()
+    {
+        var index = automationGroups.Pop();
+        if (index == HiddenGroup) return;
+
+        var list = automation[index];
+        if (focused != list.Key || MenuHasFocus || list.Value is { } selected && automationKeys.ContainsKey(selected)) return;
+
+        automation[index] = list with { States = AutomationStates.Focused };
+        DrawFocus(list.Key, list.Bounds);
     }
 
     public void EndGroup() => automationGroups.Pop();
@@ -1124,11 +1148,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
             // The focus moves on and closes an open list without a choice, as WPF closes a combo box list that loses the focus.
             menu = null;
-            focused = stops[index].Id;
-            focusVisible = true;
-
-            if (inputs.TryGetValue(focused, out var nextInput)) FocusInput(focused, nextInput);
-            else Win32.SetFocus(owner.Handle);
+            var stop = stops[index];
+            if (stop.FocusOnly) stop.Action();
+            else Focus(stop.Id);
 
             return true;
         }
@@ -1152,7 +1174,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         if (key is VirtualKey.Enter or VirtualKey.Space && focused != null && menu == null)
         {
             var widget = widgets.Find(value => value.Id == focused);
-            if (key == VirtualKey.Space && widget is { Step: not null }) return false;
+            if (widget is { FocusOnly: true } || key == VirtualKey.Space && widget is { Step: not null }) return false;
 
             widget?.Action();
             return widget != null;
@@ -1401,6 +1423,47 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var visible = focusVisible;
         Focus(id);
         focusVisible = visible;
+    }
+
+    /// <summary>Moves list focus to a new page's list while leaving native keyboard focus on the window.</summary>
+    public bool TryTransferListFocus(string sourceKey, string destinationKey, bool allowImplicitFocus)
+    {
+        if (focused != sourceKey)
+        {
+            if (!allowImplicitFocus || HasFocusedWidget) return false;
+
+            var tree = Automation;
+            var selected = tree.Find(sourceKey)?.Value;
+            if (selected == null || tree.Find(selected)?.Item == null) return false;
+        }
+
+        focused = destinationKey;
+        return true;
+    }
+
+    /// <summary>Restores focus after navigation and returns true when no replacement is still needed.</summary>
+    public bool TryReplaceMissingFocus(string preferred, string alternate)
+    {
+        if (focused == null || FocusedWidget() != null) return true;
+
+        var index = automation.FindIndex(node => node.Key == preferred && !node.Has(AutomationStates.Disabled));
+        if (index < 0) index = automation.FindIndex(node => node.Key == alternate);
+        if (index < 0) return false;
+
+        var node = automation[index];
+        var focusIndex = index;
+        if (node is { Role: AutomationRole.List, Value: { } selection })
+        {
+            var selected = automation.FindIndex(index + 1, item => item.Key == selection && item.Parent == index);
+            if (selected >= 0) focusIndex = selected;
+        }
+
+        if (IsWindowActive) MoveFocus(node.Key);
+        else focused = node.Key;
+
+        var target = automation[focusIndex];
+        automation[focusIndex] = target with { States = target.States | AutomationStates.Focused };
+        return true;
     }
 
     public void Focus(string id)
@@ -1804,8 +1867,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     /// <summary>
-    /// A clickable widget; one that is not focusable leaves the focus where it was and is no tab stop. A combo box steps
-    /// to its next (1) or previous (-1) choice without opening.
+    /// A widget; one that is not focusable leaves the focus where it was and is no tab stop. A focus-only widget takes focus
+    /// without handling clicks or activation keys. A combo box steps to its next (1) or previous (-1) choice without opening.
     /// </summary>
     private sealed record Widget(
         string Id,
@@ -1813,7 +1876,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action Action,
         bool Focusable,
         string? RadioGroup,
-        Action<int>? Step = null);
+        Action<int>? Step = null,
+        bool FocusOnly = false);
 
     internal sealed record ToolTipRegion(string Id, RectangleF Bounds, string Text);
 

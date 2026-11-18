@@ -139,6 +139,72 @@ internal partial interface IValueProvider
     bool get_IsReadOnly();
 }
 
+[GeneratedComInterface]
+[Guid("3589c92c-63f3-4367-99bb-ada653b77cf2")]
+internal partial interface ITextProvider
+{
+    nint GetSelection();
+    nint GetVisibleRanges();
+    ITextRangeProvider RangeFromChild(IRawElementProviderSimple? child);
+    ITextRangeProvider RangeFromPoint(UiaPoint point);
+    ITextRangeProvider get_DocumentRange();
+    SupportedTextSelection get_SupportedTextSelection();
+}
+
+[GeneratedComInterface]
+[Guid("5347ad7b-c355-46f8-aff5-909033582f63")]
+internal partial interface ITextRangeProvider
+{
+    ITextRangeProvider Clone();
+    [return: MarshalAs(UnmanagedType.Bool)]
+    bool Compare(ITextRangeProvider? range);
+    int CompareEndpoints(TextRangeEndpoint endpoint, ITextRangeProvider? target, TextRangeEndpoint targetEndpoint);
+    void ExpandToEnclosingUnit(TextUnit unit);
+    ITextRangeProvider? FindAttribute(int attribute, Variant value, [MarshalAs(UnmanagedType.Bool)] bool backward);
+    ITextRangeProvider? FindText(
+        [MarshalAs(UnmanagedType.BStr)] string text,
+        [MarshalAs(UnmanagedType.Bool)] bool backward,
+        [MarshalAs(UnmanagedType.Bool)] bool ignoreCase);
+    Variant GetAttributeValue(int attribute);
+    nint GetBoundingRectangles();
+    IRawElementProviderSimple GetEnclosingElement();
+    [return: MarshalAs(UnmanagedType.BStr)]
+    string GetText(int maxLength);
+    int Move(TextUnit unit, int count);
+    int MoveEndpointByUnit(TextRangeEndpoint endpoint, TextUnit unit, int count);
+    void MoveEndpointByRange(TextRangeEndpoint endpoint, ITextRangeProvider? target, TextRangeEndpoint targetEndpoint);
+    void Select();
+    void AddToSelection();
+    void RemoveFromSelection();
+    void ScrollIntoView([MarshalAs(UnmanagedType.Bool)] bool alignToTop);
+    nint GetChildren();
+}
+
+internal enum SupportedTextSelection
+{
+    None = 0,
+}
+
+internal enum TextRangeEndpoint
+{
+    Start = 0,
+    End = 1,
+}
+
+internal enum TextUnit
+{
+    Character = 0,
+    Format = 1,
+    Word = 2,
+    Line = 3,
+    Paragraph = 4,
+    Page = 5,
+    Document = 6,
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal readonly record struct UiaPoint(double X, double Y);
+
 [Flags]
 internal enum ProviderOptions
 {
@@ -188,9 +254,10 @@ internal readonly struct Variant
     private const ushort Int32Type = 3;
     private const ushort StringType = 8;
     private const ushort BooleanType = 11;
+    private const ushort UnknownType = 13;
 
     // VT_ARRAY | VT_UNKNOWN: a SAFEARRAY of IUnknown pointers.
-    private const ushort UnknownArrayType = 0x2000 | 13;
+    private const ushort UnknownArrayType = 0x2000 | UnknownType;
 
     // VARIANT_TRUE: all bits set in the 16-bit boolean.
     private const short VariantTrue = -1;
@@ -215,6 +282,8 @@ internal readonly struct Variant
     public static Variant FromBoolean(bool flag) => new(BooleanType, flag ? VariantTrue : 0);
 
     public static Variant FromString(string text) => new(StringType, Marshal.StringToBSTR(text));
+
+    public static Variant FromUnknown(nint unknown) => new(UnknownType, unknown);
 
     /// <summary>Takes ownership of a SAFEARRAY of IUnknown pointers, such as one from <see cref="UiAutomation.CreateUnknownArray"/>.</summary>
     public static Variant FromUnknownArray(nint array) => new(UnknownArrayType, array);
@@ -254,6 +323,7 @@ internal static partial class UiAutomation
     public const int ValuePattern = 10002;
     public const int ExpandCollapsePattern = 10005;
     public const int SelectionItemPattern = 10010;
+    public const int TextPattern = 10014;
     public const int TogglePattern = 10015;
     public const int ScrollItemPattern = 10017;
 
@@ -272,6 +342,7 @@ internal static partial class UiAutomation
     public const int HelpTextProperty = 30013;
     public const int FrameworkIdProperty = 30024;
     public const int ItemStatusProperty = 30026;
+    public const int IsTextPatternAvailableProperty = 30040;
     public const int ValueValueProperty = 30045;
     public const int ExpandCollapseStateProperty = 30070;
     public const int IsSelectedProperty = 30079;
@@ -293,6 +364,7 @@ internal static partial class UiAutomation
     public const int DataItemControl = 50029;
 
     private const ushort VariantInt32 = 3;
+    private const ushort VariantDouble = 5;
     private const ushort VariantUnknown = 13;
 
     /// <summary>Answers WM_GETOBJECT with the window's root provider; a zero provider releases the window's.</summary>
@@ -305,6 +377,9 @@ internal static partial class UiAutomation
 
     [LibraryImport("UIAutomationCore.dll")]
     public static partial int UiaHostProviderFromHwnd(nint window, out nint provider);
+
+    [LibraryImport("UIAutomationCore.dll")]
+    public static partial int UiaGetReservedNotSupportedValue(out nint value);
 
     /// <summary>True while any client on the desktop listens for events, so a provider can skip raising them otherwise.</summary>
     [LibraryImport("UIAutomationCore.dll")]
@@ -345,6 +420,9 @@ internal static partial class UiAutomation
 
         return array;
     }
+
+    /// <summary>Returns an empty SAFEARRAY of VT_R8 owned by the caller.</summary>
+    public static nint CreateEmptyDoubleArray() => SafeArrayCreateVector(VariantDouble, lowerBound: 0, count: 0);
 
     /// <summary>A SAFEARRAY of IUnknown pointers, owned by the caller; the array adds its own references.</summary>
     public static unsafe nint CreateUnknownArray(ReadOnlySpan<nint> unknowns)

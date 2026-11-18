@@ -440,6 +440,7 @@ public sealed class SurfaceUiShould : IDisposable
     public void NameTheInputAndHostItsElementOnTheNativeInputFocusedFromItsPlaceholder()
     {
         const string Placeholder = "add livestream...";
+        var textPattern = System.Windows.Automation.TextPattern.Pattern.Id;
         DrawInput();
         var drawn = Assert.IsType<AutomationNode>(ui.Automation.Find("add"));
 
@@ -447,6 +448,8 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.Equal("New channel", drawn.Name);
         Assert.Equal(Placeholder, drawn.HelpText);
         Assert.Equal(0, drawn.Window);
+        Assert.True(ElementProvider.Supports(drawn, textPattern));
+        Assert.False(ElementProvider.Supports(drawn with { Value = "channel" }, textPattern));
         ui.MouseDown(new PointF(20, 20));
         ui.MouseUp(new PointF(20, 20));
 
@@ -462,6 +465,7 @@ public sealed class SurfaceUiShould : IDisposable
         var hosted = Assert.IsType<AutomationNode>(ui.Automation.Find("add"));
         Assert.Equal("New channel", hosted.Name);
         Assert.NotEqual(0, hosted.Window);
+        Assert.False(ElementProvider.Supports(hosted, textPattern));
 
         void DrawInput()
         {
@@ -529,6 +533,86 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.True(ui.Automation.Find("pane.close")?.Has(AutomationStates.Focused));
     }
 
+    [Fact]
+    public void TabBetweenAnInputAndAnEmptyListInBothDirections()
+    {
+        const string ListKey = "vod.tiles";
+        DrawInputAndList();
+        ui.Focus("filter");
+
+        Assert.True(ui.Key(VirtualKey.Tab, shift: false));
+        DrawInputAndList();
+        var list = Assert.IsType<AutomationNode>(ui.Automation.Find(ListKey));
+        Assert.Equal("tiles", list.AutomationId);
+        Assert.True(list.Has(AutomationStates.Focused));
+        Assert.False(ui.Key(VirtualKey.Enter, shift: false));
+
+        Assert.True(ui.Key(VirtualKey.Tab, shift: true));
+        Assert.True(ui.HasFocusedInput);
+
+        void DrawInputAndList()
+        {
+            ui.Begin(palette, viewport);
+            var filter = new RectangleF(x: 10, y: 10, width: 90, height: 24);
+            var bounds = new RectangleF(x: 10, y: 40, width: 300, height: 200);
+            ui.Input("filter", "Filter", "Name...", filter);
+            ui.BeginList(id: "tiles", name: "VODs", bounds, selectedKey: null, focus: () => ui.Focus(ListKey), contentKey: ListKey);
+            ui.EndList();
+            ui.End();
+        }
+    }
+
+    [Fact]
+    public void RestoreFocusToTheSelectedItemInAReplacementList()
+    {
+        const string ListId = "rows";
+        const string RowKey = "row:twitch:shroud";
+        ui.Focus("tiles");
+        ui.Begin(palette, viewport);
+        var list = new RectangleF(x: 10, y: 10, width: 300, height: 240);
+        var row = list with { Height = 24 };
+        ui.BeginList(id: ListId, name: "Livestreams", bounds: list, selectedKey: RowKey, focus: () => ui.Focus(ListId));
+        ui.BeginGroup(id: "row.0", AutomationRole.DataItem, name: "shroud", row, AutomationStates.Selected, key: RowKey);
+        ui.EndGroup();
+        ui.EndList();
+
+        Assert.True(ui.TryReplaceMissingFocus(preferred: "covered", alternate: ListId));
+        ui.End();
+
+        Assert.Equal(ListId, ui.FocusedId);
+        var tree = ui.Automation;
+        Assert.True(tree.Find(RowKey)?.Has(AutomationStates.Focused));
+        Assert.False(tree.Find(ListId)?.Has(AutomationStates.Focused));
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    public void TransferImplicitListFocusOnlyForADrawnSelection(bool drawItem, bool allowImplicitFocus, bool transfers)
+    {
+        const string RowKey = "row:twitch:shroud";
+        ui.ClearFocus();
+        ui.Begin(palette, viewport);
+        var bounds = new RectangleF(x: 10, y: 10, width: 300, height: 240);
+        ui.BeginList(id: "rows", name: "Livestreams", bounds, selectedKey: RowKey, focus: () => ui.Focus("rows"));
+
+        if (drawItem)
+        {
+            var row = bounds with { Height = 24 };
+            var states = AutomationStates.Selected | AutomationStates.Focused;
+            var item = new AutomationItem(Position: 1, Count: 1, Status: "", Act: _ => { });
+            ui.BeginGroup(id: "row.0", AutomationRole.DataItem, name: "shroud", row, states, key: RowKey, item: item);
+            ui.EndGroup();
+        }
+
+        ui.EndList();
+        ui.End();
+
+        Assert.Equal(transfers, ui.TryTransferListFocus("rows", "tiles", allowImplicitFocus));
+        Assert.Equal(transfers ? "tiles" : null, ui.FocusedId);
+    }
+
     // Widgets in drawing order: a toolbar button, then a pane's close and save buttons inside the focus scope.
     private void DrawPaneBesideToolbar()
     {
@@ -537,6 +621,9 @@ public sealed class SurfaceUiShould : IDisposable
         var save = new RectangleF(x: 300, y: 50, width: 60, height: 24);
         ui.Begin(palette, viewport);
         ui.Button(id: "toolbar", text: "Toolbar", bounds: toolbar, action: () => { });
+        var list = new RectangleF(x: 10, y: 40, width: 190, height: 200);
+        ui.BeginList(id: "rows", name: "Livestreams", bounds: list, selectedKey: null, focus: () => ui.Focus("rows"));
+        ui.EndList();
         ui.BeginFocusScope();
         ui.Button(id: "pane.close", text: "Close", bounds: close, action: () => { });
         ui.Button(id: "pane.save", text: "Save", bounds: save, action: () => { });
@@ -828,11 +915,11 @@ public sealed class SurfaceUiShould : IDisposable
         ui.Button(id: "covered", text: "Covered", coveredButton, action: () => { });
         ui.Button(id: "add", text: "+", addButton, action: () => { }, enabled: false);
         const string RowKey = "row:twitch:shroud";
-        ui.BeginList(id: "rows", name: "Livestreams", list, selectedKey: RowKey);
+        ui.BeginList(id: "rows", name: "Livestreams", bounds: list, selectedKey: RowKey, focus: () => ui.Focus("rows"));
         ui.BeginGroup(id: "row.0", AutomationRole.DataItem, name: "shroud", row, AutomationStates.Selected, key: RowKey);
         ui.Text(text: "shroud", row);
         ui.EndGroup();
-        ui.EndGroup();
+        ui.EndList();
         ui.End();
         var tree = ui.Automation;
 
