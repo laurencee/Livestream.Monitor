@@ -38,7 +38,8 @@ internal sealed unsafe partial class ToastActivator : IDisposable
         if (result != CallPending) ComObject.Check(result);
     }
 
-    [GeneratedComInterface, Guid("00000001-0000-0000-c000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
+    [Guid("00000001-0000-0000-c000-000000000046"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     internal partial interface IClassFactory
     {
         [PreserveSig] int CreateInstance(nint outer, in Guid iid, out nint instance);
@@ -46,7 +47,7 @@ internal sealed unsafe partial class ToastActivator : IDisposable
     }
 
     // notificationactivationcallback.h in the Windows SDK.
-    [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
+    [GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper, StringMarshalling = StringMarshalling.Utf16)]
     [Guid("53e31837-6600-4a81-9395-75cffe746f94"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     internal partial interface INotificationActivationCallback
     {

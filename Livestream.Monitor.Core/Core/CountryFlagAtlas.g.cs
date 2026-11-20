@@ -5,7 +5,7 @@ namespace Livestream.Monitor.Core;
 
 internal static class CountryFlagAtlas
 {
-    internal const int Columns = 241;
+    internal const int Columns = 128;
     internal const int TileWidth = 16;
     internal const int TileHeight = 12;
     internal const byte NoAlias = 253;

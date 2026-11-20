@@ -49,6 +49,7 @@ internal static class FlagAtlas
             var images = Path.Combine(core, "Images");
             var slots = new Dictionary<string, byte>(StringComparer.Ordinal);
             var tiles = ReadTiles(images, slots);
+            QuantizeColors(tiles);
             var (columns, atlas) = BuildAtlas(tiles, oxipng);
             var index = BuildIndex(images, slots, tiles, columns);
             var imagePath = Path.Combine(images, "CountryFlagAtlas.png");
@@ -154,6 +155,88 @@ internal static class FlagAtlas
         finally
         {
             bitmap.UnlockBits(data);
+        }
+    }
+
+    private static void QuantizeColors(List<Tile> tiles)
+    {
+        // Reserve exact RGBA entries for antialiased edges and transparent atlas padding.
+        HashSet<int> reservedColors = [0];
+        List<int> opaqueSamples = [];
+
+        foreach (var tile in tiles)
+        {
+            foreach (var color in MemoryMarshal.Cast<byte, int>(tile.Pixels.AsSpan()))
+            {
+                if (Color.FromArgb(color).A == byte.MaxValue) opaqueSamples.Add(color);
+                else reservedColors.Add(color);
+            }
+        }
+
+        const int PaletteSize = 256;
+        var capacity = PaletteSize - reservedColors.Count;
+        if (capacity < 0 || capacity == 0 && opaqueSamples.Count > 0) throw new InvalidDataException("Too many translucent colors for the flag palette");
+        if (opaqueSamples.Count == 0) return;
+
+        var opaque = opaqueSamples.ToArray();
+        var palette = BuildPalette(opaque, capacity);
+        var nearest = opaque.Distinct().ToDictionary(color => color, color => NearestColor(Color.FromArgb(color), palette));
+
+        foreach (var tile in tiles)
+            foreach (ref var color in MemoryMarshal.Cast<byte, int>(tile.Pixels.AsSpan()))
+                if (Color.FromArgb(color).A == byte.MaxValue) color = nearest[color];
+
+        static int NearestColor(Color source, Color[] entries) => entries.MinBy(candidate =>
+        {
+            var red = source.R - candidate.R;
+            var green = source.G - candidate.G;
+            var blue = source.B - candidate.B;
+            return red * red + green * green + blue * blue;
+        }).ToArgb();
+    }
+
+    private static Color[] BuildPalette(int[] opaque, int capacity)
+    {
+        // Median cut splits the most widely dispersed, populous box along its widest channel.
+        Func<Color, int>[] channels = [c => c.R, c => c.G, c => c.B];
+        var boxes = new PriorityQueue<(Color[] Colors, Func<Color, int> Channel), long>();
+        Enqueue(opaque.Select(color => Color.FromArgb(color)).ToArray());
+
+        while (boxes.Count < capacity && boxes.TryPeek(out _, out var priority) && priority < 0)
+        {
+            var (colors, channel) = boxes.Dequeue();
+            var sorted = colors.OrderBy(channel).ToArray();
+            var middle = sorted.Length / 2;
+            var boundary = channel(sorted[middle]);
+
+            while (middle > 0 && channel(sorted[middle - 1]) == boundary) middle--;
+            if (middle == 0)
+                while (channel(sorted[middle]) == boundary) middle++;
+
+            Enqueue(sorted[..middle]);
+            Enqueue(sorted[middle..]);
+        }
+
+        var palette = new Color[boxes.Count];
+        var index = 0;
+
+        foreach (var box in boxes.UnorderedItems)
+        {
+            var colors = box.Element.Colors;
+            var red = (int)Math.Round(colors.Average(c => c.R));
+            var green = (int)Math.Round(colors.Average(c => c.G));
+            var blue = (int)Math.Round(colors.Average(c => c.B));
+
+            palette[index++] = Color.FromArgb(red, green, blue);
+        }
+
+        return palette;
+
+        void Enqueue(Color[] colors)
+        {
+            var (channel, range) = channels.Select(channel => (channel, range: colors.Max(channel) - colors.Min(channel))).MaxBy(pair => pair.range);
+
+            boxes.Enqueue((colors, channel), -(long)range * range * colors.Length);
         }
     }
 

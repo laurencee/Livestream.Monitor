@@ -6,6 +6,7 @@ namespace Livestream.Monitor.Direct2D.Native;
 // UI Automation provider interfaces from UIAutomationCore.h, declared in vtable order so source-generated COM can
 // expose managed providers. Interface-typed results are marshalled by the generator; host
 // providers, pattern providers and SAFEARRAYs are returned as raw pointers.
+// IRawElementProviderSimple and ITextRangeProvider also arrive as arguments from UI Automation and need both wrapper directions.
 // https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providerinterfaces
 
 [GeneratedComInterface]
@@ -23,7 +24,7 @@ internal partial interface IRawElementProviderSimple
     nint get_HostRawElementProvider();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("f7063da8-8359-439c-9297-bbc5299a7d87")]
 internal partial interface IRawElementProviderFragment
 {
@@ -42,7 +43,7 @@ internal partial interface IRawElementProviderFragment
     IRawElementProviderFragmentRoot get_FragmentRoot();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("620ce2a5-ab8f-40a9-86cb-de3c75599b58")]
 internal partial interface IRawElementProviderFragmentRoot
 {
@@ -55,21 +56,21 @@ internal partial interface IRawElementProviderFragmentRoot
 /// Lets a fragment root take a child window into its tree: UI Automation merges the provider returned for the window
 /// with the window's own providers, and shows the window only where the fragment places that provider.
 /// </summary>
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("1d5df27c-8947-4425-b8d9-79787bb460b8")]
 internal partial interface IRawElementProviderHwndOverride
 {
     IRawElementProviderSimple? GetOverrideProviderForHwnd(nint window);
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("54fcb24b-e18e-47a2-b4d3-eccbe77599a2")]
 internal partial interface IInvokeProvider
 {
     void Invoke();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("d847d3a5-cab0-4a98-8c32-ecb45c59ad24")]
 internal partial interface IExpandCollapseProvider
 {
@@ -80,7 +81,7 @@ internal partial interface IExpandCollapseProvider
     ExpandCollapseState get_ExpandCollapseState();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("fb8b03af-3bdf-48d4-bd36-1a65793be168")]
 internal partial interface ISelectionProvider
 {
@@ -94,7 +95,7 @@ internal partial interface ISelectionProvider
     bool get_IsSelectionRequired();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("2acad808-b2d4-452d-a407-91ff1ad167b2")]
 internal partial interface ISelectionItemProvider
 {
@@ -110,14 +111,14 @@ internal partial interface ISelectionItemProvider
     IRawElementProviderSimple? get_SelectionContainer();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("2360c714-4bf1-4b26-ba65-9b21316127eb")]
 internal partial interface IScrollItemProvider
 {
     void ScrollIntoView();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("56d00bd0-c4f4-433c-a836-1a52a57e0892")]
 internal partial interface IToggleProvider
 {
@@ -126,7 +127,7 @@ internal partial interface IToggleProvider
     ToggleState get_ToggleState();
 }
 
-[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper, StringMarshalling = StringMarshalling.Utf16)]
 [Guid("c7935180-6fb3-4201-b174-7df73adbf64a")]
 internal partial interface IValueProvider
 {
@@ -139,7 +140,7 @@ internal partial interface IValueProvider
     bool get_IsReadOnly();
 }
 
-[GeneratedComInterface]
+[GeneratedComInterface(Options = ComInterfaceOptions.ManagedObjectWrapper)]
 [Guid("3589c92c-63f3-4367-99bb-ada653b77cf2")]
 internal partial interface ITextProvider
 {

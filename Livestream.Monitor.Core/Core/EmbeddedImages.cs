@@ -7,7 +7,6 @@ namespace Livestream.Monitor.Core
     {
         public const string Live = "Images.Live.png";
         public const string Offline = "Images.Offline.png";
-        public const string TrayIcon = "Images.TrayIcon.ico";
         internal const string FlagAtlas = "Images.CountryFlagAtlas.png";
         internal const string GuernseyFlag = "Images.CountryFlags.gg.png";
 

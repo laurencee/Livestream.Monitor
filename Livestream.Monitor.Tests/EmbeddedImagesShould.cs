@@ -10,8 +10,6 @@ public class EmbeddedImagesShould
     [Theory]
     [InlineData(EmbeddedImages.Live)]
     [InlineData(EmbeddedImages.Offline)]
-    [InlineData(EmbeddedImages.TrayIcon)]
-    [InlineData(EmbeddedImages.FlagAtlas)]
     [InlineData(EmbeddedImages.GuernseyFlag)]
     public void ProvideTheSharedImages(string name)
     {
@@ -19,6 +17,20 @@ public class EmbeddedImagesShould
 
         Assert.NotNull(stream);
         Assert.True(stream.Length > 0);
+    }
+
+    [Fact]
+    public void StoreTheFlagAtlasAsAnIndexedPng()
+    {
+        using var stream = EmbeddedImages.Open(EmbeddedImages.FlagAtlas);
+
+        // IHDR stores the bit depth and color type consecutively after the dimensions.
+        const int BitDepthOffset = 24;
+        const int IndexedColorType = 3;
+        stream.Position = BitDepthOffset;
+
+        Assert.Equal(8, stream.ReadByte());
+        Assert.Equal(IndexedColorType, stream.ReadByte());
     }
 
     [Theory]

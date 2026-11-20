@@ -1,7 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Xml.Linq;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.Monitoring;
@@ -348,16 +347,24 @@ internal sealed class StreamNotifications : IDisposable
             var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             var directory = Path.Combine(localData, "Livestream.Monitor", "Direct2D");
             var path = Path.Combine(directory, "NotificationIcon.ico");
-            using var icon = EmbeddedImages.Open(EmbeddedImages.TrayIcon) ??
-                             throw new FileNotFoundException("The embedded application icon is missing.");
 
             Directory.CreateDirectory(directory);
+            var temporaryPath = Path.Combine(directory, Path.GetRandomFileName());
+            var file = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            try
+            {
+                using (file) ExecutableIcon.WriteTo(file, NativeLibrary.GetMainProgramHandle());
 
-            using var file = File.Create(path);
-            icon.CopyTo(file);
+                File.Move(temporaryPath, path, overwrite: true);
+            }
+            finally
+            {
+                File.Delete(temporaryPath);
+            }
+
             return path;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
         {
             LogFailure(exception);
             return null;
