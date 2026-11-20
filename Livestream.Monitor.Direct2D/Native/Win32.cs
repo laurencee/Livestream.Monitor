@@ -307,6 +307,13 @@ internal static unsafe partial class Win32
     public static partial int GetSystemMetrics(int index);
 
     [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool IsZoomed(nint window);
+
+    [LibraryImport("user32.dll")]
+    public static partial nint MonitorFromRect(in Rect bounds, uint flags);
+
+    [LibraryImport("user32.dll")]
     public static partial nint MonitorFromPoint(Point point, uint flags);
 
     [LibraryImport("user32.dll")]
@@ -316,12 +323,19 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetMonitorInfo(nint monitor, ref MonitorInfoEx info);
 
-    [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool EnumDisplayMonitors(
+    public delegate bool MonitorCallback(
+        nint monitor,
         nint deviceContext,
-        Rect* clip,
-        delegate* unmanaged<nint, nint, Rect*, nint, int> callback,
+        nint bounds,
+        nint data);
+
+    [DllImport("user32.dll", ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool EnumDisplayMonitors(
+        nint deviceContext,
+        nint clip,
+        MonitorCallback callback,
         nint data);
 
     [LibraryImport("user32.dll", EntryPoint = "MessageBoxW", StringMarshalling = StringMarshalling.Utf16)]

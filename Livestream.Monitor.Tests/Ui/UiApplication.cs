@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
+using Livestream.Monitor.Direct2D;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Ui;
@@ -15,8 +16,8 @@ namespace Livestream.Monitor.Tests.Ui;
 /// </summary>
 internal sealed class UiApplication : IDisposable
 {
-    // Written by the test project's build, which builds the frontends in Release for these tests.
-    private const string AppListFileName = "ui-apps.txt";
+    // Written by the test project's build, which builds the application in Release for these tests.
+    private const string AppPathFileName = "ui-app.txt";
     private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
     private static readonly TimeSpan ExitTimeout = TimeSpan.FromSeconds(5);
 
@@ -36,26 +37,22 @@ internal sealed class UiApplication : IDisposable
         }
     }
 
-    public static UiApplication Launch(
-        string executable,
-        string singleInstanceName,
-        UiTestProfile profile,
-        params string[] arguments)
+    public static UiApplication Launch(UiTestProfile profile)
     {
         // A second instance only activates the first and exits, so the test would observe the user's window.
-        if (Mutex.TryOpenExisting(singleInstanceName + Environment.UserName, out var running))
+        if (Mutex.TryOpenExisting(Program.InstanceName + Environment.UserName, out var running))
         {
             running.Dispose();
-            Assert.Fail($"Close the running {Path.GetFileNameWithoutExtension(executable)} before running UI tests.");
+            Assert.Fail("Close the running Livestream Monitor before running UI tests.");
         }
 
-        var start = new ProcessStartInfo(FindExecutable(executable))
+        var executable = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, AppPathFileName)).TrimEnd();
+        var start = new ProcessStartInfo(executable)
         {
             WorkingDirectory = profile.DataDirectory,
             UseShellExecute = false,
+            ArgumentList = { "--data-directory", profile.DataDirectory, "--quiet" },
         };
-
-        foreach (var argument in arguments) start.ArgumentList.Add(argument);
 
         if (Screen.AllScreens.FirstOrDefault(screen => !screen.Primary) is { } secondary)
         {
@@ -64,17 +61,6 @@ internal sealed class UiApplication : IDisposable
         }
 
         return new UiApplication(Process.Start(start));
-
-        static string FindExecutable(string executable)
-        {
-            var listed = File.ReadAllLines(Path.Combine(AppContext.BaseDirectory, AppListFileName));
-            var path = listed.FirstOrDefault(line => IsExecutable(line, executable));
-            var missing = $"{executable} is not in {AppListFileName}; build the tests.";
-            return path ?? throw new InvalidOperationException(missing);
-        }
-
-        static bool IsExecutable(string path, string executable) =>
-            Path.GetFileName(path).Equals(executable, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

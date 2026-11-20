@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -327,7 +328,7 @@ public class MonitorWindowStateShould
     [InlineData(true)]
     public async Task ReportWhetherAChannelWasAdded(bool fails)
     {
-        // The window clears the add input only after a successful add, as WPF does.
+        // The window clears the add input only after a successful add.
         var model = Create();
         var failure = new InvalidOperationException("Controlled provider failure");
         var result = fails ? Task.FromException(failure) : Task.CompletedTask;
@@ -478,14 +479,6 @@ public class MonitorWindowStateShould
         Assert.Equal("0", model.GetDisplayedUptime(stream));
     }
 
-    [Theory]
-    [InlineData(0, "0")]
-    [InlineData(93784, "26h 03m 04s")]
-    public void MatchTheWpfUptimeFormat(int seconds, string expected)
-    {
-        Assert.Equal(expected, TimeSpan.FromSeconds(seconds).ToTotalHoursText());
-    }
-
     [Fact]
     public void KeepDisplayedUptimeUntilStreamsRefreshEvenWhenRowsAreRebuilt()
     {
@@ -502,6 +495,33 @@ public class MonitorWindowStateShould
 
         model.StreamsModel.LivestreamsRefreshComplete += Raise.Event<EventHandler>();
         Assert.StartsWith("02h ", model.GetDisplayedUptime(stream));
+
+        const int OverOneDaySeconds = 93784;
+        Assert.Equal("26h 03m 04s", TimeSpan.FromSeconds(OverOneDaySeconds).ToTotalHoursText());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnmuteAStreamFromFreshTopResults(bool duplicateSavedExclusion)
+    {
+        var settings = new Settings();
+        var state = Create(savedSettings: settings);
+        var followed = Stream("channel", "Channel", "twitchtv", online: true, viewers: 5);
+        state.StreamsModel.Livestreams.Add(followed);
+        settings.ToggleStreamMute(followed.UniqueStreamKey);
+        Assert.Equal(followed.UniqueStreamKey, Assert.Single(settings.ExcludeFromNotifying));
+        if (duplicateSavedExclusion) settings.ExcludeFromNotifying.Add(followed.UniqueStreamKey);
+
+        var result = Stream("channel", "Channel", "twitchtv", online: true, viewers: 5);
+        var provider = AuthorizedProvider(topStreams: true);
+        provider.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse { LivestreamModels = [result] });
+        state.Page = MonitorPage.TopStreams;
+        await state.QueryTop(provider, "");
+        state.RebuildRows();
+        settings.ToggleStreamMute(Assert.Single(state.Rows).UniqueStreamKey);
+
+        Assert.Empty(settings.ExcludeFromNotifying);
     }
 
     [Fact]
@@ -509,25 +529,17 @@ public class MonitorWindowStateShould
     {
         var settings = new Settings { ShowOnlineOnly = true };
         var model = Create(savedSettings: settings);
-        model.StreamsModel.Livestreams.AddRange([
-            Stream(id: "one", name: "Example", provider: "twitchtv", online: true, viewers: 5),
-            Stream(id: "two", name: "Example other", provider: "youtube", online: true, viewers: 10),
-            Stream(id: "three", name: "Example offline", provider: "twitchtv", online: false, viewers: 0),
-        ]);
+        var streams = model.StreamsModel.Livestreams;
+        streams.Add(Stream(id: "one", name: "Example", provider: "twitchtv", online: true, viewers: 5));
+        streams.Add(Stream(id: "two", name: "Example other", provider: "youtube", online: true, viewers: 10));
+        streams.Add(Stream(id: "three", name: "Example offline", provider: "twitchtv", online: false, viewers: 0));
+        streams.Add(Stream(id: "channel_handle", name: "Display name", provider: "twitchtv", online: true, viewers: 5));
         model.Filter = "EXAMPLE";
         model.ProviderFilter = "twitchtv";
         model.RebuildRows();
         Assert.Equal("one", Assert.Single(model.Rows).Id);
-    }
 
-    [Fact]
-    public void MatchTheNameFilterAgainstChannelIdsAsWpfDoes()
-    {
-        var model = Create();
-        model.StreamsModel.Livestreams.AddRange([
-            Stream(id: "channel_handle", name: "Display name", provider: "twitchtv", online: true, viewers: 5),
-            Stream(id: "other", name: "Other", provider: "twitchtv", online: true, viewers: 5),
-        ]);
+        // The name filter also matches channel ids.
         model.Filter = "HANDLE";
         model.RebuildRows();
         Assert.Equal("channel_handle", Assert.Single(model.Rows).Id);
@@ -536,7 +548,7 @@ public class MonitorWindowStateShould
     [Theory]
     [InlineData("TARGET", "twitchtv", "TARGET", "twitchtv")]
     [InlineData("missing", "twitchtv", "", "twitchtv")]
-    [InlineData("TARGET", "youtube", "TARGET", FilterModel.AllApiClientsFilterName)]
+    [InlineData("TARGET", "youtube", "TARGET", MonitorWindowState.AllProviders)]
     public void RevealTheLiveTargetByClearingOnlyObstructingFilters(string name, string provider, string expectedName, string expectedProvider)
     {
         var model = Create(savedSettings: new Settings { ShowOnlineOnly = true });
@@ -564,7 +576,8 @@ public class MonitorWindowStateShould
         var model = Create();
         var first = Stream(id: "one", name: "Zulu", provider: "twitchtv", online: true, viewers: 100);
         var second = Stream(id: "two", name: "Alpha", provider: "twitchtv", online: true, viewers: 10);
-        model.StreamsModel.Livestreams.AddRange([first, second]);
+        model.StreamsModel.Livestreams.Add(first);
+        model.StreamsModel.Livestreams.Add(second);
         model.RebuildRows();
         model.SelectedIndex = 0;
         model.SettingsHandler.Settings.LivestreamListSortState = new DataGridSortState
@@ -648,10 +661,10 @@ public class MonitorWindowStateShould
         var model = Create();
         model.Page = MonitorPage.TopStreams;
         var api = AuthorizedProvider(topStreams: true);
-        var oldRequest = new TaskCompletionSource<List<KnownGame>>();
-        var currentGames = new List<KnownGame> { new() { GameName = "Current game" } };
+        var oldRequest = new TaskCompletionSource<List<string>>();
+        var currentGames = new List<string> { "Current game" };
         api.GetKnownGameNames(Filter).Returns(oldRequest.Task, Task.FromResult(currentGames));
-        var published = new List<KnownGame>();
+        var published = new List<string>();
         var oldQuery = model.QueryGameSuggestions(api, Filter, published.AddRange);
 
         if (revisitPage)
@@ -664,7 +677,7 @@ public class MonitorWindowStateShould
             await model.QueryGameSuggestions(api, Filter, published.AddRange);
         }
 
-        oldRequest.SetResult([new KnownGame { GameName = "Stale game" }]);
+        oldRequest.SetResult(["Stale game"]);
         await oldQuery;
 
         if (revisitPage)
@@ -673,7 +686,7 @@ public class MonitorWindowStateShould
             await model.QueryGameSuggestions(api, Filter, published.AddRange);
         }
 
-        Assert.Equal("Current game", Assert.Single(published).GameName);
+        Assert.Equal("Current game", Assert.Single(published));
     }
 
     [Theory]
@@ -691,15 +704,15 @@ public class MonitorWindowStateShould
             api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
         }
 
-        var pending = new TaskCompletionSource<List<KnownGame>>();
+        var pending = new TaskCompletionSource<List<string>>();
         api.GetKnownGameNames(Filter).Returns(pending.Task);
-        var published = new List<KnownGame>();
+        var published = new List<string>();
         var suggestions = model.QueryGameSuggestions(api, Filter, published.AddRange);
 
         if (applyFilter) await model.QueryTop(api, Filter);
         else model.InvalidateGameSuggestions();
 
-        pending.SetResult([new KnownGame { GameName = "Stale game" }]);
+        pending.SetResult(["Stale game"]);
         await suggestions;
 
         Assert.Empty(published);
@@ -749,7 +762,7 @@ public class MonitorWindowStateShould
         var settings = Substitute.For<ISettingsHandler>();
         settings.Settings.Returns(savedSettings ?? new Settings());
         var streams = Substitute.For<IMonitorStreamsModel>();
-        streams.Livestreams.Returns(new ObservableList<LivestreamModel>());
+        streams.Livestreams.Returns(new ObservableCollection<LivestreamModel>());
         return new MonitorWindowState(
             dialogs: dialogs ?? Substitute.For<IUserDialogs>(),
             settingsHandler: settings,

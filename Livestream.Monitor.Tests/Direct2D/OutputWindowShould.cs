@@ -171,13 +171,13 @@ public class OutputWindowShould
         Assert.Equal(shortOutput.Width, longOutput.Width);
     }
 
-    // The WPF output viewport is at most 700 wide and 500 high, below a 30-pixel caption and above a 23-pixel footer;
+    // The output viewport is at most 700 wide and 500 high, below a 30-pixel caption and above a 23-pixel footer;
     // the window is also shown at most 75% as wide as the app and no taller than it. The size the output asks for does
     // not depend on the app, so output that arrived while the app was small is shown in full once the app is enlarged.
     [Theory]
     [InlineData(2000, 2000, 700, 553)]
     [InlineData(800, 400, 600, 400)]
-    public void CapTheOutputWindowAtTheWpfLimitsAndTheAppSize(
+    public void CapTheOutputWindowAtTheViewportLimitsAndTheAppSize(
         float appWidth,
         float appHeight,
         float expectedWidth,

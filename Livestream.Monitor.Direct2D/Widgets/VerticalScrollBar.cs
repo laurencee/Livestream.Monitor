@@ -4,7 +4,7 @@ using Livestream.Monitor.Direct2D.Native;
 namespace Livestream.Monitor.Direct2D.Widgets;
 
 /// <summary>
-/// A vertical scroll bar drawn and behaving as the WPF frontend's MahApps 2.4.11 scroll bar: the arrow buttons and the
+/// A vertical scroll bar with repeating controls. The arrow buttons and the
 /// track either side of the thumb repeat while held, and the thumb is dragged. Positions are in the owner's units,
 /// such as rows or pixels; an arrow steps one line and the track one viewport.
 /// </summary>
@@ -19,7 +19,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
     private const float ArrowHeight = 6;
     private const float ThumbInset = 1;
 
-    // The shortest thumb the MahApps scroll bar draws, measured from a long WPF list.
+    // Minimum thumb length for a long list.
     private const float MinimumThumbLength = 25;
 
     private const uint ArrowColor = 0xFF9D9D9D;
@@ -103,7 +103,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         Arrow(up, Part.LineUp, pointsUp: true);
         Arrow(down, Part.LineDown, pointsUp: false);
 
-        // A dragged thumb stays pressed wherever the pointer goes, as the captured WPF thumb does.
+        // A dragged thumb stays pressed wherever the pointer goes.
         var overlay = palette.IsDark ? White : Black;
         var opacity = pressed == Part.Thumb ? PressedThumbOpacity : hovered == Part.Thumb ? HoveredThumbOpacity : 0;
         var thumbColor = opacity == 0 && !palette.IsDark ? LightRestingColor : Theme.Blend(ThumbColor, overlay, opacity);
@@ -127,7 +127,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
             );
         }
 
-        // A held arrow shows pressed only while the pointer is on it, as a WPF repeat button does.
+        // A held arrow shows pressed only while the pointer is on it.
         void Arrow(RectangleF button, Part part, bool pointsUp)
         {
             var left = button.X + (button.Width - ArrowWidth) / 2;
@@ -148,7 +148,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         pressed = PartAt(point);
         hovered = pressed;
 
-        // As WPF's repeat buttons do, the first step happens on press and the repeats follow after a delay.
+        // The first step happens on press and the repeats follow after a delay.
         if (pressed == Part.Thumb) dragOffset = point.Y - thumb.Top;
         else Step(pressed);
 
@@ -226,7 +226,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
         scrollTo(next);
     }
 
-    // The keyboard repeat delay and rate, converted to milliseconds as WPF's RepeatButton converts them.
+    // The keyboard repeat delay and rate, converted to milliseconds.
     private static (int Delay, int Interval) ReadRepeatTiming()
     {
         const uint GetKeyboardSpeed = 0x000A;

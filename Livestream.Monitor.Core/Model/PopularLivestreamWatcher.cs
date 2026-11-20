@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
@@ -17,12 +16,10 @@ namespace Livestream.Monitor.Model
     {
         private const int PollMs = 60000;
 
-        private static readonly TimeSpan PopularAlertDuration = TimeSpan.FromSeconds(25);
         private readonly ISettingsHandler settingsHandler;
         private readonly INotificationHandler notificationHandler;
         private readonly IApiClientFactory apiClientFactory;
         private readonly ConcurrentDictionary<UniqueStreamKey, DateTimeOffset> notifiedEvents = new();
-        private readonly Action<IMonitorStreamsModel, LivestreamNotification> clickAction;
         private readonly object watchLock = new();
 
         private CancellationTokenSource cancellationTokenSource;
@@ -30,23 +27,11 @@ namespace Livestream.Monitor.Model
         public PopularLivestreamWatcher(
             ISettingsHandler settingsHandler,
             INotificationHandler notificationHandler,
-            Action<LivestreamModel> openStream,
             IApiClientFactory apiClientFactory)
         {
-            ArgumentNullException.ThrowIfNull(openStream);
-
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             this.notificationHandler = notificationHandler ?? throw new ArgumentNullException(nameof(notificationHandler));
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
-
-            clickAction = (model, notification) =>
-            {
-                var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, notification.LivestreamModel));
-                if (livestream != null)
-                    model.SelectedLivestream = livestream;
-                else
-                    openStream(notification.LivestreamModel);
-            };
 
             settingsHandler.Settings.PropertyChanged += (_, args) =>
             {
@@ -143,15 +128,12 @@ namespace Livestream.Monitor.Model
 
                 notifiedEvents[livestreamModel.UniqueStreamKey] = DateTimeOffset.UtcNow.AddHours(1);
 
-                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
                 notificationHandler.AddNotification(new LivestreamNotification()
                 {
                     LivestreamModel = livestreamModel,
                     ImageUrl = livestreamModel.ThumbnailUrls?.Small,
                     Message = livestreamModel.Description,
                     Title = $"[POPULAR {livestreamModel.Viewers:N0} Viewers]\n{livestreamModel.DisplayName}",
-                    Duration = PopularAlertDuration,
-                    ClickAction = clickAction,
                 });
             }
         }

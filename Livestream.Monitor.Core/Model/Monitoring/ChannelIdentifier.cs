@@ -1,5 +1,4 @@
 using System;
-using Livestream.Monitor.Core;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
@@ -7,15 +6,6 @@ namespace Livestream.Monitor.Model.Monitoring
     /// <summary> Unique identifier of a livestream channel </summary>
     public class ChannelIdentifier : IEquatable<ChannelIdentifier>
     {
-        public ChannelIdentifier()
-        {
-            if (!ModelEnvironment.IsDesignMode) throw new InvalidOperationException("Design time only constructor");
-
-            ChannelId = "DesignTimeChannel";
-            ApiClient = new DesignTimeApiClient();
-            ImportedBy = "DesignTime Import";
-        }
-
         public ChannelIdentifier(IApiClient apiClient, string channelId)
         {
             if (string.IsNullOrWhiteSpace(channelId)) throw new ArgumentException("Argument is null or whitespace", nameof(channelId));

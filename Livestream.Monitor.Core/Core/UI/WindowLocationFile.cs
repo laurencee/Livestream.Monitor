@@ -44,7 +44,7 @@ internal static class WindowLocationFile
                 JsonSerializer.Serialize(file, location);
             }
 
-            // Either frontend can read or save placement while the other is running.
+            // Allow concurrent readers while saving window placement.
             File.Move(temporaryPath, FileName, overwrite: true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)

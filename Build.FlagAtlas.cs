@@ -1,17 +1,22 @@
 #:property TargetFramework=net10.0-windows
-#:property UseWPF=true
+#:property UseWindowsForms=true
+#:property ImplicitUsings=disable
 #:property PublishAot=false
 
 // Regenerate the checked-in assets with .NET 10 and OxiPNG 10.0.0.
 
+using System;
 using System.Buffers.Binary;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 internal static class FlagAtlas
 {
@@ -135,13 +140,21 @@ internal static class FlagAtlas
     private static Tile Decode(byte[] png)
     {
         using var stream = new MemoryStream(png, writable: false);
-        const BitmapCreateOptions Options = BitmapCreateOptions.PreservePixelFormat | BitmapCreateOptions.IgnoreColorProfile;
-        var frame = new PngBitmapDecoder(stream, Options, BitmapCacheOption.OnLoad).Frames[0];
-        var bitmap = frame.Format == PixelFormats.Bgra32 ? (BitmapSource)frame : new FormatConvertedBitmap(frame, PixelFormats.Bgra32, null, 0);
-        var stride = bitmap.PixelWidth * BytesPerPixel;
-        var pixels = new byte[bitmap.PixelHeight * stride];
-        bitmap.CopyPixels(pixels, stride, 0);
-        return new Tile(bitmap.PixelWidth, bitmap.PixelHeight, pixels);
+        using var bitmap = new Bitmap(stream, useIcm: false);
+        var bounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+        var data = bitmap.LockBits(bounds, ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        try
+        {
+            var stride = bitmap.Width * BytesPerPixel;
+            var pixels = new byte[bitmap.Height * stride];
+            for (var row = 0; row < bitmap.Height; row++) Marshal.Copy(data.Scan0 + row * data.Stride, pixels, row * stride, stride);
+
+            return new Tile(bitmap.Width, bitmap.Height, pixels);
+        }
+        finally
+        {
+            bitmap.UnlockBits(data);
+        }
     }
 
     private static (int Columns, byte[] Png) BuildAtlas(List<Tile> tiles, string oxipng)
@@ -168,10 +181,19 @@ internal static class FlagAtlas
             }
 
             using var encoded = new MemoryStream();
-            var bitmap = BitmapSource.Create(width, height, 96, 96, PixelFormats.Bgra32, null, pixels, stride);
-            var encoder = new PngBitmapEncoder();
-            encoder.Frames.Add(BitmapFrame.Create(bitmap));
-            encoder.Save(encoded);
+            using var bitmap = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+            var bounds = new Rectangle(0, 0, width, height);
+            var data = bitmap.LockBits(bounds, ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+            try
+            {
+                for (var row = 0; row < height; row++) Marshal.Copy(pixels, row * stride, data.Scan0 + row * data.Stride, stride);
+            }
+            finally
+            {
+                bitmap.UnlockBits(data);
+            }
+
+            bitmap.Save(encoded, ImageFormat.Png);
 
             var png = Optimize(encoded, oxipng);
             var decoded = Decode(png);
@@ -196,7 +218,7 @@ internal static class FlagAtlas
             RedirectStandardError = true,
             CreateNoWindow = true,
         };
-        // WIC adds display metadata. Match the untagged atlas used by the frontends.
+        // Strip display metadata to keep the atlas untagged.
         foreach (var argument in new[] { "-o", "max", "--zopfli", "--strip", "pHYs,sRGB,gAMA", "--stdout", "-" }) start.ArgumentList.Add(argument);
 
         using var process = Process.Start(start) ?? throw new InvalidOperationException("Could not start OxiPNG");

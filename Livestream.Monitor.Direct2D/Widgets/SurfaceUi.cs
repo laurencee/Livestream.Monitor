@@ -15,7 +15,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private const float FontSize = 12;
     private const float InputInset = 4;
 
-    // Placeholder and typed text start this far inside an input box, as in the WPF (MahApps) text boxes.
+    // Placeholder and typed text start this far inside an input box.
     private const float InputTextInset = 8;
     private const float PlaceholderOpacity = 0.6f;
 
@@ -71,7 +71,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public ThemePalette Palette { get; private set; } = null!;
 
-    /// <summary>False while another window is active, when the title bar and border are drawn gray as in WPF.</summary>
+    /// <summary>False while another window is active, when the title bar and border are drawn gray.</summary>
     public bool IsWindowActive { get; set; } = true;
 
     public uint TitleBarColor => IsWindowActive ? Palette.TitleBar : Palette.InactiveChrome;
@@ -83,12 +83,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool HasMenu => menu != null;
 
     /// <summary>
-    /// True while a menu item chosen with the keyboard, or a combo box's current choice, has the focus in its open menu, as in
-    /// WPF, unless a native text input keeps it while its suggestions are browsed.
+    /// True while an item of the open menu has the focus: a menu item chosen with the keyboard, or a combo box's current
+    /// choice. False while a native text input keeps the focus as its suggestions are browsed.
     /// </summary>
     public bool MenuHasFocus => menu is { Selected: >= 0 } && !HasFocusedInput;
 
-    /// <summary>True while an open context menu, or the focused combo box's open list, moves its highlight with Tab, as in WPF.</summary>
+    /// <summary>True while an open context menu, or the focused combo box's open list, moves its highlight with Tab.</summary>
     public bool MenuTakesTab => menu is { IsList: false } || menu is { IsComboBox: true } && menu.Id == focused && !HasFocusedInput;
 
     /// <summary>The automation tree of the last drawn frame; read by UI Automation from its own threads.</summary>
@@ -120,7 +120,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     /// <summary>Measures wrapped text with the same width, size and weight used to draw it.</summary>
     public required Func<string, float, float, FontWeight, float> MeasureWrapped { get; init; }
 
-    /// <summary>The tallest a combo box or drop-down list may be; WPF's default is a third of the primary screen height.</summary>
+    /// <summary>The tallest a combo box or drop-down list may be; the default is a third of the primary screen height.</summary>
     public float ListMaximumHeight { get; set; } = float.MaxValue;
 
     public void Begin(ThemePalette palette, RectangleF bounds, RectangleF? coveredArea = null)
@@ -402,7 +402,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         commands.Add(new DrawCommand { Kind = kind, Bounds = bounds, Color = color });
     }
 
-    // The drop-down arrow of a WPF (MahApps) combo box, centred in the area.
+    // The drop-down arrow of an editable combo box, centred in the area.
     private void DropDownArrow(RectangleF area, uint color)
     {
         const float ArrowWidth = 7;
@@ -452,7 +452,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action action,
         bool close)
     {
-        // As in WPF, the caption buttons cannot take the focus, so clicking one leaves it where it was.
+        // The caption buttons cannot take the focus, so clicking one leaves it where it was.
         Button(id, text: "", bounds, action, chrome: true, name: close ? "Close" : "Minimize", focusable: false);
 
         // The MahApps Windows 10 caption glyphs: a 10-pixel cross and a 10-pixel line, both 1 pixel thick, centred.
@@ -626,7 +626,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         }
         else
         {
-            // As in WPF, a pressed or focused button has a border in the text colour.
             var border = !enabled ? Palette.ControlDisabledBorder
                 : isPressed || focused == id ? Palette.Text
                 : over ? Palette.ControlBorderHover
@@ -636,7 +635,6 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             Border(bounds, border, radius: radius);
         }
 
-        // WPF window commands are drawn at half opacity until the pointer is over them.
         const float CommandTextOpacity = 0.5f;
         var commandText = over ? Palette.TitleText : Theme.Blend(TitleBarColor, Palette.TitleText, CommandTextOpacity);
         var color = enabled
@@ -818,7 +816,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // The bound value can change while the list is open, e.g. when a stream coming online resets the platform filter.
         if (menu is { } list && list.Id == id) list.Current = selectedIndex;
 
-        // As in WPF, an open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
+        // An open list keeps the pointer-over fill, and a focused box keeps the text box's focus border.
         var open = menu?.Id == id;
         var over = enabled && IsPointerOver(bounds);
         var hasFocus = enabled && focused == id;
@@ -1057,13 +1055,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                 }
                 else
                 {
-                    // As in WPF, clicking a disabled item leaves the menu open.
+                    // Clicking a disabled item leaves the menu open.
                     Choose(menu, MenuIndexAt(menu, position));
                 }
             }
             else if (DropDownInputAt(position) is { } inputId)
             {
-                // As in a WPF editable combo box, a press on a drop-down list's own text input keeps the list open.
+                // A press on a drop-down list's own text input keeps the list open.
                 focused = inputId;
                 FocusInput(inputId, inputs[inputId]);
             }
@@ -1107,7 +1105,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
 
     public bool Key(int key, bool shift)
     {
-        // An open menu keeps the arrow keys from a focused radio button, as in WPF.
+        // An open menu keeps the arrow keys from reaching a focused radio button.
         if (!HasFocusedInput && focused != null && menu == null &&
             key is (VirtualKey.Left or VirtualKey.Right or VirtualKey.Up or VirtualKey.Down) &&
             widgets.Find(widget => widget.Id == focused) is { RadioGroup: { } group } selected)
@@ -1177,7 +1175,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             if (index < 0) index = shift ? count - 1 : 0;
             else index = (index + (shift ? count - 1 : 1)) % count;
 
-            // The focus moves on and closes an open list without a choice, as WPF closes a combo box list that loses the focus.
+            // Moving the focus on closes an open list without making a choice.
             menu = null;
             var stop = stops[index];
             if (stop.FocusOnly) stop.Action();
@@ -1201,7 +1199,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             return true;
         }
 
-        // An open menu keeps Space from the focused widget, and a combo box ignores Space, as in WPF.
+        // An open menu keeps Space from reaching the focused widget. A combo box ignores Space.
         if (key is VirtualKey.Enter or VirtualKey.Space && focused != null && menu == null)
         {
             var widget = widgets.Find(value => value.Id == focused);
@@ -1223,7 +1221,10 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return true;
     }
 
-    /// <summary>The row height of an open, overflowing menu with choices at the position, which a touch drag pans as in WPF; null elsewhere.</summary>
+    /// <summary>
+    /// The step by which a touch drag at the position pans the open menu: its row height when the menu overflows and the
+    /// position is on its choices, otherwise null.
+    /// </summary>
     public float? MenuPanStep(PointF position) =>
         menu is { Scrolls: true } scrolling && MenuIndexAt(scrolling, position) >= 0 ? scrolling.RowHeight : null;
 
@@ -1243,9 +1244,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public void CloseMenu() => menu = null;
 
     /// <summary>
-    /// Closes an open menu for a press at the position that the drawn widgets do not take, such as on a native control or
-    /// with the middle or a side button, as a press outside a WPF menu does; a press on an open list's own control, such as
-    /// its combo box or a drop-down list's text input, keeps it open, as in a WPF combo box. True when a menu closed.
+    /// Closes an open menu when a press at the position is not taken by the drawn widgets, e.g. a press on a native control
+    /// or with the middle or a side button. A press on an open list's own control, e.g. its combo box or a drop-down list's
+    /// text input, keeps the list open. True when a menu closed.
     /// </summary>
     public bool CloseMenuForPress(PointF position)
     {
@@ -1296,7 +1297,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     // Chooses an enabled menu item; a menu that does not stay open closes first. Choosing a combo box's current value
-    // changes nothing, as in WPF.
+    // changes nothing.
     private void Choose(MenuState active, int index)
     {
         if (index < 0 || index >= active.Choices.Count || !active.Choices[index].Enabled) return;
@@ -1310,8 +1311,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         active.Changed(index);
     }
 
-    // The enabled choice the arrow keys move the highlight to, or -1 for none. A context menu wraps past its ends, as WPF's
-    // does, and Up with nothing highlighted starts at its last choice; a list stops at its ends and starts at its first.
+    // The enabled choice that the arrow keys move the highlight to, or -1 for none. A context menu wraps past its ends, and
+    // Up with nothing highlighted starts at its last choice. A list stops at its ends and starts at its first choice.
     private static int NextChoice(MenuState active, int direction)
     {
         var wraps = !active.IsList;
@@ -1408,9 +1409,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     /// <summary>
-    /// Opens the focused combo box, or closes its list choosing the highlighted item, as F4, Alt+Down and Alt+Up do in WPF.
-    /// A focused text input does the same with its drop-down button's list, keeping the focus, as the text box of a WPF
-    /// editable combo box does. False when neither has the focus, the button is unavailable or another widget's menu is open.
+    /// On F4, Alt+Down or Alt+Up: opens the focused combo box, or closes its list and chooses the highlighted item.
+    /// A focused text input does the same with its drop-down button's list, keeping the focus.
+    /// False when neither has the focus, the button is unavailable or another widget's menu is open.
     /// </summary>
     public bool ToggleFocusedComboBox()
     {
@@ -1611,7 +1612,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         return width;
     }
 
-    // Like a WPF menu, a menu is as wide as its widest choice, and a list is at least as wide as its control.
+    // A menu is as wide as its widest choice, and a list is at least as wide as its control.
     private float MenuWidth(MenuStyle style, IReadOnlyList<MenuChoice> choices, float minimumWidth)
     {
         var widest = 0f;
@@ -1743,8 +1744,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         const float EdgeMargin = 5;
         var insets = 2 * active.Style.Inset;
 
-        // A list is limited to WPF's combo box list height and to the larger space below or above its control, which it
-        // does not cover; a context menu shows up to ten rows anywhere in the window. Either shows whole rows only.
+        // A list is limited to the maximum combo box list height and to the larger of the spaces below and above its control,
+        // which it does not cover. A context menu shows up to ten rows anywhere in the window. Both show whole rows only.
         var limit = active.IsList ? ListMaximumHeight : MaximumVisibleMenuRows * active.RowHeight + insets;
         var spaceBelow = viewport.Bottom - active.Anchor.Bottom - 1;
         var spaceAbove = active.Anchor.Top - viewport.Top - EdgeMargin;
@@ -1756,7 +1757,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // Once more rows fit, as when the window grows, the first shown choice moves up rather than leaving rows empty.
         active.Offset = Math.Clamp(active.Offset, 0, active.Choices.Count - rows);
 
-        // As in WPF, a list that overflows gets a scroll bar beside its choices and stays as wide as its control, clipping
+        // A list that overflows gets a scroll bar beside its choices and stays as wide as its control, clipping
         // longer choices; a context menu widens by the bar instead.
         active.Scrolls = active.Choices.Count > rows;
         if (active.IsStandalone)
@@ -1843,15 +1844,15 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             var textBounds = row with { X = left + style.TextInset, Width = textWidth };
             var color = choice.Enabled ? Palette.Text : disabledText;
 
-            // A checked item's tick is centred in its own column, so labels line up whether or not an item is ticked,
-            // and uses the accent, as WPF menu items do.
+            // A checked item's tick uses the accent and is centred in its own column, so labels line up whether or not an item
+            // is ticked.
             if (choice.Checked)
             {
                 var checkBounds = row with { X = row.X + ContextMenuPadding, Width = MenuCheckWidth };
                 Icon(text: "✓", checkBounds, choice.Enabled ? Palette.MenuAccent : disabledText);
             }
 
-            // As in WPF, a list clips a choice longer than its control; a context menu is as wide as its longest item.
+            // A list clips a choice longer than its control; a context menu is as wide as its longest item.
             Label(choice.Text, textBounds, color, style.TextSize, trim: !active.IsList);
             AddChoiceNode(active, index, row);
         }
@@ -2010,7 +2011,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         /// <summary>True for a combo box, whose choices are its own automation children and whose selected choice is its value.</summary>
         public bool IsComboBox { get; } = kind == MenuKind.ComboBox;
 
-        /// <summary>True for a combo box or drop-down list, which looks like the WPF combo box list rather than a menu.</summary>
+        /// <summary>True for a combo box or drop-down list, which uses combo box list styling.</summary>
         public bool IsList { get; } = kind != MenuKind.ContextMenu;
 
         /// <summary>The rows the laid-out bounds show at once.</summary>

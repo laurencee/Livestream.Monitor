@@ -160,9 +160,9 @@ public class MonitorStreamsModelShould
         await sut.Initialize(Substitute.For<IUserDialogs>());
         Assert.Empty(notifications);
         var enabledStream = sut.Livestreams.Single(stream => stream.Id == enabled.ChannelId);
-        enabledStream.NotifyOnCategoryChange = true;
-        sut.Livestreams.Single(stream => stream.Id == muted.ChannelId).NotifyOnCategoryChange = true;
-        sut.Livestreams.Single(stream => stream.Id == unchanged.ChannelId).NotifyOnCategoryChange = true;
+        settings.ToggleCategoryChangeNotifications(enabledStream.UniqueStreamKey);
+        settings.ToggleCategoryChangeNotifications(new UniqueStreamKey(provider.ApiName, muted.ChannelId));
+        settings.ToggleCategoryChangeNotifications(new UniqueStreamKey(provider.ApiName, unchanged.ChannelId));
         settings.EnableCategoryChangeNotifications = globallyEnabled;
 
         const string NewCategory = "New category";
@@ -175,7 +175,6 @@ public class MonitorStreamsModelShould
         completeQuery.SetResult([newCategoryResult, defaultCategoryResult, mutedCategoryResult, initialResults[^1]]);
         await refreshComplete.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
-        Assert.True(enabledStream.NotifyOnCategoryChange);
         Assert.Equal(globallyEnabled ? 2 : 1, notifications.Count);
         Assert.Equal(globallyEnabled, notifications.Any(item => item.LivestreamModel.Id == defaultChannel.ChannelId));
         var notification = Assert.Single(notifications, item => ReferenceEquals(item.LivestreamModel, enabledStream));
@@ -258,13 +257,17 @@ public class MonitorStreamsModelShould
         provider.IsAuthorized.Returns(_ => authorized);
         provider.CanAuthorizeWithoutUserInput.Returns(true);
         provider.When(x => x.Authorize(Arg.Any<IUserDialogs>())).Do(_ => authorized = true);
-        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(new List<LivestreamQueryResult>());
+        var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            queried.SetResult();
+            return Task.FromResult(new List<LivestreamQueryResult>());
+        });
+
         var sut = CreateModel([new ChannelIdentifier(provider, "channel")], provider);
 
         sut.BeginInitialQuery();
-        var deadline = DateTime.UtcNow.AddSeconds(5);
-        while (!sut.IsInitialQueryComplete && DateTime.UtcNow < deadline) await Task.Delay(millisecondsDelay: 10);
-        Assert.True(sut.IsInitialQueryComplete);
+        await queried.Task.WaitAsync(TimeSpan.FromSeconds(5));
         await sut.Initialize(Substitute.For<IUserDialogs>());
 
         await provider.Received(1).Authorize(null);
@@ -333,7 +336,7 @@ public class MonitorStreamsModelShould
 
         fileHandler.Received(1).SaveToDisk(Arg.Any<IEnumerable<ChannelIdentifier>>());
 
-        await sut.RemoveLivestream(channel, Substitute.For<IUserDialogs>());
+        await sut.RemoveLivestream(channel);
         fileHandler.ClearReceivedCalls();
         channel.TwitchLogin = "renamed_login";
 

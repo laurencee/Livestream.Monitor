@@ -29,7 +29,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int ToolbarBottom = TileAreaTop + ToolbarSeparatorHeight;
     private const int TitleCommandsWidth = 293;
 
-    // The arrow area at the end of an editable combo box's input, as wide as the WPF toggle.
+    // The arrow area at the end of an editable combo box's input.
     private const float DropDownArrowWidth = 20;
     private const int HeaderHeight = 27;
     private const int RowHeight = 25;
@@ -39,7 +39,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int FooterHeight = FooterControlHeight + ControlPadding * 2;
     private const int DefaultTileWidth = 155;
 
-    // The tiles use WPF's 3-pixel side margins and 6-pixel gaps between rows.
     private const int TileMargin = 3;
     private const int TileGap = TileMargin * 2;
     private const int DefaultTileRows = 3;
@@ -48,7 +47,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int MinimumTileRowPitch = MinimumTileHeight + TileGap;
     private const int TilesLeft = (int)WindowBorderThickness + TileMargin;
 
-    // The WPF data grid's columns, inside the window border: the live column is sized to its header, the name,
+    // The data grid's columns, inside the window border: the live column is sized to its header, the name,
     // viewers and uptime columns have fixed widths, and the status and game columns share the rest 5:2.
     private const float TableLeft = WindowBorderThickness;
     private const int LiveWidth = 45;
@@ -56,11 +55,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     private const int ViewersWidth = 80;
     private const int UptimeWidth = 85;
 
-    // The tile pages scroll in pixels as WPF's scroll viewer does, 16 per line; the stream list scrolls in rows.
+    // The tile pages scroll in pixels, 16 per line; the stream list scrolls in rows.
     private const int TileLineSize = 16;
     private const int RowLineSize = 1;
 
-    // Windows' wheel setting, which WPF follows: lines per notch, or a page per notch.
+    // Windows wheel setting: lines per notch, or a page per notch.
     private const int WheelPageScroll = -1;
     private static readonly int WheelScrollLines = ReadWheelScrollLines();
     private const int SettingsWidth = 300;
@@ -78,15 +77,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     ];
     private static readonly Version? AppVersion = typeof(MonitorWindow).Assembly.GetName().Version;
 #if DEBUG
-    // Shows that the debug rather than the release build is running, as the WPF title does.
+    // Shows that the debug rather than the release build is running.
     private const string BuildSuffix = " (DEBUG)";
 #else
     private const string BuildSuffix = "";
 #endif
     private static readonly string CaptionTitle = "LIVESTREAM MONITOR V" + AppVersion?.ToString(3) + BuildSuffix;
 
-    // WPF bindings format in the element's language, which is en-US unless an application sets another.
-    private static readonly CultureInfo WpfBindingCulture = CultureInfo.GetCultureInfo("en-US");
+    // Use a consistent language for abbreviated month names on VOD tiles.
+    private static readonly CultureInfo RecordedDateCulture = CultureInfo.GetCultureInfo("en-US");
     private readonly NativeDialogs dialogs;
     private readonly MonitorWindowState state;
     private readonly ProviderChoices providers;
@@ -108,7 +107,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     // Where key presses go while the settings pane is open. Opening the pane, a Tab that moves the focus, and a left press
     // inside the pane send them to the pane; a left press beside it or a right press that selects a row sends them to the
-    // grid, as the WPF data grid takes them when clicked beside the flyout. A left press that only closes or uses a menu
+    // grid. A left press that only closes or uses a menu
     // changes nothing.
     private SettingsKeyTarget settingsKeyTarget;
     private readonly PanelSlide settingsSlide = new();
@@ -153,8 +152,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         providers = new ProviderChoices(clients);
         topStreamProviders = new ProviderChoices(clients.Where(api => api.HasTopStreamsSupport).ToArray());
         vodProviders = new ProviderChoices(clients.Where(api => api.HasVodViewerSupport).ToArray());
-        filterValues = [FilterModel.AllApiClientsFilterName, .. clients.Select(api => api.ApiName)];
-        filterDisplayNames = [FilterModel.AllApiClientsFilterName, .. providers.Names];
+        filterValues = [MonitorWindowState.AllProviders, .. clients.Select(api => api.ApiName)];
+        filterDisplayNames = [MonitorWindowState.AllProviders, .. providers.Names];
         palette = Theme.Create(state.SettingsHandler.Settings);
         ThemeSource = () => palette;
         images = new ImageCache(Graphics);
@@ -169,9 +168,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         popularStreams = new PopularLivestreamWatcher(
             settingsHandler: state.SettingsHandler,
             notificationHandler: this,
-            openStream: ShowTopStreams,
-            apiClientFactory: state.ApiClientFactory
-        );
+            apiClientFactory: state.ApiClientFactory);
 
         state.Changed += () =>
         {
@@ -198,7 +195,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Tick();
         Show();
 
-        // As in WPF, the window is activated when it first shows, so it takes keyboard input at once.
+        // The window is activated when it first shows, so it takes keyboard input at once.
         Win32.SetForegroundWindow(Handle);
         Tick();
     }
@@ -350,7 +347,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (settingsPane != null)
         {
-            // As in the WPF flyout, Tab stays inside the open pane.
+            // Tab stays inside the open pane.
             Ui.Overlay();
             Ui.BeginFocusScope();
             settingsPane.Draw(Ui, SettingsBounds(size));
@@ -366,7 +363,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void DrawFollowedToolbar(float width)
     {
-        // Control positions follow the WPF toolbar, whose controls sit 2 pixels apart after the bold filter label.
+        // Toolbar controls sit 2 pixels apart after the bold filter label.
         const int Y = ToolbarTop;
         const int Height = ToolbarControlHeight;
         const float PlatformFilterExtraWidth = 33;
@@ -472,14 +469,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         );
     }
 
-    // The WPF toolbar separators are as high as the toolbar controls.
     private void Separator(float x)
     {
         var bounds = new RectangleF(x: x, y: ToolbarTop, width: 1, height: ToolbarControlHeight);
         Ui.Fill(bounds, palette.Border);
     }
 
-    // The WPF window commands are separated by short translucent lines, including one before the caption buttons.
+    // The window commands are separated by short translucent lines, including one before the caption buttons.
     private void DrawCommandSeparator(float x)
     {
         const float Top = 8;
@@ -491,13 +487,13 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void DrawPageToolbar()
     {
-        // Control positions follow the WPF page headers, whose controls have 3-pixel margins; the VOD header's own
+        // Page header controls have 3-pixel margins; the VOD header's own
         // margin is 5 pixels narrower than the top streams header's.
         const int Y = ToolbarTop;
         const int Height = ToolbarControlHeight;
         var left = state.Page == MonitorPage.Vods ? 9 : 14;
 
-        // The WPF back button glyph is a 6-pixel triangle; the font this frontend falls back to draws it larger.
+        // The back button glyph is a 6-pixel triangle; the font this frontend falls back to draws it larger.
         const float BackGlyphSize = 8;
         var backBounds = new RectangleF(x: left, y: Y, width: 25, height: Height);
         Ui.Button(
@@ -549,7 +545,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 name: "Find games"
             );
 
-            // One tooltip covers the input and its choices button, as it covers the whole WPF combo box.
+            // One tooltip covers the input and its choices button.
             if (SelectedProvider.HasTopStreamGameFilterSupport)
             {
                 const string GameToolTip = "Filter to show only streams from a particular game. You can type a " +
@@ -644,7 +640,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void DrawGrid(SizeF size)
     {
-        // The header matches the WPF data grid: upper-case bold labels over the window background, between a line
+        // The header draws upper-case bold labels over the window background, between a line
         // above and a rule below.
         const float HeaderRuleHeight = 3;
         const float HeaderFontSize = 12;
@@ -653,7 +649,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var lastOffset = Math.Max(0, state.Rows.Count - visible);
         if (!state.IsContentLoading) scrollOffset = Math.Clamp(scrollOffset, 0, lastOffset);
 
-        // As in WPF, the bar runs from the header to the window border, and the columns end at its left edge.
+        // The bar runs from the header to the window border, and the columns end at its left edge.
         var barBounds = new RectangleF(
             x: size.Width - WindowBorderThickness - VerticalScrollBar.Width,
             y: top,
@@ -688,7 +684,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             if (Ui.IsPointerOver(bounds)) Ui.Fill(bounds, palette.Hover);
 
-            // The WPF column headers inset their label 10 pixels, as their cells inset their text 5.
+            // The column headers inset their label by 10 pixels; their cells inset their text by 5.
             const float HeaderLabelInset = 10;
             var sort = state.SettingsHandler.Settings.LivestreamListSortState;
             var labelBounds = bounds with { X = bounds.X + HeaderLabelInset, Width = bounds.Width - HeaderLabelInset };
@@ -703,7 +699,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             Ui.Hit(id: "column." + i, bounds: bounds, action: () => Sort(column), name: ColumnNames[i]);
 
-            // As in WPF, the separator spans the header and its rule.
+            // The separator spans the header and its rule.
             var separator = new RectangleF(x: bounds.Right - 1, y: bounds.Y, width: 1, height: HeaderHeight);
             Ui.Fill(separator, palette.HeaderRule);
         }
@@ -723,11 +719,10 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         Ui.PushClip(listBounds);
         Ui.BeginList(id: ContentListKey, name: "Livestreams", bounds: listBounds, selectedKey, focus: focusList);
 
-        // As in WPF, the live image is centred in its column.
         const float LiveImageSize = 15;
         var liveLeft = starts[0] + (LiveWidth - LiveImageSize) / 2;
 
-        // As in WPF, the selected row fades to the 40% accent once another control takes keyboard focus or the
+        // The selected row fades to the 40% accent once another control takes keyboard focus or the
         // window is no longer active.
         var listFocused = ListHasFocus;
         var selectionActive = Ui.IsWindowActive && ListOwnsWidgetFocus;
@@ -749,7 +744,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var rowId = $"row.{i}";
             Ui.BeginGroup(rowId, AutomationRole.DataItem, stream.DisplayName, bounds, rowStates, key: RowKey(stream), item: item);
 
-            // As in WPF, the pointer's row shows the hover colour whether or not it is selected.
+            // The pointer's row shows the hover colour whether or not it is selected.
             var highlighted = selected && selectionActive;
             var hovered = Ui.IsPointerOver(bounds);
             if (hovered) Ui.Fill(bounds, palette.RowHover);
@@ -775,7 +770,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     height: RowHeight
                 );
 
-                // WPF data grid cells clip their text instead of trimming it with an ellipsis.
+                // Data grid cells clip their text instead of trimming it with an ellipsis.
                 Ui.Text(text, cell, color, trim: false);
             }
         }
@@ -785,7 +780,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollBar.Draw(Ui);
     }
 
-    // The WPF data grid's sort arrow: a grey stem and head after the header label, measured from the WPF frontend.
+    // The data grid's sort arrow: a grey stem and head after the header label.
     private void DrawSortArrow(float labelRight, float headerTop, bool ascending)
     {
         const uint SortArrowGray = 0xFF7F7F7F;
@@ -950,7 +945,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
             if (stream != null)
             {
-                // As in WPF, a 130-pixel-wide stack of 16-pixel text lines is centred in the tile, with the flag at
+                // A 130-pixel-wide stack of 16-pixel text lines is centred in the tile, with the flag at
                 // its top right corner and a blank line between the game and the viewer count.
                 const float ContentWidth = 130;
                 const float ContentTop = 12;
@@ -1009,19 +1004,15 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                 Ui.ToolTip(id: $"tile.{i}.title", titleBounds, title);
 
                 var description = vod.Description ?? "";
-                var game = vod.Game ?? "";
                 const float DescriptionTop = 38;
                 const float DescriptionFontSize = 11;
-                const float GameTop = 68;
                 const float LengthTop = 84;
-                var availableHeight = (game.Length == 0 ? LengthTop : GameTop) - DescriptionTop;
-                var descriptionHeight = Math.Min(MeasureFirstTwoLines(description, contentWidth, DescriptionFontSize), availableHeight);
+                const float AvailableHeight = LengthTop - DescriptionTop;
+                var descriptionHeight = Math.Min(MeasureFirstTwoLines(description, contentWidth, DescriptionFontSize), AvailableHeight);
                 var descriptionBounds = new RectangleF(x: contentLeft, y: y + DescriptionTop, width: contentWidth, height: descriptionHeight);
                 Ui.Text(description, descriptionBounds, color, size: DescriptionFontSize, wrap: true);
                 Ui.ToolTip(id: $"tile.{i}.description", descriptionBounds, description);
 
-                var gameBounds = new RectangleF(x: contentLeft, y: y + GameTop, width: contentWidth, height: 18);
-                Ui.Text(game, gameBounds, color, size: 11);
                 var length = VodLength(vod);
                 var lengthBounds = new RectangleF(x: contentLeft, y: y + LengthTop, width: contentWidth, height: 16);
                 Ui.Text(length, lengthBounds, color, size: 11);
@@ -1046,7 +1037,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private static string VodLength(VodDetails vod) => vod.IsUpcoming ? "Upcoming" : vod.Length.ToTotalHoursText();
 
-    private static string RecordedDate(VodDetails vod) => vod.RecordedAt.ToString("MMM dd, yyyy", WpfBindingCulture);
+    private static string RecordedDate(VodDetails vod) => vod.RecordedAt.ToString("MMM dd, yyyy", RecordedDateCulture);
 
     private static string TopStreamStatus(LivestreamModel stream) =>
         ItemStatus(stream.Description, stream.Game, stream.Viewers.ToString(CultureInfo.CurrentCulture) + " viewers");
@@ -1056,7 +1047,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var length = VodLength(vod);
         var recordedAt = RecordedDate(vod);
 
-        return ItemStatus(vod.Description, vod.Game, length, recordedAt);
+        return ItemStatus(vod.Description, length, recordedAt);
     }
 
     // The non-empty parts of a row's or tile's status, which UI Automation reads after its name.
@@ -1185,7 +1176,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         settingsKeyTarget = SettingsKeyTarget.Pane;
 
-        // As in the WPF flyout, the focus starts at the pane's back button.
+        // The focus starts at the pane's back button.
         Ui.MoveFocus("settings.close");
 
         settingsPane ??= new SettingsPane(
@@ -1243,7 +1234,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             settingsShakeOffset = 0;
             settingsSlide.SetOpen(false, PanelSlide.NowMilliseconds);
 
-            // As in the WPF flyout, the focus returns to Settings when it was in the pane.
             if (keysWentToPane) Ui.MoveFocus("settings");
 
             NeedsPaint = true;
@@ -1321,7 +1311,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         var settings = state.SettingsHandler.Settings;
         var old = settings.LivestreamListSortState;
 
-        // As in WPF, a column sorts ascending first and then alternates.
+        // A column sorts ascending first and then alternates.
         var descending = old?.Column == SortProperties[column] && old.SortDirection == ListSortDirection.Ascending;
         settings.LivestreamListSortState = new DataGridSortState
         {
@@ -1375,7 +1365,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollOffset = 0;
         rowsDirty = true;
 
-        // As in WPF, the page changes at once; its query waits for any running one, such as the startup load.
+        // The page changes at once; its query waits for any running one, such as the startup load.
         queryQueued = page != MonitorPage.Followed;
         NeedsPaint = true;
     }
@@ -1412,7 +1402,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private async Task AddChannel()
     {
-        // As in WPF, the name stays after a failure so it can be corrected and added again.
+        // The name stays after a failure so it can be corrected and added again.
         if (await state.Add(Ui.Value("channel"), SelectedProvider)) Ui.SetValue("channel", "");
     }
 
@@ -1473,13 +1463,12 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             // Search suggestions are optional; typed game filters remain usable during provider outages.
         }
 
-        void ShowGames(IReadOnlyList<KnownGame> games)
+        void ShowGames(IReadOnlyList<string> suggestions)
         {
             if (IsClosed || HasDialog || Ui.HasMenu || SelectedProvider != provider || Ui.Value("game") != filter) return;
-            if (games.Count == 0) return;
+            if (suggestions.Count == 0) return;
 
             // Below the game filter input and its choices button.
-            var suggestions = games.Select(game => game.GameName).ToArray();
             Ui.DropDown(
                 GameSuggestionsMenuId,
                 "Game suggestions",
@@ -1632,9 +1621,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollOffset = Math.Max(0, scrollOffset - steps * WheelDistance(lineSize, viewport));
     }
 
-    // As in WPF's data grid, a touch drag over the followed rows, or the space below them, scrolls them a row at a time.
-    // Unlike WPF, whose tile pages' scroll viewers do not pan, a drag over the tiles scrolls them by pixels, as their wheel
-    // and scroll bar do. The settings pane does not pan, as in WPF.
+    // A touch drag over the followed rows, or the space below them, scrolls them a row at a time.
+    // A drag over the tiles scrolls them by pixels, as their wheel
+    // and scroll bar do. The settings pane does not pan.
     protected override float? ContentPanStep(PointF point)
     {
         var followed = state.Page == MonitorPage.Followed;
@@ -1726,7 +1715,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         // Key presses for the settings pane do not reach the grid behind it.
         if (KeysGoToSettingsPane) return false;
 
-        // An open menu or list keeps the keys it does not use from the grid behind it, as in WPF.
+        // An open menu or list stops the keys it does not use from reaching the grid behind it.
         if (Ui.HasMenu) return false;
 
         // Left and Right move between tiles, not rows, and only while the tiles have the focus. Otherwise they are left to the focused widget.
@@ -1835,7 +1824,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             {
                 if (removing)
                 {
-                    await state.StreamsModel.RemoveLivestream(stream.ChannelIdentifier, dialogs);
+                    await state.StreamsModel.RemoveLivestream(stream.ChannelIdentifier);
                 }
                 else
                 {
@@ -1890,7 +1879,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (message == Win32.WmRightButtonDown)
         {
-            // As in WPF, a right-click closes an open menu and then selects what is under the pointer.
             Ui.CloseMenu();
             state.SelectedIndex = HitRow(new PointF(Win32.LowWord(lParam) / Scale, Win32.HighWord(lParam) / Scale));
             NeedsPaint = true;
@@ -2003,7 +1991,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         Program.Dispatcher.Post(() =>
         {
-            // Popular streams are usually not followed; their notifications open Top Streams, as in WPF.
+            // Popular streams are usually not followed; their notifications open Top Streams.
             _ = NotifyStream(notification, followed: state.IsFollowed(notification.LivestreamModel));
         });
     }
@@ -2091,7 +2079,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         var settings = state.SettingsHandler.Settings;
         // A popular alert can hold a different model from the row the user muted during the download.
-        return settings.DisableNotifications || stream.DontNotify ||
+        return settings.DisableNotifications ||
                settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey) || launcher.IsWatching(stream);
     }
 
@@ -2165,7 +2153,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     {
         Ui.SetValue("filter", "");
         state.Filter = "";
-        state.ProviderFilter = FilterModel.AllApiClientsFilterName;
+        state.ProviderFilter = MonitorWindowState.AllProviders;
         state.OnlineOnly = false;
         SwitchPage(MonitorPage.Followed);
         SelectFollowedRow(target);
@@ -2177,11 +2165,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         state.SelectedIndex = target.FindFollowedRow(state.Rows);
         KeepSelectionVisible();
         NeedsPaint = true;
-    }
-
-    private void ShowTopStreams(LivestreamModel stream)
-    {
-        if (RequestPage(MonitorPage.TopStreams, stream.ApiClient)) Restore();
     }
 
     private bool RequestPage(MonitorPage page, IApiClient provider, string vodChannel = "")
@@ -2213,7 +2196,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         catch (OperationCanceledException) { }
         catch (Exception exception)
         {
-            // As in WPF, any other failure, including one opening the download page, is reported.
+            // Any other failure, including one opening the download page, is reported.
             if (IsClosed) return;
 
             var message = $"An error occurred while checking for a newer version.{Environment.NewLine}{exception.ExtractErrorMessage()}";
@@ -2243,7 +2226,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    // WPF titles only the URL check as an invalid VOD URL; the launcher reports that check as invalid data.
+    // Only the URL check reports an invalid VOD URL. The launcher signals it with invalid data.
     private Task ShowVodLaunchError(Exception exception)
     {
         var title = exception is InvalidDataException ? "Invalid VOD URL" : "Error";
@@ -2265,11 +2248,11 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private void ToggleNotification(LivestreamModel stream)
     {
-        state.SettingsHandler.Settings.ToggleNotify(stream);
+        state.SettingsHandler.Settings.ToggleStreamMute(stream.UniqueStreamKey);
         NeedsPaint = true;
     }
 
-    // Keep menu items, text and order consistent with WPF. A menu opened with the keyboard appears beside the selected item.
+    // A menu opened with the keyboard appears beside the selected item.
     private void ShowContextMenu(bool fromKeyboard)
     {
         if (state.Page == MonitorPage.Vods)
@@ -2284,7 +2267,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
         if (state.SelectedStream is not { } stream) return;
 
-        var notify = !stream.DontNotify;
+        var settings = state.SettingsHandler.Settings;
+        var notify = !settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey);
         var hasVods = stream.ApiClient.HasVodViewerSupport;
         var vodToolTip = hasVods ? null : $"The {PlatformNames.GetDisplayName(stream.ApiClient.ApiName)} API doesn't provide VODs.";
         var openVods = new SurfaceUi.MenuChoice(Text: "Open in VOD browser", Enabled: hasVods, ToolTip: vodToolTip, ShowToolTipWhenDisabled: true);
@@ -2296,7 +2280,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             var categoryChangeChoice = new SurfaceUi.MenuChoice(
                 Text: "Notify on Category Change",
                 Enabled: stream.SupportsCategoryChangeNotifications,
-                Checked: stream.NotifyOnCategoryChange,
+                Checked: settings.CategoryChangeNotifications.Contains(stream.UniqueStreamKey),
                 ToolTip: "Show category changes for this stream even when global category change notifications are off.",
                 Checkable: true);
 
@@ -2425,7 +2409,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
                     ToggleNotification(stream);
                     break;
                 case ContextCommand.NotifyOnCategoryChange:
-                    stream.NotifyOnCategoryChange = !stream.NotifyOnCategoryChange;
+                    state.SettingsHandler.Settings.ToggleCategoryChangeNotifications(stream.UniqueStreamKey);
+                    NeedsPaint = true;
                     break;
             }
         }
@@ -2449,7 +2434,6 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         }
     }
 
-    // The messages of the WPF frontend's chat launcher.
     private async Task OpenChat(LivestreamModel? stream)
     {
         if (stream == null) return;

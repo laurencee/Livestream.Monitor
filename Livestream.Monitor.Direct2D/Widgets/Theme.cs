@@ -13,10 +13,10 @@ internal static class Theme
     private const uint DarkGray = 0xFF595959;
     private const uint AccentBrushMask = 0xCCFFFFFF;
 
-    // The WPF data grid's line above and rule below its column headers, measured from the WPF frontend.
+    // The data grid's line above and rule below its column headers.
     private const uint TableBorderGray = 0xFFA0A0A0;
 
-    // The WPF combo box list border as rendered, the same in both themes.
+    // The combo box list border as rendered, the same in both themes.
     private const uint ListBorderGray = 0xFFA59F93;
 
     // MahApps uses #7F7F7F for both themes; on the dark background that is 3.8:1, below the 4.5:1 WCAG minimum for
@@ -31,14 +31,14 @@ internal static class Theme
     // MahApps WindowTitle.NonActive and Border.NonActive, the same gray in both themes.
     private const uint NonActiveGray = 0xFF808080;
 
-    // Dark control borders measured from the WPF frontend.
+    // Dark control borders.
     private const uint DarkControlBorder = 0xFF7E7E7E;
     private const uint DarkControlBorderHover = 0xFF898989;
     private const uint DarkComboHover = 0xFF616161;
     // MahApps Gray9 composited over the light theme's white background.
     private const uint LightComboHover = 0xFFEBEBEB;
 
-    // MahApps 2.4.11 colors and brush opacities used by the original WPF frontend:
+    // MahApps 2.4.11 colors and brush opacities used by the application palette:
     // https://github.com/MahApps/MahApps.Metro/blob/2.4.11/src/MahApps.Metro/Styles/Themes/GeneratorParameters.json
     public static ThemePalette Create(Settings settings)
     {

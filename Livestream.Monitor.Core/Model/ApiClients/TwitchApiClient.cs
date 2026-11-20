@@ -158,7 +158,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var onlineStream = streamsRoot.Streams.FirstOrDefault();
             if (onlineStream != null)
             {
-                livestream.PopulateWithStreamDetails(onlineStream);
+                ApplyStreamDetails(livestream, onlineStream);
             }
 
             queryResults.Add(new LivestreamQueryResult(newChannel)
@@ -225,7 +225,7 @@ namespace Livestream.Monitor.Model.ApiClients
                 channelIdentifier.DisplayName = onlineStream.UserName;
                 channelIdentifier.TwitchLogin = onlineStream.UserLogin;
                 var livestream = new LivestreamModel(onlineStream.UserId, channelIdentifier);
-                livestream.PopulateWithStreamDetails(onlineStream);
+                ApplyStreamDetails(livestream, onlineStream);
                 queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                 {
                     LivestreamModel = livestream
@@ -316,8 +316,6 @@ namespace Livestream.Monitor.Model.ApiClients
                     Url = video.Url,
                     Length = timespan,
                     RecordedAt = video.CreatedAt,
-                    Views = video.ViewCount,
-                    //Game = video.Game,
                     Description = VodDetails.NormalizeDescription(video.Description),
                     Title = singleLineTitle,
                     PreviewImage = largeThumbnail,
@@ -368,7 +366,7 @@ namespace Livestream.Monitor.Model.ApiClients
                     TwitchLogin = stream.UserLogin,
                 };
                 var livestreamModel = new LivestreamModel(stream.UserId, channelIdentifier);
-                livestreamModel.PopulateWithStreamDetails(stream);
+                ApplyStreamDetails(livestreamModel, stream);
 
                 livestreamModels.Add(livestreamModel);
             }
@@ -380,47 +378,22 @@ namespace Livestream.Monitor.Model.ApiClients
             };
         }
 
-        public async Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
+        public async Task<List<string>> GetKnownGameNames(string filterGameName)
         {
             if (string.IsNullOrEmpty(filterGameName))
             {
                 var topGames = await twitchTvHelixClient.GetTopGames();
-                foreach (var topGame in topGames)
-                {
-                    var gameId = topGame.Id;
-                    gameNameToIdMap[topGame.Id] = gameId;
-                }
+                foreach (var game in topGames) gameNameToIdMap[game.Id] = game.Id;
 
-                return topGames.Select(x => new KnownGame()
-                {
-                    GameName = x.Name,
-                    ThumbnailUrls = new ThumbnailUrls()
-                    {
-                        Medium = x.BoxArtUrl,
-                        Small = x.BoxArtUrl,
-                        Large = x.BoxArtUrl
-                    }
-                }).ToList();
+                return topGames.Select(game => game.Name).ToList();
             }
 
             var twitchGames = await twitchTvHelixClient.SearchCategories(filterGameName);
             if (twitchGames == null) return [];
 
-            foreach (var game in twitchGames)
-            {
-                var gameId = game.Id;
-                gameNameToIdMap[game.Name] = gameId;
-            }
-            return twitchGames.Select(x => new KnownGame()
-            {
-                GameName = x.Name,
-                ThumbnailUrls = new ThumbnailUrls()
-                {
-                    Medium = x.BoxArtUrl,
-                    Small = x.BoxArtUrl,
-                    Large = x.BoxArtUrl,
-                }
-            }).ToList();
+            foreach (var game in twitchGames) gameNameToIdMap[game.Name] = game.Id;
+
+            return twitchGames.Select(game => game.Name).ToList();
         }
 
         public async Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName)
@@ -441,11 +414,6 @@ namespace Livestream.Monitor.Model.ApiClients
                         LivestreamModel = new LivestreamModel(follow.BroadcasterId, channelIdentifier)
                         {
                             DisplayName = follow.BroadcasterName,
-                            //Description = follow.Channel?.Status,
-                            //Game = follow.Channel?.Game,
-                            //IsPartner = follow.Channel?.Partner != null && follow.Channel.Partner.Value,
-                            ImportedBy = userName,
-                            //BroadcasterLanguage = follow.Channel?.BroadcasterLanguage
                         }
                     }).ToList();
         }
@@ -475,6 +443,35 @@ namespace Livestream.Monitor.Model.ApiClients
 
             channel.TwitchLogin = user.Login;
             return user.Login;
+        }
+
+        private static void ApplyStreamDetails(
+            LivestreamModel livestreamModel,
+            Stream stream)
+        {
+            // Helix includes the category name; no separate game lookup is needed.
+            // https://dev.twitch.tv/docs/api/reference/#get-streams
+            livestreamModel.Game = stream.GameName;
+            livestreamModel.GameId = stream.GameId;
+            livestreamModel.Viewers = stream.ViewerCount;
+
+            // Keep the preview and notification thumbnail sizes used by the app.
+            var largeThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "640").Replace("{height}", "360");
+            var smallThumbnail = stream.ThumbnailTemplateUrl.Replace("{width}", "80").Replace("{height}", "45");
+            livestreamModel.ThumbnailUrls = new ThumbnailUrls
+            {
+                Large = largeThumbnail,
+                Small = smallThumbnail,
+            };
+
+            livestreamModel.StartTime = stream.StartedAt;
+
+            // need to update other details before flipping the stream to online
+            livestreamModel.Live = stream.Type == "live";
+
+            livestreamModel.DisplayName = stream.UserName;
+            livestreamModel.Description = stream.Title;
+            livestreamModel.BroadcasterLanguage = stream.Language;
         }
 
         private async Task<string> GetGameIdByName(string gameName)

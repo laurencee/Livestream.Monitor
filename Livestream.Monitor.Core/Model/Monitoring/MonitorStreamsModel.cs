@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +10,7 @@ using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
-    public class MonitorStreamsModel : ObservableModel, IMonitorStreamsModel
+    public class MonitorStreamsModel : IMonitorStreamsModel
     {
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
@@ -19,39 +18,13 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly HashSet<ChannelIdentifier> channelIdentifiers = new();
         private readonly List<string> ignoredQueryFailures = new();
 
-        private LivestreamModel selectedLivestream;
         private Task<List<ChannelIdentifier>> initialChannels;
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> initialQueries = new();
         private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> completeInitialQueries = new();
         private Dictionary<ChannelIdentifier, (string DisplayName, string TwitchLogin)> initialChannelDetails;
         private DateTimeOffset initialQueryStartedAt;
         private bool initialDataDirty;
-
-        #region Design Time Constructor
-
-        /// <summary> Design time only constructor </summary>
-        public MonitorStreamsModel()
-        {
-            if (!ModelEnvironment.IsDesignMode)
-                throw new InvalidOperationException("Constructor only accessible from design time");
-
-            var rnd = new Random();
-
-            for (int i = 0; i < 100; i++)
-            {
-                Livestreams.Add(new LivestreamModel("Livestream " + i, null)
-                {
-                    Live = i < 14,
-                    DisplayName = $"Channel Name {i + 1}",
-                    Description = $"Channel Description {i + 1}",
-                    Game = i < 50 ? "Game A" : "Game B",
-                    StartTime = i < 14 ? DateTimeOffset.Now.AddSeconds(-(rnd.Next(10000))) : DateTimeOffset.MinValue,
-                    Viewers = i < 14 ? rnd.Next(50000) : 0
-                });
-            }
-        }
-
-        #endregion
+        private DateTimeOffset lastRefreshTime;
 
         public MonitorStreamsModel(
             IMonitoredStreamsFileHandler fileHandler,
@@ -63,78 +36,16 @@ namespace Livestream.Monitor.Model.Monitoring
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
         }
 
-        public ObservableList<LivestreamModel> Livestreams { get; } = new();
+        public ObservableCollection<LivestreamModel> Livestreams { get; } = new();
 
-        public LivestreamModel SelectedLivestream
-        {
-            get => selectedLivestream;
-            set
-            {
-                if (Equals(value, selectedLivestream)) return;
-                selectedLivestream = value;
-                NotifyOfPropertyChange();
-                NotifyOfPropertyChange(() => CanOpenStream);
-            }
-        }
-
-        public bool CanOpenStream => selectedLivestream != null && selectedLivestream.Live;
-
-        public bool Initialised
-        {
-            get;
-            private set
-            {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        public bool CanRefreshLivestreams
-        {
-            get;
-            private set
-            {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        public DateTimeOffset LastRefreshTime
-        {
-            get;
-            private set
-            {
-                if (value.Equals(field)) return;
-                field = value;
-                NotifyOfPropertyChange(() => LastRefreshTime);
-            }
-        }
+        public bool Initialised { get; private set; }
+        public bool CanRefreshLivestreams { get; private set; }
 
         public event EventHandler LivestreamsRefreshComplete;
 
         public event Action<LivestreamNotification> CategoryChangeNotification;
 
         public event EventHandler ProviderRefreshComplete;
-
-        /// <summary>
-        /// True once followed channels are loaded and every provider with channels has finished its initial query.
-        /// <see cref="Initialize"/> then needs no network wait or authorization prompt. False after initialization.
-        /// </summary>
-        public bool IsInitialQueryComplete
-        {
-            get
-            {
-                // The queries are safe to read only after initialChannels completes.
-                if (initialChannels is not { IsCompletedSuccessfully: true } || Initialised) return false;
-
-                var channels = initialChannels.Result;
-                return apiClientFactory.GetAll().All(apiClient => initialQueries.TryGetValue(apiClient, out var query)
-                    ? query.IsCompleted
-                    : channels.All(x => x.ApiClient != apiClient));
-            }
-        }
 
         // Called on the startup UI thread before constructing the window.
         public void BeginInitialQuery()
@@ -196,7 +107,7 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public async Task Initialize(IUserDialogs viewAware, CancellationToken cancellationToken = default)
+        public async Task Initialize(IUserDialogs dialogs, CancellationToken cancellationToken = default)
         {
             if (Initialised) return;
             var channels = await (initialChannels ?? fileHandler.LoadFromDisk());
@@ -215,8 +126,6 @@ namespace Livestream.Monitor.Model.Monitoring
                     livestreamModel.DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId;
                 }
 
-                livestreamModel.SetLivestreamNotifyState(settingsHandler.Settings);
-                TrackLivestream(livestreamModel);
                 Livestreams.Add(livestreamModel);
             }
 
@@ -231,11 +140,11 @@ namespace Livestream.Monitor.Model.Monitoring
                     {
                         try
                         {
-                            await apiClient.Authorize(viewAware);
+                            await apiClient.Authorize(dialogs);
                         }
                         catch (Exception e)
                         {
-                            await viewAware.ShowMessage("Error authorizing API client " + apiClient.ApiName,
+                            await dialogs.ShowMessage("Error authorizing API client " + apiClient.ApiName,
                                 $"API Client {apiClient.ApiName} authorization failure: " + e.ExtractErrorMessage());
                         }
                     }
@@ -247,7 +156,6 @@ namespace Livestream.Monitor.Model.Monitoring
                     }
                 }
 
-                Livestreams.CollectionChanged += FollowedLivestreamsOnCollectionChanged;
                 CanRefreshLivestreams = Livestreams.Any();
 
                 // Return after each provider's first results; complete queries can finish in the background.
@@ -265,30 +173,31 @@ namespace Livestream.Monitor.Model.Monitoring
             }
         }
 
-        public async Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)
+        public async Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs dialogs)
         {
             if (channelIdentifier == null) throw new ArgumentNullException(nameof(channelIdentifier));
             if (channelIdentifiers.Contains(channelIdentifier)) return; // ignore duplicate requests
 
             var apiClient = channelIdentifier.ApiClient;
-            if (!apiClient.IsAuthorized) await apiClient.Authorize(viewAware);
+            if (!apiClient.IsAuthorized) await apiClient.Authorize(dialogs);
 
             var livestreamQueryResults = await apiClient.AddChannel(channelIdentifier);
             livestreamQueryResults.EnsureAllQuerySuccess();
             if (channelIdentifiers.Contains(channelIdentifier)) return;
 
-            Livestreams.AddRange(livestreamQueryResults.Select(x => x.LivestreamModel));
+            foreach (var result in livestreamQueryResults) Livestreams.Add(result.LivestreamModel);
+
             AddChannels(channelIdentifier);
             CanRefreshLivestreams = Livestreams.Any();
         }
 
-        public async Task ImportFollows(string username, IApiClient apiClient, IUserDialogs viewAware)
+        public async Task ImportFollows(string username, IApiClient apiClient, IUserDialogs dialogs)
         {
             if (username == null) throw new ArgumentNullException(nameof(username));
             if (apiClient == null) throw new ArgumentNullException(nameof(apiClient));
             if (!apiClient.HasFollowedChannelsQuerySupport) throw new InvalidOperationException($"{apiClient.ApiName} does not have support for getting followed streams.");
 
-            if (!apiClient.IsAuthorized) await apiClient.Authorize(viewAware);
+            if (!apiClient.IsAuthorized) await apiClient.Authorize(dialogs);
 
             var followedChannelsQueryResults = await apiClient.GetFollowedChannels(username);
             followedChannelsQueryResults.EnsureAllQuerySuccess();
@@ -318,7 +227,7 @@ namespace Livestream.Monitor.Model.Monitoring
         private async Task RefreshLivestreams(TaskCompletionSource initialResultsApplied)
         {
             if (!CanRefreshLivestreams ||
-                (LastRefreshTime > DateTimeOffset.MinValue && LastRefreshTime.AddSeconds(10) >= DateTimeOffset.Now))
+                (lastRefreshTime > DateTimeOffset.MinValue && lastRefreshTime.AddSeconds(10) >= DateTimeOffset.Now))
             {
                 return;
             }
@@ -372,7 +281,6 @@ namespace Livestream.Monitor.Model.Monitoring
                     // Keep the previous state for channels whose query failed, and still publish the others' changes.
                     PopulateLivestreams(providerResults.Where(x => x.IsSuccess).ToList());
 
-                    NotifyOfPropertyChange(() => CanOpenStream);
                     ProviderRefreshComplete?.Invoke(this, EventArgs.Empty);
                     return providerResults;
                 }
@@ -409,7 +317,7 @@ namespace Livestream.Monitor.Model.Monitoring
             {
                 OnOnlineLivestreamsRefreshComplete();
                 // make sure we always update the attempted refresh time and allow refreshing in the future
-                LastRefreshTime = DateTimeOffset.Now;
+                lastRefreshTime = DateTimeOffset.Now;
                 CanRefreshLivestreams = Livestreams.Any();
             }
         }
@@ -422,7 +330,7 @@ namespace Livestream.Monitor.Model.Monitoring
             ignoredQueryFailures.Add(errorToIgnore);
         }
 
-        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware)
+        public async Task RemoveLivestream(ChannelIdentifier channelIdentifier)
         {
             if (channelIdentifier == null) return;
 
@@ -433,7 +341,8 @@ namespace Livestream.Monitor.Model.Monitoring
             channelIdentifiers.Remove(channelIdentifier);
             // TODO - if removal of a channel would remove more than 1 livestream, consider warning the user
             var matchingLivestreams = Livestreams.Where(x => Equals(channelIdentifier, x.ChannelIdentifier)).ToList();
-            Livestreams.RemoveRange(matchingLivestreams);
+            foreach (var stream in matchingLivestreams) Livestreams.Remove(stream);
+
             SaveLivestreams();
         }
 
@@ -454,7 +363,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 var category = livestreamModel.ApplyUpdate(livestream);
                 if (category == null) continue;
-                if (!settings.EnableCategoryChangeNotifications && !livestreamModel.NotifyOnCategoryChange) continue;
+                if (!settings.EnableCategoryChangeNotifications && !settings.CategoryChangeNotifications.Contains(livestreamModel.UniqueStreamKey)) continue;
                 if (settings.ExcludeFromNotifying.Contains(livestreamModel.UniqueStreamKey)) continue;
 
                 CategoryChangeNotification?.Invoke(LivestreamNotification.CreateForFollowedStream(livestreamModel, category));
@@ -486,11 +395,7 @@ namespace Livestream.Monitor.Model.Monitoring
                 }
             }
 
-            if (channelAdded)
-            {
-                SaveLivestreams();
-                SelectedLivestream = Livestreams.FirstOrDefault(x => x.ChannelIdentifier.Equals(newChannels[0]));
-            }
+            if (channelAdded) SaveLivestreams();
         }
 
         private void SaveLivestreams()
@@ -502,51 +407,6 @@ namespace Livestream.Monitor.Model.Monitoring
         {
             // Refreshes save channel metadata once after applying all providers' results.
             if (CanRefreshLivestreams) SaveLivestreams();
-        }
-
-        private void FollowedLivestreamsOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if (e.NewItems != null)
-            {
-                foreach (var livestreamModel in e.NewItems.Cast<LivestreamModel>())
-                {
-                    TrackLivestream(livestreamModel);
-                }
-            }
-
-            if (e.OldItems != null)
-            {
-                foreach (var livestreamModel in e.OldItems.Cast<LivestreamModel>())
-                {
-                    livestreamModel.PropertyChanged -= LivestreamModelOnPropertyChanged;
-                }
-            }
-        }
-
-        private void TrackLivestream(LivestreamModel livestream)
-        {
-            livestream.NotifyOnCategoryChange = settingsHandler.Settings.CategoryChangeNotifications.Contains(livestream.UniqueStreamKey);
-            livestream.PropertyChanged += LivestreamModelOnPropertyChanged;
-        }
-
-        private void LivestreamModelOnPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            var livestream = (LivestreamModel)sender;
-            if (e.PropertyName == nameof(LivestreamModel.DontNotify))
-            {
-                var excludeNotify = livestream.ToExcludeNotify();
-                if (livestream.DontNotify)
-                    settingsHandler.Settings.ExcludeFromNotifying.Add(excludeNotify);
-                else
-                    settingsHandler.Settings.ExcludeFromNotifying.Remove(excludeNotify);
-            }
-            else if (e.PropertyName == nameof(LivestreamModel.NotifyOnCategoryChange))
-            {
-                var preferences = settingsHandler.Settings.CategoryChangeNotifications;
-                var key = livestream.UniqueStreamKey;
-                if (livestream.NotifyOnCategoryChange && !preferences.Contains(key)) preferences.Add(key);
-                if (!livestream.NotifyOnCategoryChange) preferences.Remove(key);
-            }
         }
     }
 }

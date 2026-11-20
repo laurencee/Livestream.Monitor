@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Xml.Linq;
 using Livestream.Monitor.Core;
 using Livestream.Monitor.Direct2D.Native;
@@ -123,7 +124,11 @@ internal sealed class StreamNotifications : IDisposable
     internal const string MinimizedTitle = "Livestream Monitor";
     internal const string MinimizedMessage = "Livestream Monitor minimized to tray";
     private const string AppId = "Livestream.Monitor.Direct2D";
-    private const string DisplayName = "Livestream Monitor Direct2D";
+    private const string DisplayName = "Livestream Monitor";
+
+    // Earlier versions named the Start menu shortcut after the Direct2D frontend.
+    private const string LegacyShortcutName = "Livestream Monitor Direct2D.lnk";
+
     private static readonly Guid ActivatorId = new("5b6bc679-f166-4ef8-a71a-dc0b716fa43b");
     private static readonly string ServerKeyPath = $@"Software\Classes\CLSID\{ActivatorId:B}\LocalServer32";
     private readonly ToastActivator? activator;
@@ -161,9 +166,16 @@ internal sealed class StreamNotifications : IDisposable
         try
         {
             using var server = Registry.CurrentUser.OpenSubKey(ServerKeyPath);
-            if (server?.GetValue("ServerExecutable") is not string previous || File.Exists(previous)) return;
+            if (server?.GetValue("ServerExecutable") is not string previous) return;
 
-            RegisterCurrentSender();
+            var executable = Environment.ProcessPath!;
+            var command = GetRefreshedSenderCommand(
+                previous,
+                server.GetValue(null) as string,
+                executable,
+                Directory.GetCurrentDirectory());
+
+            if (command != null) RegisterSenderCommand(executable, command);
         }
         catch (Exception exception) when (exception is COMException or IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -176,8 +188,23 @@ internal sealed class StreamNotifications : IDisposable
         if (activator == null) return null;
 
         var images = thumbnails ??= new NotificationThumbnails();
-        var iconUrl = await LivestreamNotification.FindChannelIconUrl(channel);
+        var iconUrl = await FindChannelIconUrl(channel);
         return await images.Find(iconUrl, channelIcon: true);
+    }
+
+    private static async Task<string?> FindChannelIconUrl(ChannelIdentifier channel)
+    {
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        try
+        {
+            var lookup = channel.ApiClient.FindChannelIconUrl(channel, deadline.Token);
+            return await lookup.WaitAsync(deadline.Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or TimeoutException or
+                                          InvalidDataException or JsonException)
+        {
+            return null;
+        }
     }
 
     public Task<Uri?> FindThumbnail(string? url)
@@ -235,19 +262,53 @@ internal sealed class StreamNotifications : IDisposable
 
     private void RegisterCurrentSender()
     {
-        RegisterSender(Environment.ProcessPath!, Directory.GetCurrentDirectory());
+        var executable = Environment.ProcessPath!;
+        var command = BuildSenderCommand(executable, Directory.GetCurrentDirectory());
+
+        RegisterSenderCommand(executable, command);
         registered = true;
     }
 
-    internal static void RegisterSender(string executable, string dataDirectory)
+    internal static string? GetRefreshedSenderCommand(
+        string previous,
+        string? previousCommand,
+        string executable,
+        string dataDirectory)
+    {
+        const StringComparison PathComparison = StringComparison.OrdinalIgnoreCase;
+        var legacySibling = Path.Join(Path.GetDirectoryName(executable), "Livestream.Monitor.Direct2D.exe");
+        if (string.Equals(previous, legacySibling, PathComparison) &&
+            string.Equals(Path.GetFileName(executable), "Livestream.Monitor.exe", PathComparison))
+        {
+            // An in-place upgrade can leave both executables on disk. Keep the registered profile for existing toasts.
+            var quotedPrevious = $"\"{previous}\"";
+            var prefix = $"{quotedPrevious} {ActivationSwitch} --data-directory \"";
+            if (previousCommand?.StartsWith(prefix, PathComparison) == true) return $"\"{executable}\"{previousCommand[quotedPrevious.Length..]}";
+
+            return BuildSenderCommand(executable, dataDirectory);
+        }
+
+        return File.Exists(previous) ? null : BuildSenderCommand(executable, dataDirectory);
+    }
+
+    private static string BuildSenderCommand(string executable, string dataDirectory)
+    {
+        var profile = Path.TrimEndingDirectorySeparator(dataDirectory);
+
+        // A trailing separator on a volume root needs escaping before the closing command-line quote.
+        if (Path.EndsInDirectorySeparator(profile)) profile += Path.DirectorySeparatorChar;
+
+        return $"\"{executable}\" {ActivationSwitch} --data-directory \"{profile}\"";
+    }
+
+    private static void RegisterSenderCommand(string executable, string command)
     {
         var programs = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
         var shortcut = Path.Combine(programs, DisplayName + ".lnk");
+
+        DeleteLegacyShortcut(programs);
+
         using var server = Registry.CurrentUser.CreateSubKey(ServerKeyPath);
-        var profile = Path.TrimEndingDirectorySeparator(dataDirectory);
-        // A trailing separator on a volume root needs escaping before the closing command-line quote.
-        if (Path.EndsInDirectorySeparator(profile)) profile += Path.DirectorySeparatorChar;
-        var command = $"\"{executable}\" {ActivationSwitch} --data-directory \"{profile}\"";
         if (server.GetValue(null) as string != command || !File.Exists(shortcut))
         {
             WindowsToast.SaveShortcut(shortcut, executable, AppId, ActivatorId);
@@ -263,6 +324,19 @@ internal sealed class StreamNotifications : IDisposable
         identity.SetValue("CustomActivator", ActivatorId.ToString("B"));
         var iconPath = CacheSenderIcon();
         if (iconPath != null) identity.SetValue("IconUri", iconPath, RegistryValueKind.ExpandString);
+
+        static void DeleteLegacyShortcut(string programs)
+        {
+            try
+            {
+                File.Delete(Path.Combine(programs, LegacyShortcutName));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // A stale Start menu entry must not stop the sender registration.
+                LogFailure(exception);
+            }
+        }
     }
 
     private static string? CacheSenderIcon()
@@ -332,7 +406,7 @@ internal sealed class StreamNotifications : IDisposable
     {
         try
         {
-            File.AppendAllText("direct2d-errors.log", $"{DateTimeOffset.Now:o} Stream notification: {exception}{Environment.NewLine}");
+            File.AppendAllText(Program.ErrorLogFile, $"{DateTimeOffset.Now:o} Stream notification: {exception}{Environment.NewLine}");
         }
         catch (Exception logError) when (logError is IOException or UnauthorizedAccessException)
         {

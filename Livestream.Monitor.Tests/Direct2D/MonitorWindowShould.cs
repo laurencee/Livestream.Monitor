@@ -17,6 +17,32 @@ namespace Livestream.Monitor.Tests.Direct2D;
 
 public class MonitorWindowShould
 {
+    [Fact]
+    public void RetargetTheRenamedToastSenderWithinItsInstallation()
+    {
+        var install = Directory.CreateTempSubdirectory();
+        try
+        {
+            var previous = Path.Combine(install.FullName, "Livestream.Monitor.Direct2D.exe");
+            var executable = Path.Combine(install.FullName, "Livestream.Monitor.exe");
+            File.WriteAllBytes(previous, []);
+            File.WriteAllBytes(executable, []);
+
+            var savedProfile = Path.Combine(install.FullName, "saved profile");
+            var arguments = $" {StreamNotifications.ActivationSwitch} --data-directory \"{savedProfile}\"";
+            var previousCommand = $"\"{previous}\"{arguments}";
+            var otherInstall = Path.Combine(install.FullName, "other", "Livestream.Monitor.exe");
+
+            Assert.Null(StreamNotifications.GetRefreshedSenderCommand(previous, previousCommand, otherInstall, install.FullName));
+            var command = StreamNotifications.GetRefreshedSenderCommand(previous, previousCommand, executable, install.FullName);
+            Assert.Equal($"\"{executable}\"{arguments}", command);
+        }
+        finally
+        {
+            install.Delete(recursive: true);
+        }
+    }
+
     [Theory]
     [InlineData(true, true, "long")]
     [InlineData(true, false, "short")]

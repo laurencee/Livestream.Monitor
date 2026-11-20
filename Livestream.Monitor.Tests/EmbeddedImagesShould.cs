@@ -1,9 +1,6 @@
 using System;
-using System.Globalization;
 using System.Linq;
-using System.Windows.Media.Imaging;
 using Livestream.Monitor.Core;
-using Livestream.Monitor.WPF.Core.UI;
 using Xunit;
 
 namespace Livestream.Monitor.Tests;
@@ -64,15 +61,13 @@ public class EmbeddedImagesShould
     [InlineData("CH", 11, 11)]
     [InlineData("ME", 16, 12)]
     [InlineData("NP", 9, 11)]
-    public void ShowFlagsAtTheirOriginalSize(string country, int width, int height)
+    public void ReturnFlagRegionsAtTheirOriginalSize(string country, int width, int height)
     {
-        var converter = new CountryIdToFlagImageSourceConverter();
-        var result = converter.Convert(country, typeof(BitmapSource), null, CultureInfo.InvariantCulture);
-        var flag = Assert.IsAssignableFrom<BitmapSource>(result);
+        var flag = EmbeddedImages.FindFlag(country);
 
-        Assert.Equal(width, flag.PixelWidth);
-        Assert.Equal(height, flag.PixelHeight);
-        Assert.True(flag.IsFrozen);
+        Assert.NotNull(flag);
+        Assert.Equal(width, flag.Value.Width);
+        Assert.Equal(height, flag.Value.Height);
     }
 
     [Fact]

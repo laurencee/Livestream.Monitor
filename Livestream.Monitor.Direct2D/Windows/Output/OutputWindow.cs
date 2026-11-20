@@ -39,8 +39,8 @@ internal sealed class OutputWindow : CanvasWindow
     private const uint GetFirstVisibleLine = 0x00CE;
     private const uint PositionFromCharacter = 0x0426;
 
-    // The WPF limits alone, which bound the size the output asks for whatever the app's size.
-    private static readonly SizeF WpfMaximumSize = MaximumSize(new SizeF(float.MaxValue, float.MaxValue));
+    // The viewport limits. They bound the size the output asks for, whatever the app's size.
+    private static readonly SizeF MaximumContentWindowSize = MaximumSize(new SizeF(float.MaxValue, float.MaxValue));
     private readonly nint textHost;
     private readonly nint text;
     private readonly nint owner;
@@ -50,11 +50,11 @@ internal sealed class OutputWindow : CanvasWindow
     private readonly OutputScrollbar scrollbar;
     private long nextRefresh;
 
-    // The window opens at the initial size and only grows, to fit wider or longer output up to the WPF limits; it is shown
-    // no larger than the app's current size allows, so it grows back once the app does.
+    // The size the output asks for. It starts at the initial size and only grows, to fit wider or longer output up to the
+    // viewport limits. The window is shown no larger than the app's current size allows, so it grows back once the app does.
     private SizeF requestedSize;
 
-    // Unknown until the app is seen restored, when only the WPF limits apply.
+    // Unknown until the app is seen restored; until then only the viewport limits apply.
     private SizeF appSize = new(float.MaxValue, float.MaxValue);
     private SizeF appliedAppSize;
     private bool showDiscardNotice;
@@ -123,7 +123,7 @@ internal sealed class OutputWindow : CanvasWindow
     protected override bool CanResize => false;
 
     /// <summary>
-    /// The largest the window may be: the WPF viewport limits, and no wider than three quarters of the app nor taller than
+    /// The largest the window may be: the viewport limits, and no wider than three quarters of the app nor taller than
     /// the app.
     /// </summary>
     public static SizeF MaximumSize(SizeF appSize)
@@ -143,12 +143,12 @@ internal sealed class OutputWindow : CanvasWindow
     }
 
     /// <summary>
-    /// The size the output asks for once it needs room for the content as well: it only grows, within the WPF limits
-    /// whatever the app's size, so the window grows back to it once a smaller app is enlarged.
+    /// The size the output asks for once it also needs room for the content. It only grows, and stays within the viewport
+    /// limits whatever the app's size, so the window grows back to this size once a smaller app is enlarged.
     /// </summary>
     public static SizeF RequestedSize(SizeF requestedSize, float contentWidth, float contentHeight)
     {
-        var contentSize = CalculateSize(contentWidth, contentHeight, WpfMaximumSize);
+        var contentSize = CalculateSize(contentWidth, contentHeight, MaximumContentWindowSize);
         return new SizeF(Math.Max(requestedSize.Width, contentSize.Width), Math.Max(requestedSize.Height, contentSize.Height));
     }
 
@@ -159,7 +159,7 @@ internal sealed class OutputWindow : CanvasWindow
         return new SizeF(Math.Min(requestedSize.Width, maximumSize.Width), Math.Min(requestedSize.Height + noticeHeight, maximumSize.Height));
     }
 
-    // As in WPF, the window is activated whenever it is shown.
+    // The window is activated whenever it is shown.
     public void ShowInitial()
     {
         RefreshOutput();
@@ -364,7 +364,7 @@ internal sealed class OutputWindow : CanvasWindow
             return;
         }
 
-        if (requestedSize.Width < WpfMaximumSize.Width)
+        if (requestedSize.Width < MaximumContentWindowSize.Width)
         {
             const float WrapAllowance = 2;
             var padding = (SideMargin + TextInset) * 2 + OutputScrollbar.Width;

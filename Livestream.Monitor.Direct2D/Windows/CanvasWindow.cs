@@ -107,7 +107,7 @@ internal abstract class CanvasWindow : DesktopWindow
 
     protected override bool IsAnimating => ActiveDialog is { IsProgress: true } or { IsScrolling: true } || Ui.IsMenuScrolling;
 
-    /// <summary>False until the window is activated and while another window is active; the chrome is then drawn gray as the WPF window's is.</summary>
+    /// <summary>False until the window is activated and while another window is active; the chrome is then drawn gray.</summary>
     private bool IsWindowActive { get; set; }
 
     /// <summary>True to paint a hidden window, for one that shows itself once its first frame is presented.</summary>
@@ -172,7 +172,7 @@ internal abstract class CanvasWindow : DesktopWindow
             affirmative: affirmative,
             negative: negative);
 
-        // As in WPF, the focus held before the first dialog returns when the last one closes.
+        // The focus held before the first dialog returns when the last one closes.
         if (dialogs.Count == 0) focusBeforeDialogs = Ui.FocusedId;
         dialogs.Add(dialog);
 
@@ -480,7 +480,7 @@ internal abstract class CanvasWindow : DesktopWindow
                 Wheel(Win32.HighWord((nint)wParam));
                 return 0;
 
-            // A press on a native control, such as a text input, closes an open drawn menu, as a press outside a WPF menu does,
+            // A press on a native control, such as a text input, closes an open drawn menu,
             // so keys typed there do not act on the menu. The control still takes the press and the focus. The low word of wParam is
             // the button message (https://learn.microsoft.com/windows/win32/inputmsg/wm-parentnotify).
             case Win32.WmParentNotify when (uint)(ushort)wParam is Win32.WmLeftButtonDown or Win32.WmRightButtonDown or Win32.WmMiddleButtonDown
@@ -494,8 +494,8 @@ internal abstract class CanvasWindow : DesktopWindow
                 if (Ui.CloseMenuForPress(ToLogical(lParam))) NeedsPaint = true;
                 break;
 
-            // As in WPF, whose data grid and lists pan with touch, a touch drag pans content that allows it. Elsewhere
-            // panning is turned off, so the drag arrives as mouse input, as on a scroll bar's thumb.
+            // A touch drag pans content that allows it. Elsewhere panning is turned off, so the drag arrives as mouse input,
+            // e.g. on a scroll bar's thumb.
             case Win32.WmGestureNotify:
                 ConfigurePan(Win32.ReadGestureNotification(lParam));
                 break;
@@ -503,7 +503,7 @@ internal abstract class CanvasWindow : DesktopWindow
                 if (Pan(lParam)) return 0;
                 break;
 
-            // As in WPF, whose progress dialog sets the wait cursor, the wait cursor shows anywhere on a progress dialog's
+            // The wait cursor shows anywhere on a progress dialog's
             // panel, including over its native message control, which lets this window set the cursor first.
             case Win32.WmSetCursor when Win32.LowWord(lParam) == HitClient && IsWaitCursorOver((nint)wParam):
                 Win32.SetCursor(Win32.LoadCursor(0, Win32.IdcWait));
@@ -688,7 +688,7 @@ internal abstract class CanvasWindow : DesktopWindow
             panStep = contentStep;
         }
 
-        // Without the gutter, a diagonal drag still pans vertically, as WPF's panning in both directions does.
+        // Without the gutter, a diagonal drag still pans vertically.
         const uint PanWanted = Win32.GestureConfigPan | Win32.GestureConfigPanSingleFingerVertically |
             Win32.GestureConfigPanSingleFingerHorizontally | Win32.GestureConfigPanWithInertia;
 

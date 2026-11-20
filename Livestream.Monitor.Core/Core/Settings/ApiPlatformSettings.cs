@@ -5,7 +5,7 @@ using static Livestream.Monitor.Core.Settings.Settings;
 
 namespace Livestream.Monitor.Core.Settings;
 
-public abstract class ApiPlatformSettings : ObservableModel
+public abstract class ApiPlatformSettings
 {
     public virtual IReadOnlyDictionary<string, string> GetReplacements(string url)
     {
@@ -42,31 +42,15 @@ public abstract class ApiPlatformSettings : ObservableModel
     };
 }
 
-public class ExecCommand : ObservableModel
+public sealed class ExecCommand
 {
-    public string FilePath
-    {
-        get;
-        set => Set(ref field, value);
-    }
+    public string FilePath { get; set; }
 
-    public string Args
-    {
-        get;
-        set => Set(ref field, value);
-    }
+    public string Args { get; set; }
 
-    public bool CaptureStandardOutput
-    {
-        get;
-        set => Set(ref field, value);
-    }
+    public bool CaptureStandardOutput { get; set; }
 
-    public bool CaptureErrorOutput
-    {
-        get;
-        set => Set(ref field, value);
-    }
+    public bool CaptureErrorOutput { get; set; }
 }
 
 public class TwitchSettings : ApiPlatformSettings
@@ -89,20 +73,9 @@ public class TwitchSettings : ApiPlatformSettings
         return map;
     }
 
-    public string AuthToken
-    {
-        get;
-        set
-        {
-            if (Set(ref field, value)) NotifyOfPropertyChange(nameof(IsAuthTokenSet));
-        }
-    }
+    public string AuthToken { get; set; }
 
-    public bool PassthroughClientId
-    {
-        get;
-        set => Set(ref field, value);
-    }
+    public bool PassthroughClientId { get; set; }
 
     /// <summary>
     /// Flag to indicate if the twitch oauth token has been defined either in livestream monitor settings

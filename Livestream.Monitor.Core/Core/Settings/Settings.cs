@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
@@ -147,10 +148,10 @@ namespace Livestream.Monitor.Core.Settings
         /// </summary>
         [JsonInclude]
         [JsonConverter(typeof(ExcludeNotifyJsonConverter))]
-        public ObservableList<UniqueStreamKey> ExcludeFromNotifying { get; private set; } = [];
+        public ObservableCollection<UniqueStreamKey> ExcludeFromNotifying { get; private set; } = [];
 
         [JsonInclude]
-        public ObservableList<UniqueStreamKey> CategoryChangeNotifications { get; private set; } = [];
+        public ObservableCollection<UniqueStreamKey> CategoryChangeNotifications { get; private set; } = [];
 
         public bool ShowOnlineOnly
         {
@@ -181,6 +182,24 @@ namespace Livestream.Monitor.Core.Settings
             get;
             set => Set(ref field, value);
         } = new();
+
+        public void ToggleStreamMute(UniqueStreamKey key) => ToggleStreamPreference(ExcludeFromNotifying, key);
+
+        public void ToggleCategoryChangeNotifications(UniqueStreamKey key) => ToggleStreamPreference(CategoryChangeNotifications, key);
+
+        private static void ToggleStreamPreference(ObservableCollection<UniqueStreamKey> preferences, UniqueStreamKey key)
+        {
+            if (!preferences.Contains(key))
+            {
+                preferences.Add(key);
+                return;
+            }
+
+            // Older profiles can contain multiple exclusions for the same stream.
+            for (var i = preferences.Count - 1; i >= 0; i--)
+                if (key.Equals(preferences[i]))
+                    preferences.RemoveAt(i);
+        }
 
         public FavoriteQualities GetStreamQualities(string apiName)
         {

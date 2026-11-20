@@ -4,7 +4,7 @@ using Livestream.Monitor.Core;
 
 namespace Livestream.Monitor.Model.Monitoring;
 
-/// <summary>Removing a followed stream as both frontends do it: confirmed first, with any failure reported.</summary>
+/// <summary>Confirms removal of a followed stream and reports failures.</summary>
 public static class StreamRemoval
 {
     public static Task<bool> ConfirmRemoval(this IUserDialogs dialogs, LivestreamModel stream)
@@ -21,7 +21,7 @@ public static class StreamRemoval
     {
         try
         {
-            await streams.RemoveLivestream(stream.ChannelIdentifier, dialogs);
+            await streams.RemoveLivestream(stream.ChannelIdentifier);
         }
         catch (Exception exception)
         {

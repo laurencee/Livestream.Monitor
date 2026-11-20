@@ -234,13 +234,11 @@ so we might as well just do machine-to-machine auth
                 Game = x.Category.Name,
                 Viewers = x.ViewerCount,
                 StartTime = x.StartedAt,
-                Language = x.Language,
                 BroadcasterLanguage = x.Language,
                 Live = true,
                 ThumbnailUrls = new ThumbnailUrls()
                 {
                     Large = x.Thumbnail,
-                    Medium = x.Thumbnail,
                     Small = x.Thumbnail,
                 },
             };
@@ -254,7 +252,7 @@ so we might as well just do machine-to-machine auth
     }
 
     // TODO - use /categories endpoint when it's working
-    public Task<List<KnownGame>> GetKnownGameNames(string filterGameName) =>
+    public Task<List<string>> GetKnownGameNames(string filterGameName) =>
         throw new NotImplementedException();
 
     public Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName) =>
@@ -305,13 +303,11 @@ so we might as well just do machine-to-machine auth
                 GameId = channel.Category is { Id: > 0 } category ? category.Id.ToString(CultureInfo.InvariantCulture) : null,
                 Viewers = channel.Stream.ViewerCount,
                 StartTime = channel.Stream.StartTime,
-                Language = channel.Stream.Language,
                 BroadcasterLanguage = channel.Stream.Language,
                 Live = channel.Stream.IsLive,
                 ThumbnailUrls = new ThumbnailUrls()
                 {
                     Large = channel.Stream.Thumbnail,
-                    Medium = channel.Stream.Thumbnail,
                     Small = channel.Stream.Thumbnail,
                 },
             },

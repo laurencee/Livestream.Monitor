@@ -18,7 +18,7 @@ public class VerticalScrollBarShould
     [InlineData(16, 64, 48)]
     public void StepOneLineOnPressAndRepeatOnlyAfterTheDelay(int lineSize, int firstPosition, int secondPosition)
     {
-        // Rows step by one; the tile pages' pixel offsets step by WPF's 16-pixel scroll viewer line.
+        // Rows step by one; the tile pages' pixel offsets step by 16 pixels per line.
         var positions = new List<int>();
         var bar = new VerticalScrollBar(positions.Add);
         var offset = 5 * lineSize;

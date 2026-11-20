@@ -2,9 +2,7 @@ using System.IO;
 
 namespace Livestream.Monitor.Core
 {
-    /// <summary>
-    /// Images shared by the frontends, embedded in this assembly so frontends without WPF resources can load them.
-    /// </summary>
+    /// <summary>Embedded images and flag atlas regions.</summary>
     public static class EmbeddedImages
     {
         public const string Live = "Images.Live.png";

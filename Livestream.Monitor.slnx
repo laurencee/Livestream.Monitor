@@ -15,5 +15,4 @@
   <Project Path="Livestream.Monitor.Core/Livestream.Monitor.Core.csproj" />
   <Project Path="Livestream.Monitor.Direct2D/Livestream.Monitor.Direct2D.csproj" />
   <Project Path="Livestream.Monitor.Tests/Livestream.Monitor.Tests.csproj" />
-  <Project Path="Livestream.Monitor.WPF/Livestream.Monitor.WPF.csproj" />
 </Solution>

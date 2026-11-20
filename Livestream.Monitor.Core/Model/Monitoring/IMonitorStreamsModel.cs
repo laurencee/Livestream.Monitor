@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using Livestream.Monitor.Core;
@@ -6,20 +7,14 @@ using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model.Monitoring
 {
-    public interface IMonitorStreamsModel : System.ComponentModel.INotifyPropertyChanged
+    public interface IMonitorStreamsModel
     {
-        /// <summary> The list of followed livestreams, will be initialized on first access. </summary>
-        ObservableList<LivestreamModel> Livestreams { get; }
-
-        LivestreamModel SelectedLivestream { get; set; }
+        /// <summary>Followed streams, populated during initialization and updated as channels change.</summary>
+        ObservableCollection<LivestreamModel> Livestreams { get; }
 
         bool Initialised { get; }
 
         bool CanRefreshLivestreams { get; }
-
-        DateTimeOffset LastRefreshTime { get; }
-
-        bool CanOpenStream { get; }
 
         event EventHandler LivestreamsRefreshComplete;
 
@@ -31,18 +26,21 @@ namespace Livestream.Monitor.Model.Monitoring
         /// </summary>
         event EventHandler ProviderRefreshComplete;
 
+        /// <summary>Starts loading followed channels and querying providers before the window opens.</summary>
+        void BeginInitialQuery();
+
         /// <summary>
         /// Allows for loading of livestreams and any other initialization tasks before refreshes can take place.
         /// Returns after each provider's first results are applied. Complete queries may still be running;
         /// their failures are not reported. <see cref="LivestreamsRefreshComplete"/> marks the end of the first refresh.
         /// </summary>
-        Task Initialize(IUserDialogs viewAware, CancellationToken cancellationToken = default);
+        Task Initialize(IUserDialogs dialogs, CancellationToken cancellationToken = default);
 
-        Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware);
+        Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs dialogs);
 
-        Task RemoveLivestream(ChannelIdentifier channelIdentifier, IUserDialogs viewAware);
+        Task RemoveLivestream(ChannelIdentifier channelIdentifier);
 
-        Task ImportFollows(string username, IApiClient apiClient, IUserDialogs viewAware);
+        Task ImportFollows(string username, IApiClient apiClient, IUserDialogs dialogs);
 
         /// <summary> Refreshing data for all followed livestreams </summary>
         Task RefreshLivestreams();

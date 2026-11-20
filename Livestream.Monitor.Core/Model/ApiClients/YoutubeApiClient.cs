@@ -160,22 +160,17 @@ namespace Livestream.Monitor.Model.ApiClients
                 var singleLineTitle = x.Snippet.Title.Replace("\r\n", " ").Replace('\n', ' ').TrimEnd();
                 var duration = XmlConvert.ToTimeSpan(x.ContentDetails.Duration); // didn't wanna bother writing my own parser
 
-                var vodDetails = new VodDetails()
+                return new VodDetails
                 {
                     Url = "https://www.youtube.com/watch?v=" + x.Id,
                     Length = duration,
-                    Views = x.Statistics.ViewCount,
+                    RecordedAt = x.Snippet.PublishedAt.GetValueOrDefault(),
                     Description = VodDetails.NormalizeDescription(x.Snippet.Description),
                     Title = singleLineTitle,
                     PreviewImage = x.Snippet.Thumbnails.High.Url,
                     IsUpcoming = x.Snippet.LiveBroadcastContent == "upcoming",
                     ApiClient = this,
                 };
-
-                if (x.Snippet.PublishedAt != null)
-                    vodDetails.RecordedAt = x.Snippet.PublishedAt.Value;
-
-                return vodDetails;
             }).ToList();
 
             return vods;
@@ -186,7 +181,7 @@ namespace Livestream.Monitor.Model.ApiClients
             throw new NotImplementedException();
         }
 
-        public Task<List<KnownGame>> GetKnownGameNames(string filterGameName)
+        public Task<List<string>> GetKnownGameNames(string filterGameName)
         {
             throw new NotImplementedException();
         }
@@ -429,7 +424,6 @@ namespace Livestream.Monitor.Model.ApiClients
                 livestreamModel.ThumbnailUrls = new ThumbnailUrls()
                 {
                     Small = snippet.Thumbnails?.Default?.Url,
-                    Medium = snippet.Thumbnails?.Standard?.Url,
                     Large = snippet.Thumbnails?.Maxres?.Url,
                 };
 

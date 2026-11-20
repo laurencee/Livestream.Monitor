@@ -7,15 +7,6 @@ namespace Livestream.Monitor.Model
     /// <summary> A unique definition of a stream specific to an api client. ToString and equality members are implemented. </summary>
     public class UniqueStreamKey
     {
-        public UniqueStreamKey()
-        {
-            if (ModelEnvironment.IsDesignMode)
-            {
-                ApiClientName = "Design time api client";
-                StreamId = "Design time stream id";
-            }
-        }
-
         [JsonConstructor]
         public UniqueStreamKey(string apiClientName, string streamId)
         {

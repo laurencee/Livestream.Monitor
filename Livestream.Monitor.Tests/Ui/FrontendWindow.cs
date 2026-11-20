@@ -1,7 +1,10 @@
 using System;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Windows.Automation;
+using Interop.UIAutomationClient;
+using static Interop.UIAutomationClient.UIA_ControlTypeIds;
+using static Interop.UIAutomationClient.UIA_PatternIds;
+using static Interop.UIAutomationClient.UIA_PropertyIds;
 
 namespace Livestream.Monitor.Tests.Ui;
 
@@ -12,44 +15,28 @@ internal sealed class FrontendWindow : IDisposable
     public static readonly TimeSpan StepTimeout = TimeSpan.FromSeconds(5);
     public static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(10);
 
-    private static readonly Condition Items = new OrCondition(
-        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.ListItem),
-        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.MenuItem));
-
-    private static readonly Condition Rows =
-        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.DataItem);
-
-    // WPF names its dialog element after the title; Direct2D draws the title as text.
-    private static readonly Condition AuthorizationPrompt =
-        new PropertyCondition(AutomationElement.NameProperty, "Twitch Authorization");
+    private const TreeScope Descendants = TreeScope.TreeScope_Descendants;
+    private readonly IUIAutomation automation = new CUIAutomation8();
+    private readonly IUIAutomationCondition itemCondition;
+    private readonly IUIAutomationCondition rowCondition;
+    private readonly IUIAutomationCondition authorizationPrompt;
 
     // An action a repeat would undo, such as a toggle or the next page, waits long enough for a slow frame to show its
     // outcome; one that checks its outcome before acting again is repeated sooner.
     private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RepeatSafeRetryInterval = TimeSpan.FromMilliseconds(250);
 
-    // Only its registration matters; see Root.
-    private static readonly StructureChangedEventHandler IgnoreStructureChange = (_, _) => { };
-
     private readonly UiApplication application;
 
-    private AutomationElement listenedWindow;
-
-    private FrontendWindow(UiFrontend ids, UiApplication application)
+    private FrontendWindow(UiTestProfile profile)
     {
-        Ids = ids;
-        this.application = application;
+        itemCondition = automation.CreateOrCondition(ByType(UIA_ListItemControlTypeId), ByType(UIA_MenuItemControlTypeId));
+        rowCondition = ByType(UIA_DataItemControlTypeId);
+        authorizationPrompt = automation.CreatePropertyCondition(UIA_NamePropertyId, "Twitch Authorization");
+        application = UiApplication.Launch(profile);
     }
 
-    public UiFrontend Ids { get; }
-
-    public static FrontendWindow Launch(FrontendKind kind, UiTestProfile profile)
-    {
-        var ids = UiFrontend.Of(kind);
-        var arguments = ids.Arguments(profile);
-        var application = UiApplication.Launch(ids.Executable, ids.InstanceName, profile, arguments);
-        return new FrontendWindow(ids, application);
-    }
+    public static FrontendWindow Launch(UiTestProfile profile) => new(profile);
 
     public T WaitFor<T>(
         Func<T> probe,
@@ -60,14 +47,14 @@ internal sealed class FrontendWindow : IDisposable
         string error = null;
         return UiApplication.WaitFor(TryProbe, timeout, description, Seen);
 
-        // An element can vanish, or a WPF automation peer fail, while a page changes; the next poll reads the new page.
+        // An element can vanish while a page changes; the next poll reads the new page.
         T TryProbe()
         {
             try
             {
                 return probe();
             }
-            catch (Exception exception) when (exception is ElementNotAvailableException or COMException)
+            catch (COMException exception)
             {
                 error = exception.Message;
                 return null;
@@ -104,13 +91,13 @@ internal sealed class FrontendWindow : IDisposable
         // Only a message's OK is pressed; the prompt's own affirmative button would start authorizing.
         void CloseMessageOrInvoke()
         {
-            if (Find(Ids.AcceptMessage) is { Current.Name: "OK" } ok) Invoke(ok);
-            else if (Find(automationId) is { Current.IsEnabled: true } control) Invoke(control);
+            if (Find("dialog.accept") is { CurrentName: "OK" } ok) Invoke(ok);
+            else if (Find(automationId) is { CurrentIsEnabled: not 0 } control) Invoke(control);
         }
 
-        void Decline() => InvokeIfEnabled(Ids.DeclinePrompt);
+        void Decline() => InvokeIfEnabled("dialog.cancel");
 
-        bool PromptShown() => Find(AuthorizationPrompt) != null;
+        bool PromptShown() => Find(authorizationPrompt) != null;
 
         bool PromptClosed() => !PromptShown();
     }
@@ -125,26 +112,24 @@ internal sealed class FrontendWindow : IDisposable
     }
 
     /// <summary>Waits for an enabled element with the automation id.</summary>
-    public AutomationElement Element(string automationId, TimeSpan timeout) =>
-        Element(ById(automationId), timeout, automationId);
-
-    public AutomationElement Element(string automationId) => Element(automationId, StepTimeout);
-
-    public AutomationElement Element(Condition condition, TimeSpan timeout, string description)
+    public IUIAutomationElement Element(string automationId, TimeSpan timeout)
     {
-        return WaitFor(FindEnabled, timeout, $"Enabled '{description}'");
+        var condition = ById(automationId);
+        return WaitFor(FindEnabled, timeout, $"Enabled '{automationId}'");
 
-        AutomationElement FindEnabled() => Find(condition) is { Current.IsEnabled: true } found ? found : null;
+        IUIAutomationElement FindEnabled() => Find(condition) is { CurrentIsEnabled: not 0 } found ? found : null;
     }
+
+    public IUIAutomationElement Element(string automationId) => Element(automationId, StepTimeout);
 
     public void WaitUntilDisabled(string automationId)
     {
         var condition = ById(automationId);
-        WaitUntil(() => Find(condition) is { Current.IsEnabled: false }, $"Disabled '{automationId}'");
+        WaitUntil(() => Find(condition) is { CurrentIsEnabled: 0 }, $"Disabled '{automationId}'");
     }
 
     public void SetText(string automationId, string text) =>
-        Pattern<ValuePattern>(Element(automationId), ValuePattern.Pattern).SetValue(text);
+        Value(Element(automationId)).SetValue(text);
 
     /// <summary>Waits until the probe accepts the followed streams' names, in listed order.</summary>
     public void WaitForRows(Func<string[], bool> probe, string description, TimeSpan timeout)
@@ -154,8 +139,8 @@ internal sealed class FrontendWindow : IDisposable
 
         string[] ReadRows()
         {
-            var rows = Root()?.FindAll(TreeScope.Descendants, Rows).Cast<AutomationElement>();
-            last = rows?.Select(DisplayedText).ToArray();
+            var rows = Root()?.FindAll(Descendants, rowCondition);
+            last = rows == null ? null : Elements(rows).Select(DisplayedText).ToArray();
             return last != null && probe(last) ? last : null;
         }
 
@@ -169,14 +154,14 @@ internal sealed class FrontendWindow : IDisposable
     /// Opens a list, by expanding it or by invoking the button that shows it, and returns the list or menu items within
     /// the container once each shows text. A list that closes before then, such as under a message, is opened again.
     /// </summary>
-    public AutomationElement[] OpenItems(
+    public IUIAutomationElement[] OpenItems(
         string openerId,
         string containerId,
         string description,
         Func<string[], bool> ready = null)
     {
         Element(openerId);
-        AutomationElement[] items = [];
+        IUIAutomationElement[] items = [];
         var seen = "no items";
         RetryUntil(RepeatSafeRetryInterval, Open, Shown, description, Seen);
         return items;
@@ -189,10 +174,9 @@ internal sealed class FrontendWindow : IDisposable
         {
             if (Find(openerId) is not { } opener) return;
 
-            if (opener.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var pattern))
+            if (opener.GetCurrentPattern(UIA_ExpandCollapsePatternId) is IUIAutomationExpandCollapsePattern expandable)
             {
-                var expandable = (ExpandCollapsePattern)pattern;
-                if (expandable.Current.ExpandCollapseState == ExpandCollapseState.Collapsed) expandable.Expand();
+                if (expandable.CurrentExpandCollapseState == ExpandCollapseState.ExpandCollapseState_Collapsed) expandable.Expand();
             }
             else if (Find(containerId) == null)
             {
@@ -203,7 +187,7 @@ internal sealed class FrontendWindow : IDisposable
         bool Shown()
         {
             var container = Find(containerId);
-            items = container?.FindAll(TreeScope.Descendants, Items).Cast<AutomationElement>().ToArray() ?? [];
+            items = container == null ? [] : Elements(container.FindAll(Descendants, itemCondition));
             var labels = items.Select(DisplayedText).ToArray();
             seen = string.Join(", ", labels.Select(label => $"'{label}'"));
             return labels.Length != 0 && labels.All(label => !string.IsNullOrWhiteSpace(label)) && (ready?.Invoke(labels) ?? true);
@@ -211,68 +195,65 @@ internal sealed class FrontendWindow : IDisposable
     }
 
     /// <summary>Chooses a list or menu item, closing a drop-down that stays open after a selection.</summary>
-    public static void Choose(AutomationElement item, AutomationElement container)
+    public static void Choose(IUIAutomationElement item, IUIAutomationElement container)
     {
-        if (!item.TryGetCurrentPattern(SelectionItemPattern.Pattern, out var selectable))
+        if (item.GetCurrentPattern(UIA_SelectionItemPatternId) is not IUIAutomationSelectionItemPattern selectable)
         {
             Invoke(item);
             return;
         }
 
-        ((SelectionItemPattern)selectable).Select();
+        selectable.Select();
 
-        if (container.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out var expandable) &&
-            ((ExpandCollapsePattern)expandable).Current.ExpandCollapseState == ExpandCollapseState.Expanded)
+        if (container.GetCurrentPattern(UIA_ExpandCollapsePatternId) is IUIAutomationExpandCollapsePattern
+            { CurrentExpandCollapseState: ExpandCollapseState.ExpandCollapseState_Expanded } expandable)
         {
-            ((ExpandCollapsePattern)expandable).Collapse();
+            expandable.Collapse();
         }
     }
 
-    public static void Invoke(AutomationElement element) =>
-        Pattern<InvokePattern>(element, InvokePattern.Pattern).Invoke();
+    public static void Invoke(IUIAutomationElement element) =>
+        ((IUIAutomationInvokePattern)element.GetCurrentPattern(UIA_InvokePatternId)).Invoke();
 
-    public static T Pattern<T>(AutomationElement element, AutomationPattern pattern) where T : BasePattern =>
-        (T)element.GetCurrentPattern(pattern);
+    public static IUIAutomationValuePattern Value(IUIAutomationElement element) =>
+        (IUIAutomationValuePattern)element.GetCurrentPattern(UIA_ValuePatternId);
 
-    /// <summary>
-    /// The first text an element shows, or its name when it shows none. A WPF item bound to an object is named after
-    /// the object's type, not what it displays.
-    /// </summary>
-    public static string DisplayedText(AutomationElement element) =>
-        Texts(element).FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? element.Current.Name;
+    public static IUIAutomationSelectionPattern Selection(IUIAutomationElement element) =>
+        (IUIAutomationSelectionPattern)element.GetCurrentPattern(UIA_SelectionPatternId);
 
-    /// <summary>The names of the text elements within the element.</summary>
-    public static string[] Texts(AutomationElement element)
+    public static IUIAutomationSelectionItemPattern SelectionItem(IUIAutomationElement element) =>
+        (IUIAutomationSelectionItemPattern)element.GetCurrentPattern(UIA_SelectionItemPatternId);
+
+    public static IUIAutomationTogglePattern Toggle(IUIAutomationElement element) =>
+        (IUIAutomationTogglePattern)element.GetCurrentPattern(UIA_TogglePatternId);
+
+    public static IUIAutomationExpandCollapsePattern ExpandCollapse(IUIAutomationElement element) =>
+        (IUIAutomationExpandCollapsePattern)element.GetCurrentPattern(UIA_ExpandCollapsePatternId);
+
+    public static IUIAutomationElement[] Elements(IUIAutomationElementArray array)
     {
-        var text = new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text);
-        var parts = element.FindAll(TreeScope.Descendants, text).Cast<AutomationElement>();
-        return parts.Select(part => part.Current.Name).ToArray();
+        var elements = new IUIAutomationElement[array.Length];
+        for (var i = 0; i < elements.Length; i++) elements[i] = array.GetElement(i);
+
+        return elements;
     }
 
-    public void Dispose()
-    {
-        // Removed before the application is closed; it may already have exited, leaving nothing to remove. The
-        // application is closed even if removal fails, so a hung frontend does not block later UI tests.
-        try
-        {
-            if (listenedWindow != null) Automation.RemoveStructureChangedEventHandler(listenedWindow, IgnoreStructureChange);
-        }
-        catch (Exception exception) when (exception is ElementNotAvailableException or COMException)
-        {
-        }
-        finally
-        {
-            application.Dispose();
-        }
-    }
+    public string DisplayedText(IUIAutomationElement element) =>
+        Texts(element).FirstOrDefault(text => !string.IsNullOrWhiteSpace(text)) ?? element.CurrentName;
+
+    public string[] Texts(IUIAutomationElement element) =>
+        Elements(element.FindAll(Descendants, ByType(UIA_TextControlTypeId))).Select(part => part.CurrentName).ToArray();
+
+    public void Dispose() => application.Dispose();
 
     /// <summary>The element with the automation id, or null when there is none, without waiting.</summary>
-    public AutomationElement Find(string automationId) => Find(ById(automationId));
+    public IUIAutomationElement Find(string automationId) => Find(ById(automationId));
 
-    private static PropertyCondition ById(string automationId) =>
-        new(AutomationElement.AutomationIdProperty, automationId);
+    private IUIAutomationCondition ById(string automationId) => automation.CreatePropertyCondition(UIA_AutomationIdPropertyId, automationId);
 
-    private AutomationElement Find(Condition condition) => Root()?.FindFirst(TreeScope.Descendants, condition);
+    private IUIAutomationCondition ByType(int type) => automation.CreatePropertyCondition(UIA_ControlTypePropertyId, type);
+
+    private IUIAutomationElement Find(IUIAutomationCondition condition) => Root()?.FindFirst(Descendants, condition);
 
     private void RetryUntil(
         TimeSpan retryInterval,
@@ -312,29 +293,15 @@ internal sealed class FrontendWindow : IDisposable
 
     private void InvokeIfEnabled(string automationId)
     {
-        if (Find(automationId) is { Current.IsEnabled: true } control) Invoke(control);
+        if (Find(automationId) is { CurrentIsEnabled: not 0 } control) Invoke(control);
     }
 
-    private static AndCondition TextNamed(string text) => new(
-        new PropertyCondition(AutomationElement.ControlTypeProperty, ControlType.Text),
-        new PropertyCondition(AutomationElement.NameProperty, text));
+    private IUIAutomationCondition TextNamed(string text) =>
+        automation.CreateAndCondition(ByType(UIA_TextControlTypeId), automation.CreatePropertyCondition(UIA_NamePropertyId, text));
 
-    private AutomationElement Root()
+    private IUIAutomationElement Root()
     {
         var window = application.MainWindow;
-        if (window == IntPtr.Zero) return null;
-
-        var root = AutomationElement.FromHandle(window);
-
-        // WPF refreshes the cached children of reused item peers, such as a list row shown again after filtering, only
-        // while a UI Automation client listens for structure or property changes, as assistive technology does.
-        // Without a listener such a row exposes the detached text of its previous cells.
-        if (listenedWindow == null)
-        {
-            Automation.AddStructureChangedEventHandler(root, TreeScope.Subtree, IgnoreStructureChange);
-            listenedWindow = root;
-        }
-
-        return root;
+        return window == IntPtr.Zero ? null : automation.ElementFromHandle(window);
     }
 }

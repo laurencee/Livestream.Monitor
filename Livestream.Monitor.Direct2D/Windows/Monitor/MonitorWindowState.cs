@@ -28,8 +28,9 @@ internal readonly record struct ProgressDialog(string Title, string Message);
 /// provider queries over the Core streams model. It is kept apart from <see cref="MonitorWindow"/>, which draws from
 /// it every frame, so that this logic is tested without a window, a message loop or a graphics device.
 /// </summary>
-internal sealed class MonitorWindowState : ObservableModel
+internal sealed class MonitorWindowState
 {
+    internal const string AllProviders = "All";
     private const string RefreshErrorTitle = "Error refreshing livestreams";
     private const string VodChannelPrompt = "Enter or select a channel to browse VODs";
     private const int DefaultPageSize = 15;
@@ -99,7 +100,7 @@ internal sealed class MonitorWindowState : ObservableModel
         get;
         set
         {
-            // WPF's list restarts its refresh failure count each time it is shown.
+            // The list restarts its refresh failure count each time it is shown.
             if (value == MonitorPage.Followed && field != MonitorPage.Followed) failedAutomaticRefreshes = 0;
             field = value;
             InvalidateGameSuggestions();
@@ -108,7 +109,7 @@ internal sealed class MonitorWindowState : ObservableModel
     }
 
     public string Filter { get; set; } = "";
-    public string ProviderFilter { get; set; } = FilterModel.AllApiClientsFilterName;
+    public string ProviderFilter { get; set; } = AllProviders;
     public bool OnlineOnly { get; set; }
     public int SelectedIndex { get; set; } = -1;
     public int PageNumber { get; set; }
@@ -124,10 +125,10 @@ internal sealed class MonitorWindowState : ObservableModel
 
     public bool HasNextPage { get; private set; }
     public bool BrowsingResultIsEmpty { get; private set; }
-    public bool Busy { get; private set => Set(ref field, value); }
+    public bool Busy { get; private set; }
     public bool IsContentLoading { get; private set; } = true;
     internal bool FollowedRowsSettled => StreamsModel.CanRefreshLivestreams || StreamsModel.Livestreams.Count == 0;
-    public string Status { get; private set => Set(ref field, value); } = "Initializing…";
+    public string Status { get; private set; } = "Initializing…";
     public bool IsVodChannelPrompt => Page == MonitorPage.Vods && Status == VodChannelPrompt;
     public LivestreamModel? SelectedStream =>
         SelectedIndex >= 0 && SelectedIndex < Rows.Count ? Rows[SelectedIndex] : null;
@@ -144,8 +145,17 @@ internal sealed class MonitorWindowState : ObservableModel
 
     internal void RevealFollowedStream(LivestreamModel stream)
     {
-        if (!FilterModel.Matches(stream, Filter, FilterModel.AllApiClientsFilterName, OnlineOnly)) Filter = "";
-        if (ProviderFilter != stream.ApiClient.ApiName) ProviderFilter = FilterModel.AllApiClientsFilterName;
+        if (!MatchesNameAndOnlineFilters(stream)) Filter = "";
+        if (ProviderFilter != stream.ApiClient.ApiName) ProviderFilter = AllProviders;
+    }
+
+    private bool MatchesNameAndOnlineFilters(LivestreamModel stream)
+    {
+        if (OnlineOnly && !stream.Live) return false;
+
+        return string.IsNullOrWhiteSpace(Filter) ||
+               stream.DisplayName.Contains(Filter, StringComparison.OrdinalIgnoreCase) ||
+               stream.ChannelIdentifier.ChannelId.Contains(Filter, StringComparison.OrdinalIgnoreCase);
     }
 
     public string GetDisplayedUptime(LivestreamModel stream)
@@ -176,10 +186,7 @@ internal sealed class MonitorWindowState : ObservableModel
     /// Starts loading and querying the followed channels in the background; called before the window exists so the
     /// requests start as early as possible. Later calls do nothing.
     /// </summary>
-    public void BeginInitialQuery()
-    {
-        if (StreamsModel is MonitorStreamsModel monitor) monitor.BeginInitialQuery();
-    }
+    public void BeginInitialQuery() => StreamsModel.BeginInitialQuery();
 
     /// <summary>
     /// Loads followed channels and starts the first refresh. Shows rows after the first provider's results are applied,
@@ -235,10 +242,10 @@ internal sealed class MonitorWindowState : ObservableModel
     }
 
     /// <summary>
-    /// Refreshes the followed channels. As WPF's refresh button does, a requested refresh reports every failure; as WPF's
-    /// list does, an automatic one reports nothing off the followed page, and reports failed provider queries only from
-    /// the third failed refresh in a row there, unless refresh error dialogs are disabled. Each reported failure can be
-    /// ignored for the rest of the session.
+    /// Refreshes the followed channels. A requested refresh reports every failure. An automatic refresh reports nothing
+    /// while another page is shown. On the followed page it reports failed provider queries only from the third failed
+    /// refresh in a row, unless refresh error dialogs are disabled. Each reported failed provider query can be ignored for
+    /// the rest of the session.
     /// </summary>
     public async Task Refresh(bool automatic = false)
     {
@@ -249,14 +256,14 @@ internal sealed class MonitorWindowState : ObservableModel
             if (automatic) failedAutomaticRefreshes = 0;
         });
 
-        // As WPF restarts its refresh timer after the dialogs close, the next automatic refresh waits a full period.
+        // After the dialogs close, the next automatic refresh waits a full period.
         if (automatic) ScheduleRefresh();
 
-        // WPF's list counts the refreshes that coincide with initialization as its first, so its first failure that
+        // The list counts the refreshes that coincide with initialization as its first, so its first failure that
         // opens dialogs is the third failed refresh in a row.
         async Task ReportFailure(Exception exception)
         {
-            // WPF's list stops refreshing off its page; its count restarts when the page is shown again.
+            // Off the followed page an automatic refresh failure is neither reported nor counted; the count restarts when the page is shown again.
             if (automatic && Page != MonitorPage.Followed) return;
 
             if (automatic) failedAutomaticRefreshes++;
@@ -302,7 +309,7 @@ internal sealed class MonitorWindowState : ObservableModel
         }
 
         var filtered = StreamsModel.Livestreams.Where(stream =>
-            FilterModel.Matches(stream, Filter, ProviderFilter, OnlineOnly));
+            (ProviderFilter == AllProviders || stream.ApiClient.ApiName == ProviderFilter) && MatchesNameAndOnlineFilters(stream));
 
         var sort = SettingsHandler.Settings.LivestreamListSortState;
         var descending = sort?.SortDirection != ListSortDirection.Ascending;
@@ -386,7 +393,7 @@ internal sealed class MonitorWindowState : ObservableModel
         browsingError.Dispose();
     }
 
-    public async Task QueryGameSuggestions(IApiClient api, string filter, Action<IReadOnlyList<KnownGame>> publish)
+    public async Task QueryGameSuggestions(IApiClient api, string filter, Action<IReadOnlyList<string>> publish)
     {
         // Page, provider and filter values may match again by the time an old request completes.
         var generation = ++gameSuggestionGeneration;
@@ -505,7 +512,7 @@ internal sealed class MonitorWindowState : ObservableModel
 
     /// <summary>
     /// Runs the action unless another is running, returning whether it ran and succeeded. A failure is shown under the
-    /// error title, which names what was being done as the WPF frontend's titles do.
+    /// error title, which names what was being done.
     /// </summary>
     public Task<bool> Run(string errorTitle, Func<Task> action) =>
         Run(exception => new ErrorDialog(errorTitle, exception.ExtractErrorMessage()), action);
@@ -611,10 +618,10 @@ internal sealed class MonitorWindowState : ObservableModel
 
     private void OnStreamChanged(object? sender, PropertyChangedEventArgs args)
     {
-        if (args.PropertyName == nameof(LivestreamModel.Live) && sender is LivestreamModel { Live: true } stream &&
-            StreamsModel.Initialised && !stream.DontNotify && !SettingsHandler.Settings.DisableNotifications)
+        if (args.PropertyName == nameof(LivestreamModel.Live) && sender is LivestreamModel { Live: true } stream && StreamsModel.Initialised)
         {
-            StreamOnline?.Invoke(stream);
+            var settings = SettingsHandler.Settings;
+            if (!settings.DisableNotifications && !settings.ExcludeFromNotifying.Contains(stream.UniqueStreamKey)) StreamOnline?.Invoke(stream);
         }
 
         Changed?.Invoke();

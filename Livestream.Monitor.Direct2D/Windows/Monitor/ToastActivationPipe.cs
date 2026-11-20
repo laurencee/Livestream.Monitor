@@ -34,7 +34,7 @@ internal sealed class ToastActivationPipe : IDisposable
 
         var reply = new byte[1];
         await pipe.ReadExactlyAsync(reply, cancellation).ConfigureAwait(false);
-        if (reply[0] != Accepted) throw new IOException("The running Direct2D instance rejected the notification target.");
+        if (reply[0] != Accepted) throw new IOException("The running instance rejected the notification target.");
     }
 
     private static async Task Listen(

@@ -440,7 +440,7 @@ public sealed class SurfaceUiShould : IDisposable
     public void NameTheInputAndHostItsElementOnTheNativeInputFocusedFromItsPlaceholder()
     {
         const string Placeholder = "add livestream...";
-        var textPattern = System.Windows.Automation.TextPattern.Pattern.Id;
+        var textPattern = Interop.UIAutomationClient.UIA_PatternIds.UIA_TextPatternId;
         DrawInput();
         var drawn = Assert.IsType<AutomationNode>(ui.Automation.Find("add"));
 
@@ -476,7 +476,7 @@ public sealed class SurfaceUiShould : IDisposable
         }
     }
 
-    // WPF's caption buttons are not focusable, so clicking one leaves the focus where it was, and a selected grid row keeps its
+    // Caption buttons are not focusable, so clicking one leaves the focus where it was, and a selected grid row keeps its
     // active colour.
     [Fact]
     public void LeaveTheFocusWhereItWasWhenACaptionButtonIsClicked()
@@ -518,7 +518,7 @@ public sealed class SurfaceUiShould : IDisposable
         ui.End();
     }
 
-    // As in the WPF settings flyout, Tab cycles inside an open pane instead of reaching the toolbar behind it.
+    // Tab cycles inside an open pane instead of reaching the toolbar behind it.
     [Fact]
     public void KeepTabInsideTheFocusScope()
     {
@@ -649,7 +649,7 @@ public sealed class SurfaceUiShould : IDisposable
 
         Assert.Contains(commands, command => command.Kind == DrawKind.TriangleDown);
 
-        // As in WPF, the list stays as wide as the control however long its choices are, with the bar's down arrow at
+        // The list stays as wide as the control however long its choices are, with the bar's down arrow at
         // its bottom right corner.
         var downArrow = new PointF(141, downArrowY);
         listUi.MouseDown(downArrow);
@@ -673,7 +673,7 @@ public sealed class SurfaceUiShould : IDisposable
         bool menu,
         string expected)
     {
-        // As in WPF, a disabled control shows no tooltip.
+        // A disabled control shows no tooltip.
         var button = new RectangleF(x: 230, y: 100, width: 80, height: 25);
         RectangleF? coveredArea = covered ? new RectangleF(x: 200, y: 0, width: 200, height: 300) : null;
         ui.Begin(palette, viewport, coveredArea);

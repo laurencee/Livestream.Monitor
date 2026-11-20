@@ -1,23 +1,18 @@
-﻿using Livestream.Monitor.Core;
-using System;
+﻿using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Model
 {
-    public class VodDetails : ObservableModel
+    public sealed class VodDetails
     {
         private static readonly Regex ExcessBlankLines = new(@"\n(?:[^\S\n]*\n){2,}");
 
         internal static string NormalizeDescription(string description) =>
             ExcessBlankLines.Replace(description.ReplaceLineEndings("\n").Trim(), "\n\n");
 
-        public string Url
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public string Url { get; init; }
 
         /// <summary>Returns the VOD's HTTP or HTTPS URI for opening in a browser.</summary>
         public Uri GetBrowserUri()
@@ -31,58 +26,18 @@ namespace Livestream.Monitor.Model
             return uri;
         }
 
-        public TimeSpan Length
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public TimeSpan Length { get; init; }
 
-        public long Views
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public DateTimeOffset RecordedAt { get; init; }
 
-        public DateTimeOffset RecordedAt
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public string Title { get; init; }
 
-        public string Title
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public string Description { get; init; }
 
-        public string Description
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public string PreviewImage { get; init; }
 
-        public string Game
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public bool IsUpcoming { get; init; }
 
-        public string PreviewImage
-        {
-            get;
-            set => Set(ref field, value);
-        }
-
-        public bool IsUpcoming
-        {
-            get;
-            set => Set(ref field, value);
-        }
-
-        public IApiClient ApiClient
-        {
-            get;
-            set => Set(ref field, value);
-        }
+        public IApiClient ApiClient { get; init; }
     }
 }

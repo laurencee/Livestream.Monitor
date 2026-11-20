@@ -8,17 +8,7 @@ namespace Livestream.Monitor.Model
 {
     public class LivestreamModel : ObservableModel
     {
-        private long viewers;
-        private string displayName;
         private (string Id, string Name) lastKnownCategory;
-
-        public LivestreamModel()
-        {
-            if (!ModelEnvironment.IsDesignMode) throw new InvalidOperationException("Design time only constructor");
-            Id = "DesignTimeId";
-            ChannelIdentifier = new ChannelIdentifier();
-            UniqueStreamKey = new UniqueStreamKey();
-        }
 
         /// <summary> A livestream object from an Api/Channel </summary>
         /// <param name="id">A unique id for this livestream for its <see cref="ApiClient"/></param>
@@ -45,28 +35,17 @@ namespace Livestream.Monitor.Model
         public bool Live
         {
             get;
-            set
-            {
-                if (value == field) return;
-                field = value;
-                NotifyOfPropertyChange(() => Live);
-                NotifyOfPropertyChange(() => Uptime);
-
-                // must update after notifying property change to give time to inspect LastLiveTime property before live state changed
-                if (field)
-                    LastLiveTime = DateTimeOffset.Now;
-            }
+            set => Set(ref field, value);
         }
 
         public string DisplayName
         {
-            get => displayName;
+            get;
             set
             {
                 if (string.IsNullOrWhiteSpace(value)) throw new ArgumentNullException(nameof(DisplayName));
-                if (value == displayName) return;
-                displayName = value;
-                NotifyOfPropertyChange(() => DisplayName);
+
+                Set(ref field, value);
             }
         }
 
@@ -86,20 +65,11 @@ namespace Livestream.Monitor.Model
 
         public long Viewers
         {
-            get => viewers;
-            set => Set(ref viewers, value);
+            get;
+            set => Set(ref field, value);
         }
 
         public DateTimeOffset? StartTime
-        {
-            get;
-            set
-            {
-                if (Set(ref field, value)) NotifyOfPropertyChange(nameof(Uptime));
-            }
-        }
-
-        public bool IsPartner
         {
             get;
             set => Set(ref field, value);
@@ -117,46 +87,13 @@ namespace Livestream.Monitor.Model
             set => Set(ref field, value);
         }
 
-        public string Language
-        {
-            get;
-            set => Set(ref field, value);
-        }
-
         public Task<string> GetStreamUrl() => ApiClient?.GetStreamUrl(this);
 
         public Task<string> GetChatUrl() => ApiClient?.GetChatUrl(this);
 
-        /// <summary> The username this livestream came from via importing (twitch allows importing followed streams) </summary>
-        public string ImportedBy { get; set; }
-
         public TimeSpan Uptime => Live && StartTime.HasValue ? DateTimeOffset.Now - StartTime.Value : TimeSpan.Zero;
 
-        public DateTimeOffset? LastLiveTime
-        {
-            get;
-            private set
-            {
-                if (value.Equals(field)) return;
-                field = value;
-                NotifyOfPropertyChange(() => LastLiveTime);
-            }
-        }
-
-        /// <summary> Exclude this livestream from raising popup notifications </summary>
-        public bool DontNotify
-        {
-            get;
-            set => Set(ref field, value);
-        }
-
         public bool SupportsCategoryChangeNotifications => ApiClient?.ApiName is TwitchApiClient.API_NAME or KickApiClient.API_NAME;
-
-        public bool NotifyOnCategoryChange
-        {
-            get;
-            set => Set(ref field, value);
-        }
 
         public bool IsChatDisabled
         {
@@ -179,7 +116,17 @@ namespace Livestream.Monitor.Model
             var previous = lastKnownCategory;
             if (previous.Name == null && !string.IsNullOrWhiteSpace(Game)) previous = (GameId, Game);
 
-            this.PopulateSelf(update);
+            BroadcasterLanguage = update.BroadcasterLanguage;
+            Description = update.Description?.Trim();
+            DisplayName = update.DisplayName;
+            Game = update.Game;
+            GameId = update.GameId;
+            ThumbnailUrls = update.ThumbnailUrls;
+
+            Viewers = update.Viewers;
+            StartTime = update.StartTime;
+            Live = update.Live;
+
             if (!sameSession) lastKnownCategory = default;
             if (!Live || string.IsNullOrWhiteSpace(Game)) return null;
 
@@ -196,7 +143,7 @@ namespace Livestream.Monitor.Model
         }
 
         public override string ToString() =>
-            $"{displayName}, Viewers={viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
+            $"{DisplayName}, Viewers={Viewers}, Uptime={Uptime.ToString("hh'h 'mm'm 'ss's'")}";
 
         #region Equality members
 

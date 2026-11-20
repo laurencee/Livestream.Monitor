@@ -14,6 +14,8 @@ internal static class Program
     /// <summary>The single-instance name, made per user by appending the user name.</summary>
     internal const string InstanceName = "Livestream Monitor Direct2D";
 
+    internal const string ErrorLogFile = "errors.log";
+
     // Set once the window exists; a later launch's request before then has no window to show.
     private static MonitorWindow? mainWindow;
 
@@ -52,7 +54,7 @@ internal static class Program
         }
         catch (Exception exception)
         {
-            File.AppendAllText("direct2d-errors.log", $"{DateTimeOffset.Now:o} {exception}{Environment.NewLine}");
+            File.AppendAllText(ErrorLogFile, $"{DateTimeOffset.Now:o} {exception}{Environment.NewLine}");
 
             if (!args.Contains("--quiet") && !args.Contains(StreamNotifications.ActivationSwitch))
                 Win32.MessageBox(owner: 0, exception.Message, caption: "Livestream Monitor", Win32.MbIconError);
@@ -80,7 +82,7 @@ internal static class Program
 
         SynchronizationContext.SetSynchronizationContext(Dispatcher);
 
-        // As in WPF, loading and querying the followed channels starts before the window and its graphics device are created.
+        // Loading and querying the followed channels starts before the window and its graphics device are created.
         var dialogs = new NativeDialogs(() => mainWindow!);
         var monitorState = new MonitorWindowState(dialogs, showProgress: dialogs.Progress, openBrowsingError: dialogs.OpenMessage);
         monitorState.BeginInitialQuery();

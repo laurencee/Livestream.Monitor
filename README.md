@@ -13,25 +13,12 @@ You can install this on Win10/11 via cmd prompt or powershell `winget install St
 The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
 
 ## Pre-requisites
-* Windows 10 or later and the .NET 10 runtime (see table below).
+* Windows 10 or later and the [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0).
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
-
-## WPF and Direct2D versions
-Livestream Monitor comes in two versions that share the same features, settings and stream list when run from the same folder:
-
-| | Direct2D (`Livestream.Monitor.Direct2D.exe`) | WPF (`Livestream.Monitor.WPF.exe`) |
-| --- | --- | --- |
-| Interface | A lighter rewrite that draws its own interface | The original app |
-| File size | 1.2 MB | 5.2 MB |
-| Memory use | ~120 MB | ~290 MB |
-| CPU use | Lowest | ~5× Direct2D |
-| Requires | [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) |
-
-Memory and CPU were measured with about 380 followed streams during a short session of browsing Top Streams and the stream list.
 
 ## Usage
 1. Download the latest release and extract anywhere you want.
-2. Run `Livestream.Monitor.Direct2D.exe` or `Livestream.Monitor.WPF.exe` (see [WPF and Direct2D versions](#wpf-and-direct2d-versions)).
+2. Run `Livestream.Monitor.exe`.
 3. If you already follow channels on Twitch, use Import to import any channels you already follow. (*)
 4. Add other channels manually. (*)
 5. Double-click on live channels to open the stream

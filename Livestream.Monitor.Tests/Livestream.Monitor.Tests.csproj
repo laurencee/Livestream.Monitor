@@ -3,9 +3,9 @@
     <TargetFramework>net10.0-windows</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <UiTestProject>..\Livestream.Monitor.Direct2D\Livestream.Monitor.Direct2D.csproj</UiTestProject>
     <IsTestProject>true</IsTestProject>
     <IsPackable>false</IsPackable>
-    <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
@@ -18,7 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Livestream.Monitor.Direct2D\Livestream.Monitor.Direct2D.csproj" />
+    <ProjectReference Include="$(UiTestProject)" />
+    <PackageReference Include="Interop.UIAutomationClient" Version="10.19041.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.1" />
@@ -26,24 +27,16 @@
     <PackageReference Include="AutoFixture.AutoNSubstitute" Version="4.18.1" />
     <PackageReference Include="AutoFixture.Xunit2" Version="4.18.1" />
     <PackageReference Include="NSubstitute" Version="5.3.0" />
-    <ProjectReference Include="..\Livestream.Monitor.WPF\Livestream.Monitor.WPF.csproj" />
     <None Update="*.local" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
-  <!--
-    UI tests launch Release builds of the frontends, as users run optimised builds; the other tests use this project's
-    configuration. The executables' paths are listed in ui-apps.txt in the test output.
-  -->
-  <ItemGroup>
-    <UiTestApp Include="..\Livestream.Monitor.WPF\Livestream.Monitor.WPF.csproj" />
-    <UiTestApp Include="..\Livestream.Monitor.Direct2D\Livestream.Monitor.Direct2D.csproj" />
-  </ItemGroup>
-  <Target Name="BuildUiTestApps" AfterTargets="Build">
-    <MSBuild Projects="@(UiTestApp)" Targets="Build" Properties="Configuration=Release">
+  <!-- UI tests launch the Release executable from any build configuration. -->
+  <Target Name="BuildUiTestApp" AfterTargets="Build">
+    <MSBuild Projects="$(UiTestProject)" Targets="Build" Properties="Configuration=Release">
       <Output TaskParameter="TargetOutputs" ItemName="UiTestAppAssembly" />
     </MSBuild>
     <WriteLinesToFile
-      File="$(OutDir)ui-apps.txt"
+      File="$(OutDir)ui-app.txt"
       Lines="@(UiTestAppAssembly->'%(RootDir)%(Directory)%(Filename).exe')"
       Overwrite="true"
       WriteOnlyWhenDifferent="true" />

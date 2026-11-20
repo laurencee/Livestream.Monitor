@@ -834,18 +834,10 @@ internal sealed class SettingsPane
         return palette.IsDark ? DarkThemeError : LightThemeError;
     }
 
-    private void SetBaseTheme(int index)
-    {
-        var baseTheme = index == 0 ? MetroThemeBaseColour.BaseLight : MetroThemeBaseColour.BaseDark;
-        handler.Settings.MetroThemeBaseColour = baseTheme;
-        handler.SaveSettings();
-    }
+    private void SetBaseTheme(int index) =>
+        handler.Settings.MetroThemeBaseColour = index == 0 ? MetroThemeBaseColour.BaseLight : MetroThemeBaseColour.BaseDark;
 
-    private void SetAccent(int index)
-    {
-        handler.Settings.MetroThemeAccentColour = Accents[index];
-        handler.SaveSettings();
-    }
+    private void SetAccent(int index) => handler.Settings.MetroThemeAccentColour = Accents[index];
 
     private void SyncTwitchAuth(SurfaceUi ui, TwitchSettings? saved)
     {

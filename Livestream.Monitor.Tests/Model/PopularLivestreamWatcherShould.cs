@@ -40,8 +40,6 @@ namespace Livestream.Monitor.Tests.Model
             await sut.NotifyPopularStreams();
 
             notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
-            notificationHandler.Received(expectedNotificationCount)
-                .AddNotification(Arg.Is<LivestreamNotification>(notification => notification.Duration == TimeSpan.FromSeconds(25)));
 
             await sut.NotifyPopularStreams();
 
@@ -60,7 +58,7 @@ namespace Livestream.Monitor.Tests.Model
             SetupApiClient(apiClient, livestreamModels);
             factory.GetAll().Returns(apiClients);
             settingsHandler.Settings.MinimumEventViewers = 1;
-            settingsHandler.Settings.ExcludeFromNotifying.Add(livestreamModels[0].ToExcludeNotify());
+            settingsHandler.Settings.ExcludeFromNotifying.Add(livestreamModels[0].UniqueStreamKey);
             var sut = Create(settingsHandler, notificationHandler, factory);
 
             await sut.NotifyPopularStreams();
@@ -172,7 +170,6 @@ namespace Livestream.Monitor.Tests.Model
             return new PopularLivestreamWatcher(
                 settingsHandler: settingsHandler,
                 notificationHandler: notificationHandler,
-                openStream: _ => { },
                 apiClientFactory: factory
             );
         }

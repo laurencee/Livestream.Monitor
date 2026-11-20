@@ -1,30 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
-using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 
 namespace Livestream.Monitor.Core
 {
     public static class Extensions
     {
-        /// <summary>
-        /// Returns spaced output for a Pascal cased string value
-        /// <example>"SomePascalCaseString" comes back as "Some Pascal Case String"</example>
-        /// </summary>
-        /// <param name="pascalCaseValue">A string in Pascal case format</param>
-        /// <returns>Spaced Pascal case string</returns>
-        public static string ToFriendlyString(this string pascalCaseValue)
-        {
-            return Regex.Replace(pascalCaseValue, "(?!^)([A-Z])", " $1");
-        }
-
-        public static string ReverseFriendlyString(this string friendlyString)
-        {
-            return friendlyString.Replace(" ", string.Empty);
-        }
-
         /// <summary> Safe with null/empty strings </summary>
         public static int ToInt(this string input)
         {
@@ -32,47 +14,15 @@ namespace Livestream.Monitor.Core
             return int.Parse(input);
         }
 
-        public static bool Contains(this IEnumerable<string> collection, string value, StringComparison stringComparison)
-        {
-            return collection.Any(x => x.IsEqualTo(value, stringComparison));
-        }
-
         public static bool IsEqualTo(this string original, string value, StringComparison stringComparison = StringComparison.OrdinalIgnoreCase)
         {
             return string.Compare(original, value, stringComparison) == 0;
-        }
-
-        public static IEnumerable<T> SkipAndTake<T>(this IEnumerable<T> query, int skip, int take)
-        {
-            return query.Skip(skip).Take(take);
         }
 
         /// <summary> Formats a duration in total hours, e.g. "44h 12m 01s", or "0" for none. </summary>
         public static string ToTotalHoursText(this TimeSpan duration) => duration == TimeSpan.Zero
             ? "0"
             : $"{Math.Floor(duration.TotalHours):00}h {duration.Minutes:00}m {duration.Seconds:00}s";
-
-        /// <summary>
-        /// Turns notifications about the stream on or off, recording it in the exclusions, which save themselves. A
-        /// followed stream's exclusion is also kept in step by the monitored streams model.
-        /// </summary>
-        public static void ToggleNotify(this Settings.Settings settings, LivestreamModel livestreamModel)
-        {
-            livestreamModel.DontNotify = !livestreamModel.DontNotify;
-            var key = livestreamModel.UniqueStreamKey;
-            var exclusions = settings.ExcludeFromNotifying;
-            if (livestreamModel.DontNotify && !exclusions.Contains(key)) exclusions.Add(key);
-            if (!livestreamModel.DontNotify) exclusions.Remove(key);
-        }
-
-        public static void SetLivestreamNotifyState(this LivestreamModel livestreamModel, Settings.Settings settings)
-        {
-            if (livestreamModel == null) return;
-            if (string.IsNullOrWhiteSpace(livestreamModel.Id)) throw new ArgumentNullException(nameof(LivestreamModel.Id));
-            if (livestreamModel.ApiClient == null) throw new ArgumentNullException(nameof(LivestreamModel.ApiClient));
-
-            livestreamModel.DontNotify = settings.ExcludeFromNotifying.Any(x => Equals(x, livestreamModel.ToExcludeNotify()));
-        }
 
         /// <summary> Rethrows any failed query exceptions or does nothing if no failed queries exist </summary>
         public static void EnsureAllQuerySuccess(

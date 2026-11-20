@@ -2,10 +2,7 @@
 [CmdletBinding()]
 param(
     [string]$ArchiveDirectory = (Join-Path $PSScriptRoot 'artifacts'),
-    # Receives each frontend's executable in its own subfolder.
-    [string]$PublishDirectory = (Join-Path $PSScriptRoot 'artifacts\publish'),
-    [ValidateSet('Both', 'Wpf', 'Direct2D')]
-    [string]$Frontend = 'Both'
+    [string]$PublishDirectory = (Join-Path $PSScriptRoot 'artifacts\publish')
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,52 +25,40 @@ $sevenZip = (Get-Command 7z.exe -CommandType Application -ErrorAction Ignore)?.S
             (Join-Path $env:ProgramFiles '7-Zip\7z.exe')
 if (![IO.File]::Exists($sevenZip)) { throw '7-Zip must be installed or 7z.exe available on PATH.' }
 
-$apps = @(
-    @{ Kind = 'Wpf'; Name = 'Livestream.Monitor.WPF' }
-    @{ Kind = 'Direct2D'; Name = 'Livestream.Monitor.Direct2D' }
-).Where({ $Frontend -in 'Both', $_.Kind })
-
-foreach ($app in $apps) {
-    $published = Join-Path $publishPath "$($app.Name)\$($app.Name).exe"
-    foreach ($process in @(Get-Process -Name $app.Name -ErrorAction SilentlyContinue)) {
-        if ($process.Path -eq $published) { throw "Close $published before releasing a new build." }
-    }
+$name = 'Livestream.Monitor'
+$projectName = 'Livestream.Monitor.Direct2D'
+$publishedPath = Join-Path $publishPath $projectName
+$published = Join-Path $publishedPath "$name.exe"
+foreach ($process in @(Get-Process -Name $name -ErrorAction SilentlyContinue)) {
+    if ($process.Path -eq $published) { throw "Close $published before releasing a new build." }
 }
 
 $stagingPath = Join-Path ([IO.Path]::GetTempPath()) "Livestream.Monitor.Release-$([Guid]::NewGuid().ToString('N'))"
 try {
-    # Every frontend is prepared in staging before any is released, so a failed step releases nothing. Each publishes
-    # as one framework-dependent executable, as its project file sets.
-    foreach ($app in $apps) {
-        $name = $app.Name
-        $output = Join-Path $stagingPath $name
-        $project = Join-Path $PSScriptRoot "$name\$name.csproj"
-        Invoke-NativeCommand 'dotnet' @(
-            'publish', $project, '--configuration', 'Release', '--runtime', 'win-x64', '-p:DebugType=None',
-            '--output', $output
-        )
+    $output = Join-Path $stagingPath $name
+    $project = Join-Path $PSScriptRoot "$projectName\$projectName.csproj"
+    Invoke-NativeCommand 'dotnet' @(
+        'publish', $project, '--configuration', 'Release', '--runtime', 'win-x64', '-p:DebugType=None',
+        '--output', $output
+    )
 
-        $app.Executable = Join-Path $output "$name.exe"
-        $payload = [IO.Directory]::GetFiles($output, '*', [IO.SearchOption]::AllDirectories)
-        if ($payload.Count -ne 1 -or $payload[0] -ne $app.Executable) {
-            throw "$name release must contain only its framework-dependent single executable."
-        }
-
-        # A new archive in staging, because adding to an existing archive would update it rather than replace it.
-        $version = [Version][Diagnostics.FileVersionInfo]::GetVersionInfo($app.Executable).FileVersion
-        $app.Archive = Join-Path $stagingPath "$name.$($version.ToString($version.Revision -eq 0 ? 3 : 4)).7z"
-        Invoke-NativeCommand $sevenZip @('a', '-mx=9', $app.Archive, $app.Executable)
-        Invoke-NativeCommand $sevenZip @('t', $app.Archive)
+    $executable = Join-Path $output "$name.exe"
+    $payload = [IO.Directory]::GetFiles($output, '*', [IO.SearchOption]::AllDirectories)
+    if ($payload.Count -ne 1 -or $payload[0] -ne $executable) {
+        throw "$name release must contain only its framework-dependent single executable."
     }
 
-    foreach ($app in $apps) {
-        $publishedPath = Join-Path $publishPath $app.Name
-        Copy-FileToFolder $app.Executable $publishedPath
-        Copy-FileToFolder $app.Archive $archivePath
-        $bytes = [IO.FileInfo]::new($app.Executable).Length
-        Write-Host "Published $($app.Name): $bytes bytes to $publishedPath"
-        Write-Host "Archived $([IO.Path]::GetFileName($app.Archive)) in $archivePath"
-    }
+    # A new archive in staging, because adding to an existing archive would update it rather than replace it.
+    $version = [Version][Diagnostics.FileVersionInfo]::GetVersionInfo($executable).FileVersion
+    $archive = Join-Path $stagingPath "$name.$($version.ToString($version.Revision -eq 0 ? 3 : 4)).7z"
+    Invoke-NativeCommand $sevenZip @('a', '-mx=9', $archive, $executable)
+    Invoke-NativeCommand $sevenZip @('t', $archive)
+
+    Copy-FileToFolder $executable $publishedPath
+    Copy-FileToFolder $archive $archivePath
+    $bytes = [IO.FileInfo]::new($executable).Length
+    Write-Host "Published ${name}: $bytes bytes to $publishedPath"
+    Write-Host "Archived $([IO.Path]::GetFileName($archive)) in $archivePath"
 } finally {
     if ([IO.Directory]::Exists($stagingPath)) { [IO.Directory]::Delete($stagingPath, $true) }
 }

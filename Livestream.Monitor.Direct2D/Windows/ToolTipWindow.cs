@@ -5,7 +5,7 @@ using Livestream.Monitor.Direct2D.Widgets;
 namespace Livestream.Monitor.Direct2D.Windows;
 
 /// <summary>
-/// A click-through popup showing hover text below the pointer, styled as the WPF frontend's MahApps tooltip: theme
+/// A click-through popup showing hover text below the pointer, with the theme's
 /// background and text, a Gray7 border, and 6 by 3 padding.
 /// </summary>
 internal sealed class ToolTipWindow : PopupWindow
@@ -16,8 +16,7 @@ internal sealed class ToolTipWindow : PopupWindow
     private const float VerticalInset = 3 + BorderThickness;
     private const float MaximumTextWidth = 480;
 
-    // WPF places mouse-anchored popups 17 device pixels below the pointer hot spot, at its x coordinate; measured
-    // from the WPF frontend.
+    // Mouse-anchored popups open 17 device pixels below the pointer hot spot at its x coordinate.
     private const int PointerOffset = 17;
 
     private string text = "";
@@ -50,7 +49,7 @@ internal sealed class ToolTipWindow : PopupWindow
         var textHeight = MeasureWrapped(text, width / Scale - HorizontalInset * 2, FontSize);
         var height = Math.Min(workArea.Height, (int)MathF.Ceiling((textHeight + VerticalInset * 2) * Scale));
 
-        // As in WPF, a popup that does not fit below the pointer opens above it.
+        // A popup that does not fit below the pointer opens above it.
         var x = Math.Clamp(pointer.X, workArea.Left, workArea.Right - width);
         var y = pointer.Y + PointerOffset;
         if (y + height > workArea.Bottom) y = pointer.Y - 1 - height;

@@ -4,7 +4,7 @@ using System.Runtime.InteropServices.Marshalling;
 namespace Livestream.Monitor.Direct2D.Native;
 
 // UI Automation provider interfaces from UIAutomationCore.h, declared in vtable order so source-generated COM can
-// expose managed providers without the WPF runtime. Interface-typed results are marshalled by the generator; host
+// expose managed providers. Interface-typed results are marshalled by the generator; host
 // providers, pattern providers and SAFEARRAYs are returned as raw pointers.
 // https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providerinterfaces
 

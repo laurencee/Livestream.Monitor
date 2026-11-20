@@ -73,7 +73,7 @@ namespace Livestream.Monitor.Model.ApiClients
         /// <summary> Gets a list of known game names from the api with an optional game name filter</summary>
         /// <param name="filterGameName">Optional game name filter</param>
         /// <returns>Collection of known games from the api</returns>
-        Task<List<KnownGame>> GetKnownGameNames(string filterGameName);
+        Task<List<string>> GetKnownGameNames(string filterGameName);
 
         Task<List<LivestreamQueryResult>> GetFollowedChannels(string userName);
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,18 +9,18 @@ using Livestream.Monitor.Model.ApiClients;
 namespace Livestream.Monitor.Core.Settings;
 
 /// <summary>Reads current stream keys and the legacy array of Twitch stream IDs.</summary>
-public sealed class ExcludeNotifyJsonConverter : JsonConverter<ObservableList<UniqueStreamKey>>
+public sealed class ExcludeNotifyJsonConverter : JsonConverter<ObservableCollection<UniqueStreamKey>>
 {
     public static bool LegacyExclusionsNeedSave;
 
     public override bool HandleNull => true;
 
-    public override ObservableList<UniqueStreamKey> Read(
+    public override ObservableCollection<UniqueStreamKey> Read(
         ref Utf8JsonReader reader,
         Type typeToConvert,
         JsonSerializerOptions options)
     {
-        var exclusions = new ObservableList<UniqueStreamKey>();
+        var exclusions = new ObservableCollection<UniqueStreamKey>();
         if (reader.TokenType == JsonTokenType.Null) return exclusions;
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException("Expected a notification exclusion array.");
@@ -50,7 +51,7 @@ public sealed class ExcludeNotifyJsonConverter : JsonConverter<ObservableList<Un
 
     public override void Write(
         Utf8JsonWriter writer,
-        ObservableList<UniqueStreamKey> value,
+        ObservableCollection<UniqueStreamKey> value,
         JsonSerializerOptions options)
     {
         writer.WriteStartArray();

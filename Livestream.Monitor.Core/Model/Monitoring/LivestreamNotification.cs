@@ -1,43 +1,7 @@
-﻿using Livestream.Monitor.Core;
-using System;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
-using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Livestream.Monitor.Model.Monitoring
+﻿namespace Livestream.Monitor.Model.Monitoring
 {
-    public class LivestreamNotification : ObservableModel
+    public sealed class LivestreamNotification
     {
-        public static readonly TimeSpan DefaultDuration = TimeSpan.FromSeconds(5);
-        public static readonly TimeSpan MaxDuration = TimeSpan.FromSeconds(60);
-
-        public static async Task<string> FindChannelIconUrl(ChannelIdentifier channel)
-        {
-            using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            try
-            {
-                var lookup = channel.ApiClient.FindChannelIconUrl(channel, deadline.Token);
-                return await lookup.WaitAsync(deadline.Token);
-            }
-            catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or TimeoutException or
-                                              InvalidDataException or JsonException)
-            {
-                return null;
-            }
-        }
-
-        public static readonly Action<IMonitorStreamsModel, LivestreamNotification> DefaultClickAction = (model, notification) =>
-        {
-            var livestream = model.Livestreams.FirstOrDefault(x => Equals(x, notification.LivestreamModel));
-            if (livestream != null)
-            {
-                model.SelectedLivestream = livestream;
-            }
-        };
-
         internal static LivestreamNotification CreateForFollowedStream(LivestreamModel stream, string newCategory = null)
         {
             var title = newCategory == null ? $"{stream.DisplayName} Online" : $"{stream.DisplayName} - {newCategory}";
@@ -50,56 +14,9 @@ namespace Livestream.Monitor.Model.Monitoring
             };
         }
 
-        public string Message
-        {
-            get;
-            set
-            {
-                if (field == value) return;
-                field = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        public string ImageUrl
-        {
-            get;
-            set
-            {
-                if (field == value) return;
-                field = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        public string Title
-        {
-            get;
-            set
-            {
-                if (field == value) return;
-                field = value;
-                NotifyOfPropertyChange();
-            }
-        }
-
-        /// <summary> Set to <see cref="DefaultDuration"/> by default </summary>
-        public TimeSpan Duration
-        {
-            get;
-            set
-            {
-                if (value.Equals(field)) return;
-                if (value.TotalSeconds < 0) value = TimeSpan.Zero;
-                if (value > MaxDuration) value = MaxDuration;
-
-                field = value;
-                NotifyOfPropertyChange(() => Duration);
-            }
-        } = DefaultDuration;
-
-        public Action<IMonitorStreamsModel, LivestreamNotification> ClickAction { get; set; } = DefaultClickAction;
-
-        public LivestreamModel LivestreamModel { get; set; }
+        public string Message { get; init; }
+        public string ImageUrl { get; init; }
+        public string Title { get; init; }
+        public LivestreamModel LivestreamModel { get; init; }
     }
 }

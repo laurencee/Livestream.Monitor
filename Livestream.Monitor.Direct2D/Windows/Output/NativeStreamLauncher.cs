@@ -90,7 +90,7 @@ internal sealed class NativeStreamLauncher(
         output.Append($"{command.FilePath} {command.Args}");
         if (settingsHandler.Settings.DebugMode) output.Append($"[DEBUG] {command.FilePath} {arguments}");
 
-        // As in WPF, a command that cannot be started is reported in its output window, which stays open.
+        // A command that cannot be started is reported in its output window, which stays open.
         if (!WindowsCommandResolver.TryResolveExecutable(command.FilePath, out var executable))
         {
             output.Append($"[ERROR] Invalid FileName: {command.FilePath}");
