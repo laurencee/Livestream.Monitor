@@ -47,6 +47,49 @@
             </Style>
             <Style TargetType="{x:Type ToolTip}" BasedOn="{StaticResource WrappedToolTip}" />
 
+            <Style x:Key="CompactContextMenuStyle" TargetType="ContextMenu" BasedOn="{StaticResource MahApps.Styles.ContextMenu}">
+                <Style.Resources>
+                    <Visibility x:Key="CompactContextMenuCheckmarkVisibility">Hidden</Visibility>
+                    <Thickness x:Key="CompactContextMenuLabelMargin">0,5,10,5</Thickness>
+                    <ControlTemplate x:Key="{ComponentResourceKey ResourceId=SubmenuItemTemplateKey, TypeInTargetAssembly={x:Type MenuItem}}"
+                                     TargetType="MenuItem">
+                        <Grid SnapsToDevicePixels="True">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Rectangle x:Name="Highlight" Grid.ColumnSpan="2"
+                                       Fill="{TemplateBinding Background}" Stroke="{TemplateBinding BorderBrush}" />
+                            <Path x:Name="Checkmark" Grid.Column="0" Margin="5,0" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                  Data="{DynamicResource Checkmark}" Fill="{DynamicResource MahApps.Brushes.CheckmarkFill}"
+                                  FlowDirection="LeftToRight" Visibility="{DynamicResource CompactContextMenuCheckmarkVisibility}" />
+                            <ContentPresenter Grid.Column="1" Margin="{DynamicResource CompactContextMenuLabelMargin}" VerticalAlignment="Center"
+                                              ContentSource="Header" RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Checkmark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="Highlight" Property="Fill" Value="{DynamicResource MahApps.Brushes.MenuItem.SelectionFill}" />
+                                <Setter TargetName="Highlight" Property="Stroke" Value="{DynamicResource MahApps.Brushes.MenuItem.SelectionStroke}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource MahApps.Brushes.MenuItem.Foreground.Disabled}" />
+                                <Setter TargetName="Checkmark" Property="Fill" Value="{DynamicResource MahApps.Brushes.MenuItem.GlyphPanel.Disabled}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Style.Resources>
+            </Style>
+
+            <Style x:Key="CompactContextMenuWithoutCheckmarkColumnStyle" TargetType="ContextMenu" BasedOn="{StaticResource CompactContextMenuStyle}">
+                <Style.Resources>
+                    <Visibility x:Key="CompactContextMenuCheckmarkVisibility">Collapsed</Visibility>
+                    <Thickness x:Key="CompactContextMenuLabelMargin">10,5,10,5</Thickness>
+                </Style.Resources>
+            </Style>
+
             <!--Design time hack to set the background color so we can work on user controls in dark VS theme-->
             <Style TargetType="{x:Type UserControl}">
                 <Style.Triggers>

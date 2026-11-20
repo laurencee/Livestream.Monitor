@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using Livestream.Monitor.Direct2D.Native;
+using Livestream.Monitor.Direct2D.Widgets;
 
 namespace Livestream.Monitor.Direct2D.Windows.Monitor;
 
@@ -19,18 +20,22 @@ internal sealed class TrayIcon : IDisposable
     private const uint TipFlag = 4;
     private const uint InfoFlag = 0x10;
     private const uint StandardFlags = MessageFlag | IconFlag | TipFlag;
-    private const nuint ShowCommand = 1;
-    private const nuint ExitCommand = 2;
     private readonly Action show;
     private readonly Action exit;
+    private readonly Func<ThemePalette> theme;
     private NotifyIconData data;
-    private nint menuOwner;
+    private TrayMenuWindow? menu;
     private Action? notificationClicked;
 
-    public TrayIcon(nint window, Action show, Action exit)
+    public TrayIcon(
+        nint window,
+        Action show,
+        Action exit,
+        Func<ThemePalette> theme)
     {
         this.show = show;
         this.exit = exit;
+        this.theme = theme;
         data = new NotifyIconData
         {
             Size = (uint)Marshal.SizeOf<NotifyIconData>(),
@@ -84,64 +89,16 @@ internal sealed class TrayIcon : IDisposable
         const uint BalloonClicked = 0x0405;
         if ((uint)message == BalloonClicked) notificationClicked?.Invoke();
         if ((uint)message == Win32.WmLeftButtonDoubleClick) show();
-        if ((uint)message != RightButtonUp) return;
+        if ((uint)message != RightButtonUp || !Win32.GetCursorPos(out var point)) return;
 
-        // Foreground a hidden top-level owner so outside clicks dismiss the menu without raising the monitor window.
-        if (menuOwner == 0) menuOwner = CreateMenuOwner();
-        if (menuOwner == 0) return;
-
-        var menu = Win32.CreatePopupMenu();
-        try
-        {
-            Win32.AppendMenu(menu, flags: 0, ShowCommand, title: "Show");
-            Win32.AppendMenu(menu, flags: 0, ExitCommand, title: "Exit");
-            Win32.GetCursorPos(out var point);
-            Win32.SetForegroundWindow(menuOwner);
-            var command = (nuint)Win32.TrackPopupMenu(
-                menu,
-                Win32.TpmReturnCommand,
-                point.X,
-                point.Y,
-                reserved: 0,
-                menuOwner,
-                rect: 0);
-
-            // Let Windows complete the task switch so the next tray menu stays open.
-            const uint WmNull = 0;
-            var threadId = Win32.GetCurrentThreadId();
-            Win32.PostThreadMessage(threadId, WmNull, wParam: 0, lParam: 0);
-
-            if (command == ShowCommand) show();
-            if (command == ExitCommand) exit();
-        }
-        finally
-        {
-            Win32.DestroyMenu(menu);
-        }
-    }
-
-    private static nint CreateMenuOwner()
-    {
-        var instance = Win32.GetModuleHandle(0);
-        return Win32.CreateWindowEx(
-            Win32.WsExToolWindow,
-            className: "Static",
-            windowName: "",
-            Win32.WsPopup,
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-            parent: 0,
-            menu: 0,
-            instance,
-            parameter: 0);
+        menu ??= new TrayMenuWindow(show, exit, theme);
+        menu.Display(point);
     }
 
     public void Dispose()
     {
         ShellNotifyIcon(Delete, ref data);
-        if (menuOwner != 0) Win32.DestroyWindow(menuOwner);
+        menu?.Dispose();
         if (data.Icon != 0) DestroyIcon(data.Icon);
     }
 

@@ -19,7 +19,7 @@
                           cal:Message.Attach="[Sorting] = [OnDataGridSorting($eventArgs)]" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                           VirtualizingStackPanel.IsVirtualizing="True" IsSynchronizedWithCurrentItem="False">
                     <DataGrid.Resources>
-                        <ContextMenu x:Key="ContextMenu" x:Shared="False"
+                        <ContextMenu x:Key="ContextMenu" x:Shared="False" Style="{StaticResource CompactContextMenuStyle}"
                                      DataContext="{Binding PlacementTarget.(FrameworkElement.DataContext), RelativeSource={RelativeSource Self}}"
                                      d:DataContext="{d:DesignInstance Type=model:LivestreamModel}"
                                      cal:Action.TargetWithoutContext="{Binding Source={x:Reference LayoutControl}, Path=DataContext}">

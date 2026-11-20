@@ -36,12 +36,12 @@ internal sealed class ActionFeedback
         if (!IsVisible) return;
 
         const float Margin = 4;
-        const float HorizontalPadding = 12;
-        const float Height = 32;
+        const float HorizontalPadding = 10;
+        const float VerticalPadding = 5;
         const float CornerRadius = 4;
         const float FontSize = 12;
         var width = Math.Min(ui.MeasureWidth(message, FontSize) + HorizontalPadding * 2, viewport.Width - Margin * 2);
-        var height = Math.Min(Height, viewport.Height - Margin * 2);
+        var height = Math.Min(Painter.LineHeight(FontSize) + VerticalPadding * 2, viewport.Height - Margin * 2);
         if (width <= 0 || height <= 0) return;
 
         var bounds = new RectangleF(

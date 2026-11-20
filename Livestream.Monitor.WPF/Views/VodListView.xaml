@@ -59,7 +59,8 @@
                             <controls:Tile x:Name="VodTile" Style="{StaticResource VodTile}" cal:Message.Attach="[Click] = [OpenVod($dataContext)]"
                                            Height="120" Width="Auto" Margin="3" HorizontalAlignment="Stretch">
                                 <controls:Tile.ContextMenu>
-                                    <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
+                                    <ContextMenu Style="{StaticResource CompactContextMenuWithoutCheckmarkColumnStyle}"
+                                                 cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
                                         <MenuItem Header="Copy VOD URL" cal:Message.Attach="[Click] = [CopyVodUrl($dataContext)]" />
                                         <MenuItem Header="Open in Browser" cal:Message.Attach="[Click] = [OpenVodInBrowser($dataContext)]" />
                                     </ContextMenu>

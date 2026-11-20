@@ -165,7 +165,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             theme: ThemeSource
         );
 
-        tray = new TrayIcon(Handle, Restore, Close);
+        tray = new TrayIcon(Handle, Restore, Close, theme: ThemeSource);
         popularStreams = new PopularLivestreamWatcher(
             settingsHandler: state.SettingsHandler,
             notificationHandler: this,

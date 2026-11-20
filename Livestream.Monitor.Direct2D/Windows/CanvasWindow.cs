@@ -128,6 +128,7 @@ internal abstract class CanvasWindow : DesktopWindow
     protected bool IsHoverSuspended { get; private set; }
 
     protected bool HasDialog => dialogs.Count != 0;
+    protected virtual bool HasWindowBorder => true;
     protected virtual uint? WindowBorderColor => null;
     protected virtual bool CanResize => true;
     private DialogPane? ActiveDialog => dialogs.Count == 0 ? null : dialogs[^1];
@@ -260,7 +261,7 @@ internal abstract class CanvasWindow : DesktopWindow
         UpdateWaitCursor();
         Ui.End();
         var focusedDialog = ActiveDialog?.Focus(Ui) == true;
-        Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
+        if (HasWindowBorder) Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
         NeedsPaint |= focusedDialog;
 
         var present = surfaceChanged || surface.PendingSnapshotPath != null || !MatchesPresentedFrame();

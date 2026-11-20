@@ -64,7 +64,8 @@
                                            Height="120" Width="Auto" Margin="3" HorizontalAlignment="Stretch">
                                 <controls:Tile.ContextMenu>
                                     <!-- 'Action.TargetWithoutContext' allows us to use to the view model as the datacontext rather than the individual item -->
-                                    <ContextMenu cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
+                                    <ContextMenu Style="{StaticResource CompactContextMenuStyle}"
+                                                 cal:Action.TargetWithoutContext="{Binding Source={x:Reference Items}, Path=DataContext}">
                                         <MenuItem Header="Copy Stream URL" cal:Message.Attach="[Click] = [CopyStreamUrl($dataContext)]" />
                                         <MenuItem Header="Open Stream" cal:Message.Attach="[Click] = [OpenStream($dataContext)]" />
                                         <MenuItem Header="Open Stream in Browser" cal:Message.Attach="[Click] = [OpenStreamInBrowser($dataContext)]" />

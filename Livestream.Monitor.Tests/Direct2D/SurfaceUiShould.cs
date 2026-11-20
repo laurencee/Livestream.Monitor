@@ -718,6 +718,28 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.Equal(1, chosen);
     }
 
+    [Theory]
+    [InlineData(false, 1)]
+    [InlineData(true, 0)]
+    public void UseMostRecentInputForStandaloneContextMenuSelection(bool cursorMoves, int expectedChoice)
+    {
+        var chosen = -1;
+        SurfaceUi.MenuChoice[] choices = [new("Show"), new("Exit")];
+        var size = ui.Popup(id: "tray", anchor: null, choices: choices, chosen: index => chosen = index);
+        var menuViewport = new RectangleF(PointF.Empty, size);
+        ui.Begin(palette, menuViewport);
+        ui.End();
+
+        var showPosition = new PointF(size.Width / 2, size.Height / 4);
+        ui.MouseMove(showPosition);
+        ui.Key(VirtualKey.Up, shift: false);
+        var cursorPosition = cursorMoves ? showPosition with { X = showPosition.X + 1 } : showPosition;
+        ui.MouseMove(cursorPosition);
+        ui.Key(VirtualKey.Enter, shift: false);
+
+        Assert.Equal(expectedChoice, chosen);
+    }
+
     [Fact]
     public void BlockContentHoverUnderSettingsAndWhileADropdownIsOpen()
     {

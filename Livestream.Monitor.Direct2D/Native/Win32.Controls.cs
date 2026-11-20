@@ -17,7 +17,6 @@ internal static unsafe partial class Win32
     public const int EnKillFocus = 0x0200;
     public const int EnChange = 0x0300;
     public const int SbVertical = 1;
-    public const uint TpmReturnCommand = 0x0100;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct NotificationHeader
@@ -159,31 +158,6 @@ internal static unsafe partial class Win32
     [LibraryImport("gdi32.dll", EntryPoint = "GetTextMetricsW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool GetTextMetrics(nint context, out TextMetrics metrics);
-
-    [LibraryImport("user32.dll")]
-    public static partial nint CreatePopupMenu();
-
-    [LibraryImport("user32.dll", EntryPoint = "AppendMenuW", StringMarshalling = StringMarshalling.Utf16)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool AppendMenu(
-        nint menu,
-        uint flags,
-        nuint id,
-        string title);
-
-    [LibraryImport("user32.dll")]
-    public static partial int TrackPopupMenu(
-        nint menu,
-        uint flags,
-        int x,
-        int y,
-        int reserved,
-        nint owner,
-        nint rect);
-
-    [LibraryImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool DestroyMenu(nint menu);
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

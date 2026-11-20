@@ -19,11 +19,24 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     private const float InputTextInset = 8;
     private const float PlaceholderOpacity = 0.6f;
 
-    // Menu sizes follow the WPF (MahApps) menus. A combo box or drop-down list pads its rows inside its border and
-    // never ticks a choice; a context menu uses larger text and rows, keeps a column for ticks and leaves room after
-    // the text.
+    private const float ContextMenuPadding = 5;
+    private const float ContextMenuRightPadding = 10;
+    private const float ContextMenuBorder = 1;
+    private const float ContextMenuTextSize = 14;
+    private const float MenuCheckWidth = 19;
+
     private static readonly MenuStyle ListMenuStyle = new(RowHeight: 22, TextInset: 9, EndPadding: 8, Inset: 2);
-    private static readonly MenuStyle ContextMenuStyle = new(RowHeight: 30.5f, TextInset: 32, EndPadding: 37, Inset: 1, TextSize: 14);
+    private static readonly MenuStyle ContextMenuStyle = new(
+        RowHeight: Painter.LineHeight(ContextMenuTextSize) + 2 * ContextMenuPadding,
+        TextInset: ContextMenuBorder + MenuCheckWidth + 2 * ContextMenuPadding,
+        EndPadding: ContextMenuBorder + ContextMenuRightPadding,
+        Inset: ContextMenuBorder,
+        TextSize: ContextMenuTextSize);
+
+    private static readonly MenuStyle ContextMenuWithoutCheckmarkColumnStyle = ContextMenuStyle with
+    {
+        TextInset = ContextMenuStyle.EndPadding,
+    };
 
     // On the automation group stack in place of a group that is covered or scrolled out of view.
     private const int HiddenGroup = -2;
@@ -855,7 +868,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                     changed: changed,
                     keepOpen: keepOpen,
                     kind: MenuKind.ComboBox,
-                    width: MenuWidth(MenuKind.ComboBox, items, bounds.Width)
+                    style: ListMenuStyle,
+                    width: MenuWidth(ListMenuStyle, items, bounds.Width)
                 );
             },
             enabled,
@@ -1013,6 +1027,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var moved = pointer != position;
         pointer = position;
         if (menu is { Scrolls: true } scrolling && scrolling.Bar.MouseMove(position)) return true;
+        if (moved && menu is { IsStandalone: true } active) SelectMenuItemAt(active, position);
 
         var next = HitAt(position)?.Id;
         if (next == hovered) return menu != null && moved;
@@ -1034,8 +1049,17 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             }
             else if (menu.Bounds.Contains(position))
             {
-                // As in WPF, clicking a disabled item leaves the menu open.
-                Choose(menu, MenuIndexAt(menu, position));
+                if (menu.IsStandalone)
+                {
+                    // The tray menu follows native menus and waits for release so a drag out can cancel the choice.
+                    SelectMenuItemAt(menu, position);
+                    menu.ChoicePressed = menu.Selected >= 0;
+                }
+                else
+                {
+                    // As in WPF, clicking a disabled item leaves the menu open.
+                    Choose(menu, MenuIndexAt(menu, position));
+                }
             }
             else if (DropDownInputAt(position) is { } inputId)
             {
@@ -1065,6 +1089,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool MouseUp(PointF position)
     {
         if (menu is { Scrolls: true } scrolling) scrolling.Bar.MouseUp();
+        if (menu is { ChoicePressed: true } active)
+        {
+            active.ChoicePressed = false;
+            Choose(active, MenuIndexAt(active, position));
+            return true;
+        }
+
         var widget = HitAt(position);
         var activate = widget != null && widget.Id == pressed;
         pressed = null;
@@ -1528,60 +1559,67 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         RectangleF control,
         IReadOnlyList<string> choices,
         Action<int> chosen,
-        string? input = null) => ShowMenu(id, control, ToMenuChoices(choices), chosen, MenuKind.DropDown, name, input);
+        string? input = null)
+    {
+        var items = ToMenuChoices(choices);
+        ShowMenu(id, control, items, chosen, MenuKind.DropDown, ListMenuStyle, name, input);
+    }
 
-    /// <summary>Shows a context menu below the anchor, or above it when there is no room below; a pointer's anchor is a point.</summary>
-    public void Popup(
+    /// <summary>Shows a context menu near the anchor and returns its natural size. A null anchor fills the viewport.</summary>
+    public SizeF Popup(
         string id,
-        RectangleF anchor,
+        RectangleF? anchor,
         IReadOnlyList<MenuChoice> choices,
-        Action<int> chosen) =>
-        ShowMenu(id, anchor, choices, chosen, MenuKind.ContextMenu);
+        Action<int> chosen)
+    {
+        var style = choices.Any(static choice => choice.Checkable || choice.Checked) ? ContextMenuStyle : ContextMenuWithoutCheckmarkColumnStyle;
+        var width = ShowMenu(id, anchor, choices, chosen, MenuKind.ContextMenu, style);
+        return new SizeF(width: width, height: choices.Count * style.RowHeight + 2 * style.Inset);
+    }
 
-    private void ShowMenu(
+    private float ShowMenu(
         string id,
-        RectangleF anchor,
+        RectangleF? anchor,
         IReadOnlyList<MenuChoice> choices,
         Action<int> chosen,
         MenuKind kind,
+        MenuStyle style,
         string name = "",
         string? input = null)
     {
+        var placement = anchor.GetValueOrDefault();
+        var minimumWidth = kind == MenuKind.ContextMenu ? 0 : placement.Width;
+        var width = MenuWidth(style, choices, minimumWidth);
         menu = new MenuState(
             id: id,
-            anchor: anchor,
+            anchor: placement,
             choices: choices,
             selected: -1,
             changed: chosen,
             keepOpen: false,
             kind: kind,
-            width: MenuWidth(kind, choices, anchor.Width)
+            style: style,
+            width: width
         )
         {
             Name = name,
             Input = input,
+            IsStandalone = !anchor.HasValue,
         };
 
         Invalidate?.Invoke();
+        return width;
     }
 
     // Like a WPF menu, a menu is as wide as its widest choice, and a list is at least as wide as its control.
-    private float MenuWidth(MenuKind kind, IReadOnlyList<MenuChoice> choices, float controlWidth)
+    private float MenuWidth(MenuStyle style, IReadOnlyList<MenuChoice> choices, float minimumWidth)
     {
-        var style = StyleOf(kind);
         var widest = 0f;
         foreach (var choice in choices) widest = Math.Max(widest, MeasureWidth(choice.Text, style.TextSize));
 
         var naturalWidth = style.TextInset + widest + style.EndPadding;
-        return kind == MenuKind.ContextMenu ? naturalWidth : Math.Max(controlWidth, naturalWidth);
+        return Math.Max(minimumWidth, naturalWidth);
     }
-
-    private static MenuStyle StyleOf(MenuKind kind) => kind switch
-    {
-        MenuKind.ComboBox or MenuKind.DropDown => ListMenuStyle,
-        MenuKind.ContextMenu => ContextMenuStyle,
-        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-    };
 
     private TextInput GetInput(string id)
     {
@@ -1710,7 +1748,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var limit = active.IsList ? ListMaximumHeight : MaximumVisibleMenuRows * active.RowHeight + insets;
         var spaceBelow = viewport.Bottom - active.Anchor.Bottom - 1;
         var spaceAbove = active.Anchor.Top - viewport.Top - EdgeMargin;
-        var space = active.IsList ? Math.Max(spaceBelow, spaceAbove) : viewport.Height - 2 * EdgeMargin;
+        var space = active.IsStandalone ? viewport.Height
+            : active.IsList ? Math.Max(spaceBelow, spaceAbove) : viewport.Height - 2 * EdgeMargin;
         var fittingRows = (int)((Math.Min(limit, space) - insets) / active.RowHeight);
         var rows = Math.Min(active.Choices.Count, Math.Max(1, fittingRows));
 
@@ -1720,6 +1759,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         // As in WPF, a list that overflows gets a scroll bar beside its choices and stays as wide as its control, clipping
         // longer choices; a context menu widens by the bar instead.
         active.Scrolls = active.Choices.Count > rows;
+        if (active.IsStandalone)
+        {
+            active.Bounds = viewport;
+            return;
+        }
+
         var barWidth = active.Scrolls ? VerticalScrollBar.Width : 0;
         var naturalWidth = active is { Scrolls: true, IsList: true } ? active.Anchor.Width : active.Width + barWidth;
         var width = Math.Min(naturalWidth, viewport.Width - 4);
@@ -1781,9 +1826,9 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             var choice = active.Choices[index];
             var row = MenuRow(active, i);
             var selected = choice.Enabled && index == active.Selected;
-            var over = choice.Enabled && row.Contains(pointer);
+            var over = choice.Enabled && row.Contains(pointer) && (!active.IsStandalone || selected);
 
-            if (selected)
+            if (selected && (!active.IsStandalone || !over))
             {
                 const float MarkerWidth = 3;
                 const float MarkerInset = 2;
@@ -1795,13 +1840,16 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
                 Fill(row, active.IsList ? Palette.Tile : Palette.ContextMenuHover);
             }
 
-            var checkBounds = row with { X = left + 5, Width = 19 };
             var textBounds = row with { X = left + style.TextInset, Width = textWidth };
             var color = choice.Enabled ? Palette.Text : disabledText;
 
             // A checked item's tick is centred in its own column, so labels line up whether or not an item is ticked,
             // and uses the accent, as WPF menu items do.
-            if (choice.Checked) Icon(text: "✓", checkBounds, choice.Enabled ? Palette.MenuAccent : disabledText);
+            if (choice.Checked)
+            {
+                var checkBounds = row with { X = row.X + ContextMenuPadding, Width = MenuCheckWidth };
+                Icon(text: "✓", checkBounds, choice.Enabled ? Palette.MenuAccent : disabledText);
+            }
 
             // As in WPF, a list clips a choice longer than its control; a context menu is as wide as its longest item.
             Label(choice.Text, textBounds, color, style.TextSize, trim: !active.IsList);
@@ -1838,6 +1886,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     }
 
     private static string ChoiceKey(MenuState active, int index) => $"{active.Id}.choice.{index}";
+
+    private static void SelectMenuItemAt(MenuState active, PointF position)
+    {
+        var index = MenuIndexAt(active, position);
+        active.Selected = index >= 0 && active.Choices[index].Enabled ? index : -1;
+    }
 
     private static RectangleF MenuRow(MenuState active, int visibleRow) => new(
         x: active.Bounds.Left + active.Style.Inset,
@@ -1926,6 +1980,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Action<int> changed,
         bool keepOpen,
         MenuKind kind,
+        MenuStyle style,
         float width)
     {
         public string Id { get; } = id;
@@ -1944,9 +1999,12 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         /// <summary>The id of the text input whose suggestions a drop-down list shows, or null.</summary>
         public string? Input { get; init; }
 
+        public bool IsStandalone { get; init; }
+        public bool ChoicePressed;
+
         public bool KeepOpen { get; } = keepOpen;
         public float Width { get; } = width;
-        public MenuStyle Style { get; } = StyleOf(kind);
+        public MenuStyle Style { get; } = style;
         public float RowHeight => Style.RowHeight;
 
         /// <summary>True for a combo box, whose choices are its own automation children and whose selected choice is its value.</summary>
