@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>Livestream.Monitor.Launcher</AssemblyName>
+    <AssemblyTitle>Livestream.Monitor</AssemblyTitle>
+    <RootNamespace>Livestream.Monitor.Launcher</RootNamespace>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <SelfContained>false</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationManifest>..\..\Livestream.Monitor.Direct2D\app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\..\Livestream.Monitor.Core\Images\TrayIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(PayloadDirectory)\ExternalAPIs.dll.br" LogicalName="ExternalAPIs.dll.br" />
+    <EmbeddedResource Include="$(PayloadDirectory)\Livestream.Monitor.Core.dll.br" LogicalName="Livestream.Monitor.Core.dll.br" />
+    <EmbeddedResource Include="$(PayloadDirectory)\Livestream.Monitor.dll.br" LogicalName="Livestream.Monitor.dll.br" />
+  </ItemGroup>
+  <Target Name="RequirePayload" BeforeTargets="PrepareForBuild" Condition="'$(PayloadDirectory)' == ''">
+    <Error Text="Use Build.Release.ps1 to build the launcher with its compressed payload." />
+  </Target>
+</Project>
