@@ -382,6 +382,10 @@ internal static unsafe partial class Win32
     [LibraryImport("kernel32.dll")]
     public static partial uint GetCurrentThreadId();
 
+    [LibraryImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ProcessIdToSessionId(uint processId, out uint sessionId);
+
     [LibraryImport("dwmapi.dll")]
     public static partial int DwmFlush();
 

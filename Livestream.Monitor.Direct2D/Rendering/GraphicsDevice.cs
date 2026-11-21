@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Livestream.Monitor.Direct2D.Native;
 
 namespace Livestream.Monitor.Direct2D.Rendering;
@@ -30,35 +31,37 @@ internal sealed class GraphicsDevice : IDisposable
     private static readonly uint[] FeatureLevels =
         [FeatureLevel11Point1, FeatureLevel11Point0, FeatureLevel10Point1, FeatureLevel10Point0, FeatureLevel9Point3];
 
-    private DeviceResources resources;
+    private DeviceResources? resources;
 
-    public GraphicsDevice()
-    {
-        D2DFactory = D2DFactory.Create();
-        WriteFactory = DWriteFactory.Create();
-        ImagingFactory = WicFactory.Create();
-        resources = DeviceResources.Create(D2DFactory);
-    }
+    private D2DFactory D2DFactory { get; } = D2DFactory.Create();
 
-    private D2DFactory D2DFactory { get; }
+    // Created on first use. The work before the first device call, e.g. window creation and layout, can then run while a
+    // creation started by StartHardwareDeviceCreation is still in progress.
+    private DeviceResources Resources => resources ??= DeviceResources.Create(D2DFactory, HardwareDeviceCreation.TakeStarted());
 
     /// <summary>A new device-independent path geometry.</summary>
     public D2DPathGeometry CreatePathGeometry() => D2DFactory.CreatePathGeometry();
 
-    public DWriteFactory WriteFactory { get; }
+    public DWriteFactory WriteFactory { get; } = DWriteFactory.Create();
 
-    public WicFactory ImagingFactory { get; }
+    public WicFactory ImagingFactory { get; } = WicFactory.Create();
 
-    public D3D11Device Direct3DDevice => resources.Direct3DDevice!;
+    public D3D11Device Direct3DDevice => Resources.Direct3DDevice!;
 
-    public DxgiFactory2 DxgiFactory => resources.DxgiFactory!;
+    public DxgiFactory2 DxgiFactory => Resources.DxgiFactory!;
 
-    public D2DDeviceContext Context => resources.Context!;
+    public D2DDeviceContext Context => Resources.Context!;
 
-    public DCompositionDevice Composition => resources.Composition!;
+    public DCompositionDevice Composition => Resources.Composition!;
 
     /// <summary>Incremented by every device recreation; device-dependent resources compare it to rebuild.</summary>
     public int Generation { get; private set; }
+
+    /// <summary>
+    /// Starts creating the hardware D3D11 device on a background thread. The first device objects take that device instead of
+    /// loading the driver on the UI thread.
+    /// </summary>
+    public static void StartHardwareDeviceCreation() => HardwareDeviceCreation.Start();
 
     /// <summary>True for the HRESULTs reporting a removed or reset device, which any device call can return.</summary>
     public static bool IsDeviceLost(int result)
@@ -73,15 +76,15 @@ internal sealed class GraphicsDevice : IDisposable
     {
         // Create the replacement first: if that fails, the lost objects stay valid to call (and fail again) instead of
         // being released wrappers.
-        var replacement = DeviceResources.Create(D2DFactory);
-        resources.Dispose();
+        var replacement = DeviceResources.Create(D2DFactory, startedHardware: null);
+        resources?.Dispose();
         resources = replacement;
         Generation++;
     }
 
     public void Dispose()
     {
-        resources.Dispose();
+        resources?.Dispose();
         ImagingFactory.Dispose();
         WriteFactory.Dispose();
         D2DFactory.Dispose();
@@ -95,13 +98,16 @@ internal sealed class GraphicsDevice : IDisposable
         public D2DDeviceContext? Context;
         public DCompositionDevice? Composition;
 
-        /// <summary>Creates every device object, releasing those already created when a later one fails.</summary>
-        public static DeviceResources Create(D2DFactory factory)
+        /// <summary>
+        /// Creates every device object, taking the hardware device from a started creation when one is given, and
+        /// releases those already created when a later one fails.
+        /// </summary>
+        public static DeviceResources Create(D2DFactory factory, HardwareDeviceCreation? startedHardware)
         {
             var resources = new DeviceResources();
             try
             {
-                resources.Initialize(factory);
+                resources.Initialize(factory, startedHardware);
                 return resources;
             }
             catch
@@ -120,11 +126,12 @@ internal sealed class GraphicsDevice : IDisposable
             Direct3DDevice?.Dispose();
         }
 
-        private unsafe void Initialize(D2DFactory factory)
+        private unsafe void Initialize(D2DFactory factory, HardwareDeviceCreation? startedHardware)
         {
             // WARP keeps the UI usable on machines without a usable hardware adapter.
-            if (D3D11Device.Create(HardwareDriver, CreationFlags, FeatureLevels, out Direct3DDevice) < 0)
-                ComObject.Check(D3D11Device.Create(WarpDriver, CreationFlags, FeatureLevels, out Direct3DDevice));
+            var hardwareResult = startedHardware?.Take(out Direct3DDevice) ??
+                D3D11Device.Create(HardwareDriver, CreationFlags, FeatureLevels, out Direct3DDevice);
+            if (hardwareResult < 0) ComObject.Check(D3D11Device.Create(WarpDriver, CreationFlags, FeatureLevels, out Direct3DDevice));
 
             using var dxgiDevice = new DxgiDevice(Direct3DDevice!.QueryInterface(DxgiDevice.Iid));
             using var adapter = dxgiDevice.GetAdapter();
@@ -133,6 +140,69 @@ internal sealed class GraphicsDevice : IDisposable
             Context = direct2DDevice.CreateDeviceContext();
             Context.UseClearTypeTextAntialiasing();
             Composition = DCompositionDevice.Create(dxgiDevice);
+        }
+    }
+
+    /// <summary>
+    /// The hardware device created on a background thread during startup, taken once by the first device objects. If nothing
+    /// takes the device, because startup failed or exited first, it is left for process exit to release.
+    /// </summary>
+    private sealed class HardwareDeviceCreation
+    {
+        // Set and taken on the UI thread only, so it needs no synchronization; the creation thread never reads it.
+        private static HardwareDeviceCreation? started;
+
+        private readonly Thread thread;
+        private D3D11Device? device;
+        private int result;
+        private ExceptionDispatchInfo? failure;
+
+        private HardwareDeviceCreation()
+        {
+            // A background thread does not keep the process alive when startup exits before the device is taken.
+            thread = new Thread(Create) { IsBackground = true, Name = "Direct3D device creation" };
+        }
+
+        public static void Start()
+        {
+            var creation = new HardwareDeviceCreation();
+            started = creation;
+            creation.thread.Start();
+        }
+
+        /// <summary>The started creation, once; null when none was started or it was already taken.</summary>
+        public static HardwareDeviceCreation? TakeStarted()
+        {
+            var creation = started;
+            started = null;
+            return creation;
+        }
+
+        /// <summary>
+        /// Waits for the creation and returns its HRESULT, with the device on success. If the creation threw, rethrows that
+        /// exception, as creating the device on the calling thread would have thrown it.
+        /// </summary>
+        public int Take(out D3D11Device? created)
+        {
+            // Join also makes the thread's writes visible here. On this STA thread it pumps COM calls and sent messages meanwhile.
+            thread.Join();
+            failure?.Throw();
+
+            created = device;
+            return result;
+        }
+
+        private void Create()
+        {
+            // An exception escaping this thread would end the process; it is rethrown where the device is taken instead.
+            try
+            {
+                result = D3D11Device.Create(HardwareDriver, CreationFlags, FeatureLevels, out device);
+            }
+            catch (Exception exception)
+            {
+                failure = ExceptionDispatchInfo.Capture(exception);
+            }
         }
     }
 }

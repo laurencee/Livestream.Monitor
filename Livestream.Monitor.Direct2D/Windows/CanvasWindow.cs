@@ -44,8 +44,8 @@ internal abstract class CanvasWindow : DesktopWindow
     private const long ToolTipBetweenShowDelay = 100;
     private static readonly ThemePalette DefaultPalette = Theme.Create(new Settings());
 
-    // One device set and text cache serve every canvas window; each window owns only its swap chain. They are
-    // created with the first window and released with the last.
+    // One device set and text cache serve every canvas window; each window owns only its swap chain. They are created
+    // with the first window (the device objects on their first use) and released with the last.
     private static GraphicsDevice? sharedGraphics;
     private static Painter? sharedPainter;
     private static int canvasCount;
@@ -250,7 +250,6 @@ internal abstract class CanvasWindow : DesktopWindow
         previousPalette = palette;
         Win32.GetClientRect(Handle, out var bounds);
         ClientSize = new SizeF(bounds.Width / Scale, bounds.Height / Scale);
-        var surfaceChanged = surface.Ensure(bounds.Width, bounds.Height);
         drawCommands.Clear();
         var viewport = new RectangleF(PointF.Empty, ClientSize);
         Ui.IsWindowActive = IsWindowActive;
@@ -271,6 +270,9 @@ internal abstract class CanvasWindow : DesktopWindow
         if (HasWindowBorder) Ui.Border(viewport, WindowBorderColor ?? Ui.TitleBarColor);
         NeedsPaint |= focusedDialog;
 
+        // Done after layout: the first frame's layout, up to its first device call, can then run while a device creation is
+        // still in progress.
+        var surfaceChanged = surface.Ensure(bounds.Width, bounds.Height);
         var present = surfaceChanged || surface.PendingSnapshotPath != null || !MatchesPresentedFrame();
         if (present)
         {

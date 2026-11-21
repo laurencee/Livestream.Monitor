@@ -6,6 +6,7 @@ using System.Text.Json;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Direct2D.Native;
+using Livestream.Monitor.Direct2D.Rendering;
 using Livestream.Monitor.Direct2D.Windows;
 using Livestream.Monitor.Direct2D.Windows.Monitor;
 
@@ -82,6 +83,10 @@ internal static class Program
 
         using var instance = primary;
         if (instance == null) return 0;
+
+        // Start loading the driver now, so it loads while the window is created and startup is faster. If nothing takes the
+        // device, it is left for process exit to release.
+        GraphicsDevice.StartHardwareDeviceCreation();
 
         using var activationPipe = new ToastActivationPipe(AcceptForwardedActivation, ToastActivationPipe.GetPipeName(profileScope));
         using var notifications = new StreamNotifications(Activate);

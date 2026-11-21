@@ -1,6 +1,8 @@
-using System.Diagnostics;
+using System.ComponentModel;
 using System.IO.Pipes;
+using System.Runtime.InteropServices;
 using System.Text;
+using Livestream.Monitor.Direct2D.Native;
 
 namespace Livestream.Monitor.Direct2D.Windows.Monitor;
 
@@ -18,8 +20,10 @@ internal sealed class ToastActivationPipe : IDisposable
     /// <summary>The pipe of the instance that runs in this session with the profile scope.</summary>
     public static string GetPipeName(string profileScope)
     {
-        using var process = Process.GetCurrentProcess();
-        return $"Livestream.Monitor.Direct2D.Toast.{process.SessionId}.{Environment.UserName}{profileScope}";
+        // Process.SessionId would enumerate every process on the machine to read this process's session.
+        if (!Win32.ProcessIdToSessionId((uint)Environment.ProcessId, out var sessionId)) throw new Win32Exception(Marshal.GetLastWin32Error());
+
+        return $"Livestream.Monitor.Direct2D.Toast.{sessionId}.{Environment.UserName}{profileScope}";
     }
 
     public static void Forward(ToastActivation target, string pipeName)
