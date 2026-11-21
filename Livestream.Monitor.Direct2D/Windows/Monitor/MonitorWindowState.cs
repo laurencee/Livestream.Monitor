@@ -128,6 +128,8 @@ internal sealed class MonitorWindowState
     public bool Busy { get; private set; }
     public bool IsContentLoading { get; private set; } = true;
     internal bool FollowedRowsSettled => StreamsModel.CanRefreshLivestreams || StreamsModel.Livestreams.Count == 0;
+    internal bool CanOpenContextMenu =>
+        Page == MonitorPage.Vods || !Busy || Page == MonitorPage.Followed && !IsContentLoading && SelectedStream is { Live: true };
     public string Status { get; private set; } = "Initializing…";
     public bool IsVodChannelPrompt => Page == MonitorPage.Vods && Status == VodChannelPrompt;
     public LivestreamModel? SelectedStream =>
@@ -189,8 +191,8 @@ internal sealed class MonitorWindowState
     public void BeginInitialQuery() => StreamsModel.BeginInitialQuery();
 
     /// <summary>
-    /// Loads followed channels and starts the first refresh. Shows rows after the first provider's results are applied,
-    /// but stays busy until every provider's first results are applied.
+    /// Loads followed channels and starts the first refresh. Shows rows when a provider's results are first applied.
+    /// Stays busy until the primary queries and any required rechecks complete.
     /// </summary>
     public async Task Initialize()
     {

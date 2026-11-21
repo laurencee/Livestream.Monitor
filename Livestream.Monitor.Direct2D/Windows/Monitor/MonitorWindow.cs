@@ -1891,7 +1891,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
         }
 
-        if (message == Win32.WmContextMenu && (state.Page == MonitorPage.Vods || !state.Busy))
+        if (message == Win32.WmContextMenu && state.CanOpenContextMenu)
         {
             var fromKeyboard = (int)lParam == Win32.KeyboardContextMenu;
             if (!fromKeyboard || !KeysGoToSettingsPane) ShowContextMenu(fromKeyboard);
@@ -2277,19 +2277,21 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         {
             const string NotifyToolTip = "Untick this to suppress popup notifications for this stream.";
 
+            var editable = !state.Busy;
             var categoryChangeChoice = new SurfaceUi.MenuChoice(
                 Text: "Notify on Category Change",
-                Enabled: stream.SupportsCategoryChangeNotifications,
+                Enabled: editable && stream.SupportsCategoryChangeNotifications,
                 Checked: settings.CategoryChangeNotifications.Contains(stream.UniqueStreamKey),
                 ToolTip: "Show category changes for this stream even when global category change notifications are off.",
                 Checkable: true);
 
             items =
             [
-                (new SurfaceUi.MenuChoice("Remove from list"), ContextCommand.Remove),
+                (new SurfaceUi.MenuChoice("Open Stream", Enabled: stream.Live), ContextCommand.Open),
+                (new SurfaceUi.MenuChoice("Remove from list", Enabled: editable), ContextCommand.Remove),
                 (new SurfaceUi.MenuChoice("Copy Stream URL"), ContextCommand.CopyUrl),
                 (new SurfaceUi.MenuChoice("Open in Browser"), ContextCommand.OpenInBrowser),
-                (openVods, ContextCommand.OpenVods),
+                (openVods with { Enabled = editable && hasVods }, ContextCommand.OpenVods),
                 (NotifyChoice(NotifyToolTip), ContextCommand.Notify),
                 (categoryChangeChoice, ContextCommand.NotifyOnCategoryChange),
             ];
@@ -2322,7 +2324,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         SurfaceUi.MenuChoice NotifyChoice(string toolTip)
         {
             const string NotifyText = "Enable Notifications";
-            return new SurfaceUi.MenuChoice(Text: NotifyText, Checked: notify, ToolTip: toolTip, Checkable: true);
+            return new SurfaceUi.MenuChoice(Text: NotifyText, Enabled: !state.Busy, Checked: notify, ToolTip: toolTip, Checkable: true);
         }
     }
 
@@ -2382,6 +2384,9 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
 
     private async Task RunContextCommand(LivestreamModel stream, ContextCommand command, PointF feedbackPosition)
     {
+        if (state.Busy && command is (ContextCommand.Remove or ContextCommand.Notify or ContextCommand.NotifyOnCategoryChange or ContextCommand.OpenVods))
+            return;
+
         try
         {
             switch (command)

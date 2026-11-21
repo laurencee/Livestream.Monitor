@@ -187,6 +187,13 @@ internal abstract class CanvasWindow : DesktopWindow
 
     internal void RemoveDialog(DialogPane dialog)
     {
+        // Startup progress can finish while an authorization dialog is taking input above it.
+        if (dialog != ActiveDialog)
+        {
+            dialogs.Remove(dialog);
+            return;
+        }
+
         // A held press on the closing dialog's scroll bar captured the mouse; its release no longer reaches that dialog.
         if (dialog.IsScrolling && Win32.GetCapture() == Handle) Win32.ReleaseCapture();
 

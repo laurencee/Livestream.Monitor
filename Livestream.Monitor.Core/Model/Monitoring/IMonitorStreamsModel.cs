@@ -22,7 +22,6 @@ namespace Livestream.Monitor.Model.Monitoring
 
         /// <summary>
         /// Raised after applying a provider's results, before <see cref="LivestreamsRefreshComplete"/>.
-        /// Providers without followed channels are skipped. The first refresh can raise it for both quick and complete results
         /// </summary>
         event EventHandler ProviderRefreshComplete;
 
@@ -31,7 +30,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         /// <summary>
         /// Allows for loading of livestreams and any other initialization tasks before refreshes can take place.
-        /// Returns after each provider's first results are applied. Complete queries may still be running;
+        /// Returns after applying the primary queries and any required rechecks. Complete queries may still be running;
         /// their failures are not reported. <see cref="LivestreamsRefreshComplete"/> marks the end of the first refresh.
         /// </summary>
         Task Initialize(IUserDialogs dialogs, CancellationToken cancellationToken = default);

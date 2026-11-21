@@ -131,6 +131,56 @@ public class MonitorStreamsModelShould
         Assert.True(sut.Livestreams.Single().Live);
     }
 
+    [Fact]
+    public async Task ApplyCompleteResultsAfterTheirQuickResultsWithoutWaitingForOtherProviders()
+    {
+        var provider = CreateProvider("quick");
+        provider.HasQuickQuerySupport.Returns(true);
+        var channel = new ChannelIdentifier(provider, "channel");
+        var live = new LivestreamModel("current", channel) { DisplayName = "Current", Live = true };
+        var early = new LivestreamModel("early", channel) { DisplayName = "Early", Live = true };
+        List<LivestreamQueryResult> complete = [new(channel) { LivestreamModel = live }];
+        var quick = new TaskCompletionSource<List<LivestreamQueryResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completeStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        provider.QueryChannelsQuickly(Arg.Any<CancellationToken>()).Returns(quick.Task);
+        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            completeStarted.SetResult();
+            return Task.FromResult(complete);
+        });
+        var otherProvider = CreateProvider("slow");
+        var otherResults = new TaskCompletionSource<List<LivestreamQueryResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        otherProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(otherResults.Task);
+        var sut = CreateModel([channel, new ChannelIdentifier(otherProvider, "other")], provider, otherProvider);
+        var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var publishedStreamIds = new List<string>();
+        sut.ProviderRefreshComplete += (_, _) =>
+        {
+            var stream = sut.Livestreams.Single(row => row.ChannelIdentifier.Equals(channel));
+            publishedStreamIds.Add(stream.Id);
+            if (sut.Livestreams.Contains(live)) published.TrySetResult();
+        };
+
+        sut.BeginInitialQuery();
+        var initialization = sut.Initialize(Substitute.For<IUserDialogs>());
+
+        try
+        {
+            await completeStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            quick.SetResult([new LivestreamQueryResult(channel) { LivestreamModel = early }]);
+            await published.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            Assert.Equal([early.Id, live.Id], publishedStreamIds);
+            Assert.False(initialization.IsCompleted);
+        }
+        finally
+        {
+            quick.TrySetResult([]);
+            otherResults.SetResult([]);
+            await initialization;
+        }
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -274,20 +324,121 @@ public class MonitorStreamsModelShould
         await provider.Received(1).QueryChannels(Arg.Any<CancellationToken>());
     }
 
-    [Fact]
-    public async Task LeaveAuthorizationThatNeedsPromptsToInitialization()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PublishOtherProvidersDuringAuthorizationAndRecheckExpiredResults(bool expired)
     {
         var provider = CreateProvider("prompting");
         provider.IsAuthorized.Returns(false);
         provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(new List<LivestreamQueryResult>());
-        var sut = CreateModel([new ChannelIdentifier(provider, "channel")], provider);
+        var readyProvider = CreateProvider("ready");
+        var liveChannel = new ChannelIdentifier(readyProvider, "live");
+        var stream = new LivestreamModel("live", liveChannel) { DisplayName = "Live", Live = true };
+        List<LivestreamQueryResult> readyResults = [new(liveChannel) { LivestreamModel = stream }];
+        var offline = new LivestreamModel("live", liveChannel) { DisplayName = "Live" };
+        List<LivestreamQueryResult> refreshedResults = [new(liveChannel) { LivestreamModel = offline }];
+        readyProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(Task.FromResult(readyResults), Task.FromResult(refreshedResults));
+        var timeProvider = new StartupClock();
+        var sut = CreateModel(
+            channels: [new ChannelIdentifier(provider, "channel"), liveChannel],
+            fileHandler: Substitute.For<IMonitoredStreamsFileHandler>(),
+            providers: [provider, readyProvider],
+            timeProvider: timeProvider);
         var dialogs = Substitute.For<IUserDialogs>();
+        var authorization = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var livePublished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refreshed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        provider.Authorize(dialogs).Returns(authorization.Task);
+        sut.ProviderRefreshComplete += (_, _) =>
+        {
+            if (sut.Livestreams.Any(row => row.Live)) livePublished.TrySetResult();
+        };
+        sut.LivestreamsRefreshComplete += (_, _) => refreshed.TrySetResult();
 
         sut.BeginInitialQuery();
-        await sut.Initialize(dialogs);
+        var initialization = sut.Initialize(dialogs);
+
+        try
+        {
+            await livePublished.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+            Assert.False(initialization.IsCompleted);
+
+            if (expired) timeProvider.Advance(Constants.HalfRefreshPollingTime);
+        }
+        finally
+        {
+            authorization.SetResult();
+            await initialization;
+        }
 
         await provider.Received(1).Authorize(dialogs);
         await provider.DidNotReceive().Authorize(null);
+
+        await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        await readyProvider.Received(expired ? 2 : 1).QueryChannels(Arg.Any<CancellationToken>());
+        Assert.Equal(!expired, sut.Livestreams.Single(row => row.ChannelIdentifier.Equals(liveChannel)).Live);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UseTheFreshProviderOutcomeAfterLongAuthorization(bool recheckFails)
+    {
+        var promptingProvider = CreateProvider("prompting");
+        promptingProvider.IsAuthorized.Returns(false);
+        promptingProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(new List<LivestreamQueryResult>());
+        var prefetchedProvider = CreateProvider("prefetched");
+        var channel = new ChannelIdentifier(prefetchedProvider, "channel");
+        var live = new LivestreamModel("channel", channel) { DisplayName = "Channel", Live = true };
+        List<LivestreamQueryResult> refreshedResults = [new(channel) { LivestreamModel = live }];
+        var expiredFailure = new TimeoutException("Prefetch timed out.");
+        var recheckFailure = new TimeoutException("Recheck timed out.");
+        var prefetchedQuery = Task.FromException<List<LivestreamQueryResult>>(expiredFailure);
+        var recheck = recheckFails ? Task.FromException<List<LivestreamQueryResult>>(recheckFailure) : Task.FromResult(refreshedResults);
+        prefetchedProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(prefetchedQuery, recheck);
+        var timeProvider = new StartupClock();
+        var sut = CreateModel(
+            channels: [new ChannelIdentifier(promptingProvider, "other"), channel],
+            fileHandler: Substitute.For<IMonitoredStreamsFileHandler>(),
+            providers: [promptingProvider, prefetchedProvider],
+            timeProvider: timeProvider);
+
+        var dialogs = Substitute.For<IUserDialogs>();
+        var authorization = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var prefetchedApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        promptingProvider.Authorize(dialogs).Returns(authorization.Task);
+        sut.ProviderRefreshComplete += (_, _) => prefetchedApplied.TrySetResult();
+
+        sut.BeginInitialQuery();
+        var initialization = sut.Initialize(dialogs);
+
+        try
+        {
+            await prefetchedApplied.Task.WaitAsync(TimeSpan.FromSeconds(2));
+            timeProvider.Advance(Constants.HalfRefreshPollingTime);
+        }
+        finally
+        {
+            authorization.SetResult();
+        }
+
+        if (recheckFails)
+        {
+            var failure = await Assert.ThrowsAsync<AggregateException>(() => initialization);
+
+            Assert.Same(recheckFailure, Assert.Single(failure.InnerExceptions).InnerException);
+        }
+        else
+        {
+            await initialization;
+
+            Assert.True(sut.Livestreams.Single(row => row.ChannelIdentifier.Equals(channel)).Live);
+        }
+
+        await prefetchedProvider.Received(2).QueryChannels(Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -350,14 +501,15 @@ public class MonitorStreamsModelShould
         List<ChannelIdentifier> channels,
         IMonitoredStreamsFileHandler fileHandler,
         IApiClient[] providers,
-        Settings settings = null)
+        Settings settings = null,
+        TimeProvider timeProvider = null)
     {
         fileHandler.LoadFromDisk().Returns(channels);
         var settingsHandler = Substitute.For<ISettingsHandler>();
         settingsHandler.Settings.Returns(settings ?? new Settings());
         var factory = Substitute.For<IApiClientFactory>();
         factory.GetAll().Returns(providers);
-        return new MonitorStreamsModel(fileHandler, settingsHandler, factory);
+        return new MonitorStreamsModel(fileHandler, settingsHandler, factory, timeProvider ?? TimeProvider.System);
     }
 
     private static IApiClient CreateFailingProvider(string name, Exception failure)
@@ -374,5 +526,14 @@ public class MonitorStreamsModelShould
         provider.IsAuthorized.Returns(true);
         provider.Initialize(Arg.Any<CancellationToken>()).Returns(new InitializeApiClientResult());
         return provider;
+    }
+
+    private sealed class StartupClock : TimeProvider
+    {
+        private long timestamp;
+
+        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
+        public override long GetTimestamp() => Interlocked.Read(ref timestamp);
+        public void Advance(TimeSpan duration) => Interlocked.Add(ref timestamp, duration.Ticks);
     }
 }

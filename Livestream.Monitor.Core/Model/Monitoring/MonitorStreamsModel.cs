@@ -15,14 +15,16 @@ namespace Livestream.Monitor.Model.Monitoring
         private readonly IMonitoredStreamsFileHandler fileHandler;
         private readonly ISettingsHandler settingsHandler;
         private readonly IApiClientFactory apiClientFactory;
+        private readonly TimeProvider timeProvider;
         private readonly HashSet<ChannelIdentifier> channelIdentifiers = new();
         private readonly List<string> ignoredQueryFailures = new();
 
         private Task<List<ChannelIdentifier>> initialChannels;
-        private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> initialQueries = new();
-        private readonly Dictionary<IApiClient, Task<List<LivestreamQueryResult>>> completeInitialQueries = new();
+        // The prefetch task registers its queries before returning the followed list to Initialize.
+        private readonly Dictionary<IApiClient, InitialQuery> initialQueries = new();
         private Dictionary<ChannelIdentifier, (string DisplayName, string TwitchLogin)> initialChannelDetails;
-        private DateTimeOffset initialQueryStartedAt;
+        private long initialQueryStartedAt;
+        private bool prefetchedResultsExpired;
         private bool initialDataDirty;
         private DateTimeOffset lastRefreshTime;
 
@@ -30,10 +32,18 @@ namespace Livestream.Monitor.Model.Monitoring
             IMonitoredStreamsFileHandler fileHandler,
             ISettingsHandler settingsHandler,
             IApiClientFactory apiClientFactory)
+            : this(fileHandler, settingsHandler, apiClientFactory, TimeProvider.System) { }
+
+        internal MonitorStreamsModel(
+            IMonitoredStreamsFileHandler fileHandler,
+            ISettingsHandler settingsHandler,
+            IApiClientFactory apiClientFactory,
+            TimeProvider timeProvider)
         {
             this.fileHandler = fileHandler ?? throw new ArgumentNullException(nameof(fileHandler));
             this.settingsHandler = settingsHandler ?? throw new ArgumentNullException(nameof(settingsHandler));
             this.apiClientFactory = apiClientFactory ?? throw new ArgumentNullException(nameof(apiClientFactory));
+            this.timeProvider = timeProvider;
         }
 
         public ObservableCollection<LivestreamModel> Livestreams { get; } = new();
@@ -54,67 +64,32 @@ namespace Livestream.Monitor.Model.Monitoring
 
             // Load once before the UI and background query can both access the settings handler.
             _ = settingsHandler.Settings;
-            initialQueryStartedAt = DateTimeOffset.UtcNow;
+            initialQueryStartedAt = timeProvider.GetTimestamp();
             initialChannels = Task.Run(async () =>
             {
-                var channels = await fileHandler.LoadFromDisk();
-                initialChannelDetails = channels.Distinct().ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
-                foreach (var channel in channels) channel.ApiClient.AddChannelWithoutQuerying(channel);
+                var channels = await LoadInitialChannels();
 
                 foreach (var apiClient in apiClientFactory.GetAll())
                 {
                     if (!apiClient.IsAuthorized && !apiClient.CanAuthorizeWithoutUserInput) continue;
-                    if (channels.All(x => x.ApiClient != apiClient)) continue;
 
-                    var preparation = PrepareInitially(apiClient);
-                    var quick = apiClient.HasQuickQuerySupport;
-                    initialQueries.Add(apiClient, QueryInitially(apiClient, channels, preparation, quick));
-                    if (quick) completeInitialQueries.Add(apiClient, QueryInitially(apiClient, channels, preparation, quick: false));
+                    var followed = channels.Where(channel => channel.ApiClient == apiClient).ToList();
+                    if (followed.Count != 0)
+                        initialQueries.Add(apiClient, QueryInitially(apiClient, followed, dialogs: null, quick: apiClient.HasQuickQuerySupport));
                 }
 
                 return channels;
             });
-
-            async Task PrepareInitially(IApiClient apiClient)
-            {
-                using var timeout = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
-                if (!apiClient.IsAuthorized) await apiClient.Authorize(screen: null);
-
-                var initialized = await apiClient.Initialize(timeout.Token);
-                if (initialized.ChannelIdentifierDataDirty) initialDataDirty = true;
-            }
-
-            async Task<List<LivestreamQueryResult>> QueryInitially(
-                IApiClient apiClient,
-                List<ChannelIdentifier> channels,
-                Task preparation,
-                bool quick)
-            {
-                using var timeout = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
-                try
-                {
-                    // Report authorization failures as query failures for this provider's channels.
-                    await preparation;
-                    return quick ? await apiClient.QueryChannelsQuickly(timeout.Token) : await apiClient.QueryChannels(timeout.Token);
-                }
-                catch (Exception ex)
-                {
-                    var failure = new FailedQueryException(apiClient, ex);
-                    return channels.Where(x => x.ApiClient == apiClient)
-                        .Select(channel => new LivestreamQueryResult(channel) { FailedQueryException = failure })
-                        .ToList();
-                }
-            }
         }
 
         public async Task Initialize(IUserDialogs dialogs, CancellationToken cancellationToken = default)
         {
             if (Initialised) return;
-            var channels = await (initialChannels ?? fileHandler.LoadFromDisk());
+
+            var channels = await (initialChannels ?? LoadInitialChannels());
             foreach (var channelIdentifier in channels)
             {
                 if (channelIdentifiers.Add(channelIdentifier)) channelIdentifier.TwitchLoginChanged += ChannelTwitchLoginChanged;
-                if (initialChannels == null) channelIdentifier.ApiClient.AddChannelWithoutQuerying(channelIdentifier);
 
                 var livestreamModel = new LivestreamModel(channelIdentifier.ChannelId, channelIdentifier);
                 if (livestreamModel.ApiClient.ApiName == YoutubeApiClient.API_NAME)
@@ -131,47 +106,200 @@ namespace Livestream.Monitor.Model.Monitoring
 
             try
             {
+                var prefetchedProviders = initialQueries.Keys.ToArray();
+                var otherInitialization = new List<Task>();
                 foreach (var apiClient in apiClientFactory.GetAll())
                 {
                     if (initialQueries.ContainsKey(apiClient)) continue;
 
-                    // allows for clearing auth tokens at startup and re-authentication during initialization
-                    if (!apiClient.IsAuthorized && Livestreams.Any(x => x.ApiClient == apiClient))
-                    {
-                        try
-                        {
-                            await apiClient.Authorize(dialogs);
-                        }
-                        catch (Exception e)
-                        {
-                            await dialogs.ShowMessage("Error authorizing API client " + apiClient.ApiName,
-                                $"API Client {apiClient.ApiName} authorization failure: " + e.ExtractErrorMessage());
-                        }
-                    }
-
-                    var result = await apiClient.Initialize(cancellationToken);
-                    if (result.ChannelIdentifierDataDirty)
-                    {
-                        SaveLivestreams();
-                    }
+                    var followed = channels.Where(channel => channel.ApiClient == apiClient).ToList();
+                    if (followed.Count == 0) otherInitialization.Add(InitializeUnusedProvider(apiClient));
+                    else initialQueries.Add(apiClient, QueryInitially(apiClient, followed, dialogs, quick: false, cancellationToken));
                 }
 
-                CanRefreshLivestreams = Livestreams.Any();
+                var initializedUnusedProviders = Task.WhenAll(otherInitialization);
+                if (initialQueries.Count == 0)
+                {
+                    await initializedUnusedProviders;
+                    return;
+                }
 
-                // Return after each provider's first results; complete queries can finish in the background.
+                // Start both tasks before awaiting either, so results that are ready reach the UI during authorization.
                 var initialResultsApplied = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-                var refresh = RefreshLivestreams(initialResultsApplied);
-                await Task.WhenAny(initialResultsApplied.Task, refresh);
+                var refresh = ApplyInitialResults(initialResultsApplied, prefetchedProviders);
+                await Task.WhenAll(initializedUnusedProviders, WaitForInitialResults());
 
-                // Prefer the initial result task so its query failures aren't lost if both tasks have finished.
-                // An empty or early-failing refresh may never complete that task.
-                await (initialResultsApplied.Task.IsCompleted ? initialResultsApplied.Task : refresh);
+                async Task WaitForInitialResults()
+                {
+                    await Task.WhenAny(initialResultsApplied.Task, refresh);
+                    await (initialResultsApplied.Task.IsCompleted ? initialResultsApplied.Task : refresh);
+                }
             }
             finally // don't stop initialization just due to something failing during stream refreshing
             {
                 Initialised = true;
             }
+
+            async Task InitializeUnusedProvider(IApiClient apiClient)
+            {
+                var result = await apiClient.Initialize(cancellationToken);
+                if (result.ChannelIdentifierDataDirty) SaveLivestreams();
+            }
         }
+
+        private async Task<List<ChannelIdentifier>> LoadInitialChannels()
+        {
+            var channels = await fileHandler.LoadFromDisk();
+            initialChannelDetails = channels.Distinct().ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
+            foreach (var channel in channels) channel.ApiClient.AddChannelWithoutQuerying(channel);
+
+            return channels;
+        }
+
+        private InitialQuery QueryInitially(
+            IApiClient apiClient,
+            List<ChannelIdentifier> channels,
+            IUserDialogs dialogs,
+            bool quick,
+            CancellationToken cancellationToken = default)
+        {
+            var needsPrompt = !apiClient.IsAuthorized && !apiClient.CanAuthorizeWithoutUserInput;
+            var preparation = Prepare();
+            var primary = Query(quick);
+            var complete = quick ? Query(quickly: false) : null;
+            return new InitialQuery(primary, complete);
+
+            async Task Prepare()
+            {
+                if (needsPrompt)
+                {
+                    try
+                    {
+                        await apiClient.Authorize(dialogs);
+                    }
+                    catch (Exception exception)
+                    {
+                        var title = "Error authorizing API client " + apiClient.ApiName;
+                        var message = $"API Client {apiClient.ApiName} authorization failure: " + exception.ExtractErrorMessage();
+                        await dialogs.ShowMessage(title, message);
+                    }
+
+                    if (initialChannels != null && timeProvider.GetElapsedTime(initialQueryStartedAt) >= Constants.HalfRefreshPollingTime)
+                        prefetchedResultsExpired = true;
+                }
+
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                timeout.CancelAfter(Constants.HalfRefreshPollingTime);
+                if (!apiClient.IsAuthorized && apiClient.CanAuthorizeWithoutUserInput) await apiClient.Authorize(screen: null);
+
+                var initialized = await apiClient.Initialize(timeout.Token);
+                if (initialized.ChannelIdentifierDataDirty) initialDataDirty = true;
+            }
+
+            async Task<List<LivestreamQueryResult>> Query(bool quickly)
+            {
+                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                if (!needsPrompt) timeout.CancelAfter(Constants.HalfRefreshPollingTime);
+
+                try
+                {
+                    await preparation;
+                    if (needsPrompt) timeout.CancelAfter(Constants.HalfRefreshPollingTime);
+
+                    return quickly ? await apiClient.QueryChannelsQuickly(timeout.Token) : await apiClient.QueryChannels(timeout.Token);
+                }
+                catch (Exception exception)
+                {
+                    return FailedChannels(apiClient, channels, exception);
+                }
+            }
+        }
+
+        private async Task ApplyInitialResults(TaskCompletionSource initialResultsApplied, IApiClient[] prefetchedProviders)
+        {
+            CanRefreshLivestreams = false;
+            var pending = initialQueries.Values.ToList();
+            var pendingPrimary = pending.Count;
+            var followedAtStart = channelIdentifiers.ToDictionary(channel => channel);
+            var primaryResults = new List<LivestreamQueryResult>();
+            var recheckPrefetchedResults = false;
+
+            try
+            {
+                while (pending.Count != 0)
+                {
+                    var finished = await Task.WhenAny(pending.Select(query => query.Results));
+                    var index = pending.FindIndex(query => query.Results == finished);
+                    var query = pending[index];
+                    pending.RemoveAt(index);
+
+                    var results = await finished;
+                    var applied = ApplyResults(results.Where(result => IsStillFollowed(result.ChannelIdentifier, followedAtStart)));
+                    if (query.IsComplete) continue;
+
+                    // The complete query can run alongside the quick one, but its results only become eligible for publishing
+                    // once the same provider's quick results are applied.
+                    if (query.Complete != null) pending.Add(new InitialQuery(query.Complete, IsComplete: true));
+
+                    primaryResults.AddRange(applied);
+                    if (--pendingPrimary != 0) continue;
+
+                    recheckPrefetchedResults = prefetchedResultsExpired && prefetchedProviders.Length != 0;
+                    if (!recheckPrefetchedResults) ReportPrimaryResults();
+                }
+
+                if (recheckPrefetchedResults)
+                {
+                    // Keep the displayed rows while refreshing, but report only the recheck's outcome for these providers.
+                    primaryResults.RemoveAll(result => prefetchedProviders.Contains(result.ChannelIdentifier.ApiClient));
+                    await RecheckPrefetchedProviders();
+                    ReportPrimaryResults();
+                }
+
+                SaveChangedChannelDetails(initialChannelDetails);
+            }
+            finally
+            {
+                initialQueries.Clear();
+                initialChannelDetails = null;
+                FinishRefresh();
+            }
+
+            void ReportPrimaryResults()
+            {
+                var failure = primaryResults.FindQueryFailure(ignoredQueryFailures);
+                if (failure != null) initialResultsApplied.SetException(failure);
+                else initialResultsApplied.SetResult();
+            }
+
+            async Task RecheckPrefetchedProviders()
+            {
+                // Recheck after their startup queries settle. Failed channels keep their prior rows.
+                using var timeout = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
+                var cancellationToken = timeout.Token;
+                var followedAtRecheck = channelIdentifiers.ToDictionary(channel => channel);
+                var queries = prefetchedProviders.Select(provider => QueryProvider(provider, cancellationToken));
+
+                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- collect results from every query after the shared deadline
+                await foreach (var query in Task.WhenEach(queries))
+                {
+                    var results = await query;
+                    var currentResults = results.Where(result => IsStillFollowed(result.ChannelIdentifier, followedAtRecheck));
+                    primaryResults.AddRange(ApplyResults(currentResults));
+                }
+            }
+
+            // A channel removed and added again can compare equal while belonging to a newer query.
+            bool IsStillFollowed(ChannelIdentifier channel, Dictionary<ChannelIdentifier, ChannelIdentifier> followedAtQueryStart) =>
+                followedAtQueryStart.TryGetValue(channel, out var original) &&
+                channelIdentifiers.TryGetValue(channel, out var followed) &&
+                ReferenceEquals(original, followed);
+        }
+
+        private sealed record InitialQuery(
+            Task<List<LivestreamQueryResult>> Results,
+            Task<List<LivestreamQueryResult>> Complete = null,
+            bool IsComplete = false);
 
         public async Task AddLivestream(ChannelIdentifier channelIdentifier, IUserDialogs dialogs)
         {
@@ -188,7 +316,7 @@ namespace Livestream.Monitor.Model.Monitoring
             foreach (var result in livestreamQueryResults) Livestreams.Add(result.LivestreamModel);
 
             AddChannels(channelIdentifier);
-            CanRefreshLivestreams = Livestreams.Any();
+            CanRefreshLivestreams = initialQueries.Count == 0 && Livestreams.Any();
         }
 
         public async Task ImportFollows(string username, IApiClient apiClient, IUserDialogs dialogs)
@@ -214,17 +342,11 @@ namespace Livestream.Monitor.Model.Monitoring
             }
 
             AddChannels(newChannels.Select(x => x.ChannelIdentifier).ToArray());
-            CanRefreshLivestreams = Livestreams.Any();
+            CanRefreshLivestreams = initialQueries.Count == 0 && Livestreams.Any();
             await RefreshLivestreams();
         }
 
-        public Task RefreshLivestreams() => RefreshLivestreams(initialResultsApplied: null);
-
-        /// <param name="initialResultsApplied">
-        /// Set after each provider's first results are applied, or faulted with the query failures.
-        /// Complete queries may still be running.
-        /// </param>
-        private async Task RefreshLivestreams(TaskCompletionSource initialResultsApplied)
+        public async Task RefreshLivestreams()
         {
             if (!CanRefreshLivestreams ||
                 (lastRefreshTime > DateTimeOffset.MinValue && lastRefreshTime.AddSeconds(10) >= DateTimeOffset.Now))
@@ -236,8 +358,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
             try
             {
-                var savedDetails = initialChannelDetails ?? channelIdentifiers.ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
-                initialChannelDetails = null;
+                var savedDetails = channelIdentifiers.ToDictionary(x => x, x => (x.DisplayName, x.TwitchLogin));
 
                 // A single deadline cancels every provider request; successful channels still update.
                 using var timeoutTokenSource = new CancellationTokenSource(Constants.HalfRefreshPollingTime);
@@ -245,8 +366,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
                 // Providers without channels mustn't count as the first results arriving.
                 var queriedProviders = apiClientFactory.GetAll().Where(apiClient => channelIdentifiers.Any(x => x.ApiClient == apiClient));
-                var completeQueries = new List<Task<List<LivestreamQueryResult>>>();
-                var providerQueries = queriedProviders.Select(QueryProvider).ToList();
+                var providerQueries = queriedProviders.Select(provider => QueryProvider(provider, cancellationToken)).ToList();
                 var livestreamQueryResults = new List<LivestreamQueryResult>();
 
                 // Apply results as each provider finishes so slow providers don't hold up the others.
@@ -254,72 +374,61 @@ namespace Livestream.Monitor.Model.Monitoring
                 await foreach (var providerQuery in Task.WhenEach(providerQueries))
                     livestreamQueryResults.AddRange(ApplyResults(await providerQuery));
 
-                var queryFailure = livestreamQueryResults.FindQueryFailure(ignoredQueryFailures);
-
-                if (initialResultsApplied != null)
-                {
-                    if (queryFailure != null) initialResultsApplied.SetException(queryFailure);
-                    else initialResultsApplied.SetResult();
-                }
-
-                // Keep quick results if the complete query fails; don't report that failure.
-                // ReSharper disable once UseCancellationTokenForIAsyncEnumerable -- initial queries have their own deadline
-                await foreach (var completeQuery in Task.WhenEach(completeQueries)) ApplyResults(await completeQuery);
-
-                var channelDetailsChanged = channelIdentifiers.Any(x =>
-                    savedDetails.TryGetValue(x, out var details) && details != (x.DisplayName, x.TwitchLogin));
-
-                if (initialDataDirty || channelDetailsChanged) SaveLivestreams();
-                initialDataDirty = false;
-
-                if (initialResultsApplied == null && queryFailure != null) throw queryFailure;
-
-                List<LivestreamQueryResult> ApplyResults(List<LivestreamQueryResult> queryResults)
-                {
-                    var providerResults = queryResults.Where(x => channelIdentifiers.Contains(x.ChannelIdentifier)).ToList();
-
-                    // Keep the previous state for channels whose query failed, and still publish the others' changes.
-                    PopulateLivestreams(providerResults.Where(x => x.IsSuccess).ToList());
-
-                    ProviderRefreshComplete?.Invoke(this, EventArgs.Empty);
-                    return providerResults;
-                }
-
-                async Task<List<LivestreamQueryResult>> QueryProvider(IApiClient apiClient)
-                {
-                    var channels = channelIdentifiers.Where(x => x.ApiClient == apiClient).ToList();
-                    try
-                    {
-                        if (initialQueries.Remove(apiClient, out var initialQuery))
-                        {
-                            completeInitialQueries.Remove(apiClient, out var completeQuery);
-                            // An interactive authorization prompt may have made the prefetched results stale.
-                            var useInitialResults =
-                                DateTimeOffset.UtcNow - initialQueryStartedAt < Constants.HalfRefreshPollingTime;
-                            if (useInitialResults && completeQuery != null) completeQueries.Add(completeQuery);
-
-                            // Wait for old requests before re-querying so both can't update provider state at once.
-                            var initialResults = await initialQuery;
-                            if (useInitialResults) return initialResults;
-                            if (completeQuery != null) await completeQuery;
-                        }
-
-                        return await apiClient.QueryChannels(cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        var failure = new FailedQueryException(apiClient, ex);
-                        return channels.Select(channel => new LivestreamQueryResult(channel) { FailedQueryException = failure }).ToList();
-                    }
-                }
+                SaveChangedChannelDetails(savedDetails);
+                livestreamQueryResults.EnsureAllQuerySuccess(ignoredQueryFailures);
             }
             finally
             {
-                OnOnlineLivestreamsRefreshComplete();
-                // make sure we always update the attempted refresh time and allow refreshing in the future
-                lastRefreshTime = DateTimeOffset.Now;
-                CanRefreshLivestreams = Livestreams.Any();
+                FinishRefresh();
             }
+        }
+
+        private async Task<List<LivestreamQueryResult>> QueryProvider(IApiClient apiClient, CancellationToken cancellationToken)
+        {
+            var channels = channelIdentifiers.Where(channel => channel.ApiClient == apiClient).ToList();
+            if (channels.Count == 0) return [];
+
+            try
+            {
+                return await apiClient.QueryChannels(cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                return FailedChannels(apiClient, channels, exception);
+            }
+        }
+
+        private List<LivestreamQueryResult> ApplyResults(IEnumerable<LivestreamQueryResult> queryResults)
+        {
+            var providerResults = queryResults.Where(x => channelIdentifiers.Contains(x.ChannelIdentifier)).ToList();
+
+            // Failed channels keep their previous state.
+            PopulateLivestreams(providerResults.Where(x => x.IsSuccess).ToList());
+
+            ProviderRefreshComplete?.Invoke(this, EventArgs.Empty);
+            return providerResults;
+        }
+
+        private static List<LivestreamQueryResult> FailedChannels(IApiClient apiClient, List<ChannelIdentifier> channels, Exception exception)
+        {
+            var failure = new FailedQueryException(apiClient, exception);
+            return channels.Select(channel => new LivestreamQueryResult(channel) { FailedQueryException = failure }).ToList();
+        }
+
+        private void SaveChangedChannelDetails(Dictionary<ChannelIdentifier, (string DisplayName, string TwitchLogin)> savedDetails)
+        {
+            var channelDetailsChanged = channelIdentifiers.Any(x =>
+                savedDetails.TryGetValue(x, out var details) && details != (x.DisplayName, x.TwitchLogin));
+
+            if (initialDataDirty || channelDetailsChanged) SaveLivestreams();
+            initialDataDirty = false;
+        }
+
+        private void FinishRefresh()
+        {
+            OnOnlineLivestreamsRefreshComplete();
+            lastRefreshTime = DateTimeOffset.Now;
+            CanRefreshLivestreams = Livestreams.Any();
         }
 
         public void IgnoreQueryFailure(string errorToIgnore)

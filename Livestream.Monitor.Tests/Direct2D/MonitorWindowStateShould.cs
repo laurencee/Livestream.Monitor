@@ -48,19 +48,36 @@ public class MonitorWindowStateShould
         model.StreamsModel.Initialize(Arg.Any<IUserDialogs>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
         model.StreamsModel.Livestreams.Add(Stream("offline", "Channel", "youtube", online: false, viewers: 0));
+
         var initialization = model.Initialize();
+
         Assert.False(progressClosed);
+        Assert.False(model.CanOpenContextMenu);
+
         model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
+
         Assert.True(progressClosed);
         Assert.False(model.IsContentLoading);
         Assert.True(model.Busy);
 
+        model.RebuildRows();
+        model.SelectedIndex = 0;
+
+        Assert.False(model.CanOpenContextMenu);
+        Assert.NotNull(model.SelectedStream);
+
+        model.SelectedStream.Live = true;
+
+        Assert.True(model.CanOpenContextMenu);
+
         pending.SetResult();
         await initialization;
+
         Assert.False(model.Busy);
         Assert.False(model.FollowedRowsSettled);
 
         model.StreamsModel.CanRefreshLivestreams.Returns(true);
+
         Assert.True(model.FollowedRowsSettled);
     }
 
