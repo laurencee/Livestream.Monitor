@@ -10,7 +10,7 @@ internal readonly record struct WindowLocation([property: JsonRequired] int X, [
 
 internal static class WindowLocationFile
 {
-    internal const string FileName = "window-position.json";
+    private const string FileName = "window-position.json";
 
     /// <summary>Returns false when the position file is inaccessible and must be preserved.</summary>
     public static bool TryLoad(out WindowLocation? location)

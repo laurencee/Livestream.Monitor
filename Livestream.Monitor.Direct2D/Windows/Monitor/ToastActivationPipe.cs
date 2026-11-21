@@ -9,17 +9,23 @@ internal sealed class ToastActivationPipe : IDisposable
 {
     private const byte Accepted = 1;
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
-    private static readonly string PipeName = GetPipeName();
     private readonly CancellationTokenSource stopping = new();
     private readonly Task listener;
 
-    public ToastActivationPipe(Func<ToastActivation, CancellationToken, Task<bool>> activate, string? pipeName = null) =>
-        listener = Listen(pipeName ?? PipeName, activate, stopping.Token);
+    public ToastActivationPipe(Func<ToastActivation, CancellationToken, Task<bool>> activate, string pipeName) =>
+        listener = Listen(pipeName, activate, stopping.Token);
 
-    public static void Forward(ToastActivation target, string? pipeName = null)
+    /// <summary>The pipe of the instance that runs in this session with the profile scope.</summary>
+    public static string GetPipeName(string profileScope)
+    {
+        using var process = Process.GetCurrentProcess();
+        return $"Livestream.Monitor.Direct2D.Toast.{process.SessionId}.{Environment.UserName}{profileScope}";
+    }
+
+    public static void Forward(ToastActivation target, string pipeName)
     {
         using var timeout = new CancellationTokenSource(RequestTimeout);
-        ForwardToPrimary(pipeName ?? PipeName, target, timeout.Token).GetAwaiter().GetResult();
+        ForwardToPrimary(pipeName, target, timeout.Token).GetAwaiter().GetResult();
     }
 
     private static async Task ForwardToPrimary(string pipeName, ToastActivation target, CancellationToken cancellation)
@@ -95,12 +101,6 @@ internal sealed class ToastActivationPipe : IDisposable
 
         byte[] reply = [Accepted];
         await pipe.WriteAsync(reply, cancellation).ConfigureAwait(false);
-    }
-
-    private static string GetPipeName()
-    {
-        using var process = Process.GetCurrentProcess();
-        return $"Livestream.Monitor.Direct2D.Toast.{process.SessionId}.{Environment.UserName}";
     }
 
     public void Dispose()

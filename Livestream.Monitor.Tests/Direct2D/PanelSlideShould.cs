@@ -6,22 +6,17 @@ namespace Livestream.Monitor.Tests.Direct2D;
 public class PanelSlideShould
 {
     [Fact]
-    public void AdvanceBetweenSubMillisecondTimestamps()
-    {
-        var slide = new PanelSlide();
-        slide.SetOpen(true, now: 0);
-        slide.Tick(0.1);
-        var first = slide.VisibleFraction;
-        slide.Tick(0.9);
-
-        Assert.True(slide.VisibleFraction > first);
-    }
-
-    [Fact]
     public void SlideOpenAndClosedAndStopRequestingFramesAtTheEndpoints()
     {
         var slide = new PanelSlide();
         slide.SetOpen(true, now: 0);
+
+        // It advances between timestamps less than a millisecond apart.
+        slide.Tick(0.1);
+        var first = slide.VisibleFraction;
+        slide.Tick(0.9);
+        Assert.True(slide.VisibleFraction > first);
+
         slide.Tick(PanelSlide.DurationMilliseconds / 2d);
         Assert.InRange(slide.VisibleFraction, 0.01f, 0.99f);
         Assert.True(slide.IsAnimating);
@@ -49,16 +44,13 @@ public class PanelSlideShould
         slide.Tick(PanelSlide.DurationMilliseconds);
         Assert.InRange(slide.VisibleFraction, 0, beforeReverse);
         Assert.True(slide.IsAnimating);
-    }
 
-    [Fact]
-    public void StopImmediatelyWhenClosingBeforeAnyOpeningMovement()
-    {
-        var slide = new PanelSlide();
-        slide.SetOpen(true, now: 0);
-        slide.SetOpen(false, now: 0);
+        // Closing before any opening movement stops at once.
+        var unopened = new PanelSlide();
+        unopened.SetOpen(true, now: 0);
+        unopened.SetOpen(false, now: 0);
 
-        Assert.Equal(0, slide.VisibleFraction);
-        Assert.False(slide.IsAnimating);
+        Assert.Equal(0, unopened.VisibleFraction);
+        Assert.False(unopened.IsAnimating);
     }
 }

@@ -39,7 +39,7 @@ internal static class Theme
         );
     }
 
-    public static uint Accent(MetroThemeAccentColour color) => color switch
+    private static uint Accent(MetroThemeAccentColour color) => color switch
     {
         MetroThemeAccentColour.Red => 0xFFE51400,
         MetroThemeAccentColour.Green => 0xFF60A917,

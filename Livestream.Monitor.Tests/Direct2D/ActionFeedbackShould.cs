@@ -27,14 +27,10 @@ public class ActionFeedbackShould
         Assert.Equal(0, feedback.Opacity);
         Assert.False(feedback.IsVisible);
         Assert.False(feedback.Tick(DisappearMilliseconds + 1));
-    }
 
-    [Fact]
-    public void RestartTheDurationWhenAnotherActionCompletes()
-    {
-        var feedback = new ActionFeedback();
-        feedback.Show("First action", PointF.Empty, now: 0);
-        const int RestartMilliseconds = FadeMidpointMilliseconds;
+        // Another action during the fade restarts the duration.
+        feedback.Show("First action", PointF.Empty, DisappearMilliseconds);
+        const int RestartMilliseconds = DisappearMilliseconds + FadeMidpointMilliseconds;
         feedback.Tick(RestartMilliseconds);
         feedback.Show("Second action", PointF.Empty, RestartMilliseconds);
 

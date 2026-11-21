@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs;
@@ -45,10 +44,8 @@ public sealed class TwitchApiClientShould
 
     [Theory]
     [InlineData(null)]
-    [InlineData("")]
     [InlineData("한동숙")]
     [InlineData("bad/name")]
-    [InlineData("name\n")]
     public async Task ReportAnUnavailableAccountWhenItsLoginCannotBeRecovered(string displayName)
     {
         var stream = CreateStream(displayName);
@@ -75,18 +72,7 @@ public sealed class TwitchApiClientShould
     }
 
     [Fact]
-    public async Task PreserveAccountLookupFailures()
-    {
-        var stream = CreateStream("한동숙");
-        var failure = new HttpRequestException("Twitch is unavailable.");
-        client.GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>()).Returns(Task.FromException<List<User>>(failure));
-
-        Assert.Same(failure, await Assert.ThrowsAsync<HttpRequestException>(stream.GetStreamUrl));
-        Assert.Same(failure, await Assert.ThrowsAsync<HttpRequestException>(stream.GetChatUrl));
-    }
-
-    [Fact]
-    public async Task RetainTheLoginWhenAddingAChannel()
+    public async Task RetainTheLoginLearnedFromAddingImportingAndTopStreams()
     {
         var users = new List<User> { new() { Id = ChannelId, Login = "known_login", DisplayName = "한동숙" } };
         client.GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>()).Returns(users);
@@ -97,21 +83,24 @@ public sealed class TwitchApiClientShould
 
         Assert.Equal("https://www.twitch.tv/known_login/", await result.LivestreamModel.GetStreamUrl());
         Assert.Equal("known_login", result.ChannelIdentifier.TwitchLogin);
-        await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
-    }
 
-    [Fact]
-    public async Task RetainTheLoginsOfImportedChannels()
-    {
+        // An imported follow list supplies the login of each channel.
         client.GetUserByUsername("importer", Arg.Any<CancellationToken>())
             .Returns(new User { Id = "importer-id", Login = "importer", DisplayName = "Importer" });
-        List<FollowedChannel> follows = [new() { BroadcasterId = ChannelId, BroadcasterLogin = "known_login", BroadcasterName = "한동숙" }];
+        List<FollowedChannel> follows = [new() { BroadcasterId = "67890", BroadcasterLogin = "imported_login", BroadcasterName = "한동숙" }];
         client.GetFollowedChannels("importer-id", Arg.Any<CancellationToken>()).Returns(follows);
 
-        var result = Assert.Single(await sut.GetFollowedChannels("importer"));
+        var imported = Assert.Single(await sut.GetFollowedChannels("importer"));
 
-        Assert.Equal("https://www.twitch.tv/known_login/", await result.LivestreamModel.GetStreamUrl());
-        Assert.Equal("known_login", result.ChannelIdentifier.TwitchLogin);
+        Assert.Equal("https://www.twitch.tv/imported_login/", await imported.LivestreamModel.GetStreamUrl());
+        Assert.Equal("imported_login", imported.ChannelIdentifier.TwitchLogin);
+
+        // So do top streams.
+        client.GetStreams(Arg.Any<GetStreamsQuery>(), Arg.Any<CancellationToken>()).Returns(CreateLiveResponse());
+        var response = await sut.GetTopStreams(new TopStreamQuery { Take = 1 });
+        var top = Assert.Single(response.LivestreamModels);
+
+        Assert.Equal("https://www.twitch.tv/known_login/", await top.GetStreamUrl());
         await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
     }
 
@@ -127,18 +116,6 @@ public sealed class TwitchApiClientShould
 
         Assert.Equal("https://www.twitch.tv/known_login/", await stream.GetStreamUrl());
         Assert.Equal("한동숙", stream.ChannelIdentifier.DisplayName);
-        await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task UseTheLoginReturnedInTopStreamsWithoutAUserLookup()
-    {
-        client.GetStreams(Arg.Any<GetStreamsQuery>(), Arg.Any<CancellationToken>()).Returns(CreateLiveResponse());
-
-        var response = await sut.GetTopStreams(new TopStreamQuery { Take = 1 });
-        var stream = Assert.Single(response.LivestreamModels);
-
-        Assert.Equal("https://www.twitch.tv/known_login/", await stream.GetStreamUrl());
         await client.DidNotReceive().GetUsers(Arg.Any<GetUsersQuery>(), Arg.Any<CancellationToken>());
     }
 

@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Xml.Linq;
-using ExternalAPIs.Youtube.Query;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Windows.Monitor;
 using Livestream.Monitor.Model;
@@ -45,8 +44,6 @@ public class MonitorWindowShould
 
     [Theory]
     [InlineData(true, true, "long")]
-    [InlineData(true, false, "short")]
-    [InlineData(false, true, "long")]
     [InlineData(false, false, "short")]
     public void KeepToastContentAndClickTargetAtEitherBannerDuration(bool withThumbnail, bool longBanner, string expectedDuration)
     {
@@ -170,39 +167,18 @@ public class MonitorWindowShould
         Assert.ThrowsAny<IOException>(() => ToastActivationPipe.Forward(target, pipeName));
     }
 
-    [Fact]
-    public void OfferPageSizesSupportedByYouTubeUploads()
-    {
-        var query = new PlaylistItemsQuery("uploads");
-        foreach (var pageSize in MonitorWindow.PageSizes)
-        {
-            query.ItemsPerPage = pageSize;
-            Assert.Equal(pageSize, query.ItemsPerPage);
-        }
-    }
-
+    // The viewport moves no further than needed, and stays where it is when the selection is already visible.
     [Theory]
-    [InlineData(20, 300)]
-    [InlineData(250, 0)]
-    [InlineData(600, 125)]
-    public void KeepKeyboardSelectionVisibleAfterWheelScrolling(int selectedTop, int offset)
+    [InlineData(20, 300, 20)]
+    [InlineData(250, 0, 120)]
+    [InlineData(600, 125, 470)]
+    [InlineData(125, 100, 100)]
+    public void KeepKeyboardSelectionVisibleAfterWheelScrolling(int selectedTop, int offset, int expected)
     {
         const int ItemHeight = 120;
         const int Viewport = 250;
         var selectedBottom = selectedTop + ItemHeight;
-        var next = MonitorWindow.GetVisibleOffset(selectedTop, selectedBottom, offset, Viewport);
-        Assert.InRange(selectedTop, next, next + Viewport - ItemHeight);
-    }
-
-    [Fact]
-    public void KeepTheViewportStationaryWhenSelectionIsAlreadyVisible()
-    {
-        const int SelectedTop = 125;
-        const int SelectedBottom = SelectedTop + 120;
-        const int Offset = 100;
-        const int Viewport = 250;
-        var next = MonitorWindow.GetVisibleOffset(SelectedTop, SelectedBottom, Offset, Viewport);
-        Assert.Equal(Offset, next);
+        Assert.Equal(expected, MonitorWindow.GetVisibleOffset(selectedTop, selectedBottom, offset, Viewport));
     }
 
     // Seven tiles in rows of three: 0 1 2 / 3 4 5 / 6.

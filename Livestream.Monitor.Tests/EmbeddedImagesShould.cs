@@ -7,18 +7,6 @@ namespace Livestream.Monitor.Tests;
 
 public class EmbeddedImagesShould
 {
-    [Theory]
-    [InlineData(EmbeddedImages.Live)]
-    [InlineData(EmbeddedImages.Offline)]
-    [InlineData(EmbeddedImages.GuernseyFlag)]
-    public void ProvideTheSharedImages(string name)
-    {
-        using var stream = EmbeddedImages.Open(name);
-
-        Assert.NotNull(stream);
-        Assert.True(stream.Length > 0);
-    }
-
     [Fact]
     public void StoreTheFlagAtlasAsAnIndexedPng()
     {

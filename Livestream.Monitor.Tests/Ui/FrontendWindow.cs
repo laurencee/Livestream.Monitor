@@ -2,9 +2,11 @@ using System;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Interop.UIAutomationClient;
+using Xunit;
 using static Interop.UIAutomationClient.UIA_ControlTypeIds;
 using static Interop.UIAutomationClient.UIA_PatternIds;
 using static Interop.UIAutomationClient.UIA_PropertyIds;
+using Win32 = Livestream.Monitor.Direct2D.Native.Win32;
 
 namespace Livestream.Monitor.Tests.Ui;
 
@@ -16,10 +18,15 @@ internal sealed class FrontendWindow : IDisposable
     public static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(10);
 
     private const TreeScope Descendants = TreeScope.TreeScope_Descendants;
-    private readonly IUIAutomation automation = new CUIAutomation8();
-    private readonly IUIAutomationCondition itemCondition;
-    private readonly IUIAutomationCondition rowCondition;
-    private readonly IUIAutomationCondition authorizationPrompt;
+
+    // One client for all windows, created once: journeys that run alongside each other fail when each creates its own at
+    // the same moment.
+    private static readonly IUIAutomation Automation = new CUIAutomation8();
+    private static readonly IUIAutomationCondition ItemCondition =
+        Automation.CreateOrCondition(ByType(UIA_ListItemControlTypeId), ByType(UIA_MenuItemControlTypeId));
+    private static readonly IUIAutomationCondition RowCondition = ByType(UIA_DataItemControlTypeId);
+    private static readonly IUIAutomationCondition AuthorizationPrompt =
+        Automation.CreatePropertyCondition(UIA_NamePropertyId, "Twitch Authorization");
 
     // An action a repeat would undo, such as a toggle or the next page, waits long enough for a slow frame to show its
     // outcome; one that checks its outcome before acting again is repeated sooner.
@@ -28,13 +35,7 @@ internal sealed class FrontendWindow : IDisposable
 
     private readonly UiApplication application;
 
-    private FrontendWindow(UiTestProfile profile)
-    {
-        itemCondition = automation.CreateOrCondition(ByType(UIA_ListItemControlTypeId), ByType(UIA_MenuItemControlTypeId));
-        rowCondition = ByType(UIA_DataItemControlTypeId);
-        authorizationPrompt = automation.CreatePropertyCondition(UIA_NamePropertyId, "Twitch Authorization");
-        application = UiApplication.Launch(profile);
-    }
+    private FrontendWindow(UiTestProfile profile) => application = UiApplication.Launch(profile);
 
     public static FrontendWindow Launch(UiTestProfile profile) => new(profile);
 
@@ -68,7 +69,7 @@ internal sealed class FrontendWindow : IDisposable
     /// Acts until the outcome is seen. An action taken while a dialog, flyout or page is still appearing can be lost,
     /// so it is repeated, at most once per retry interval, until the outcome shows.
     /// </summary>
-    public void RetryUntil(Action act, Func<bool> done, string description) =>
+    private void RetryUntil(Action act, Func<bool> done, string description) =>
         RetryUntil(RetryInterval, act, done, description);
 
     /// <summary>Invokes the control while it is shown and enabled until the outcome is seen.</summary>
@@ -97,7 +98,7 @@ internal sealed class FrontendWindow : IDisposable
 
         void Decline() => InvokeIfEnabled("dialog.cancel");
 
-        bool PromptShown() => Find(authorizationPrompt) != null;
+        bool PromptShown() => Find(AuthorizationPrompt) != null;
 
         bool PromptClosed() => !PromptShown();
     }
@@ -139,7 +140,7 @@ internal sealed class FrontendWindow : IDisposable
 
         string[] ReadRows()
         {
-            var rows = Root()?.FindAll(Descendants, rowCondition);
+            var rows = Root()?.FindAll(Descendants, RowCondition);
             last = rows == null ? null : Elements(rows).Select(DisplayedText).ToArray();
             return last != null && probe(last) ? last : null;
         }
@@ -187,7 +188,7 @@ internal sealed class FrontendWindow : IDisposable
         bool Shown()
         {
             var container = Find(containerId);
-            items = container == null ? [] : Elements(container.FindAll(Descendants, itemCondition));
+            items = container == null ? [] : Elements(container.FindAll(Descendants, ItemCondition));
             var labels = items.Select(DisplayedText).ToArray();
             seen = string.Join(", ", labels.Select(label => $"'{label}'"));
             return labels.Length != 0 && labels.All(label => !string.IsNullOrWhiteSpace(label)) && (ready?.Invoke(labels) ?? true);
@@ -249,9 +250,9 @@ internal sealed class FrontendWindow : IDisposable
     /// <summary>The element with the automation id, or null when there is none, without waiting.</summary>
     public IUIAutomationElement Find(string automationId) => Find(ById(automationId));
 
-    private IUIAutomationCondition ById(string automationId) => automation.CreatePropertyCondition(UIA_AutomationIdPropertyId, automationId);
+    private static IUIAutomationCondition ById(string automationId) => Automation.CreatePropertyCondition(UIA_AutomationIdPropertyId, automationId);
 
-    private IUIAutomationCondition ByType(int type) => automation.CreatePropertyCondition(UIA_ControlTypePropertyId, type);
+    private static IUIAutomationCondition ByType(int type) => Automation.CreatePropertyCondition(UIA_ControlTypePropertyId, type);
 
     private IUIAutomationElement Find(IUIAutomationCondition condition) => Root()?.FindFirst(Descendants, condition);
 
@@ -278,6 +279,20 @@ internal sealed class FrontendWindow : IDisposable
 
     private void WaitForPaintedDialogMessage()
     {
+        // Another journey's window opens at the same place, so this one stays above it while its pixels are read.
+        const int TopmostWindow = -1;
+        var topmostFlags = Win32.SwpNoSize | Win32.SwpNoMove | Win32.SwpNoActivate;
+        var madeTopmost = Win32.SetWindowPos(
+            window: application.MainWindow,
+            insertAfter: TopmostWindow,
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            flags: topmostFlags);
+
+        Assert.True(madeTopmost);
+
         var lastSeen = "";
         WaitUntil(HasVisibleText, "The dialog message has visible text on screen", () => lastSeen);
 
@@ -296,12 +311,12 @@ internal sealed class FrontendWindow : IDisposable
         if (Find(automationId) is { CurrentIsEnabled: not 0 } control) Invoke(control);
     }
 
-    private IUIAutomationCondition TextNamed(string text) =>
-        automation.CreateAndCondition(ByType(UIA_TextControlTypeId), automation.CreatePropertyCondition(UIA_NamePropertyId, text));
+    private static IUIAutomationCondition TextNamed(string text) =>
+        Automation.CreateAndCondition(ByType(UIA_TextControlTypeId), Automation.CreatePropertyCondition(UIA_NamePropertyId, text));
 
     private IUIAutomationElement Root()
     {
         var window = application.MainWindow;
-        return window == IntPtr.Zero ? null : automation.ElementFromHandle(window);
+        return window == IntPtr.Zero ? null : Automation.ElementFromHandle(window);
     }
 }

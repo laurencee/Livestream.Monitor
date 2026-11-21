@@ -31,40 +31,33 @@ public class MonitorStreamsModelShould
         List<LivestreamQueryResult> workingResults = [new(workingChannel) { LivestreamModel = liveStream }];
         workingProvider.QueryChannels(Arg.Any<CancellationToken>()).Returns(workingResults);
 
+        var timingOutProvider = CreateFailingProvider("timing-out", new TimeoutException("Timed out."));
         List<ChannelIdentifier> channels =
         [
             new(failingProvider, "first"),
             new(failingProvider, "second"),
+            new(timingOutProvider, "third"),
             workingChannel,
         ];
-        var sut = CreateModel(channels, failingProvider, workingProvider);
+        var sut = CreateModel(channels, failingProvider, timingOutProvider, workingProvider);
 
         if (queryBeforeInitializing) sut.BeginInitialQuery();
         var refreshFailure = await Assert.ThrowsAsync<AggregateException>(() => sut.Initialize(Substitute.For<IUserDialogs>()));
 
-        var queryFailure = Assert.IsType<FailedQueryException>(Assert.Single(refreshFailure.InnerExceptions));
-        Assert.Same(failure, queryFailure.InnerException);
+        Assert.Equal(2, refreshFailure.InnerExceptions.Count);
+        var queryFailure = Assert.Single(refreshFailure.InnerExceptions, x => ReferenceEquals(x.InnerException, failure));
+        Assert.IsType<FailedQueryException>(queryFailure);
+
+        // The message describes every failed provider.
+        var message = refreshFailure.ExtractErrorMessage();
+        Assert.Contains("failing", message);
+        Assert.Contains("Unavailable.", message);
+        Assert.Contains("timing-out", message);
+        Assert.Contains("Timed out.", message);
         Assert.True(sut.Livestreams.Single(x => Equals(x.ChannelIdentifier, workingChannel)).Live);
         var failedChannels = sut.Livestreams.Where(x => x.ApiClient == failingProvider).ToList();
         Assert.Equal(2, failedChannels.Count);
         Assert.All(failedChannels, x => Assert.False(x.Live));
-    }
-
-    [Fact]
-    public async Task DescribeEveryFailedProviderInTheErrorMessage()
-    {
-        var firstProvider = CreateFailingProvider("first-provider", new TimeoutException("First timed out."));
-        var secondProvider = CreateFailingProvider("second-provider", new TimeoutException("Second timed out."));
-        List<ChannelIdentifier> channels = [new(firstProvider, "first"), new(secondProvider, "second")];
-        var sut = CreateModel(channels, firstProvider, secondProvider);
-
-        var refreshFailure = await Assert.ThrowsAsync<AggregateException>(() => sut.Initialize(Substitute.For<IUserDialogs>()));
-
-        var message = refreshFailure.ExtractErrorMessage();
-        Assert.Contains("first-provider", message);
-        Assert.Contains("First timed out.", message);
-        Assert.Contains("second-provider", message);
-        Assert.Contains("Second timed out.", message);
     }
 
     [Fact]
@@ -299,31 +292,6 @@ public class MonitorStreamsModelShould
         Assert.Same(failure, queryFailure.InnerException);
     }
 
-    [Fact]
-    public async Task AuthorizeAndQueryAPromptFreeProviderBeforeInitializing()
-    {
-        var provider = CreateProvider("prompt-free");
-        var authorized = false;
-        provider.IsAuthorized.Returns(_ => authorized);
-        provider.CanAuthorizeWithoutUserInput.Returns(true);
-        provider.When(x => x.Authorize(Arg.Any<IUserDialogs>())).Do(_ => authorized = true);
-        var queried = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        provider.QueryChannels(Arg.Any<CancellationToken>()).Returns(_ =>
-        {
-            queried.SetResult();
-            return Task.FromResult(new List<LivestreamQueryResult>());
-        });
-
-        var sut = CreateModel([new ChannelIdentifier(provider, "channel")], provider);
-
-        sut.BeginInitialQuery();
-        await queried.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        await sut.Initialize(Substitute.For<IUserDialogs>());
-
-        await provider.Received(1).Authorize(null);
-        await provider.Received(1).QueryChannels(Arg.Any<CancellationToken>());
-    }
-
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -441,10 +409,8 @@ public class MonitorStreamsModelShould
         await prefetchedProvider.Received(2).QueryChannels(Arg.Any<CancellationToken>());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SaveALoginLearnedDuringPollingEvenWhenTheDisplayNameIsUnchanged(bool queryBeforeInitializing)
+    [Fact]
+    public async Task SaveALoginLearnedDuringPollingEvenWhenTheDisplayNameIsUnchanged()
     {
         var provider = CreateProvider(TwitchApiClient.API_NAME);
         var channel = new ChannelIdentifier(provider, "42") { DisplayName = "한동숙" };
@@ -460,7 +426,7 @@ public class MonitorStreamsModelShould
         var refreshComplete = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         sut.LivestreamsRefreshComplete += (_, _) => refreshComplete.TrySetResult();
 
-        if (queryBeforeInitializing) sut.BeginInitialQuery();
+        sut.BeginInitialQuery();
         await sut.Initialize(Substitute.For<IUserDialogs>());
         await refreshComplete.Task;
 

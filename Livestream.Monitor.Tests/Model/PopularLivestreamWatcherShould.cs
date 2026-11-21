@@ -1,113 +1,68 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ExternalAPIs;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Model;
 using Livestream.Monitor.Model.ApiClients;
 using Livestream.Monitor.Model.Monitoring;
-using Livestream.Monitor.Tests.TestFramework;
 using NSubstitute;
-using AutoFixture.Xunit2;
-using ExternalAPIs;
 using Xunit;
 
 namespace Livestream.Monitor.Tests.Model
 {
-    // these tests suck but are better than nothing, written back when I used to over mock stuff
     public class PopularLivestreamWatcherShould
     {
-        [InlineAutoNSubstituteData(1, 2)]
-        [InlineAutoNSubstituteData(500, 1)]
-        [InlineAutoNSubstituteData(2000, 0)]
+        // Popular notifications start disabled; a test enables them when it needs polling.
+        private readonly Settings settings = new() { MinimumEventViewers = 0 };
+        private readonly INotificationHandler notificationHandler = Substitute.For<INotificationHandler>();
+        private readonly IApiClient apiClient = Substitute.For<IApiClient>();
+        private int queryCount;
+
+        public PopularLivestreamWatcherShould()
+        {
+            apiClient.ApiName.Returns("twitchtv");
+            apiClient.HasTopStreamsSupport.Returns(true);
+            apiClient.IsAuthorized.Returns(true);
+        }
+
         [Theory]
-        public async Task NotifyEligibleStreamsOnceAcrossConsecutivePolls(
-            int minimumViewers,
-            int expectedNotificationCount,
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory)
+        [InlineData(1, false, 2)]
+        [InlineData(500, false, 1)]
+        [InlineData(2000, false, 0)]
+        [InlineData(1, true, 1)]
+        public async Task NotifyEligibleStreamsOnceAcrossConsecutivePolls(int minimumViewers, bool muteTheMostViewed, int expectedNotifications)
         {
-            var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamModels);
-            factory.GetAll().Returns(apiClients);
-            settingsHandler.Settings.MinimumEventViewers = minimumViewers;
-            var sut = Create(settingsHandler, notificationHandler, factory);
+            var mostViewed = Stream("most viewed", viewers: 1000);
+            var lessViewed = Stream("less viewed", viewers: 300);
+            var offline = Stream("offline", viewers: 0);
+            offline.Offline();
+            var response = new TopStreamsResponse { LivestreamModels = [mostViewed, lessViewed, offline], HasNextPage = false };
+            apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(response);
+            settings.MinimumEventViewers = minimumViewers;
+            if (muteTheMostViewed) settings.ExcludeFromNotifying.Add(mostViewed.UniqueStreamKey);
+            var sut = CreateWatcher();
 
             await sut.NotifyPopularStreams();
 
-            notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
+            notificationHandler.Received(expectedNotifications).AddNotification(Arg.Any<LivestreamNotification>());
 
             await sut.NotifyPopularStreams();
 
-            notificationHandler.Received(expectedNotificationCount).AddNotification(Arg.Any<LivestreamNotification>());
+            notificationHandler.Received(expectedNotifications).AddNotification(Arg.Any<LivestreamNotification>());
+            if (!muteTheMostViewed) return;
+
+            notificationHandler.Received(1).AddNotification(Arg.Is<LivestreamNotification>(x => Equals(x.LivestreamModel, lessViewed)));
         }
 
-        [Theory, AutoNSubstituteData]
-        public async Task NotNotifyExcludedStreams(
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] List<IApiClient> apiClients,
-            [Frozen] List<LivestreamModel> livestreamModels,
-            [Frozen] IApiClientFactory factory)
-        {
-            var apiClient = apiClients.First();
-            SetupApiClient(apiClient, livestreamModels);
-            factory.GetAll().Returns(apiClients);
-            settingsHandler.Settings.MinimumEventViewers = 1;
-            settingsHandler.Settings.ExcludeFromNotifying.Add(livestreamModels[0].UniqueStreamKey);
-            var sut = Create(settingsHandler, notificationHandler, factory);
-
-            await sut.NotifyPopularStreams();
-
-            notificationHandler.Received(1).AddNotification(
-                Arg.Is<LivestreamNotification>(x => Equals(x.LivestreamModel, livestreamModels[1])));
-            notificationHandler.DidNotReceive().AddNotification(
-                Arg.Is<LivestreamNotification>(x => Equals(x.LivestreamModel, livestreamModels[0])));
-        }
-
-        [Theory, AutoNSubstituteData]
-        public async Task StartWatching_DoesNothing_WhenPopularNotificationsDisabled(
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory)
-        {
-            int queryCount = 0;
-            SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
-            factory.GetAll().Returns([apiClient]);
-            settingsHandler.Settings.MinimumEventViewers = 0;
-            var sut = Create(settingsHandler, notificationHandler, factory);
-
-            try
-            {
-                sut.StartWatching();
-                await AssertRemainsTrueAsync(() => Volatile.Read(ref queryCount) == 0);
-            }
-            finally
-            {
-                sut.StopWatching();
-            }
-        }
-
-        [InlineAutoNSubstituteData(false)]
-        [InlineAutoNSubstituteData(true)]
         [Theory]
-        public async Task PollOnceOnDuplicateStartOrAgainAfterRestart(
-            bool restart,
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory)
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task PollOnceOnDuplicateStartOrAgainAfterRestart(bool restart)
         {
-            int queryCount = 0;
-            SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
-            factory.GetAll().Returns([apiClient]);
-            settingsHandler.Settings.MinimumEventViewers = 1;
-            var sut = Create(settingsHandler, notificationHandler, factory);
+            CountQueries();
+            settings.MinimumEventViewers = 1;
+            var sut = CreateWatcher();
 
             try
             {
@@ -133,26 +88,23 @@ namespace Livestream.Monitor.Tests.Model
             }
         }
 
-        [Theory, AutoNSubstituteData]
-        public async Task ChangingMinimumEventViewers_StopsAndRestartsWatching(
-            [Frozen] ISettingsHandler settingsHandler,
-            [Frozen] INotificationHandler notificationHandler,
-            [Frozen] IApiClient apiClient,
-            [Frozen] IApiClientFactory factory)
+        [Fact]
+        public async Task ChangingMinimumEventViewers_StopsAndRestartsWatching()
         {
-            int queryCount = 0;
-            SetupPollingApiClient(apiClient, () => Interlocked.Increment(ref queryCount));
-            factory.GetAll().Returns([apiClient]);
-            settingsHandler.Settings.MinimumEventViewers = 0;
-            var sut = Create(settingsHandler, notificationHandler, factory);
+            CountQueries();
+            var sut = CreateWatcher();
 
             try
             {
-                settingsHandler.Settings.MinimumEventViewers = 1;
+                // Starting does nothing while popular notifications are disabled.
+                sut.StartWatching();
+                await AssertRemainsTrueAsync(() => Volatile.Read(ref queryCount) == 0);
+
+                settings.MinimumEventViewers = 1;
                 await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 1);
 
-                settingsHandler.Settings.MinimumEventViewers = 0;
-                settingsHandler.Settings.MinimumEventViewers = 1;
+                settings.MinimumEventViewers = 0;
+                settings.MinimumEventViewers = 1;
 
                 await WaitUntilAsync(() => Volatile.Read(ref queryCount) == 2);
             }
@@ -162,53 +114,28 @@ namespace Livestream.Monitor.Tests.Model
             }
         }
 
-        private static PopularLivestreamWatcher Create(
-            ISettingsHandler settingsHandler,
-            INotificationHandler notificationHandler,
-            IApiClientFactory factory)
+        private PopularLivestreamWatcher CreateWatcher()
         {
-            return new PopularLivestreamWatcher(
-                settingsHandler: settingsHandler,
-                notificationHandler: notificationHandler,
-                apiClientFactory: factory
-            );
+            var settingsHandler = Substitute.For<ISettingsHandler>();
+            settingsHandler.Settings.Returns(settings);
+            var factory = Substitute.For<IApiClientFactory>();
+            factory.GetAll().Returns([apiClient]);
+            return new PopularLivestreamWatcher(settingsHandler, notificationHandler, factory);
         }
 
-        private void SetupApiClient(IApiClient apiClient, List<LivestreamModel> livestreamModels)
+        private LivestreamModel Stream(string id, long viewers)
         {
-            if (livestreamModels.Count < 3)
-                throw new InvalidOperationException("Require >= 3 livestream query results for test configuration");
-
-            SetViewerCount(livestreamModels[0], 1000);
-            SetViewerCount(livestreamModels[1], 300);
-            SetViewerCount(livestreamModels[2], 0);
-            apiClient.HasTopStreamsSupport.Returns(true);
-            apiClient.IsAuthorized.Returns(true);
-            apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(Task.FromResult(new TopStreamsResponse()
-            {
-                LivestreamModels = livestreamModels,
-                HasNextPage = false,
-            }));
+            var channel = new ChannelIdentifier(apiClient, id);
+            return new LivestreamModel(id, channel) { DisplayName = id, Live = true, Viewers = viewers };
         }
 
-        private void SetViewerCount(LivestreamModel livestreamModel, int viewers)
+        private void CountQueries()
         {
-            livestreamModel.Viewers = viewers;
-            if (viewers <= 0) livestreamModel.Offline();
-        }
-
-        private void SetupPollingApiClient(IApiClient apiClient, Action onQuery)
-        {
-            apiClient.HasTopStreamsSupport.Returns(true);
-            apiClient.IsAuthorized.Returns(true);
             apiClient.GetTopStreams(Arg.Any<TopStreamQuery>()).Returns(_ =>
             {
-                onQuery();
-                return Task.FromResult(new TopStreamsResponse()
-                {
-                    LivestreamModels = [],
-                    HasNextPage = false,
-                });
+                Interlocked.Increment(ref queryCount);
+                var response = new TopStreamsResponse { LivestreamModels = [], HasNextPage = false };
+                return Task.FromResult(response);
             });
         }
 

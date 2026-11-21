@@ -106,15 +106,9 @@ public sealed class YoutubeApiClientShould : IDisposable
         await Task.WhenAll(quickCheck, completeCheck);
 
         await youtubeClient.Received(1).GetLiveVideos(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>());
-    }
 
-    [Fact]
-    public async Task LookUpTheKnownVideosAgainInALaterCheck()
-    {
-        RespondWith(liveVideos: [], playlistVideoIds: ["new", "old"]);
-        await sut.QueryChannels(CancellationToken.None);
+        // Later checks look the known videos up again.
         youtubeClient.ClearReceivedCalls();
-
         await sut.QueryChannelsQuickly(CancellationToken.None);
         await sut.QueryChannelsQuickly(CancellationToken.None);
 

@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Livestream.Monitor.Core.Settings;
 
@@ -48,6 +49,27 @@ internal sealed class UiTestProfile : IDisposable
 
     /// <summary>A profile without a token or followed streams, so nothing asks for authorization at startup.</summary>
     public static UiTestProfile CreateWithoutToken() => Create([], followStreams: false);
+
+    public bool? ReadFlag(string name) =>
+        ReadSetting(name) is { ValueKind: JsonValueKind.True or JsonValueKind.False } flag ? flag.GetBoolean() : null;
+
+    /// <summary>
+    /// A saved setting, or null when it is absent or the read meets a write in progress. Holding the file open can make a
+    /// concurrent save by the frontend fail, and the frontend then drops that save, so read it only once the frontend shows
+    /// the saved outcome.
+    /// </summary>
+    public JsonElement? ReadSetting(string name)
+    {
+        try
+        {
+            using var settings = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+            return settings.RootElement.TryGetProperty(name, out var value) ? value.Clone() : null;
+        }
+        catch (Exception exception) when (exception is IOException or JsonException)
+        {
+            return null;
+        }
+    }
 
     public void Dispose() => TryDelete(DataDirectory);
 

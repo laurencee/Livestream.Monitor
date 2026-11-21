@@ -97,35 +97,27 @@ public class ProcessWindowObserverShould
         Assert.Equal(2, source.FindCount);
     }
 
-    [Fact]
-    public async Task StopWhenCancelledDuringAPoll()
+    [Theory]
+    [InlineData("cancelled before polling", 0)]
+    [InlineData("cancelled during a poll", 1)]
+    [InlineData("application shutting down", 1)]
+    public async Task StopObservingWhenCancelledOrShuttingDown(string reason, int expectedPolls)
     {
         using var cancellation = new CancellationTokenSource();
-        var source = new FakeSource { WindowProcessId = RootId, AfterFind = cancellation.Cancel };
-        var observer = new ProcessWindowObserver(source, RootId, RootTime);
-
-        Assert.False(await observer.WaitForWindow(cancellation.Token, () => false));
-        Assert.Equal(1, source.FindCount);
-    }
-
-    [Fact]
-    public async Task SkipPollingWhenAlreadyCancelled()
-    {
         var source = new FakeSource();
+        if (reason == "cancelled before polling") await cancellation.CancelAsync();
+
+        if (reason == "cancelled during a poll")
+        {
+            source.WindowProcessId = RootId;
+            source.AfterFind = cancellation.Cancel;
+        }
+
+        var shuttingDown = reason == "application shutting down";
         var observer = new ProcessWindowObserver(source, RootId, RootTime);
 
-        Assert.False(await observer.WaitForWindow(new CancellationToken(true), () => false));
-        Assert.Equal(0, source.FindCount);
-    }
-
-    [Fact]
-    public async Task StopWhenApplicationShutsDownDuringObservation()
-    {
-        var source = new FakeSource();
-        var observer = new ProcessWindowObserver(source, RootId, RootTime);
-
-        Assert.False(await observer.WaitForWindow(CancellationToken.None, () => source.FindCount > 0));
-        Assert.Equal(1, source.FindCount);
+        Assert.False(await observer.WaitForWindow(cancellation.Token, () => shuttingDown && source.FindCount > 0));
+        Assert.Equal(expectedPolls, source.FindCount);
     }
 
     [Fact]
@@ -147,30 +139,17 @@ public class ProcessWindowObserverShould
         Assert.Equal(0, source.SnapshotCount);
     }
 
-    [Fact]
-    public void AvoidRepeatedSnapshotsForUnrelatedNewWindows()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AvoidRepeatedSnapshotsForUnrelatedWindowsWithoutDelayingNewOnes(bool unrelatedParentKnown)
     {
         var source = new FakeSource
         {
             WindowProcessId = UnrelatedId,
             Times = { [UnrelatedId] = GrandchildTime },
         };
-        source.Processes.Add(new ProcessParent(UnrelatedId, 0));
-        var observer = new ProcessWindowObserver(source, RootId, RootTime);
-
-        Assert.False(observer.HasWindow());
-        Assert.False(observer.HasWindow());
-        Assert.Equal(1, source.SnapshotCount);
-    }
-
-    [Fact]
-    public void ThrottleUnknownAncestryWithoutDelayingNewWindows()
-    {
-        var source = new FakeSource
-        {
-            WindowProcessId = UnrelatedId,
-            Times = { [UnrelatedId] = GrandchildTime },
-        };
+        if (unrelatedParentKnown) source.Processes.Add(new ProcessParent(UnrelatedId, 0));
         var observer = new ProcessWindowObserver(source, RootId, RootTime);
         Assert.False(observer.HasWindow());
         Assert.False(observer.HasWindow());

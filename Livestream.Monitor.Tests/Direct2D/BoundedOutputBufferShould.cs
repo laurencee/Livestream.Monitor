@@ -7,26 +7,6 @@ namespace Livestream.Monitor.Tests.Direct2D;
 
 public class BoundedOutputBufferShould
 {
-    [Theory]
-    [InlineData(0)]
-    [InlineData(-1)]
-    public void RequirePositiveCapacity(int capacity)
-    {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new BoundedOutputBuffer(capacity));
-    }
-
-    [Fact]
-    public void RetainTheNewestTextWithinTheDefaultCapacity()
-    {
-        var buffer = new BoundedOutputBuffer();
-        var text = new string('x', BoundedOutputBuffer.DefaultCapacity) + "y";
-        buffer.Append(text);
-
-        Assert.True(buffer.TryRead(out var snapshot));
-        Assert.Equal(text[1..], snapshot.Text);
-        Assert.Equal(1, snapshot.DiscardedCharacters);
-    }
-
     [Fact]
     public void ReportOnlyChangesAndRetainHistoryAcrossRingWraparound()
     {

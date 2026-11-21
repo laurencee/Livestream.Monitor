@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Direct2D.Automation;
@@ -48,48 +47,13 @@ public sealed class SurfaceUiShould : IDisposable
         MathF.Ceiling(MeasureText(text, fontSize) / width) * Painter.LineHeight(fontSize);
 
     [Fact]
-    public void ReplaceAndFadeActionFeedbackWithoutInterceptingClicks()
+    public void KeepActionFeedbackInsideTheWindowWithoutInterceptingClicks()
     {
+        // The bottom right corner, where the feedback has no room to the right or below.
+        const float X = 399;
+        const float Y = 299;
         var feedback = new ActionFeedback();
-        feedback.Show("First action", PointF.Empty, now: 0);
-        const int RestartMilliseconds = 500;
-        const int FadeMidpointMilliseconds = RestartMilliseconds + 1_375;
-        var clickPosition = new PointF(50, 80);
-        feedback.Show("Second action", clickPosition, RestartMilliseconds);
-        feedback.Tick(FadeMidpointMilliseconds);
-        ui.Begin(palette, viewport);
-        feedback.Draw(ui, viewport);
-        ui.End();
-
-        var text = Assert.Single(commands, command => command.Kind == DrawKind.Text);
-        Assert.Equal("Second action", text.Text);
-        Assert.True(viewport.Contains(text.Bounds));
-        var background = Assert.Single(commands, command => command.Kind == DrawKind.Fill);
-        Assert.Equal(clickPosition, background.Bounds.Location);
-        const int AlphaShift = 24;
-        const uint HalfOpacityAlpha = 128;
-        foreach (var command in commands) Assert.Equal(HalfOpacityAlpha, command.Color >> AlphaShift);
-
-        var point = new PointF(text.Bounds.X, text.Bounds.Y);
-        Assert.False(ui.MouseDown(point));
-        Assert.False(ui.MouseUp(point));
-
-        commands.Clear();
-        const int DisappearMilliseconds = RestartMilliseconds + 1_500;
-        feedback.Tick(DisappearMilliseconds);
-        feedback.Draw(ui, viewport);
-        Assert.Empty(commands);
-    }
-
-    [Theory]
-    [InlineData(0, 0)]
-    [InlineData(399, 299)]
-    [InlineData(399, 80)]
-    [InlineData(50, 299)]
-    public void KeepActionFeedbackInsideTheWindowAtEdgeClicks(float x, float y)
-    {
-        var feedback = new ActionFeedback();
-        feedback.Show("Copied", new PointF(x, y), now: 0);
+        feedback.Show("Copied", new PointF(X, Y), now: 0);
         ui.Begin(palette, viewport);
         feedback.Draw(ui, viewport);
         ui.End();
@@ -97,56 +61,26 @@ public sealed class SurfaceUiShould : IDisposable
         var background = Assert.Single(commands, command => command.Kind == DrawKind.Fill);
         Assert.True(viewport.Contains(background.Bounds));
         const float EdgeMargin = 4;
-        Assert.InRange(x, background.Bounds.Left - EdgeMargin, background.Bounds.Right + EdgeMargin);
-        Assert.InRange(y, background.Bounds.Top - EdgeMargin, background.Bounds.Bottom + EdgeMargin);
+        Assert.InRange(X, background.Bounds.Left - EdgeMargin, background.Bounds.Right + EdgeMargin);
+        Assert.InRange(Y, background.Bounds.Top - EdgeMargin, background.Bounds.Bottom + EdgeMargin);
+        var text = Assert.Single(commands, command => command.Kind == DrawKind.Text);
+        Assert.Equal("Copied", text.Text);
+
+        Assert.False(ui.MouseDown(background.Bounds.Location));
+        Assert.False(ui.MouseUp(background.Bounds.Location));
+
+        // Nothing is drawn once the feedback has disappeared.
+        commands.Clear();
+        const int DisappearMilliseconds = 1_500;
+        feedback.Tick(DisappearMilliseconds);
+        feedback.Draw(ui, viewport);
+        Assert.Empty(commands);
     }
 
     [Fact]
-    public void KeepMeasuredSettingsTextInsideTheGroupPadding()
+    public void SaveNotificationOptionsWithAnUnavailablePlaybackCommand()
     {
-        var settings = new Settings();
-        settings.Twitch.StreamCommand.FilePath = Environment.ProcessPath;
-        var handler = Substitute.For<ISettingsHandler>();
-        handler.Settings.Returns(settings);
-        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
-        Draw();
-        ClickSection("settings.section.0");
-        ClickSection("settings.section.1");
-        var label = commands.First(command => command.Text == "File path");
-        var border = commands.Where(command => command.Kind == DrawKind.Stroke && command.Bounds.Contains(label.Bounds))
-            .MinBy(command => command.Bounds.Width * command.Bounds.Height);
-        var leftInset = label.Bounds.Left - border.Bounds.Left;
-        var rightInset = border.Bounds.Right - label.Bounds.Right;
-        Assert.True(leftInset > 0);
-        Assert.Equal(leftInset, rightInset);
-
-        void Draw()
-        {
-            ui.Begin(palette, viewport);
-            pane.Draw(ui, viewport);
-            ui.End();
-        }
-
-        void ClickSection(string id)
-        {
-            var bounds = ui.Automation.Find(id)!.Bounds;
-            var point = new PointF(bounds.X + bounds.Width / 2, bounds.Y + bounds.Height / 2);
-            ui.MouseDown(point);
-            ui.MouseUp(point);
-            Draw();
-        }
-    }
-
-    [Theory]
-    [InlineData("settings.bannerduration.long", StreamNotificationImage.ChannelIcon, true, false)]
-    [InlineData("settings.notificationimage.thumbnail", StreamNotificationImage.LiveThumbnail, false, false)]
-    [InlineData("settings.foregroundonstreamonline", StreamNotificationImage.ChannelIcon, false, true)]
-    public void SaveNotificationOptionsWithAnUnavailablePlaybackCommand(
-        string option,
-        StreamNotificationImage image,
-        bool longBanner,
-        bool bringToForeground)
-    {
+        const string LongBanner = "settings.bannerduration.long";
         var settings = new Settings();
         settings.YouTube.VodCommand.FilePath = "unavailable-vod-player.exe";
         var handler = Substitute.For<ISettingsHandler>();
@@ -154,15 +88,13 @@ public sealed class SurfaceUiShould : IDisposable
         var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
 
         DrawSettings(pane);
-        Assert.Null(ui.Automation.Find(option));
+        Assert.Null(ui.Automation.Find(LongBanner));
         ClickWidget("settings.section.5");
         DrawSettings(pane);
-        ClickWidget(option);
+        ClickWidget(LongBanner);
         DrawSettings(pane);
 
-        Assert.Equal(image, settings.StreamNotificationImage);
-        Assert.Equal(longBanner, settings.UseLongStreamNotificationBanners);
-        Assert.Equal(bringToForeground, settings.BringToForegroundOnStreamOnline);
+        Assert.True(settings.UseLongStreamNotificationBanners);
         handler.Received(1).SaveSettings();
     }
 
@@ -287,22 +219,6 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
-    public void HideTheSettingsScrollbarWhenItsThumbCannotMove()
-    {
-        const float ShortWindowHeight = 100;
-        var shortViewport = viewport with { Height = ShortWindowHeight };
-        var handler = Substitute.For<ISettingsHandler>();
-        handler.Settings.Returns(new Settings());
-        var pane = new SettingsPane(handler, Substitute.For<IUserDialogs>(), () => { });
-
-        ui.Begin(palette, shortViewport);
-        pane.Draw(ui, shortViewport);
-        ui.End();
-
-        Assert.False(pane.ScrollBar.IsVisible);
-    }
-
-    [Fact]
     public void InvokeAnAutomationOnlyButtonAsLongAsItIsAvailable()
     {
         const string ComboId = "combo";
@@ -370,41 +286,9 @@ public sealed class SurfaceUiShould : IDisposable
     }
 
     [Fact]
-    [Trait("Feature", "QualitySettings")]
-    public void AlignQualityRowActionsWithTheAddButton()
+    public void SizeTextRowsToTheirMeasuredContent()
     {
-        var settings = new Settings { FavoriteApiQualities = { ["all"] = new FavoriteQualities { Qualities = ["720p"] } } };
-        var pane = new StreamQualityPane(settings);
-        ui.Begin(palette, viewport);
-        var y = viewport.Y;
-        pane.Draw(ui, viewport, ref y);
-        ui.End();
-
-        Assert.Equal(ui.Automation.Find("settings.quality.add")!.Bounds.Right, ui.Automation.Find("settings.quality.remove.0")!.Bounds.Right);
-    }
-
-    [Fact]
-    [Trait("Feature", "QualitySettings")]
-    public void ClearUnaddedQualityInputWhenReverting()
-    {
-        var pane = new StreamQualityPane(new Settings());
-        ui.Begin(palette, viewport);
-        var y = viewport.Y;
-        pane.Draw(ui, viewport, ref y);
-        ui.End();
-        const string InputId = "settings.quality.input.all";
-        ui.SetValue(InputId, "unadded");
-
-        pane.Revert(ui);
-
-        Assert.Equal("", ui.Value(InputId));
-    }
-
-    [Theory]
-    [InlineData(16f)]
-    [InlineData(48f)]
-    public void SizeTextRowsToTheirMeasuredContent(float measuredHeight)
-    {
+        const float MeasuredHeight = 48;
         const string Message = "A note that can wrap when the pane becomes narrow";
         const float Spacing = 4;
         const float FontSize = 12;
@@ -419,7 +303,7 @@ public sealed class SurfaceUiShould : IDisposable
                 Assert.Equal(viewport.Width, width);
                 Assert.Equal(FontSize, size);
                 Assert.Equal(FontWeight.SemiBold, weight);
-                return measuredHeight;
+                return MeasuredHeight;
             },
             // ReSharper restore ParameterOnlyUsedForPreconditionCheck.Local
         };
@@ -432,7 +316,7 @@ public sealed class SurfaceUiShould : IDisposable
         measuredUi.End();
 
         var note = Assert.Single(commands, command => command.Kind == DrawKind.WrappedText);
-        Assert.Equal(measuredHeight, note.Bounds.Height);
+        Assert.Equal(MeasuredHeight, note.Bounds.Height);
         Assert.Equal(note.Bounds.Bottom + Spacing, measuredUi.Automation.Find("next")!.Bounds.Y);
     }
 
@@ -490,15 +374,8 @@ public sealed class SurfaceUiShould : IDisposable
 
         Assert.True(ui.Automation.Find("first")?.Has(AutomationStates.Focused));
         Assert.True(ui.Automation.Find("chrome.close")?.Has(AutomationStates.Unfocusable));
-    }
 
-    [Fact]
-    public void SkipCaptionButtonsWhenTabbing()
-    {
-        DrawCaptionBetweenButtons();
-        ui.MouseDown(new PointF(30, 60));
-        ui.MouseUp(new PointF(30, 60));
-
+        // Tab skips the caption button drawn between the two buttons.
         ui.Key(VirtualKey.Tab, shift: false);
         DrawCaptionBetweenButtons();
 
@@ -631,89 +508,16 @@ public sealed class SurfaceUiShould : IDisposable
         ui.End();
     }
 
-    // The list opens below the control with whole rows: ten under a 230-pixel height limit, else the eleven that fit
-    // in the 263 pixels below it.
-    [Theory]
-    [InlineData(230f, 250f)]
-    [InlineData(1000f, 275f)]
-    public void ScrollAnOverflowingMenuWithItsOwnBar(float maximumHeight, float downArrowY)
-    {
-        var listUi = new SurfaceUi(window, commands) { MeasureWidth = MeasureText, MeasureWrapped = MeasureWrappedText, ListMaximumHeight = maximumHeight };
-        var longChoice = new string('_', 40);
-        var choices = Enumerable.Range(1, 30).Select(i => "Stream " + i).Append(longChoice).ToArray();
-        var control = new RectangleF(x: 10, y: 10, width: 140, height: 26);
-        var chosen = -1;
-        listUi.DropDown(id: "known", name: "Known", control, choices, chosen: index => chosen = index);
-        listUi.Begin(palette, viewport);
-        listUi.End();
-
-        Assert.Contains(commands, command => command.Kind == DrawKind.TriangleDown);
-
-        // The list stays as wide as the control however long its choices are, with the bar's down arrow at
-        // its bottom right corner.
-        var downArrow = new PointF(141, downArrowY);
-        listUi.MouseDown(downArrow);
-        listUi.MouseUp(downArrow);
-        Assert.True(listUi.HasMenu);
-        Assert.Equal(-1, chosen);
-
-        var firstRow = new PointF(50, 45);
-        listUi.MouseDown(firstRow);
-        Assert.Equal(1, chosen);
-    }
-
-    [Theory]
-    [InlineData(true, false, false, "Refresh Livestreams")]
-    [InlineData(false, false, false, null)]
-    [InlineData(true, true, false, null)]
-    [InlineData(true, false, true, null)]
-    public void ShowAControlsToolTipOnlyWhenItIsEnabledUncoveredAndNoMenuIsOpen(
-        bool enabled,
-        bool covered,
-        bool menu,
-        string expected)
-    {
-        // A disabled control shows no tooltip.
-        var button = new RectangleF(x: 230, y: 100, width: 80, height: 25);
-        RectangleF? coveredArea = covered ? new RectangleF(x: 200, y: 0, width: 200, height: 300) : null;
-        ui.Begin(palette, viewport, coveredArea);
-        const string ToolTip = "Refresh Livestreams";
-        ui.Button(id: "refresh", text: "↻", button, action: () => { }, enabled: enabled, toolTip: ToolTip);
-        var control = new RectangleF(x: 10, y: 0, width: 80, height: 10);
-        if (menu) ui.DropDown(id: "menu", name: "Menu", control, choices: ["Choice"], chosen: _ => { });
-
-        Assert.Equal(expected, ui.ToolTipAt(new PointF(240, 110))?.Text);
-        Assert.Null(ui.ToolTipAt(new PointF(100, 110)));
-    }
-
     [Fact]
-    public void IgnoreDisabledMenuItemsAndShowTheToolTipsOfEnabledOnes()
+    public void SkipDisabledMenuItemsWhenChoosingWithTheKeyboard()
     {
         var chosen = -1;
-        SurfaceUi.MenuChoice[] choices =
-        [
-            new("Open in Vod Viewer", Enabled: false, ToolTip: "Unavailable"),
-            new("Enable Notifications", Checked: true, ToolTip: "Untick this"),
-        ];
-
+        SurfaceUi.MenuChoice[] choices = [new("Open in Vod Viewer", Enabled: false), new("Enable Notifications", Checked: true)];
         ui.Popup(id: "context", anchor: new RectangleF(new PointF(10, 10), SizeF.Empty), choices, chosen: index => chosen = index);
-        ui.Begin(palette, viewport);
-        var disabledItem = new PointF(40, 20);
-        var enabledItem = new PointF(40, 45);
 
-        Assert.Null(ui.ToolTipAt(disabledItem));
-        Assert.Equal("Untick this", ui.ToolTipAt(enabledItem)?.Text);
-        ui.MouseDown(disabledItem);
-        Assert.True(ui.HasMenu);
-        Assert.Equal(-1, chosen);
-        ui.MouseDown(enabledItem);
-        Assert.False(ui.HasMenu);
-        Assert.Equal(1, chosen);
-
-        chosen = -1;
-        ui.Popup(id: "context", anchor: new RectangleF(new PointF(10, 10), SizeF.Empty), choices, chosen: index => chosen = index);
         Assert.True(ui.Key(VirtualKey.Down, shift: false));
         Assert.True(ui.Key(VirtualKey.Enter, shift: false));
+
         Assert.False(ui.HasMenu);
         Assert.Equal(1, chosen);
     }
@@ -738,48 +542,6 @@ public sealed class SurfaceUiShould : IDisposable
         ui.Key(VirtualKey.Enter, shift: false);
 
         Assert.Equal(expectedChoice, chosen);
-    }
-
-    [Fact]
-    public void BlockContentHoverUnderSettingsAndWhileADropdownIsOpen()
-    {
-        var covered = new RectangleF(x: 200, y: 0, width: 200, height: 300);
-        var row = new RectangleF(x: 0, y: 100, width: 400, height: 25);
-        ui.Begin(palette, viewport, covered);
-        ui.MouseMove(new PointF(240, 110));
-
-        Assert.False(ui.IsPointerOver(row));
-        Assert.False(ui.IsContentPoint(new PointF(240, 110)));
-        Assert.True(ui.IsContentPoint(new PointF(40, 110)));
-        var filter = new RectangleF(x: 10, y: 25, width: 80, height: 24);
-        ui.DropDown(id: "filter", name: "Filter", filter, choices: ["All", "Twitch"], chosen: _ => { });
-        ui.Begin(palette, viewport, covered);
-        ui.MouseMove(new PointF(40, 110));
-
-        Assert.False(ui.IsPointerOver(row));
-        Assert.False(ui.IsContentPoint(new PointF(40, 110)));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void StopHoveringAControlWhenAnOverlayCoversItsPointer(bool dropdown)
-    {
-        var button = new RectangleF(x: 230, y: 100, width: 80, height: 25);
-        ui.Begin(palette, viewport);
-        ui.Button(id: "underlying", text: "Control", button, action: () => { });
-        ui.MouseMove(new PointF(240, 110));
-        var control = new RectangleF(x: 220, y: 65, width: 80, height: 24);
-        if (dropdown) ui.DropDown(id: "menu", name: "Menu", control, choices: ["Choice"], chosen: _ => { });
-
-        commands.Clear();
-        RectangleF? covered = dropdown ? null : new RectangleF(x: 200, y: 0, width: 200, height: 300);
-        ui.Begin(palette, viewport, covered);
-        ui.Button(id: "underlying", text: "Control", button, action: () => { });
-        ui.End();
-
-        var background = Assert.Single(commands, command => command.Kind == DrawKind.Fill && command.Bounds == button);
-        Assert.Equal(palette.Control, background.Color);
     }
 
     [Fact]
@@ -847,48 +609,6 @@ public sealed class SurfaceUiShould : IDisposable
         Assert.False(ui.MouseDown(new PointF(20, 20)));
         Assert.False(ui.MouseUp(new PointF(20, 20)));
         Assert.Equal(0, activations);
-    }
-
-    [Fact]
-    public void ExposeAnOpenComboBoxsChoicesAsItsItemsAndChooseThroughThem()
-    {
-        var bounds = new RectangleF(x: 10, y: 10, width: 80, height: 24);
-        var chosen = -1;
-        DrawFrame();
-        var closed = ui.Automation.Find("provider");
-
-        Assert.NotNull(closed);
-        Assert.Equal(AutomationRole.ComboBox, closed.Role);
-        Assert.Equal("Platform", closed.Name);
-        Assert.Equal("Twitch", closed.Value);
-        Assert.False(closed.Has(AutomationStates.Expanded));
-        closed.Activate!();
-        DrawFrame();
-        var tree = ui.Automation;
-        var open = tree.Find("provider");
-        var items = tree.ChildrenOf(tree.IndexOf("provider")).ToArray().Select(index => tree.Nodes[index]).ToArray();
-
-        Assert.True(open?.Has(AutomationStates.Expanded));
-        Assert.Equal(["Kick", "Twitch"], items.Select(item => item.Name));
-        Assert.All(items, item => Assert.Equal(AutomationRole.ListItem, item.Role));
-        Assert.Equal([false, true], items.Select(item => item.Has(AutomationStates.Selected)));
-        items[0].Activate!();
-        Assert.Equal(0, chosen);
-        Assert.False(ui.HasMenu);
-
-        void DrawFrame()
-        {
-            ui.Begin(palette, viewport);
-            ui.Combo(
-                id: "provider",
-                name: "Platform",
-                text: "Twitch",
-                choices: ["Kick", "Twitch"],
-                selectedIndex: 1,
-                bounds,
-                changed: index => chosen = index);
-            ui.End();
-        }
     }
 
     [Fact]

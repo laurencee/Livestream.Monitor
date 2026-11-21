@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.Utility;
@@ -11,10 +13,13 @@ namespace Livestream.Monitor.Direct2D;
 
 internal static class Program
 {
-    /// <summary>The single-instance name, made per user by appending the user name.</summary>
+    /// <summary>The single-instance name of the default profile, made per user by appending the user name.</summary>
     internal const string InstanceName = "Livestream Monitor Direct2D";
 
     internal const string ErrorLogFile = "errors.log";
+
+    // Appended to the names by which instances find each other, so each data directory has its own running instance.
+    private static string profileScope = "";
 
     // Set once the window exists; a later launch's request before then has no window to show.
     private static MonitorWindow? mainWindow;
@@ -38,7 +43,11 @@ internal static class Program
             var exitSeconds = double.TryParse(exitAfter, out var seconds) ? seconds : double.PositiveInfinity;
             var snapshot = Option(args, "--snapshot");
             var dataDirectory = Option(args, "--data-directory");
-            if (dataDirectory != null) Directory.SetCurrentDirectory(dataDirectory);
+            if (dataDirectory != null)
+            {
+                profileScope = GetProfileScope(dataDirectory);
+                Directory.SetCurrentDirectory(dataDirectory);
+            }
 
             var toastLaunch = args.Contains(StreamNotifications.ActivationSwitch);
             const uint SingleThreaded = 0;
@@ -74,7 +83,7 @@ internal static class Program
         using var instance = primary;
         if (instance == null) return 0;
 
-        using var activationPipe = new ToastActivationPipe(AcceptForwardedActivation);
+        using var activationPipe = new ToastActivationPipe(AcceptForwardedActivation, ToastActivationPipe.GetPipeName(profileScope));
         using var notifications = new StreamNotifications(Activate);
         if (!toastLaunch) notifications.RefreshMovedRegistration();
 
@@ -163,8 +172,10 @@ internal static class Program
 
     private static (bool Claimed, SingleInstance? Instance) ClaimInstance(ToastActivation? target = null)
     {
+        var name = InstanceName + profileScope;
+
         // A normal launch must wait for a cold opt-out to save and release its temporary instance.
-        using var startup = new Mutex(initiallyOwned: false, InstanceName + Environment.UserName + ".Startup");
+        using var startup = new Mutex(initiallyOwned: false, name + Environment.UserName + ".Startup");
         try
         {
             startup.WaitOne();
@@ -176,7 +187,7 @@ internal static class Program
 
         try
         {
-            var instance = SingleInstance.Claim(InstanceName, () => Dispatcher.Post(() => mainWindow?.Restore()), activateExisting: target == null);
+            var instance = SingleInstance.Claim(name, () => Dispatcher.Post(() => mainWindow?.Restore()), activateExisting: target == null);
             if (instance == null) return (false, null);
             if (target is not { TrayAction: TrayToastAction.DisablePopup }) return (true, instance);
 
@@ -208,7 +219,7 @@ internal static class Program
             {
                 if (TryClaim(target)) return 0;
 
-                ToastActivationPipe.Forward(target);
+                ToastActivationPipe.Forward(target, ToastActivationPipe.GetPipeName(profileScope));
                 return 0;
             }
             catch (Exception exception) when (exception is IOException or OperationCanceledException or UnauthorizedAccessException)
@@ -246,6 +257,23 @@ internal static class Program
             startup = (claim.Instance, target);
             return true;
         }
+    }
+
+    /// <summary>
+    /// The suffix that keeps the instances of one data directory apart from those of another. The default profile, beside
+    /// the executable, has none, so it still finds a running instance of an earlier version.
+    /// </summary>
+    internal static string GetProfileScope(string dataDirectory)
+    {
+        var path = Path.TrimEndingDirectorySeparator(Path.GetFullPath(dataDirectory));
+        var defaultPath = Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory);
+        if (string.Equals(path, defaultPath, StringComparison.OrdinalIgnoreCase)) return "";
+
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(path.ToUpperInvariant()));
+
+        // Part of the hash is enough to tell directories apart and keeps the names of the shared objects short.
+        const int ScopeBytes = 8;
+        return "." + Convert.ToHexString(hash, 0, ScopeBytes);
     }
 
     private static string? Option(string[] args, string name)

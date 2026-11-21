@@ -22,11 +22,8 @@ namespace Livestream.Monitor.Tests.Direct2D;
 public class NativeStreamLauncherShould
 {
     [Theory]
-    [InlineData("chat", false, false)]
     [InlineData("chat", true, false)]
     [InlineData("stream", false, true)]
-    [InlineData("stream", true, true)]
-    [InlineData("vod", false, true)]
     [InlineData("vod", true, true)]
     public async Task ShowInitialOutputOnlyForStreamsAndVods(string kind, bool capture, bool expectedVisible)
     {

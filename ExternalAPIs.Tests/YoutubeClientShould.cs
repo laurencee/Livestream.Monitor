@@ -7,6 +7,7 @@ using Xunit;
 
 namespace ExternalAPIs.Tests
 {
+    [Trait("Category", "LiveApi")]
     public class YoutubeClientShould
     {
         private const string LOFIGIRL_LIVE_VIDEO_ID = "jfKfPfyJRdk"; // needs to be manually updated to a live video id
@@ -25,26 +26,12 @@ namespace ExternalAPIs.Tests
         }
 
         [Fact]
-        public async Task ThrowNotFoudExceptionForInvalidVideoId()
+        public async Task ReportABadRequestForAnInvalidVideoId()
         {
-            try
-            {
-                // clearly a well thought out random channel id that will fail and not just mashing the keyboard
-                await sut.GetVideosDetails(new [] {"sdlfh94uhf43ouhf3l4uhf3493[]"});
-            }
-            catch (HttpRequestWithStatusException exception)
-            {
-                Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
-            }
-        }
+            // clearly a well thought out random channel id that will fail and not just mashing the keyboard
+            var exception = await Assert.ThrowsAsync<HttpRequestWithStatusException>(() => sut.GetVideosDetails(["sdlfh94uhf43ouhf3l4uhf3493[]"]));
 
-        [Fact]
-        public async Task GetChannelIdFromHandle()
-        {
-            var channelsRoot = await sut.GetChannelDetailsFromHandle(YOUTUBE_HANDLE);
-
-            Assert.NotNull(channelsRoot?.Items);
-            Assert.NotEmpty(channelsRoot.Items);
+            Assert.Equal(HttpStatusCode.BadRequest, exception.StatusCode);
         }
 
         [Fact]

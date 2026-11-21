@@ -1066,7 +1066,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
     }
 
     // YouTube's uploads endpoint accepts at most 50 results per request.
-    internal static ReadOnlySpan<int> PageSizes => [15, 30, 50];
+    private static ReadOnlySpan<int> PageSizes => [15, 30, 50];
 
     private void DrawFooter(SizeF size)
     {

@@ -39,7 +39,8 @@ internal sealed class UiApplication : IDisposable
 
     public static UiApplication Launch(UiTestProfile profile)
     {
-        // A second instance only activates the first and exits, so the test would observe the user's window.
+        // Toast activation is registered once per user. While the user's own application runs, a click on one of its toasts
+        // could therefore reach the application under test instead.
         if (Mutex.TryOpenExisting(Program.InstanceName + Environment.UserName, out var running))
         {
             running.Dispose();

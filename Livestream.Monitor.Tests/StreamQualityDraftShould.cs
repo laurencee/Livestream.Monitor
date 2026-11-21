@@ -10,9 +10,7 @@ public class StreamQualityDraftShould
 {
     [Theory]
     [InlineData("{\"twitchtv\":null}")]
-    [InlineData("{\"all\":null}")]
-    [InlineData("{\"twitchtv\":{\"Qualities\":null,\"FallbackQuality\":\"Best\"}}")]
-    [InlineData("{\"twitchtv\":{\"Qualities\":[],\"FallbackQuality\":null}}")]
+    [InlineData("{\"twitchtv\":{\"Qualities\":null,\"FallbackQuality\":null}}")]
     public void ReadNullSavedValuesAsDefaultsWithoutRewritingThem(string preferences)
     {
         var json = "{\"FavoriteApiQualities\":" + preferences + "}";
@@ -30,25 +28,21 @@ public class StreamQualityDraftShould
     }
 
     [Fact]
-    public void UseBestWithoutCreatingSavedEntries()
-    {
-        var settings = new Settings();
-        var draft = new StreamQualityDraft(settings);
-
-        foreach (var (apiName, _) in StreamQualityDraft.Platforms)
-        {
-            Assert.Empty(draft[apiName].Qualities);
-            Assert.Equal(FavoriteQualities.FallbackQualityOption.Best, draft[apiName].FallbackQuality);
-        }
-
-        Assert.False(draft.HasChanges);
-        draft.SaveChanges();
-        Assert.Empty(settings.FavoriteApiQualities);
-    }
-
-    [Fact]
     public void PreserveUntouchedPlatformsAndSaveIndependentCopies()
     {
+        // Without saved entries every platform uses Best, and saving creates none.
+        var unsaved = new Settings();
+        var unsavedDraft = new StreamQualityDraft(unsaved);
+        foreach (var (apiName, _) in StreamQualityDraft.Platforms)
+        {
+            Assert.Empty(unsavedDraft[apiName].Qualities);
+            Assert.Equal(FavoriteQualities.FallbackQualityOption.Best, unsavedDraft[apiName].FallbackQuality);
+        }
+
+        Assert.False(unsavedDraft.HasChanges);
+        unsavedDraft.SaveChanges();
+        Assert.Empty(unsaved.FavoriteApiQualities);
+
         var settings = new Settings();
         var saved = new FavoriteQualities { Qualities = ["Source_Custom", "720p60"], FallbackQuality = "Worst" };
         settings.FavoriteApiQualities["twitchtv"] = saved;

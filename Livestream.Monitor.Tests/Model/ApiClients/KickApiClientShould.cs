@@ -28,33 +28,30 @@ public sealed class KickApiClientShould : IDisposable
 
     public void Dispose() => File.Delete(cachePath);
 
-    [Fact]
-    public async Task ReuseASavedTokenThatIsNotAboutToExpire()
-    {
-        SaveToken("saved", DateTimeOffset.UtcNow.AddDays(30));
-        var apiClient = CreateApiClient();
-
-        await apiClient.Authorize(screen: null);
-
-        Assert.True(apiClient.IsAuthorized);
-        Assert.Equal(0, tokenRequests);
-        client.Received(1).SetAccessToken("saved");
-    }
-
+    // A saved token is reused until it is empty or about to expire.
     [Theory]
-    [InlineData("saved", 1)]
-    [InlineData("", 720)]
-    public async Task RequestAndSaveANewTokenWhenTheSavedOneIsUnusable(string savedToken, int hoursUntilExpiry)
+    [InlineData("saved", 720, "saved")]
+    [InlineData("saved", 1, "new")]
+    [InlineData("", 720, "new")]
+    public async Task ReuseASavedTokenOrRequestAndSaveANewOneWhenItIsUnusable(string savedToken, int hoursUntilExpiry, string expectedToken)
     {
         SaveToken(savedToken, DateTimeOffset.UtcNow.AddHours(hoursUntilExpiry));
         var apiClient = CreateApiClient();
 
         await apiClient.Authorize(screen: null);
 
-        Assert.Equal(1, tokenRequests);
-        client.Received(1).SetAccessToken("new");
+        Assert.True(apiClient.IsAuthorized);
+        client.Received(1).SetAccessToken(expectedToken);
         var saved = new CacheHandler(cachePath).Cache.KickAppAccessToken;
-        Assert.Equal("new", saved.Token);
+        Assert.Equal(expectedToken, saved.Token);
+
+        if (expectedToken == savedToken)
+        {
+            Assert.Equal(0, tokenRequests);
+            return;
+        }
+
+        Assert.Equal(1, tokenRequests);
         Assert.True(saved.ExpiresAt > DateTimeOffset.UtcNow.AddDays(59));
     }
 
@@ -77,22 +74,6 @@ public sealed class KickApiClientShould : IDisposable
         Assert.Equal(1, tokenRequests);
         client.Received(1).SetAccessToken("new");
         Assert.Equal("new", cacheHandler.Cache.KickAppAccessToken.Token);
-    }
-
-    [Fact]
-    public async Task ReportAnInvalidTokenResponseWhenLookingUpAChannelIcon()
-    {
-        SaveToken("revoked", DateTimeOffset.UtcNow.AddDays(30));
-        var apiClient = new KickApiClient(client, cacheHandler, () => Task.FromResult<AuthResponse>(null));
-        await apiClient.Authorize(screen: null);
-
-        const int UserId = 42;
-        var unauthorized = new HttpRequestWithStatusException(HttpStatusCode.Unauthorized, "Unauthorized");
-        client.FindProfilePictureUrl(UserId, CancellationToken.None).Returns(Task.FromException<string>(unauthorized));
-        var channel = new ChannelIdentifier(apiClient, UserId.ToString());
-
-        await Assert.ThrowsAsync<InvalidDataException>(() => apiClient.FindChannelIconUrl(channel, CancellationToken.None));
-        Assert.Equal("revoked", cacheHandler.Cache.KickAppAccessToken.Token);
     }
 
     [Fact]

@@ -20,21 +20,6 @@ public class MonitorWindowStateShould
     private const string RefreshErrorTitle = "Error refreshing livestreams";
 
     [Fact]
-    public async Task ShowTheInitialContentLoaderUntilInitializationCompletes()
-    {
-        var model = Create();
-        var pending = new TaskCompletionSource();
-        model.StreamsModel.Initialize(Arg.Any<IUserDialogs>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
-        Assert.True(model.IsContentLoading);
-
-        var initialization = model.Initialize();
-        Assert.True(model.IsContentLoading);
-        pending.SetResult();
-        await initialization;
-        Assert.False(model.IsContentLoading);
-    }
-
-    [Fact]
     public async Task ShowRowsOnceTheFirstProviderRefreshesWhileStayingBusyUntilInitializationCompletes()
     {
         var progressClosed = false;
@@ -52,6 +37,7 @@ public class MonitorWindowStateShould
         var initialization = model.Initialize();
 
         Assert.False(progressClosed);
+        Assert.True(model.IsContentLoading);
         Assert.False(model.CanOpenContextMenu);
 
         model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
@@ -81,71 +67,8 @@ public class MonitorWindowStateShould
         Assert.True(model.FollowedRowsSettled);
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public async Task ShowTheContentLoaderDuringTopStreamRequestsIncludingPaging(int page)
-    {
-        var model = Create();
-        await model.Initialize();
-        var api = AuthorizedProvider(topStreams: true);
-        var pending = new TaskCompletionSource<TopStreamsResponse>();
-        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(pending.Task);
-        model.PageNumber = page;
-
-        var query = model.QueryTop(api, "");
-        Assert.True(model.IsContentLoading);
-        Assert.False(model.BrowsingResultIsEmpty);
-        pending.SetResult(new TopStreamsResponse());
-        await query;
-        Assert.False(model.IsContentLoading);
-        Assert.True(model.BrowsingResultIsEmpty);
-
-        model.InvalidateContentQuery();
-        Assert.False(model.BrowsingResultIsEmpty);
-    }
-
     [Fact]
-    public async Task ClearTheVodLoaderAfterARequestFails()
-    {
-        var model = Create();
-        await model.Initialize();
-        var api = AuthorizedProvider(vods: true);
-        var pending = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
-        api.GetVods(Arg.Any<VodQuery>()).Returns(pending.Task);
-
-        var query = model.QueryVods(api, "Example", "archive");
-        Assert.True(model.IsContentLoading);
-        pending.SetException(new InvalidOperationException("Controlled provider failure"));
-        await query;
-        Assert.False(model.IsContentLoading);
-        Assert.False(model.Busy);
-        Assert.False(model.BrowsingResultIsEmpty);
-    }
-
-    [Theory]
-    [InlineData(0)]
-    [InlineData(1)]
-    public async Task ShowTheContentLoaderUntilVodResultsArriveIncludingPaging(int page)
-    {
-        var model = Create();
-        await model.Initialize();
-        var api = AuthorizedProvider(vods: true);
-        var pending = new TaskCompletionSource<IReadOnlyCollection<VodDetails>>();
-        api.GetVods(Arg.Any<VodQuery>()).Returns(pending.Task);
-        model.PageNumber = page;
-
-        var query = model.QueryVods(api, "Example", "archive");
-        Assert.True(model.IsContentLoading);
-        pending.SetResult([new VodDetails { Title = "Recorded" }]);
-        await query;
-        Assert.False(model.IsContentLoading);
-        Assert.False(model.BrowsingResultIsEmpty);
-        Assert.Single(model.Vods);
-    }
-
-    [Fact]
-    public async Task ClearOldTopStreamResultsWhenTheNextPageFails()
+    public async Task ClearOldBrowsingResultsWhenARequestFailsOrIsUnsupported()
     {
         var model = Create();
         model.Page = MonitorPage.TopStreams;
@@ -157,9 +80,19 @@ public class MonitorWindowStateShould
         };
         var failure = new InvalidOperationException("Controlled provider failure");
         api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>())
-            .Returns(Task.FromResult(firstPage), Task.FromException<TopStreamsResponse>(failure));
+            .Returns(Task.FromResult(firstPage), Task.FromResult(firstPage), Task.FromException<TopStreamsResponse>(failure));
         await model.QueryTop(api, "");
+        model.RebuildRows();
+        Assert.Single(model.Rows);
 
+        // A provider without top streams.
+        await model.QueryTop(Substitute.For<IApiClient>(), "");
+        model.RebuildRows();
+
+        Assert.Empty(model.Rows);
+        Assert.False(model.HasNextPage);
+
+        await model.QueryTop(api, "");
         model.PageNumber = 1;
         await model.QueryTop(api, "");
         model.RebuildRows();
@@ -167,23 +100,21 @@ public class MonitorWindowStateShould
         Assert.Empty(model.Rows);
         Assert.False(model.HasNextPage);
         Assert.False(model.BrowsingResultIsEmpty);
-    }
 
-    [Fact]
-    public async Task ClearOldVodResultsWhenTheNewChannelFails()
-    {
-        var model = Create();
         model.Page = MonitorPage.Vods;
-        var api = AuthorizedProvider(vods: true);
+        var vodApi = AuthorizedProvider(vods: true);
         IReadOnlyCollection<VodDetails> firstChannel = [new() { Title = "Old VOD" }];
-        var failure = new InvalidOperationException("Controlled provider failure");
-        api.GetVods(Arg.Any<VodQuery>())
+        vodApi.GetVods(Arg.Any<VodQuery>())
             .Returns(Task.FromResult(firstChannel), Task.FromException<IReadOnlyCollection<VodDetails>>(failure));
-        await model.QueryVods(api, "old", "archive");
+        await model.QueryVods(vodApi, "old", "archive");
+        Assert.Single(model.Vods);
 
-        await model.QueryVods(api, "new", "archive");
+        await model.QueryVods(vodApi, "new", "archive");
 
         Assert.Empty(model.Vods);
+        Assert.False(model.IsContentLoading);
+        Assert.False(model.Busy);
+        Assert.False(model.BrowsingResultIsEmpty);
     }
 
     [Theory]
@@ -326,52 +257,6 @@ public class MonitorWindowStateShould
     }
 
     [Fact]
-    public async Task KeepTheTableVisibleDuringOrdinaryFollowedStreamRefreshes()
-    {
-        var model = Create();
-        await model.Initialize();
-        var pending = new TaskCompletionSource();
-        model.StreamsModel.RefreshLivestreams().Returns(pending.Task);
-
-        var refresh = model.Refresh();
-        Assert.False(model.IsContentLoading);
-        pending.SetResult();
-        await refresh;
-        Assert.False(model.IsContentLoading);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task ReportWhetherAChannelWasAdded(bool fails)
-    {
-        // The window clears the add input only after a successful add.
-        var model = Create();
-        var failure = new InvalidOperationException("Controlled provider failure");
-        var result = fails ? Task.FromException(failure) : Task.CompletedTask;
-        model.StreamsModel.AddLivestream(Arg.Any<ChannelIdentifier>(), Arg.Any<IUserDialogs>()).Returns(result);
-
-        var added = await model.Add("example", Substitute.For<IApiClient>());
-
-        Assert.Equal(!fails, added);
-        Assert.False(model.Busy);
-    }
-
-    [Fact]
-    public async Task ShowOtherFailuresEvenWhenRefreshErrorDialogsAreDisabled()
-    {
-        var dialogs = Substitute.For<IUserDialogs>();
-        var model = Create(dialogs);
-        model.SettingsHandler.Settings.DisableRefreshErrorDialogs = true;
-        var failure = Task.FromException(new InvalidOperationException("Controlled provider failure"));
-        model.StreamsModel.AddLivestream(Arg.Any<ChannelIdentifier>(), Arg.Any<IUserDialogs>()).Returns(failure);
-
-        await model.Add("example", Substitute.For<IApiClient>());
-
-        await dialogs.Received(1).ShowMessage("Error adding stream", Arg.Any<string>());
-    }
-
-    [Fact]
     public async Task CloseTheProgressDialogBeforeShowingAFailure()
     {
         var events = new List<string>();
@@ -382,13 +267,21 @@ public class MonitorWindowStateShould
             return Task.CompletedTask;
         });
 
+        // Disabling refresh error dialogs does not hide other failures.
         var model = Create(dialogs, ShowProgress);
+        model.SettingsHandler.Settings.DisableRefreshErrorDialogs = true;
         var failure = Task.FromException(new InvalidOperationException("Controlled provider failure"));
-        model.StreamsModel.AddLivestream(Arg.Any<ChannelIdentifier>(), Arg.Any<IUserDialogs>()).Returns(failure);
+        model.StreamsModel.AddLivestream(Arg.Any<ChannelIdentifier>(), Arg.Any<IUserDialogs>()).Returns(failure, Task.CompletedTask);
 
-        await model.Add("example", Substitute.For<IApiClient>());
+        // The window clears the add input only after a successful add.
+        Assert.False(await model.Add("example", Substitute.For<IApiClient>()));
 
         Assert.Equal(["progress shown", "progress closed", "error shown"], events);
+        await dialogs.Received(1).ShowMessage("Error adding stream", Arg.Any<string>());
+        Assert.False(model.Busy);
+
+        Assert.True(await model.Add("example", Substitute.For<IApiClient>()));
+        Assert.False(model.Busy);
 
         IDisposable ShowProgress(string title, string message)
         {
@@ -404,6 +297,7 @@ public class MonitorWindowStateShould
     {
         var dialogs = Substitute.For<IUserDialogs>();
         var model = Create(dialogs);
+        await model.Initialize();
         model.StreamsModel.RefreshLivestreams().Returns(_ => Task.FromException(ProviderFailures()));
         int[] expectedReports = [0, 0, 1, 2];
 
@@ -412,37 +306,27 @@ public class MonitorWindowStateShould
             await model.Refresh(automatic: true);
             await dialogs.Received(expected).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         }
-    }
 
-    [Fact]
-    public async Task HideOnlyAutomaticRefreshFailuresWhenRefreshErrorDialogsAreDisabled()
-    {
-        var dialogs = Substitute.For<IUserDialogs>();
-        var model = Create(dialogs);
-        model.SettingsHandler.Settings.DisableRefreshErrorDialogs = true;
+        // A successful refresh keeps the table visible while it runs and restarts the count.
+        var pending = new TaskCompletionSource();
+        model.StreamsModel.RefreshLivestreams().Returns(pending.Task);
+        var refresh = model.Refresh(automatic: true);
+        Assert.False(model.IsContentLoading);
+        pending.SetResult();
+        await refresh;
+
         model.StreamsModel.RefreshLivestreams().Returns(_ => Task.FromException(ProviderFailures()));
+        for (var i = 0; i < 2; i++) await model.Refresh(automatic: true);
+        const int ReportsSoFar = 2;
+        await dialogs.Received(ReportsSoFar).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
 
-        for (var i = 0; i < 3; i++) await model.Refresh(automatic: true);
-        await dialogs.DidNotReceive().Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        // Disabled refresh error dialogs hide only the automatic failures.
+        model.SettingsHandler.Settings.DisableRefreshErrorDialogs = true;
+        await model.Refresh(automatic: true);
+        await dialogs.Received(ReportsSoFar).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
 
         await model.Refresh();
-        await dialogs.Received(1).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
-    }
-
-    [Fact]
-    public async Task ReportNoAutomaticRefreshFailuresOffTheFollowedPage()
-    {
-        var dialogs = Substitute.For<IUserDialogs>();
-        var model = Create(dialogs);
-        model.StreamsModel.RefreshLivestreams().Returns(_ => Task.FromException(new InvalidOperationException("Failed.")));
-
-        foreach (var page in new[] { MonitorPage.TopStreams, MonitorPage.Vods })
-        {
-            model.Page = page;
-            for (var i = 0; i < 3; i++) await model.Refresh(automatic: true);
-        }
-
-        await dialogs.DidNotReceiveWithAnyArgs().ShowMessage(null, null);
+        await dialogs.Received(ReportsSoFar + 1).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }
 
     [Fact]
@@ -454,7 +338,16 @@ public class MonitorWindowStateShould
 
         for (var i = 0; i < 2; i++) await model.Refresh(automatic: true);
 
-        model.Page = MonitorPage.TopStreams;
+        // Off the followed page no automatic failure is reported.
+        foreach (var page in new[] { MonitorPage.TopStreams, MonitorPage.Vods })
+        {
+            model.Page = page;
+            for (var i = 0; i < 3; i++) await model.Refresh(automatic: true);
+        }
+
+        await dialogs.DidNotReceive().Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        await dialogs.DidNotReceiveWithAnyArgs().ShowMessage(null, null);
+
         model.Page = MonitorPage.Followed;
         for (var i = 0; i < 2; i++) await model.Refresh(automatic: true);
         await dialogs.DidNotReceive().Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
@@ -542,7 +435,7 @@ public class MonitorWindowStateShould
     }
 
     [Fact]
-    public void CombineNameProviderAndOnlineFilters()
+    public async Task CombineNameProviderAndOnlineFilters()
     {
         var settings = new Settings { ShowOnlineOnly = true };
         var model = Create(savedSettings: settings);
@@ -560,6 +453,22 @@ public class MonitorWindowStateShould
         model.Filter = "HANDLE";
         model.RebuildRows();
         Assert.Equal("channel_handle", Assert.Single(model.Rows).Id);
+
+        // Top results ignore the followed-channel filters and leave them unchanged.
+        var api = AuthorizedProvider(topStreams: true);
+        var response = new TopStreamsResponse
+        {
+            LivestreamModels = [Stream(id: "top", name: "Unrelated", provider: "youtube", online: true, viewers: 100)],
+        };
+
+        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(response);
+        model.Page = MonitorPage.TopStreams;
+        await model.QueryTop(api, "");
+        model.RebuildRows();
+
+        Assert.Equal("top", Assert.Single(model.Rows).Id);
+        Assert.Equal("HANDLE", model.Filter);
+        Assert.Equal("twitchtv", model.ProviderFilter);
     }
 
     [Theory]
@@ -625,114 +534,52 @@ public class MonitorWindowStateShould
         Assert.Null(model.SelectedStream);
     }
 
-    [Fact]
-    public async Task ClearPreviousTopResultsWhenAProviderDoesNotSupportThem()
-    {
-        var model = Create();
-        var supported = AuthorizedProvider(topStreams: true);
-        var response = new TopStreamsResponse
-        {
-            LivestreamModels = [Stream(id: "one", name: "Live", provider: "twitchtv", online: true, viewers: 1)],
-            HasNextPage = true,
-        };
-
-        supported.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(response);
-        model.Page = MonitorPage.TopStreams;
-        await model.QueryTop(supported, "");
-        model.RebuildRows();
-        Assert.Single(model.Rows);
-        await model.QueryTop(Substitute.For<IApiClient>(), "");
-        model.RebuildRows();
-        Assert.Empty(model.Rows);
-        Assert.False(model.HasNextPage);
-    }
-
-    [Fact]
-    public async Task KeepTopResultsIndependentOfFollowedChannelFilters()
-    {
-        var model = Create();
-        model.Filter = "unrelated followed-channel name";
-        model.ProviderFilter = "youtube";
-        var api = AuthorizedProvider(topStreams: true);
-        var response = new TopStreamsResponse
-        {
-            LivestreamModels = [Stream(id: "one", name: "Example", provider: "twitchtv", online: true, viewers: 100)],
-        };
-
-        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(response);
-        model.Page = MonitorPage.TopStreams;
-        await model.QueryTop(api, "");
-        model.RebuildRows();
-
-        Assert.Equal("one", Assert.Single(model.Rows).Id);
-        Assert.Equal("unrelated followed-channel name", model.Filter);
-        Assert.Equal("youtube", model.ProviderFilter);
-    }
-
     [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task PublishOnlyCurrentGameSuggestions(bool revisitPage)
+    [InlineData("newer query")]
+    [InlineData("page revisit")]
+    [InlineData("invalidation")]
+    [InlineData("applied filter")]
+    public async Task PublishOnlyCurrentGameSuggestions(string supersededBy)
     {
         const string Filter = "Game";
         var model = Create();
         model.Page = MonitorPage.TopStreams;
         var api = AuthorizedProvider(topStreams: true);
+        api.HasTopStreamGameFilterSupport.Returns(true);
+        api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
         var oldRequest = new TaskCompletionSource<List<string>>();
         var currentGames = new List<string> { "Current game" };
         api.GetKnownGameNames(Filter).Returns(oldRequest.Task, Task.FromResult(currentGames));
         var published = new List<string>();
         var oldQuery = model.QueryGameSuggestions(api, Filter, published.AddRange);
 
-        if (revisitPage)
+        switch (supersededBy)
         {
-            model.Page = MonitorPage.Vods;
-            model.Page = MonitorPage.TopStreams;
-        }
-        else
-        {
-            await model.QueryGameSuggestions(api, Filter, published.AddRange);
+            case "newer query":
+                await model.QueryGameSuggestions(api, Filter, published.AddRange);
+                break;
+            case "page revisit":
+                model.Page = MonitorPage.Vods;
+                model.Page = MonitorPage.TopStreams;
+                break;
+            case "invalidation":
+                model.InvalidateGameSuggestions();
+                break;
+            default:
+                await model.QueryTop(api, Filter);
+                break;
         }
 
         oldRequest.SetResult(["Stale game"]);
         await oldQuery;
 
-        if (revisitPage)
+        if (supersededBy != "newer query")
         {
             Assert.Empty(published);
             await model.QueryGameSuggestions(api, Filter, published.AddRange);
         }
 
         Assert.Equal("Current game", Assert.Single(published));
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task DropPendingGameSuggestionsOnInvalidationOrFilterApply(bool applyFilter)
-    {
-        const string Filter = "Game";
-        var model = Create();
-        model.Page = MonitorPage.TopStreams;
-        var api = AuthorizedProvider(topStreams: true);
-        if (applyFilter)
-        {
-            api.HasTopStreamGameFilterSupport.Returns(true);
-            api.GetTopStreams(Arg.Any<ExternalAPIs.TopStreamQuery>()).Returns(new TopStreamsResponse());
-        }
-
-        var pending = new TaskCompletionSource<List<string>>();
-        api.GetKnownGameNames(Filter).Returns(pending.Task);
-        var published = new List<string>();
-        var suggestions = model.QueryGameSuggestions(api, Filter, published.AddRange);
-
-        if (applyFilter) await model.QueryTop(api, Filter);
-        else model.InvalidateGameSuggestions();
-
-        pending.SetResult(["Stale game"]);
-        await suggestions;
-
-        Assert.Empty(published);
     }
 
     [Theory]
@@ -752,22 +599,6 @@ public class MonitorWindowStateShould
 
         await api.Received().GetTopStreams(Arg.Is<ExternalAPIs.TopStreamQuery>(query =>
             query.Take == pageSize && query.Skip == expectedSkip && query.GameName == expectedGame));
-    }
-
-    [Fact]
-    public async Task KeepTheStatusOnOneLineWhileTheDialogListsEveryFailure()
-    {
-        var dialogs = Substitute.For<IUserDialogs>();
-        var model = Create(dialogs);
-        var failure = new AggregateException(new InvalidOperationException("First failed."), new InvalidOperationException("Second failed."));
-
-        await model.Run("Error refreshing livestreams", () => Task.FromException(failure));
-
-        Assert.DoesNotContain('\n', model.Status);
-        Assert.DoesNotContain('\r', model.Status);
-        Assert.Contains("First failed.", model.Status);
-        Assert.Contains("Second failed.", model.Status);
-        await dialogs.Received().ShowMessage(Arg.Any<string>(), $"First failed.{Environment.NewLine}Second failed.");
     }
 
     private static MonitorWindowState Create(

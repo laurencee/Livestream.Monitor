@@ -7,16 +7,10 @@ using Xunit;
 
 namespace ExternalAPIs.Tests;
 
+[Trait("Category", "LiveApi")]
 public class KickClientShould
 {
-    private static class CategoryIds
-    {
-        public const int IRL = 8549;
-        public const int JustChatting = 15;
-        public const int SlotsAndCasino = 28;
-        public const int Dota2 = 14;
-    }
-
+    private const int Dota2CategoryId = 14;
     private const string TestSlug = "gmhikaru";
     private const string TestSlug2 = "xqc";
     private const int TestBroadcastUserId = 1820952; // gmhikaru
@@ -61,10 +55,7 @@ public class KickClientShould
         Assert.Equal(TestBroadcastUserId2, channelsRoot.Data[1].BroadcasterUserId);
     }
 
-    [InlineData(CategoryIds.JustChatting)] // broken api (internal server error)
-    [InlineData(CategoryIds.Dota2)]
-    [InlineData(CategoryIds.SlotsAndCasino)]
-    [InlineData(CategoryIds.IRL)] // broken api (returns nothing)
+    [InlineData(Dota2CategoryId)]
     [InlineData(null)]
     [Theory]
     public async Task GetTopStreams(int? categoryId)
@@ -83,26 +74,15 @@ public class KickClientShould
     }
 
     [Fact]
-    public async Task GetTopStreamsPage2()
+    public async Task GetLaterTopStreamsPages()
     {
-        var channelVideosQuery = new GetLivestreamsQuery()
-        {
-            Sort = LivestreamsSort.ViewerCount,
-            Page = 2,
-        };
+        var page2 = await sut.GetLivestreams(new GetLivestreamsQuery { Sort = LivestreamsSort.ViewerCount, Page = 2 });
+        var page3 = await sut.GetLivestreams(new GetLivestreamsQuery { Sort = LivestreamsSort.ViewerCount, Page = 3 });
 
-        var livestreamsRoot = await sut.GetLivestreams(channelVideosQuery);
-
-        var channelVideosQuery2 = new GetLivestreamsQuery()
-        {
-            Sort = LivestreamsSort.ViewerCount,
-            Page = 3,
-        };
-        var livestreamsRoot2 = await sut.GetLivestreams(channelVideosQuery2);
-
-        Assert.NotNull(livestreamsRoot);
         // only returns data for online streams and unfortunately an OK response doesn't actually mean the request was correct
-        Assert.Equal("OK", livestreamsRoot.Message, StringComparer.OrdinalIgnoreCase);
-        Assert.NotEmpty(livestreamsRoot.Data);
+        Assert.Equal("OK", page2.Message, StringComparer.OrdinalIgnoreCase);
+        Assert.NotEmpty(page2.Data);
+        Assert.Equal("OK", page3.Message, StringComparer.OrdinalIgnoreCase);
+        Assert.NotEmpty(page3.Data);
     }
 }

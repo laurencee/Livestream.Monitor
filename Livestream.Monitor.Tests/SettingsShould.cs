@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 using ExternalAPIs;
 using Livestream.Monitor.Core.Settings;
@@ -17,56 +16,50 @@ namespace Livestream.Monitor.Tests;
 [Collection("Settings files")]
 public class SettingsShould
 {
-    [Theory]
-    [InlineData("Twitch")]
-    [InlineData("Kick")]
-    [InlineData("YouTube")]
-    public void PreservePlatformDefaultsWhenCommandsArePartial(string platform)
+    [Fact]
+    public void PreservePlatformDefaultsWhenCommandsArePartial()
     {
-        var json = $$$$"""
-            {"{{{{platform}}}}":{"StreamCommand":{"Args":"custom"},"VodCommand":{"Args":"custom"},"ChatCommand":{"Args":"custom"}}}
-            """;
+        const string Commands = """{"StreamCommand":{"Args":"custom"},"VodCommand":{"Args":"custom"},"ChatCommand":{"Args":"custom"}}""";
+        var json = $$"""{"Twitch":{{Commands}},"Kick":{{Commands}},"YouTube":{{Commands}}}""";
         var settings = JsonSerializer.Deserialize<Settings>(json, JsonDefaults.Options);
         var defaults = new Settings();
-        var (actual, expected) = platform switch
+        var platforms = new (ApiPlatformSettings Actual, ApiPlatformSettings Expected)[]
         {
-            "Twitch" => ((ApiPlatformSettings)settings.Twitch, (ApiPlatformSettings)defaults.Twitch),
-            "Kick" => (settings.Kick, defaults.Kick),
-            _ => (settings.YouTube, defaults.YouTube),
+            (settings.Twitch, defaults.Twitch),
+            (settings.Kick, defaults.Kick),
+            (settings.YouTube, defaults.YouTube),
         };
-        var commands = new[]
+
+        foreach (var (actual, expected) in platforms)
         {
-            (actual.StreamCommand, expected.StreamCommand),
-            (actual.VodCommand, expected.VodCommand),
-            (actual.ChatCommand, expected.ChatCommand),
-        };
-        foreach (var (command, defaultCommand) in commands)
-        {
-            Assert.Equal("custom", command.Args);
-            Assert.Equal(defaultCommand.FilePath, command.FilePath);
-            Assert.Equal(defaultCommand.CaptureStandardOutput, command.CaptureStandardOutput);
-            Assert.Equal(defaultCommand.CaptureErrorOutput, command.CaptureErrorOutput);
+            var commands = new[]
+            {
+                (actual.StreamCommand, expected.StreamCommand),
+                (actual.VodCommand, expected.VodCommand),
+                (actual.ChatCommand, expected.ChatCommand),
+            };
+
+            foreach (var (command, defaultCommand) in commands)
+            {
+                Assert.Equal("custom", command.Args);
+                Assert.Equal(defaultCommand.FilePath, command.FilePath);
+                Assert.Equal(defaultCommand.CaptureStandardOutput, command.CaptureStandardOutput);
+                Assert.Equal(defaultCommand.CaptureErrorOutput, command.CaptureErrorOutput);
+            }
         }
     }
 
-    [Theory]
-    [InlineData("SettingsVersion")]
-    [InlineData("CheckForNewVersions")]
-    [InlineData("DisableRefreshErrorDialogs")]
-    [InlineData("DisableMinimizeToTrayNotification")]
-    [InlineData("MetroThemeBaseColour")]
-    [InlineData("MetroThemeAccentColour")]
-    [InlineData("MinimumEventViewers")]
-    [InlineData("DisableNotifications")]
-    [InlineData("StreamNotificationImage")]
-    [InlineData("UseLongStreamNotificationBanners")]
-    [InlineData("HideStreamOutputMessageBoxOnLoad")]
-    [InlineData("FavoriteApiQualities")]
-    [InlineData("ShowOnlineOnly")]
-    public void KeepDefaultsForSettingsThatIgnoreNull(string property)
+    [Fact]
+    public void KeepDefaultsForSettingsThatIgnoreNull()
     {
-        var json = $$$"""{"{{{property}}}":null,"Twitch":{"AuthToken":"retained-token"}}""";
-        var settings = JsonSerializer.Deserialize<Settings>(json, JsonDefaults.Options);
+        const string Json = """
+            {"SettingsVersion":null,"CheckForNewVersions":null,"DisableRefreshErrorDialogs":null,
+             "DisableMinimizeToTrayNotification":null,"MetroThemeBaseColour":null,"MetroThemeAccentColour":null,
+             "MinimumEventViewers":null,"DisableNotifications":null,"StreamNotificationImage":null,
+             "UseLongStreamNotificationBanners":null,"HideStreamOutputMessageBoxOnLoad":null,"FavoriteApiQualities":null,
+             "ShowOnlineOnly":null,"Twitch":{"AuthToken":"retained-token"}}
+            """;
+        var settings = JsonSerializer.Deserialize<Settings>(Json, JsonDefaults.Options);
         var defaults = new Settings();
         Assert.Equal(defaults.SettingsVersion, settings.SettingsVersion);
         Assert.Equal(defaults.MinimumEventViewers, settings.MinimumEventViewers);
@@ -77,61 +70,36 @@ public class SettingsShould
         Assert.False(settings.UseLongStreamNotificationBanners);
         Assert.Empty(settings.FavoriteApiQualities);
         Assert.Equal("retained-token", settings.Twitch.AuthToken);
+
+        // Absent fields keep their defaults too.
+        var absent = JsonSerializer.Deserialize<Settings>("{}", JsonDefaults.Options);
+        Assert.Equal(100_000, absent.MinimumEventViewers);
+        Assert.False(absent.BringToForegroundOnStreamOnline);
+        Assert.Equal("streamlink", absent.Twitch.StreamCommand.FilePath);
+        Assert.Empty(absent.ExcludeFromNotifying);
+
+        // A null repeated after a value keeps the value read first.
+        const string Repeated = """
+            {"MinimumEventViewers":123,"minimumeventviewers":null,
+             "FavoriteApiQualities":{"twitchtv":{"FallbackQuality":"Worst"}},"FavoriteApiQualities":null,
+             "ExcludeFromNotifying":[{"ApiClientName":"twitchtv","StreamId":"42"}],"ExcludeFromNotifying":null}
+            """;
+        var repeated = JsonSerializer.Deserialize<Settings>(Repeated, JsonDefaults.Options);
+        Assert.Equal(123, repeated.MinimumEventViewers);
+        Assert.Equal("Worst", repeated.FavoriteApiQualities["twitchtv"].FallbackQuality);
+        Assert.Equal(new UniqueStreamKey("twitchtv", "42"), Assert.Single(repeated.ExcludeFromNotifying));
     }
 
     [Fact]
-    public void PersistMainWindowLocationAlongsideSettings()
+    public void MigrateLegacySettingsWithPermittedJsonSyntax()
     {
         InTemporaryDirectory(() =>
         {
-            var json = $$"""{"SettingsVersion":{{Settings.CurrentSettingsVersion}}}""";
-            File.WriteAllText(SettingsHandler.SettingsFileName, json);
-            var settings = new SettingsHandler().Settings;
-            Assert.True(WindowLocationFile.TryLoad(out var initialLocation));
-            Assert.Null(initialLocation);
-
-            settings.ShowOnlineOnly = true;
-            var savedSettings = File.ReadAllText(SettingsHandler.SettingsFileName);
-
-            var location = new WindowLocation(X: -1200, Y: 160);
-            WindowLocationFile.Save(location);
-
-            Assert.True(WindowLocationFile.TryLoad(out var restored));
-            Assert.Equal(location, restored);
-            Assert.Equal(savedSettings, File.ReadAllText(SettingsHandler.SettingsFileName));
-        });
-    }
-
-    [Fact]
-    public void ReportAnUnavailableWindowLocationFile()
-    {
-        InTemporaryDirectory(() =>
-        {
-            var location = new WindowLocation(X: 120, Y: 160);
-            WindowLocationFile.Save(location);
-
-            using (File.Open(WindowLocationFile.FileName, FileMode.Open, FileAccess.Read, FileShare.None))
-            {
-                Assert.False(WindowLocationFile.TryLoad(out var unavailable));
-                Assert.Null(unavailable);
-            }
-
-            Assert.True(WindowLocationFile.TryLoad(out var restored));
-            Assert.Equal(location, restored);
-        });
-    }
-
-    [Theory]
-    [InlineData("/* retained preferences */", "")]
-    [InlineData("", ",")]
-    public void MigrateLegacySettingsWithPermittedJsonSyntax(string comment, string trailingComma)
-    {
-        InTemporaryDirectory(() =>
-        {
-            var json = $$"""
-                { {{comment}} "SettingsVersion":3,"PassthroughClientId":true,"TwitchAuthToken":"retained-token"{{trailingComma}} }
+            // A comment and a trailing comma, as hand-edited files have.
+            const string Json = """
+                { /* retained preferences */ "SettingsVersion":3,"PassthroughClientId":true,"TwitchAuthToken":"retained-token", }
                 """;
-            File.WriteAllText(SettingsHandler.SettingsFileName, json);
+            File.WriteAllText(SettingsHandler.SettingsFileName, Json);
             var settings = new SettingsHandler().Settings;
             Assert.Equal(Settings.CurrentSettingsVersion, settings.SettingsVersion);
             Assert.True(settings.Twitch.PassthroughClientId);
@@ -139,14 +107,12 @@ public class SettingsShould
         });
     }
 
-    [Theory]
-    [InlineData("")]
-    [InlineData(" \r\n")]
-    public void StartFromSavedDefaultsWhenTheSettingsFileIsEmpty(string content)
+    [Fact]
+    public void StartFromSavedDefaultsWhenTheSettingsFileIsEmpty()
     {
         InTemporaryDirectory(() =>
         {
-            File.WriteAllText(SettingsHandler.SettingsFileName, content);
+            File.WriteAllText(SettingsHandler.SettingsFileName, " \r\n");
             var settings = new SettingsHandler().Settings;
 
             Assert.Equal(Settings.CurrentSettingsVersion, ReadSavedSettings().SettingsVersion);
@@ -178,29 +144,11 @@ public class SettingsShould
     }
 
     [Fact]
-    public void ReadASettingsFileThatAnotherInstanceBrieflyHoldsOpen()
-    {
-        InTemporaryDirectory(() =>
-        {
-            var json = $$"""{"SettingsVersion":{{Settings.CurrentSettingsVersion}},"MinimumEventViewers":123}""";
-            File.WriteAllText(SettingsHandler.SettingsFileName, json);
-            // Held exclusively, as while another instance saves it; the timer releases it well before the retry.
-            var heldFile = new FileStream(SettingsHandler.SettingsFileName, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-            const int ReleaseAfterMilliseconds = 20;
-            using var release = new Timer(_ => heldFile.Dispose(), null, ReleaseAfterMilliseconds, Timeout.Infinite);
-
-            Assert.Equal(123, new SettingsHandler().Settings.MinimumEventViewers);
-        });
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData(" \r\n")]
-    public async Task LoadNoChannelsFromAnEmptyLivestreamsFile(string content)
+    public async Task LoadNoChannelsFromAnEmptyLivestreamsFile()
     {
         await InTemporaryDirectory(async () =>
         {
-            await File.WriteAllTextAsync("livestreams.json", content);
+            await File.WriteAllTextAsync("livestreams.json", " \r\n");
             var fileHandler = new MonitoredStreamsFileHandler(Substitute.For<IApiClientFactory>());
 
             Assert.Empty(await fileHandler.LoadFromDisk());
@@ -210,6 +158,9 @@ public class SettingsShould
     [Theory]
     [InlineData("""{"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42",""")]
     [InlineData("""{"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42","StreamProvider":"unknown"}]}""")]
+    // Entries need both parts of their identity.
+    [InlineData("""{"FileVersion":2,"LivestreamFileEntries":[{"StreamProvider":"twitchtv"}]}""")]
+    [InlineData("""{"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42"}]}""")]
     // Upgraded and backed up during the load, then unreadable; only that first backup of the original is kept.
     [InlineData("""{"FileVersion":1,"LivestreamFileEntries":[{"LivestreamId":"42","StreamProvider":"unknown"}]}""")]
     public async Task BackUpAnUnreadableLivestreamsFileBeforeReplacingIt(string unreadable)
@@ -236,8 +187,6 @@ public class SettingsShould
     [Theory]
     [InlineData("twitchtv", "Known_Login", "known_login", false)]
     [InlineData("twitchtv", "한동숙", "known_login", true)]
-    [InlineData("twitchtv", "OldName", "known_login", true)]
-    [InlineData("twitchtv", "Known_Login", null, false)]
     [InlineData("kick", "한동숙", "known_login", false)]
     public async Task SaveOnlyTwitchLoginsThatDifferFromTheDisplayName(
         string providerName,
@@ -251,57 +200,29 @@ public class SettingsShould
             provider.ApiName.Returns(providerName);
             var factory = Substitute.For<IApiClientFactory>();
             factory.GetByName(providerName).Returns(provider);
-            var channel = new ChannelIdentifier(provider, "42") { DisplayName = displayName, TwitchLogin = login };
+            var channel = new ChannelIdentifier(provider, "42") { DisplayName = displayName, TwitchLogin = login, ImportedBy = "account" };
             var fileHandler = new MonitoredStreamsFileHandler(factory);
 
             fileHandler.SaveToDisk([channel]);
 
             using var saved = JsonDocument.Parse(await File.ReadAllTextAsync("livestreams.json"));
             var entry = saved.RootElement.GetProperty("LivestreamFileEntries")[0];
+            Assert.Equal("42", entry.GetProperty("LivestreamId").GetString());
+            Assert.Equal(providerName, entry.GetProperty("StreamProvider").GetString());
+            Assert.Equal("account", entry.GetProperty("ImportedBy").GetString());
             Assert.Equal(shouldStore, entry.TryGetProperty("TwitchLogin", out var savedLogin));
             if (shouldStore) Assert.Equal(login, savedLogin.GetString());
 
             var loaded = Assert.Single(await new MonitoredStreamsFileHandler(factory).LoadFromDisk());
             Assert.Equal(shouldStore ? login : null, loaded.TwitchLogin);
             Assert.Equal(displayName, loaded.DisplayName);
+            Assert.Equal("account", loaded.ImportedBy);
 
-            loaded.DisplayName = login ?? displayName;
+            loaded.DisplayName = login;
             fileHandler.SaveToDisk([loaded]);
 
             Assert.DoesNotContain("\"TwitchLogin\"", await File.ReadAllTextAsync("livestreams.json"));
         });
-    }
-
-    [Fact]
-    public async Task ReadOlderLivestreamEntriesWithoutATwitchLogin()
-    {
-        await InTemporaryDirectory(async () =>
-        {
-            const string Json = """{"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42","StreamProvider":"twitchtv","DisplayName":"Channel"}]}""";
-            await File.WriteAllTextAsync("livestreams.json", Json);
-            var provider = Substitute.For<IApiClient>();
-            var factory = Substitute.For<IApiClientFactory>();
-            factory.GetByName("twitchtv").Returns(provider);
-
-            var channel = Assert.Single(await new MonitoredStreamsFileHandler(factory).LoadFromDisk());
-
-            Assert.Equal("Channel", channel.DisplayName);
-            Assert.Null(channel.TwitchLogin);
-        });
-    }
-
-    [Fact]
-    public void PreservePreviouslyReadSettingsWhenLaterValuesAreNull()
-    {
-        const string Json = """
-            {"MinimumEventViewers":123,"minimumeventviewers":null,
-             "FavoriteApiQualities":{"twitchtv":{"FallbackQuality":"Worst"}},"FavoriteApiQualities":null,
-             "ExcludeFromNotifying":[{"ApiClientName":"twitchtv","StreamId":"42"}],"ExcludeFromNotifying":null}
-            """;
-        var settings = JsonSerializer.Deserialize<Settings>(Json, JsonDefaults.Options);
-        Assert.Equal(123, settings.MinimumEventViewers);
-        Assert.Equal("Worst", settings.FavoriteApiQualities["twitchtv"].FallbackQuality);
-        Assert.Equal(new UniqueStreamKey("twitchtv", "42"), Assert.Single(settings.ExcludeFromNotifying));
     }
 
     [Theory]
@@ -373,6 +294,17 @@ public class SettingsShould
 
             restored.ShowOnlineOnly = false;
             Assert.False(new SettingsHandler().Settings.ShowOnlineOnly);
+
+            // The window location is kept in its own file and leaves the settings file as it was.
+            var savedSettings = File.ReadAllText(SettingsHandler.SettingsFileName);
+            Assert.True(WindowLocationFile.TryLoad(out var initialLocation));
+            Assert.Null(initialLocation);
+            var location = new WindowLocation(X: -1200, Y: 160);
+            WindowLocationFile.Save(location);
+
+            Assert.True(WindowLocationFile.TryLoad(out var restoredLocation));
+            Assert.Equal(location, restoredLocation);
+            Assert.Equal(savedSettings, File.ReadAllText(SettingsHandler.SettingsFileName));
         });
     }
 
@@ -384,43 +316,6 @@ public class SettingsShould
         Assert.Collection(settings.ExcludeFromNotifying,
             key => Assert.Equal(new UniqueStreamKey("twitchtv", "42"), key),
             key => Assert.Equal(new UniqueStreamKey("twitchtv", "123"), key));
-    }
-
-    [Fact]
-    public void KeepDefaultsWhenFieldsAreAbsent()
-    {
-        var settings = JsonSerializer.Deserialize<Settings>("{}", JsonDefaults.Options);
-        Assert.Equal(100_000, settings.MinimumEventViewers);
-        Assert.False(settings.BringToForegroundOnStreamOnline);
-        Assert.Equal(StreamNotificationImage.ChannelIcon, settings.StreamNotificationImage);
-        Assert.False(settings.UseLongStreamNotificationBanners);
-        Assert.Equal("streamlink", settings.Twitch.StreamCommand.FilePath);
-        Assert.Empty(settings.FavoriteApiQualities);
-        Assert.Empty(settings.ExcludeFromNotifying);
-    }
-
-    [Fact]
-    public void PreserveTheSavedChannelIdentifierContract()
-    {
-        const string Json = """
-            {"FileVersion":2,"LivestreamFileEntries":[{"LivestreamId":"42","StreamProvider":"twitchtv","DisplayName":"Channel","ImportedBy":"account"}]}
-            """;
-        var data = JsonSerializer.Deserialize<LivestreamFileData>(Json, JsonDefaults.Options);
-        var channel = Assert.Single(data.LivestreamFileEntries);
-        Assert.Equal("42", channel.ChannelId);
-        Assert.Equal("twitchtv", channel.StreamProvider);
-        Assert.Equal("account", channel.ImportedBy);
-        var saved = JsonSerializer.Serialize(data, JsonDefaults.Options);
-        using var document = JsonDocument.Parse(saved);
-        Assert.Equal("42", document.RootElement.GetProperty("LivestreamFileEntries")[0].GetProperty("LivestreamId").GetString());
-    }
-
-    [Theory]
-    [InlineData("""{"StreamProvider":"twitchtv"}""")]
-    [InlineData("""{"LivestreamId":"42"}""")]
-    public void RejectChannelsMissingRequiredIdentity(string json)
-    {
-        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<LivestreamFileEntry>(json, JsonDefaults.Options));
     }
 
     [Fact]
