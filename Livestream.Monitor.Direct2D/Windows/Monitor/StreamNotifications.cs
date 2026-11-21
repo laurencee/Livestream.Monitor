@@ -322,7 +322,10 @@ internal sealed class StreamNotifications : IDisposable
         identity.SetValue("DisplayName", DisplayName);
         identity.SetValue("CustomActivator", ActivatorId.ToString("B"));
         var iconPath = CacheSenderIcon();
-        if (iconPath != null) identity.SetValue("IconUri", iconPath, RegistryValueKind.ExpandString);
+        if (iconPath == null) return;
+
+        identity.SetValue("IconUri", iconPath, RegistryValueKind.ExpandString);
+        DeleteLegacyDataFiles();
 
         static void DeleteLegacyShortcut(string programs)
         {
@@ -336,6 +339,34 @@ internal sealed class StreamNotifications : IDisposable
                 LogFailure(exception);
             }
         }
+
+        // 3.1.0 kept the notification icon and thumbnails in this folder. Only those files are removed, since other files there
+        // may be the user's own. The icon is removed once IconUri points to the new one. The thumbnails are removed as they
+        // expire, so notification history keeps its images. The folders are removed once empty.
+        static void DeleteLegacyDataFiles()
+        {
+            var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var folder = new DirectoryInfo(Path.Combine(localData, "Livestream.Monitor", "Direct2D"));
+            if (localData.Length == 0 || !folder.Exists) return;
+
+            try
+            {
+                File.Delete(Path.Combine(folder.FullName, "NotificationIcon.ico"));
+
+                var thumbnails = new DirectoryInfo(Path.Combine(folder.FullName, "NotificationThumbnails"));
+                if (thumbnails.Exists)
+                {
+                    NotificationThumbnails.Prune(thumbnails, currentPath: "");
+                    if (!thumbnails.EnumerateFileSystemInfos().Any()) thumbnails.Delete();
+                }
+
+                if (!folder.EnumerateFileSystemInfos().Any()) folder.Delete();
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                // Files the Shell still holds are retried at the next registration.
+            }
+        }
     }
 
     private static string? CacheSenderIcon()
@@ -345,7 +376,7 @@ internal sealed class StreamNotifications : IDisposable
             // The Shell reads IconUri from disk, including after the app has exited.
             // https://github.com/microsoft/WindowsAppSDK/blob/main/dev/AppNotifications/AppNotificationUtility.cpp
             var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var directory = Path.Combine(localData, "Livestream.Monitor", "Direct2D");
+            var directory = Path.Combine(localData, "Livestream.Monitor");
             var path = Path.Combine(directory, "NotificationIcon.ico");
 
             Directory.CreateDirectory(directory);

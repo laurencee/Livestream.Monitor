@@ -38,7 +38,7 @@ internal sealed class NotificationThumbnails : IDisposable
             var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (string.IsNullOrEmpty(localData)) return null;
 
-            var folder = Path.Combine(localData, "Livestream.Monitor", "Direct2D", "NotificationThumbnails");
+            var folder = Path.Combine(localData, "Livestream.Monitor", "NotificationThumbnails");
             var directory = Directory.CreateDirectory(folder);
             var path = Path.Combine(folder, Guid.NewGuid().ToString("N") + (convertToPng ? ".png" : extension));
             if (convertToPng) SaveAsPng(bytes, path);
@@ -109,7 +109,7 @@ internal sealed class NotificationThumbnails : IDisposable
         }
     }
 
-    private static void Prune(DirectoryInfo directory, string currentPath)
+    internal static void Prune(DirectoryInfo directory, string currentPath)
     {
         try
         {

@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ExternalAPIs;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
 using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Model;
@@ -297,12 +298,28 @@ public class SettingsShould
 
             // The window location is kept in its own file and leaves the settings file as it was.
             var savedSettings = File.ReadAllText(SettingsHandler.SettingsFileName);
-            Assert.True(WindowLocationFile.TryLoad(out var initialLocation));
+            var path = Path.Combine("LocalData", WindowLocationFile.FileName);
+            Assert.True(WindowLocationFile.TryLoad(path, out var initialLocation));
             Assert.Null(initialLocation);
-            var location = new WindowLocation(X: -1200, Y: 160);
-            WindowLocationFile.Save(location);
 
-            Assert.True(WindowLocationFile.TryLoad(out var restoredLocation));
+            // A position that earlier versions saved in the current directory moves to the new location.
+            var legacyLocation = new WindowLocation(X: -1200, Y: 160);
+            WindowLocationFile.Save(WindowLocationFile.FileName, legacyLocation);
+            LegacyDataFile.Move(WindowLocationFile.FileName, path);
+            Assert.False(File.Exists(WindowLocationFile.FileName));
+            Assert.True(WindowLocationFile.TryLoad(path, out var movedLocation));
+            Assert.Equal(legacyLocation, movedLocation);
+
+            // An application run from the destination folder keeps the file it finds there.
+            WindowLocationFile.Save(WindowLocationFile.FileName, legacyLocation);
+            LegacyDataFile.Move(WindowLocationFile.FileName, Path.GetFullPath(WindowLocationFile.FileName));
+            Assert.True(File.Exists(WindowLocationFile.FileName));
+            File.Delete(WindowLocationFile.FileName);
+
+            var location = new WindowLocation(X: 40, Y: 160);
+            WindowLocationFile.Save(path, location);
+
+            Assert.True(WindowLocationFile.TryLoad(path, out var restoredLocation));
             Assert.Equal(location, restoredLocation);
             Assert.Equal(savedSettings, File.ReadAllText(SettingsHandler.SettingsFileName));
         });

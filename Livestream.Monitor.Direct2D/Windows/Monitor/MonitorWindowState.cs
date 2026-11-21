@@ -62,7 +62,7 @@ internal sealed class MonitorWindowState
         this.openBrowsingError = openBrowsingError;
         SettingsHandler = settingsHandler ?? new SettingsHandler();
         OnlineOnly = SettingsHandler.Settings.ShowOnlineOnly;
-        ApiClientFactory = apiClientFactory ?? new ApiClientFactory(SettingsHandler);
+        ApiClientFactory = apiClientFactory ?? new ApiClientFactory(SettingsHandler, Program.CachePath);
         var fileHandler = new MonitoredStreamsFileHandler(ApiClientFactory);
         StreamsModel = monitorStreamsModel ?? new MonitorStreamsModel(fileHandler, SettingsHandler, ApiClientFactory);
         StreamsModel.Livestreams.CollectionChanged += (_, args) =>

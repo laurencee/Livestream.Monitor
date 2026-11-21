@@ -23,7 +23,7 @@ internal sealed class MainWindowPlacement
         int rightTitleInset)
     {
         this.window = window;
-        usedFallback = !WindowLocationFile.TryLoad(out savedLocation);
+        usedFallback = !WindowLocationFile.TryLoad(Program.WindowLocationPath, out savedLocation);
         if (!usedFallback && savedLocation is { } saved)
             usedFallback = !TryRestore(saved, titleHeight, topTitleInset, leftTitleInset, rightTitleInset);
 
@@ -37,7 +37,7 @@ internal sealed class MainWindowPlacement
 
     public void Save()
     {
-        if (!usedFallback && location is { } current && current != savedLocation) WindowLocationFile.Save(current);
+        if (!usedFallback && location is { } current && current != savedLocation) WindowLocationFile.Save(Program.WindowLocationPath, current);
     }
 
     private bool TryRestore(

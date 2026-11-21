@@ -3,7 +3,9 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Livestream.Monitor.Core;
 using Livestream.Monitor.Core.Settings;
+using Livestream.Monitor.Core.UI;
 using Livestream.Monitor.Core.Utility;
 using Livestream.Monitor.Direct2D.Native;
 using Livestream.Monitor.Direct2D.Rendering;
@@ -24,6 +26,12 @@ internal static class Program
 
     // Set once the window exists; a later launch's request before then has no window to show.
     private static MonitorWindow? mainWindow;
+
+    // Where machine-local state is kept: in local application data for the default profile, otherwise with the profile's other data.
+    private static string localDataDirectory = "";
+
+    public static string WindowLocationPath => Path.Combine(localDataDirectory, WindowLocationFile.FileName);
+    public static string CachePath => Path.Combine(localDataDirectory, CacheHandler.CacheFileName);
 
     public static string? MonitorName { get; private set; }
     public static int WindowWidth { get; private set; } = 810;
@@ -48,6 +56,14 @@ internal static class Program
             {
                 profileScope = GetProfileScope(dataDirectory);
                 Directory.SetCurrentDirectory(dataDirectory);
+            }
+
+            // A toast activation names the default profile's directory too, so the scope, not the presence of a data directory,
+            // identifies the default profile.
+            if (profileScope.Length == 0)
+            {
+                var localData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                localDataDirectory = Path.Combine(localData, "Livestream.Monitor");
             }
 
             var toastLaunch = args.Contains(StreamNotifications.ActivationSwitch);
@@ -87,6 +103,14 @@ internal static class Program
         // Start loading the driver now, so it loads while the window is created and startup is faster. If nothing takes the
         // device, it is left for process exit to release.
         GraphicsDevice.StartHardwareDeviceCreation();
+
+        // Only the launch that holds the instance moves the legacy files. A launch that hands off to a running older version
+        // leaves the files to that version.
+        if (localDataDirectory.Length > 0)
+        {
+            LegacyDataFile.Move(WindowLocationFile.FileName, WindowLocationPath);
+            LegacyDataFile.Move(CacheHandler.CacheFileName, CachePath);
+        }
 
         using var activationPipe = new ToastActivationPipe(AcceptForwardedActivation, ToastActivationPipe.GetPipeName(profileScope));
         using var notifications = new StreamNotifications(Activate);

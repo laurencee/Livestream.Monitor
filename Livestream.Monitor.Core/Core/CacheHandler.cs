@@ -26,9 +26,9 @@ namespace Livestream.Monitor.Core
 
     public sealed record KickAppAccessToken(string Token, DateTimeOffset ExpiresAt);
 
-    public class CacheHandler(string filePath = CacheHandler.CacheFileName) : ICacheHandler
+    public class CacheHandler(string filePath) : ICacheHandler
     {
-        private const string CacheFileName = "cache.bin";
+        public const string CacheFileName = "cache.bin";
 
         // Increment when the cache format changes; other versions are ignored.
         private const int FormatVersion = 1;
@@ -112,6 +112,8 @@ namespace Livestream.Monitor.Core
         {
             try
             {
+                new FileInfo(filePath).Directory?.Create();
+
                 using var writer = new BinaryWriter(File.Create(filePath));
                 writer.Write(FormatVersion);
 

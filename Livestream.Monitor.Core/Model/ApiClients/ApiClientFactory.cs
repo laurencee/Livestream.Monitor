@@ -17,12 +17,12 @@ namespace Livestream.Monitor.Model.ApiClients
 
         private readonly List<IApiClient> apiClients = new();
 
-        public ApiClientFactory(ISettingsHandler settingsHandler)
+        public ApiClientFactory(ISettingsHandler settingsHandler, string cachePath)
         {
             if (settingsHandler == null) throw new ArgumentNullException(nameof(settingsHandler));
 
             twitchApiClient = new TwitchApiClient(new TwitchTvHelixHelixReadonlyClient(), settingsHandler);
-            var cacheHandler = new CacheHandler();
+            var cacheHandler = new CacheHandler(cachePath);
             youtubeApiClient = new YoutubeApiClient(new YoutubeReadonlyClient(), cacheHandler);
             kickApiClient = new KickApiClient(new KickReadonlyClient(), cacheHandler);
 

@@ -10,19 +10,19 @@ internal readonly record struct WindowLocation([property: JsonRequired] int X, [
 
 internal static class WindowLocationFile
 {
-    private const string FileName = "window-position.json";
+    public const string FileName = "window-position.json";
 
     /// <summary>Returns false when the position file is inaccessible and must be preserved.</summary>
-    public static bool TryLoad(out WindowLocation? location)
+    public static bool TryLoad(string path, out WindowLocation? location)
     {
         location = null;
         try
         {
-            using var file = File.Open(FileName, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
+            using var file = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             location = JsonSerializer.Deserialize<WindowLocation?>(file);
             return true;
         }
-        catch (Exception error) when (error is FileNotFoundException or JsonException)
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException or JsonException)
         {
             return true;
         }
@@ -32,12 +32,14 @@ internal static class WindowLocationFile
         }
     }
 
-    public static void Save(WindowLocation location)
+    public static void Save(string path, WindowLocation location)
     {
-        var temporaryPath = $"{FileName}.{Path.GetRandomFileName()}";
+        var temporaryPath = $"{path}.{Path.GetRandomFileName()}";
         bool created = false;
         try
         {
+            new FileInfo(path).Directory?.Create();
+
             using (var file = File.Open(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
                 created = true;
@@ -45,7 +47,7 @@ internal static class WindowLocationFile
             }
 
             // Allow concurrent readers while saving window placement.
-            File.Move(temporaryPath, FileName, overwrite: true);
+            File.Move(temporaryPath, path, overwrite: true);
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
@@ -57,7 +59,7 @@ internal static class WindowLocationFile
             }
             catch (Exception cleanupError) when (cleanupError is IOException or UnauthorizedAccessException)
             {
-                // Placement is optional even if the data directory cannot be written.
+                // Saving the placement is optional, so ignore a temporary file that cannot be deleted.
             }
         }
     }
