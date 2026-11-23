@@ -172,11 +172,12 @@ internal sealed class DialogPane(
 
         float TextWidth() => scrolls ? contentWidth - ScrollBarGap - VerticalScrollBar.Width : contentWidth;
 
-        // The message control wraps its text at its width, so it is placed at that width before its lines are counted.
+        // The message control wraps its text at its width, so it is placed at that width before its lines are counted. An edit
+        // control shorter than one line keeps its previous wrap, as on its first placement, so it is placed at least one line tall.
         int CountLines()
         {
             const uint GetLineCount = 0x00BA;
-            var wrapBounds = messageBounds with { Width = TextWidth() };
+            var wrapBounds = messageBounds with { Width = TextWidth(), Height = Math.Max(messageBounds.Height, LinesHeight(1)) };
             owner.PlaceInput(messageText, wrapBounds, visible: true, enabled: true);
             return (int)Win32.SendMessage(messageText, GetLineCount, wParam: 0, lParam: 0);
         }

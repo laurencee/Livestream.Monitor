@@ -70,6 +70,14 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool UpdateWindow(nint window);
 
+    [LibraryImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool RedrawWindow(
+        nint window,
+        nint updateRect,
+        nint updateRegion,
+        uint flags);
+
     [LibraryImport("comctl32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetWindowSubclass(

@@ -354,10 +354,34 @@ internal abstract class DesktopWindow : IDisposable
     {
         if (controlsToShow.Count == 0 && controlsToDestroy.Count == 0) return;
 
+        // A hidden window's controls cannot paint, so showing and destroying controls waits until the window is shown and its
+        // next frame is drawn.
+        if (!IsVisible) return;
+
         // Still update the controls if DwmFlush fails.
         Win32.DwmFlush();
 
-        foreach (var control in controlsToShow) Win32.ShowWindow(control, Win32.SwShowNoActivate);
+        // A newly shown layered control appears black until its first paint reaches the screen. So it is shown fully
+        // transparent, painted straight away, and made opaque only once the next composition has its painted content.
+        if (controlsToShow.Count != 0)
+        {
+            foreach (var control in controlsToShow)
+            {
+                if (IsLayered(control)) SetControlAlpha(control, alpha: 0);
+                Win32.ShowWindow(control, Win32.SwShowNoActivate);
+            }
+
+            // Paint child controls too, such as the Rich Edit inside the output's text host.
+            const uint UpdateNow = 0x0100;
+            const uint AllChildren = 0x0080;
+            foreach (var control in controlsToShow) Win32.RedrawWindow(control, updateRect: 0, updateRegion: 0, flags: UpdateNow | AllChildren);
+
+            Win32.DwmFlush();
+
+            foreach (var control in controlsToShow)
+                if (IsLayered(control))
+                    SetControlAlpha(control, alpha: byte.MaxValue);
+        }
 
         foreach (var control in controlsToDestroy)
         {
@@ -369,6 +393,14 @@ internal abstract class DesktopWindow : IDisposable
 
         controlsToShow.Clear();
         controlsToDestroy.Clear();
+    }
+
+    private static bool IsLayered(nint control) => (Win32.GetWindowLongPtr(control, Win32.GwlExStyle) & Win32.WsExLayered) != 0;
+
+    private static void SetControlAlpha(nint control, byte alpha)
+    {
+        if (!Win32.SetLayeredWindowAttributes(window: control, colorKey: 0, alpha: alpha, flags: Win32.LwaAlpha))
+            throw new Win32Exception(Marshal.GetLastWin32Error());
     }
 
     /// <summary>Bounds used by <see cref="PlaceInput"/>, rounded to device pixels and returned in logical units.</summary>
@@ -414,10 +446,11 @@ internal abstract class DesktopWindow : IDisposable
         float fontSize = ControlFontSize,
         nint parent = 0)
     {
-        // Rich Edit keeps its original wrap width if created hidden.
-        // Create it visible while the parent is hidden so it can't appear ahead of the frame.
-        var visibility = IsVisible ? 0 : Win32.WsVisible;
+        // Rich Edit keeps its original wrap width if created hidden, so a control nested in a host, such as the output's Rich
+        // Edit, is created visible while the window is hidden; its hidden host keeps it off the screen. Other controls are
+        // created hidden and shown once the frame they belong to is on screen.
         var layered = parent == 0;
+        var visibility = IsVisible || layered ? 0 : Win32.WsVisible;
 
         var id = nextControlId++;
         var control = Win32.CreateWindowEx(
