@@ -514,7 +514,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         private void ChannelTwitchLoginChanged(object sender, EventArgs e)
         {
-            // Refreshes save channel metadata once after applying all providers' results.
+            // A refresh saves channel metadata once, after applying every provider's results.
             if (CanRefreshLivestreams) SaveLivestreams();
         }
     }

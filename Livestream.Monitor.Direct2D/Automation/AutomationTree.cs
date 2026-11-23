@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Livestream.Monitor.Direct2D.Automation;
 
-/// <summary>The UI Automation control types drawn widgets and content map to.</summary>
+/// <summary>The UI Automation control types that drawn widgets and content map to.</summary>
 internal enum AutomationRole
 {
     Text,
@@ -134,7 +134,7 @@ internal sealed class AutomationTree
 
     public AutomationNode? Find(string key) => indices.TryGetValue(key, out var index) ? nodes[index] : null;
 
-    /// <summary>The indices of the children of the node at the index, or of the top-level nodes for -1.</summary>
+    /// <summary>The indices of the children of the node at <paramref name="parent"/>, or of the top-level nodes when it is -1.</summary>
     public ReadOnlySpan<int> ChildrenOf(int parent) =>
         CollectionsMarshal.AsSpan(parent < 0 ? topLevel : children[parent]);
 

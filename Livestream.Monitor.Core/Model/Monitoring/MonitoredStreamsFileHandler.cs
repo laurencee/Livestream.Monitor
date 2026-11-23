@@ -49,15 +49,15 @@ namespace Livestream.Monitor.Model.Monitoring
                 try
                 {
                     var livestreamFileText = await File.ReadAllTextAsync(FileName);
-                    // An empty file, e.g. left by an interrupted save, has no channels like a missing one.
+                    // Treat an empty file, e.g. one left by an interrupted save, like a missing one: it has no channels.
                     if (string.IsNullOrWhiteSpace(livestreamFileText)) return new List<ChannelIdentifier>();
 
                     return await ReadChannels(livestreamFileText);
                 }
                 catch (Exception)
                 {
-                    // The file could not be read or turned into channels, e.g. locked, invalid JSON or an unknown provider,
-                    // so keep a copy to fix by hand before the next save replaces it, unless an upgrade already kept the original.
+                    // The file could not be read or turned into channels, e.g. it is locked, holds invalid JSON or names an unknown provider.
+                    // Keep a copy to fix by hand before the next save replaces the file, unless an upgrade already kept the original.
                     backUpBeforeNextSave = true;
                     throw;
                 }

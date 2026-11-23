@@ -33,8 +33,7 @@ namespace Livestream.Monitor.Model.ApiClients
         List<string> VodTypes { get; }
 
         /// <summary> Execute authorization process for api </summary>
-        /// <param name="screen">Screen to activate any prompts/input required during authorization</param>
-        /// <returns>True if the user was authorized successfully</returns>
+        /// <param name="screen">Shows any prompts or input needed during authorization</param>
         Task Authorize(IUserDialogs screen);
 
         Task<string> GetStreamUrl(LivestreamModel livestreamModel);
@@ -45,24 +44,24 @@ namespace Livestream.Monitor.Model.ApiClients
         Task<string> GetChatUrl(LivestreamModel livestreamModel);
 
         // TODO - don't use ChannelIdentifier at this point as we don't know the actual channelid yet in most cases, we only know the url/slug
-        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called  and immediately queries the channel. </summary>
-        /// <param name="newChannel">A <see cref="ChannelIdentifier"/> of the new channel to be added</param>
+        /// <summary> Adds a channel to the channels that <see cref="QueryChannels"/> queries, and queries it immediately. </summary>
         Task<List<LivestreamQueryResult>> AddChannel(ChannelIdentifier newChannel);
 
-        /// <summary> Adds a channel for the api client to follow when <see cref="QueryChannels"/> is called but does not immediately query the channel. </summary>
-        /// <param name="newChannel"></param>
+        /// <summary> Adds a channel to the channels that <see cref="QueryChannels"/> queries, without querying it now. </summary>
         void AddChannelWithoutQuerying(ChannelIdentifier newChannel);
 
         Task RemoveChannel(ChannelIdentifier channelIdentifier);
 
-        /// <summary> Query the api for all followed channels livestreams. Channels to be queried are to be added through <see cref="AddChannel"/> </summary>
-        /// <param name="cancellationToken"></param>
-        /// <returns>Livestream query results from the channels. Errors from querying will be captured to be examined later. </returns>
+        /// <summary> Queries the api for the livestreams of all followed channels. Add the channels first with <see cref="AddChannel"/>. </summary>
+        /// <returns>
+        /// The channels' livestream query results. Depending on the client, a failed query is either recorded in the affected
+        /// channel's result (<see cref="LivestreamQueryResult.FailedQueryException"/>) or thrown, which fails the whole query.
+        /// </returns>
         Task<List<LivestreamQueryResult>> QueryChannels(CancellationToken cancellationToken);
 
         /// <summary>
-        /// Queries followed channels using the faster query when <see cref="HasQuickQuerySupport"/> is true.
-        /// Results may differ from <see cref="QueryChannels"/>. Otherwise uses the normal query.
+        /// Queries followed channels using the faster query when <see cref="HasQuickQuerySupport"/> is true, otherwise the normal query.
+        /// The faster query's results may differ from those of <see cref="QueryChannels"/>.
         /// </summary>
         Task<List<LivestreamQueryResult>> QueryChannelsQuickly(CancellationToken cancellationToken);
 

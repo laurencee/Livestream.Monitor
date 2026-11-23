@@ -20,7 +20,7 @@ public class KickClientShould
 
     public KickClientShould()
     {
-        // create this file locally, it's already marked to be copied to the output in this test project
+        // Create this file locally. The test project already copies it to the output folder.
         var twitchAccessToken = File.ReadAllText("kickaccesstoken.local");
         sut.SetAccessToken(twitchAccessToken);
     }
@@ -68,7 +68,7 @@ public class KickClientShould
         var livestreamsRoot = await sut.GetLivestreams(channelVideosQuery);
 
         Assert.NotNull(livestreamsRoot);
-        // only returns data for online streams and unfortunately an OK response doesn't actually mean the request was correct
+        // The endpoint only returns data for online streams, and an OK response doesn't mean the request was correct.
         Assert.Equal("OK", livestreamsRoot.Message, StringComparer.OrdinalIgnoreCase);
         Assert.NotEmpty(livestreamsRoot.Data);
     }
@@ -79,7 +79,7 @@ public class KickClientShould
         var page2 = await sut.GetLivestreams(new GetLivestreamsQuery { Sort = LivestreamsSort.ViewerCount, Page = 2 });
         var page3 = await sut.GetLivestreams(new GetLivestreamsQuery { Sort = LivestreamsSort.ViewerCount, Page = 3 });
 
-        // only returns data for online streams and unfortunately an OK response doesn't actually mean the request was correct
+        // The endpoint only returns data for online streams, and an OK response doesn't mean the request was correct.
         Assert.Equal("OK", page2.Message, StringComparer.OrdinalIgnoreCase);
         Assert.NotEmpty(page2.Data);
         Assert.Equal("OK", page3.Message, StringComparer.OrdinalIgnoreCase);

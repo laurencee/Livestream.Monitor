@@ -6,7 +6,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Query
     {
         public string CommunityId { get; set; }
 
-        /// <summary> Number of objects to return, max 100, defaulted to 20 </summary>
+        /// <summary> Number of objects to return, max 100. Defaults to that maximum; Twitch's own default is 20 </summary>
         public int First { get; set; } = TwitchTvHelixHelixReadonlyClient.DefaultItemsPerQuery;
 
 

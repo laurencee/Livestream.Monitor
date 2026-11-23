@@ -99,7 +99,7 @@ internal sealed class ToastActivationPipe : IDisposable
         await pipe.ReadExactlyAsync(payload, cancellation).ConfigureAwait(false);
         if (!ToastActivation.TryDecode(Encoding.UTF8.GetString(payload), out var target)) return;
 
-        // A queued request can be abandoned when the primary closes. Acknowledge only UI acceptance.
+        // A queued request can be abandoned when the primary closes. Acknowledge only once the UI has accepted the request.
         var accepted = await activate(target, cancellation).ConfigureAwait(false);
         if (!accepted) return;
 

@@ -29,7 +29,7 @@ namespace Livestream.Monitor.Model.Monitoring
         void BeginInitialQuery();
 
         /// <summary>
-        /// Allows for loading of livestreams and any other initialization tasks before refreshes can take place.
+        /// Loads livestreams and runs any other initialization before refreshes can take place.
         /// Returns after applying the primary queries and any required rechecks. Complete queries may still be running;
         /// their failures are not reported. <see cref="LivestreamsRefreshComplete"/> marks the end of the first refresh.
         /// </summary>
@@ -41,7 +41,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
         Task ImportFollows(string username, IApiClient apiClient, IUserDialogs dialogs);
 
-        /// <summary> Refreshing data for all followed livestreams </summary>
+        /// <summary> Refreshes the data of all followed livestreams </summary>
         Task RefreshLivestreams();
 
         /// <summary> Prevent a specific error message from raising query failed exceptions </summary>

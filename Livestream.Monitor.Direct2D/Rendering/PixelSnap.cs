@@ -25,9 +25,7 @@ internal static class PixelSnap
     /// <summary>A line or border thickness rounded to whole device pixels (at least one), in logical units.</summary>
     public static float Thickness(float thickness, float scale) => DevicePixels(thickness * scale) / scale;
 
-    /// <summary>
-    /// The centre of a line of the thickness across the coordinate, placed so both edges are on the pixel grid.
-    /// </summary>
+    /// <summary>The centre for a line of the given thickness at the coordinate, placed so both edges are on the pixel grid.</summary>
     public static float CalculateSnappedLineCentre(float coordinate, float thickness, float scale)
     {
         var pixels = DevicePixels(thickness * scale);

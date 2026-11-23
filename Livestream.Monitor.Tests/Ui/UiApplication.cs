@@ -65,8 +65,8 @@ internal sealed class UiApplication : IDisposable
     }
 
     /// <summary>
-    /// Polls the probe until it returns a value, failing with the description, and what was last seen when given,
-    /// after the timeout.
+    /// Polls the probe until it returns a value. After the timeout it fails with the description and, when given, what was
+    /// last seen.
     /// </summary>
     public static T WaitFor<T>(
         Func<T> probe,

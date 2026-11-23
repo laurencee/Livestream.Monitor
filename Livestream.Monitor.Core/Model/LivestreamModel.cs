@@ -29,7 +29,7 @@ namespace Livestream.Monitor.Model
 
         public IApiClient ApiClient => ChannelIdentifier.ApiClient;
 
-        /// <summary> This key is unique between all api client, it has a string representation and equality members. </summary>
+        /// <summary> Unique across all api clients. Has a string representation and equality members. </summary>
         public UniqueStreamKey UniqueStreamKey { get; }
 
         public bool Live

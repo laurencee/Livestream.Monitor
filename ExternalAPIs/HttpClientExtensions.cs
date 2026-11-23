@@ -11,8 +11,9 @@ namespace ExternalAPIs
     {
         public static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
 
-        // Keep the Framework connection pool alive across short-lived request clients.
         private const int MaxConnectionsPerServer = 8;
+
+        // Shared so the connection pool stays alive across short-lived request clients.
         private static readonly HttpClientHandler SharedHandler = new()
         {
             AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate,
@@ -92,7 +93,7 @@ namespace ExternalAPIs
         {
             if (response.IsSuccessStatusCode) return;
 
-            // preserve the original content as the error message, after the status so an empty body still shows a cause
+            // Use the response body as the error message. The status comes first so an empty body still shows a cause.
             var content = await response.Content.ReadAsStringAsync();
 
             response.Content?.Dispose();

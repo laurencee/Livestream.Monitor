@@ -54,7 +54,7 @@ internal sealed class GraphicsDevice : IDisposable
 
     public DCompositionDevice Composition => Resources.Composition!;
 
-    /// <summary>Incremented by every device recreation; device-dependent resources compare it to rebuild.</summary>
+    /// <summary>Incremented by every device recreation; device-dependent resources compare it to know when to rebuild.</summary>
     public int Generation { get; private set; }
 
     /// <summary>

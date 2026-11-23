@@ -72,10 +72,10 @@ internal sealed class DialogPane(
             lineCount = CountLines();
         }
 
-        // As in MahApps 2.4.11, the title has a 10 px top padding and the message a 5 px top margin, which a message
-        // dialog's content grid adds 10 to; a progress dialog keeps the empty footer of a message dialog, with the
-        // progress bar along the panel's bottom edge. A dialog is at least a quarter of the window's height, with the
-        // spare height between its content and its footer.
+        // As in MahApps 2.4.11: the title has a 10 px top padding. The message has a 5 px top margin, to which a message
+        // dialog's content grid adds 10. A progress dialog keeps the empty footer of a message dialog and has its progress
+        // bar along the panel's bottom edge. A dialog is at least a quarter of the window's height; the spare height goes
+        // between its content and its footer.
         const float TitleTop = 10;
         var messageHeight = Math.Min(LinesHeight(lineCount), maximumMessageHeight);
         var messageGap = IsProgress ? 5 : 15;
@@ -182,8 +182,8 @@ internal sealed class DialogPane(
             return (int)Win32.SendMessage(messageText, GetLineCount, wParam: 0, lParam: 0);
         }
 
-        // A hundredth of a logical pixel more keeps the control's height, rounded down to whole device pixels, from
-        // losing a pixel of the last line to floating-point error.
+        // Add a hundredth of a logical pixel: the control's height is rounded down to whole device pixels, and floating-point
+        // error could otherwise cost the last line a pixel.
         float LinesHeight(int lines)
         {
             const float RoundingAllowance = 0.01f;

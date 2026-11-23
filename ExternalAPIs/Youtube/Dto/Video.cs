@@ -22,8 +22,8 @@ namespace ExternalAPIs.Youtube.Dto
 
         public RecordingDetails RecordingDetails { get; set; }
 
-        // fileDetails are only available to the video owner so we can't use that
-        // it would have been nice as it has the duration in ms instead of a string format along with other data
+        // fileDetails is only available to the video owner, so it can't be used here.
+        // It would have given the duration in ms instead of a string, along with other data.
     }
 
     public class LiveStreamingDetails
@@ -68,8 +68,8 @@ namespace ExternalAPIs.Youtube.Dto
 
     public class Statistics
     {
-        // the api description of these are ulongs but the json example on the api docs has them as strings
-        // they are actually numeric
+        // The API reference describes these as ulongs, but its JSON example shows them as strings.
+        // They are actually numeric.
         public long ViewCount { get; set; }
         public long LikeCount { get; set; }
         public long DislikeCount { get; set; }

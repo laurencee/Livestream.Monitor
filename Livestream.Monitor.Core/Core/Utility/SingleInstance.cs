@@ -4,7 +4,7 @@ using System.Threading;
 
 namespace Livestream.Monitor.Core.Utility;
 
-/// <summary>One running instance of a frontend per user; a later launch asks it to show itself and exits.</summary>
+/// <summary>Allows one running instance of a frontend per user. A later launch asks that instance to show itself, then exits.</summary>
 public sealed class SingleInstance : IDisposable
 {
     // ASFW_ANY: any process may take the foreground.
@@ -39,8 +39,8 @@ public sealed class SingleInstance : IDisposable
         var mutex = new Mutex(initiallyOwned: false, instanceName, out var first);
         if (first) return new SingleInstance(mutex, activation, activate);
 
-        // The launch was started by the user, so it may hand the foreground to the running instance, which Windows
-        // otherwise stops from activating itself.
+        // The user started this launch, so it may pass the foreground on. Without that, Windows stops the running instance
+        // from activating itself.
         AllowSetForegroundWindow(AnyProcess);
         if (activateExisting) activation.Set();
         activation.Dispose();

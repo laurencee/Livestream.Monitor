@@ -37,7 +37,7 @@ internal sealed class ReusableBitmap(GraphicsDevice graphics) : IDisposable
         }
     }
 
-    /// <summary>Decodes an image scaled to the size; shows nothing for invalid data.</summary>
+    /// <summary>Decodes an image scaled to the given size; shows nothing for invalid data.</summary>
     public unsafe void Load(byte[] encoded, int width, int height)
     {
         Resize(width, height);

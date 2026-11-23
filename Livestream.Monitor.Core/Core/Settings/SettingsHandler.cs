@@ -102,7 +102,7 @@ namespace Livestream.Monitor.Core.Settings
                     }
                 }
 
-                if (settings == null) // init
+                if (settings == null)
                 {
                     settings = CreateDefaultSettings();
                     saveSettings = true;
@@ -132,7 +132,7 @@ namespace Livestream.Monitor.Core.Settings
             {
                 var text = File.ReadAllText(SettingsFileName);
                 ExcludeNotifyJsonConverter.LegacyExclusionsNeedSave = false;
-                // An empty file, e.g. left by an interrupted save, starts from defaults like a missing one.
+                // An empty file, e.g. one left by an interrupted save, starts from defaults just as a missing file does.
                 if (!string.IsNullOrWhiteSpace(text))
                     settings = JsonSerializer.Deserialize<Settings>(text, ExternalAPIs.JsonDefaults.Options);
 
@@ -173,7 +173,7 @@ namespace Livestream.Monitor.Core.Settings
         }
 
         /// <param name="fullSettingsRaw">If we changed the format we need the raw text to convert settings</param>
-        /// <param name="saveSettings">Current flag to passthrough if we don't change anything</param>
+        /// <param name="saveSettings">The caller's current flag, returned unchanged when no migration is needed</param>
         private bool MigrateSettingsVersion(string fullSettingsRaw, bool saveSettings)
         {
             if (settings.SettingsVersion >= Settings.CurrentSettingsVersion) return saveSettings;

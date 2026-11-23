@@ -16,13 +16,13 @@ public class GetLivestreamsQuery
     public string Language { get; set; }
 
     /// <summary> Max number of responses per request </summary>
-    /// <remarks> Null defaults to 25 from kick api, max limit is <see cref="RequestConstants.MaxRequestLimit"/> </remarks>
+    /// <remarks> When null, the Kick API uses its default of 25. The maximum is <see cref="RequestConstants.MaxRequestLimit"/> </remarks>
     public int? Limit
     {
         get;
         set
         {
-            if (field > RequestConstants.MaxRequestLimit || field < 1)
+            if (value > RequestConstants.MaxRequestLimit || value < 1)
                 throw new ArgumentOutOfRangeException(
                     nameof(value),
                     $"Limit must be between 1 and {RequestConstants.MaxRequestLimit}. Value was {value}.");

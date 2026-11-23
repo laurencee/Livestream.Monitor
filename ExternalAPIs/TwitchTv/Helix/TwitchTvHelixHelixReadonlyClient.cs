@@ -11,8 +11,8 @@ namespace ExternalAPIs.TwitchTv.Helix
 {
     public class TwitchTvHelixHelixReadonlyClient : ITwitchTvHelixReadonlyClient
     {
-        public const int DefaultItemsPerQuery = MaxItemsPerQuery; // 20 is default, 100 is maximum
-        public const int MaxItemsPerQuery = 100; // 100 is maximum
+        public const int DefaultItemsPerQuery = MaxItemsPerQuery; // Twitch itself defaults to 20
+        public const int MaxItemsPerQuery = 100; // the most Twitch allows
         private const int MaxConcurrentRequests = 4;
         private readonly SemaphoreSlim requestSlots = new(MaxConcurrentRequests);
         private string accessToken;

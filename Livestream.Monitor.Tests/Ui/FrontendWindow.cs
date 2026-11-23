@@ -28,8 +28,8 @@ internal sealed class FrontendWindow : IDisposable
     private static readonly IUIAutomationCondition AuthorizationPrompt =
         Automation.CreatePropertyCondition(UIA_NamePropertyId, "Twitch Authorization");
 
-    // An action a repeat would undo, such as a toggle or the next page, waits long enough for a slow frame to show its
-    // outcome; one that checks its outcome before acting again is repeated sooner.
+    // An action that a repeat would undo, e.g. a toggle or the next page, waits long enough for a slow frame to show its
+    // outcome. An action that checks its outcome before acting again is repeated sooner.
     private static readonly TimeSpan RetryInterval = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan RepeatSafeRetryInterval = TimeSpan.FromMilliseconds(250);
 

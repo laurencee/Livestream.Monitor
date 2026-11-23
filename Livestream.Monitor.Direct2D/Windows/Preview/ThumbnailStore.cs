@@ -85,7 +85,7 @@ internal sealed class ThumbnailStore(Action loaded) : IDisposable
         }
     }
 
-    // Releases the least recently used downloaded thumbnails, never the one just added, until within the budget.
+    // Releases the least recently used downloaded thumbnails, never the one just added, until the store is within its budget.
     private void EvictOverBudget(string keep)
     {
         while (cachedBytes > MaximumCachedBytes)

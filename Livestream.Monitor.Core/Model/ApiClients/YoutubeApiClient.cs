@@ -72,8 +72,8 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
-            // the '&from_gaming=1' prevents the annoying popup message appearing at the top of the chat window
-            // not all youtube streams have chat support as chat can be disabled for a stream, need to see if there's an api call that provides that info
+            // '&from_gaming=1' prevents the annoying popup message at the top of the chat window.
+            // Chat can be disabled for a stream, so not every stream has it. Need to see if an api call provides that info.
             return Task.FromResult($"{BaseUrl}live_chat?v={livestreamModel.Id}&dark_theme=1&is_popout=1&from_gaming=1");
         }
 
@@ -223,7 +223,8 @@ namespace Livestream.Monitor.Model.ApiClients
                                         known.Count <= CompleteCheckCandidates;
                     if (!checkedBefore) known = [];
 
-                    // Quick checks skip the playlist for channels with known IDs; a livestream started since waits for the next complete check.
+                    // A quick check skips the playlist for channels with a cache entry and looks up only the IDs in it, so a livestream
+                    // whose video was not on the playlist at the last complete check is not found until the next complete check.
                     var candidates = complete ? CompleteCheckCandidates : checkedBefore ? 0 : QuickCheckCandidates;
                     var videos = await GetLivestreamVideos(channelIdentifier.ChannelId, candidates, known, cancellationToken);
                     playlistVideoIds = videos.PlaylistVideoIds;
@@ -374,7 +375,7 @@ namespace Livestream.Monitor.Model.ApiClients
         }
 
         /// <summary>
-        /// Shares an in-flight lookup for the same known ID list instance.
+        /// Shares one in-flight lookup between callers that pass the same list instance of known IDs.
         /// The first caller's token cancels the request; each caller's token cancels its own wait.
         /// </summary>
         private Task<List<Video>> LookUpKnownVideos(string channelId, IReadOnlyList<string> knownVideoIds, CancellationToken cancellationToken)

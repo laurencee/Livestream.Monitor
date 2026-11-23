@@ -23,8 +23,8 @@ internal abstract class DesktopWindow : IDisposable
     private static ExceptionDispatchInfo? failure;
     private static bool registered;
 
-    // Each child control's logical bounds as last placed, kept unrounded so a change smaller than a logical pixel still reaches
-    // the control's device size, with the logical size of its font.
+    // Each child control's logical bounds as last placed, with the logical size of its font. The bounds are kept unrounded
+    // so a change smaller than a logical pixel still reaches the control's device size.
     private readonly List<(nint Handle, RectangleF Bounds, float FontSize)> controls = [];
     private readonly Dictionary<int, Action<int>> commands = [];
 
@@ -34,7 +34,7 @@ internal abstract class DesktopWindow : IDisposable
     // Read-only texts are drawn on the window background rather than as input boxes.
     private readonly HashSet<nint> readOnlyTexts = [];
 
-    // Edit controls kept without inner margins, which setting a font restores.
+    // Edit controls whose inner margins are removed; setting a font brings the margins back.
     private readonly HashSet<nint> marginlessControls = [];
 
     // Child control changes can reach the screen before the frame they're drawn for.

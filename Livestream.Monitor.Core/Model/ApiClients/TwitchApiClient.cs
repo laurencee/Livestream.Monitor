@@ -190,7 +190,8 @@ namespace Livestream.Monitor.Model.ApiClients
             var queryResults = new List<LivestreamQueryResult>();
             if (monitoredChannels.Count == 0) return queryResults;
 
-            // Twitch "get streams" call only returns online streams so to determine if the stream actually exists/is still valid, we must specifically ask for channel details.
+            // Twitch's "get streams" call only returns online streams, so a channel missing from the result is treated as
+            // offline. Telling whether it still exists would need a separate request for its channel details.
             List<Stream> onlineStreams = [];
 
             int retryCount = 0;
@@ -284,7 +285,7 @@ namespace Livestream.Monitor.Model.ApiClients
             };
             RememberNextPageCursor(vodsPaginationKeyMap, nextPageKeyLookup, requestId, videosRoot.Pagination.Cursor);
 
-            // fallback for active live streams that don't populate the current stream vod thumbnail correctly
+            // Fallback: while a stream is live, its current VOD may still have a placeholder thumbnail, so use the stream's own.
             string liveThumbnailTemplate = null;
             if (videosRoot.Videos.Any(video => IsProcessingVodThumbnail(video.ThumbnailTemplateUrl)))
             {
@@ -334,8 +335,8 @@ namespace Livestream.Monitor.Model.ApiClients
             topStreamsPaginationKeyMap.TryGetValue(topStreamQuery, out var page);
             var query = new GetStreamsQuery()
             {
-                // twitch sometimes returns less streams than we ask for some unknown reason
-                // ask for a few more in the query to try avoid pagination issues
+                // Twitch sometimes returns fewer streams than requested, for an unknown reason.
+                // Ask for a few more to try to avoid pagination issues.
                 First = topStreamQuery.Take + 5,
                 Pagination = new CursorPagination()
                 {
@@ -431,7 +432,8 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (!string.IsNullOrEmpty(channel.TwitchLogin)) return channel.TwitchLogin;
 
-            // Ordinary display names differ from logins only in case; localized names cannot recover a missing login.
+            // An ordinary display name differs from the login only in case, so lower-casing it recovers a missing login.
+            // A localized display name cannot recover it, so look the user up instead.
             // https://help.twitch.tv/s/article/display-names-on-twitch
             var displayName = channel.DisplayName;
             if (!string.IsNullOrEmpty(displayName) && Regex.IsMatch(displayName, @"\A[A-Za-z0-9_]+\z"))
@@ -527,7 +529,7 @@ namespace Livestream.Monitor.Model.ApiClients
             var user = users.FirstOrDefault();
             if (user == null) return null;
 
-            // Retain the original alias for VOD pagination already open under the saved name.
+            // Also keep the entry under the saved name, so VOD pagination already open under that name keeps working.
             streamDisplayNameToUserMap[cacheKey] = user;
             streamDisplayNameToUserMap[user.DisplayName] = user;
             channel.DisplayName = user.DisplayName;

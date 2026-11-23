@@ -2009,9 +2009,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         scrollOffset = Math.Clamp(offset, 0, Math.Max(0, layout.Extent - layout.Viewport));
     }
 
-    /// <summary>
-    /// The offset that brings the item from start to end into the viewport, moving no further than needed.
-    /// </summary>
+    /// <summary>The offset that brings the item spanning start to end into the viewport, moving no further than needed.</summary>
     internal static int GetVisibleOffset(
         int start,
         int end,
@@ -2078,7 +2076,8 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
         firstMinimize = false;
     }
 
-    // Hiding a window cancels Windows' minimize animation, which reports no end; the delay leaves it time to finish.
+    // Hiding a window cancels Windows' minimize animation, and Windows does not report when the animation ends. The delay
+    // leaves it time to finish.
     private async Task HideAfterMinimizeAnimation(int minimizeNumber)
     {
         const int MinimizeAnimationMilliseconds = 300;

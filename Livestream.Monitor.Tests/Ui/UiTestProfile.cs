@@ -143,8 +143,8 @@ internal sealed class UiTestProfile : IDisposable
                 TryDelete(folder.FullName);
     }
 
-    // A file still held open, for example by a virus scanner, leaves the folder for a later run to remove; the test's
-    // own outcome stands.
+    // If a file is still held open, e.g. by a virus scanner, the folder is left for a later run to remove. The test's own
+    // outcome stands.
     private static void TryDelete(string directory)
     {
         try

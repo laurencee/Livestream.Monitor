@@ -404,8 +404,8 @@ internal sealed class OutputWindow : CanvasWindow
     // The height of the lines at Rich Edit's line height.
     private float LinesHeight(int lines)
     {
-        // A hundredth of a device pixel more keeps the control's height, rounded down to whole pixels, from losing a pixel of
-        // the last line to floating-point error.
+        // Add a hundredth of a device pixel: the control's height is rounded down to whole pixels, and floating-point error
+        // could otherwise cost the last line a pixel.
         const float RoundingAllowance = 0.01f;
         return lines * MeasureControlLineHeight() + RoundingAllowance / Scale;
     }

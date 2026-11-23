@@ -116,7 +116,7 @@ internal sealed class ProcessWindowObserver(IProcessWindowSource source, int roo
             }
             else
             {
-                // Proven unrelated identities never need retrying; unknown ancestry is checked at most once per second.
+                // A process proven unrelated is never checked again. One whose ancestry is still unknown is rechecked at most once per second.
                 var nextCheck = HasUnrelatedAncestor(candidate.Key, candidate.Value, processes)
                     ? long.MaxValue
                     : clock.ElapsedMilliseconds + AncestryRetryMilliseconds;

@@ -224,8 +224,8 @@ namespace Livestream.Monitor.Core.Settings
         }
 
         /// <summary>
-        /// The placeholders a stream or VOD command's arguments may use: the platform's, such as the url, and the
-        /// favourite qualities followed by the fallback quality.
+        /// The placeholders that a stream or VOD command's arguments may use. These are the platform's own (e.g. the url) and
+        /// one for the favourite qualities followed by the fallback quality.
         /// </summary>
         public Dictionary<string, string> GetLaunchReplacements(string apiName, string url)
         {

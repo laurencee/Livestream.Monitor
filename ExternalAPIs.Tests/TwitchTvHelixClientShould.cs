@@ -17,7 +17,7 @@ namespace ExternalAPIs.Tests
 
         public TwitchTvHelixClientShould()
         {
-            // create this file locally, it's already marked to be copied to the output in this test project
+            // Create this file locally. The test project already copies it to the output folder.
             var twitchAccessToken = File.ReadAllText("twitchaccesstoken.local");
             sut.SetAccessToken(twitchAccessToken);
         }

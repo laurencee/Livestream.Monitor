@@ -110,7 +110,7 @@ internal abstract class CanvasWindow : DesktopWindow
     /// <summary>False until the window is activated and while another window is active; the chrome is then drawn gray.</summary>
     private bool IsWindowActive { get; set; }
 
-    /// <summary>True to paint a hidden window, for one that shows itself once its first frame is presented.</summary>
+    /// <summary>True to paint while hidden, for a window that shows itself once its first frame is presented.</summary>
     protected virtual bool PaintsWhileHidden => false;
 
     /// <summary>Called once a frame has been presented, or found already presented.</summary>
@@ -185,7 +185,7 @@ internal abstract class CanvasWindow : DesktopWindow
         if (dialogs.Count == 0) focusBeforeDialogs = Ui.FocusedId;
         dialogs.Add(dialog);
 
-        // Ends any held press, such as on a scroll bar, whose release the dialog would otherwise receive.
+        // Ends any held press, e.g. on a scroll bar; the dialog would otherwise receive its release.
         if (Win32.GetCapture() == Handle) Win32.ReleaseCapture();
         Ui.ModalOverlay();
         Win32.SetFocus(Handle);
@@ -415,7 +415,7 @@ internal abstract class CanvasWindow : DesktopWindow
                 automation?.Release();
                 break;
 
-            // The system menu, Alt+F4 and the taskbar close as the caption's close button does.
+            // Closing from the system menu, Alt+F4 or the taskbar does what the caption's close button does.
             case Win32.WmClose:
                 RequestClose();
                 return 0;
@@ -485,8 +485,8 @@ internal abstract class CanvasWindow : DesktopWindow
                 return 0;
 
             // A quick second press on an open menu or a dialog's scroll bar, such as on its arrow, is a press like the first.
-            // Elsewhere it is dropped while a dialog is open or after a first press in one, and so is its release, so a double
-            // click that closes a dialog can neither answer the next dialog nor act on the window behind it.
+            // Elsewhere, while a dialog is open or after a first press in one, the second press and its release are dropped. A
+            // double click that closes a dialog then cannot answer the next dialog or act on the window behind it.
             case Win32.WmLeftButtonDoubleClick when Ui.HasMenu || ActiveDialog?.IsOnScrollBar(ToLogical(lParam)) == true:
                 goto case Win32.WmLeftButtonDown;
             case Win32.WmLeftButtonDoubleClick:
@@ -611,9 +611,9 @@ internal abstract class CanvasWindow : DesktopWindow
     private bool IsWaitCursorOver(nint window) =>
         ActiveDialog is { IsProgress: true } dialog && IsOwnWindow(window) && dialog.PanelBounds.Contains(ReadPointer());
 
-    // Windows sets the cursor again only when the pointer moves or the window under it changes, and a dialog drawn on this
-    // window does neither; so when a progress dialog opens or closes under a still pointer, the window under it is asked
-    // to set its cursor as a move would.
+    // Windows sets the cursor again only when the pointer moves or the window under it changes. A dialog drawn on this
+    // window causes neither, so when a progress dialog opens or closes under a still pointer, the window under the
+    // pointer is asked to set its cursor, as a move would.
     private void UpdateWaitCursor()
     {
         if (!pointerInWaitArea && ActiveDialog is not { IsProgress: true }) return;

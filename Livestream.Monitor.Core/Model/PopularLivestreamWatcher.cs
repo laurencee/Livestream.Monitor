@@ -11,7 +11,7 @@ using Livestream.Monitor.Model.Monitoring;
 
 namespace Livestream.Monitor.Model
 {
-    /// <summary>  Watches for popular livestreams/special events and notifies the user that something might going on  </summary>
+    /// <summary> Watches for popular livestreams/special events and notifies the user that something might be going on </summary>
     public class PopularLivestreamWatcher
     {
         private const int PollMs = 60000;

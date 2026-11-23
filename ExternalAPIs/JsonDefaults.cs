@@ -85,7 +85,8 @@ internal sealed class IgnoreNullPropertiesConverterFactory : JsonConverterFactor
                 writer.WriteStartObject();
                 foreach (var property in document.RootElement.EnumerateObject())
                 {
-                    // Newtonsoft's per-property null-ignore setting preserved initialized or previously read values.
+                    // Skip nulls, as Newtonsoft's per-property null-ignore setting did, so the property keeps its initialized or
+                    // previously read value.
                     if (property.Value.ValueKind == JsonValueKind.Null && propertyNames.Contains(property.Name))
                         continue;
 

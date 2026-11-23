@@ -20,7 +20,7 @@ namespace ExternalAPIs.Youtube
         /// </summary>
         Task<List<Video>> GetLiveVideos(IReadOnlyCollection<string> videoIds, CancellationToken cancellationToken = default);
 
-        /// <summary> Lookup channel details channel ids </summary>
+        /// <summary> Look up channel details from channel ids </summary>
         Task<ChannelsRoot> GetChannelDetailsFromIds(List<string> channelIds, CancellationToken cancellationToken = default);
 
         /// <summary> Lookup channel details from a handle e.g. @GoogleDevelopers </summary>

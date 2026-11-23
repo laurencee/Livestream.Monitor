@@ -70,7 +70,7 @@ internal sealed class VerticalScrollBar(Action<int> scrollTo)
     public bool IsInteracting => pressed != Part.None;
     public RectangleF Bounds => bounds;
 
-    /// <summary>Places the bar for content of the extent, of which the viewport is shown from the offset.</summary>
+    /// <summary>Places the bar for content of the given extent, of which a viewport-sized part is shown, starting at the offset.</summary>
     public void Update(
         RectangleF area,
         int extent,

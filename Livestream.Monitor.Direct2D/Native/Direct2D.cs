@@ -306,7 +306,7 @@ internal sealed unsafe class D2DDeviceContext(void* pointer) : ComObject(pointer
         return new D2DBrush(brush);
     }
 
-    /// <summary>An uninitialized bitmap of the size and properties.</summary>
+    /// <summary>An uninitialized bitmap of the given size and properties.</summary>
     public D2DBitmap CreateBitmap(D2DSizeU size, in D2DBitmapProperties1 properties)
     {
         var create =

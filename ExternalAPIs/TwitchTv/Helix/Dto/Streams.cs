@@ -51,7 +51,7 @@ namespace ExternalAPIs.TwitchTv.Helix.Dto
         [JsonPropertyName("language")]
         public string Language { get; set; }
 
-        /// <summary> Contains a {width} and {height} property that must be replaced to get the actual url </summary>
+        /// <summary> Contains {width} and {height} placeholders that must be replaced to get the actual url </summary>
         [JsonPropertyName("thumbnail_url")]
         public string ThumbnailTemplateUrl { get; set; }
     }

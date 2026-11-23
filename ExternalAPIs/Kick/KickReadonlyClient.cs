@@ -47,7 +47,7 @@ public class KickReadonlyClient : IKickReadonlyClient
                 break;
         }
 
-        if (queryParams.Count > 0) // append query params
+        if (queryParams.Count > 0)
         {
             urlBuilder.Append("?");
             for (int i = 0; i < queryParams.Count; i++)

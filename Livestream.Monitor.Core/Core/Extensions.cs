@@ -54,11 +54,9 @@ namespace Livestream.Monitor.Core
         /// Returns a concatenated string with each exception message on a new line.
         /// An <see cref="AggregateException"/> contributes the messages of every inner exception instead of its own.
         /// </summary>
-        /// <param name="exception"><see cref="Exception"/> object</param>
         /// <param name="skipExceptionLevels">
         /// Optional argument to ignore the message from n top level exceptions; for an aggregate it applies to each inner exception
         /// </param>
-        /// <returns>Concatenated string with each exception message on a new line</returns>
         public static string ExtractErrorMessage(this Exception exception, int skipExceptionLevels = 0)
         {
             if (exception == null) return null;

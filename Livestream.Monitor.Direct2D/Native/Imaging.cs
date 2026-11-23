@@ -100,7 +100,7 @@ internal sealed unsafe partial class WicFactory(void* pointer) : ComObject(point
         in Guid pixelFormat)
     {
         const uint NoCache = 2;
-        // Native calls receive pointers to stack copies, which the GC never moves, rather than to static fields.
+        // Give native calls pointers to stack copies, which the GC never moves, instead of pointers to static fields.
         var container = ContainerFormatPng;
         var create = (delegate* unmanaged<void*, Guid*, void*, out void*, int>)Methods[CreateEncoderSlot];
         Check(create(

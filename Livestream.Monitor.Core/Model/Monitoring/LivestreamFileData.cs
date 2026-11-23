@@ -14,10 +14,7 @@ namespace Livestream.Monitor.Model.Monitoring
 
     public class LivestreamFileEntry
     {
-        /// <summary>
-        /// This value needs to represent the channel rather than the stream to support youtube
-        /// which allows multiple livestreams concurrently from the 1 channel.
-        /// </summary>
+        /// <summary> Identifies the channel, not the stream, because YouTube lets one channel run several livestreams at once. </summary>
         [JsonRequired]
         [JsonPropertyName("LivestreamId")]
         public string ChannelId { get; set; }

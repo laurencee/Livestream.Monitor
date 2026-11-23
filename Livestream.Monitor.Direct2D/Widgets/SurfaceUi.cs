@@ -38,7 +38,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         TextInset = ContextMenuStyle.EndPadding,
     };
 
-    // On the automation group stack in place of a group that is covered or scrolled out of view.
+    // Pushed on the automation group stack in place of a group that is covered or scrolled out of view.
     private const int HiddenGroup = -2;
 
     // Button texts drawn as centred glyphs rather than labels.
@@ -96,8 +96,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
     public bool HasFocusedInput => inputs.Values.Any(input => Win32.GetFocus() == input.Handle);
 
     /// <summary>
-    /// The id of the focused text input, or of the widget last focused while the window holds keyboard focus, for
-    /// <see cref="Focus"/> to restore; null for none.
+    /// The id that <see cref="Focus"/> restores: the focused text input, or the widget last focused while the window holds
+    /// keyboard focus. Null for none.
     /// </summary>
     public string? FocusedId
     {
@@ -343,7 +343,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Label(text, bounds, color, size, weight, alignment, wrap, trim);
     }
 
-    /// <summary>Text that names a widget or group, which already carries it for UI Automation.</summary>
+    /// <summary>Text that names a widget or group; UI Automation already gets the name from that widget or group.</summary>
     public void Label(
         string text,
         RectangleF bounds,
@@ -701,7 +701,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         Hit(id, bounds, action, name ?? text);
     }
 
-    /// <summary>A clickable area drawn by the caller, such as a column header, named as the caller gives.</summary>
+    /// <summary>A clickable area that the caller draws and names, e.g. a column header.</summary>
     public void Hit(
         string id,
         RectangleF bounds,
@@ -1780,7 +1780,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         var fittingRows = (int)((Math.Min(limit, space) - insets) / active.RowHeight);
         var rows = Math.Min(active.Choices.Count, Math.Max(1, fittingRows));
 
-        // Once more rows fit, as when the window grows, the first shown choice moves up rather than leaving rows empty.
+        // Once more rows fit, e.g. when the window grows, the first shown choice moves up rather than leaving rows empty.
         active.Offset = Math.Clamp(active.Offset, 0, active.Choices.Count - rows);
 
         // A list that overflows gets a scroll bar beside its choices and stays as wide as its control, clipping
@@ -2034,7 +2034,7 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         public MenuStyle Style { get; } = style;
         public float RowHeight => Style.RowHeight;
 
-        /// <summary>True for a combo box, whose choices are its own automation children and whose selected choice is its value.</summary>
+        /// <summary>True for a combo box. Its choices are its own automation children and its selected choice is its value.</summary>
         public bool IsComboBox { get; } = kind == MenuKind.ComboBox;
 
         /// <summary>True for a combo box or drop-down list, which uses combo box list styling.</summary>
