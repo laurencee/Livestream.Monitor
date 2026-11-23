@@ -45,7 +45,7 @@ namespace Livestream.Monitor.Model.Monitoring
         Task RefreshLivestreams();
 
         /// <summary> Prevent a specific error message from raising query failed exceptions </summary>
-        /// <param name="errorToIgnore">The error message from a query failure to ignore</param>
+        /// <param name="errorToIgnore">The extracted message of a query failure to ignore</param>
         void IgnoreQueryFailure(string errorToIgnore);
     }
 }

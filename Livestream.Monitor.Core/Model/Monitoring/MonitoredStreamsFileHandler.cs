@@ -121,8 +121,8 @@ namespace Livestream.Monitor.Model.Monitoring
                 foreach (var entry in groupedLivestream)
                 {
                     var matchingChannel = queriedChannels.FirstOrDefault(x => x.ChannelIdentifier.ChannelId.IsEqualTo(entry.ChannelId));
-                    if (matchingChannel != null) entry.DisplayName = matchingChannel.LivestreamModel.DisplayName;
-                    else fileEntries.Remove(entry); // will have to be manually re-imported, most likely the channel has been removed/banned
+                    if (matchingChannel == null) fileEntries.Remove(entry); // most likely removed or banned; has to be re-imported by hand
+                    else if (matchingChannel.IsSuccess) entry.DisplayName = matchingChannel.LivestreamModel.DisplayName;
                 }
 
                 tempChannels.ForEach(x => apiClient.RemoveChannel(x));

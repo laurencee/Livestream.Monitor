@@ -41,7 +41,7 @@ namespace Livestream.Monitor.Core
 
             var exceptions = livestreamQueryResults
                 .Where(x => !x.IsSuccess &&
-                            !ignoredQueryFailures.Contains(x.FailedQueryException.Message))
+                            !ignoredQueryFailures.Contains(x.FailedQueryException.ExtractErrorMessage()))
                 .Select(x => x.FailedQueryException)
                 .Distinct() // a failed provider request shares one exception across its channels
                 .ToList();

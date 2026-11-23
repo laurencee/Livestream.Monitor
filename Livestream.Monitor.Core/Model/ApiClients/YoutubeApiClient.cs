@@ -62,9 +62,12 @@ namespace Livestream.Monitor.Model.ApiClients
         {
             if (livestreamModel == null) throw new ArgumentNullException(nameof(livestreamModel));
 
+            // Channels converted from old files have no handle.
+            var channel = livestreamModel.ChannelIdentifier;
+            var channelPath = channel.DisplayName?.StartsWith('@') == true ? channel.DisplayName : $"channel/{channel.ChannelId}";
             var streamUrl = livestreamModel.Live
                 ? $"{BaseUrl}watch?v={livestreamModel.Id}"
-                : $"{BaseUrl}{livestreamModel.ChannelIdentifier.DisplayName}"; // use the youtube handle
+                : $"{BaseUrl}{channelPath}";
             return Task.FromResult(streamUrl);
         }
 
@@ -237,11 +240,12 @@ namespace Livestream.Monitor.Model.ApiClients
                     // Keep an offline placeholder when the playlist contains no active broadcasts.
                     if (livestreamModels.Count == 0)
                     {
+                        var name = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId;
                         queryResults.Add(new LivestreamQueryResult(channelIdentifier)
                         {
-                            LivestreamModel = new LivestreamModel(channelIdentifier.DisplayName, channelIdentifier)
+                            LivestreamModel = new LivestreamModel(name, channelIdentifier)
                             {
-                                DisplayName = channelIdentifier.DisplayName ?? channelIdentifier.ChannelId,
+                                DisplayName = name,
                                 Description = "[Offline youtube stream]",
                                 IsChatDisabled = true,
                             },
