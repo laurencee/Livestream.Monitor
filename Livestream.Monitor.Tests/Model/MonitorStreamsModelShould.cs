@@ -493,13 +493,4 @@ public class MonitorStreamsModelShould
         provider.Initialize(Arg.Any<CancellationToken>()).Returns(new InitializeApiClientResult());
         return provider;
     }
-
-    private sealed class StartupClock : TimeProvider
-    {
-        private long timestamp;
-
-        public override long TimestampFrequency => TimeSpan.TicksPerSecond;
-        public override long GetTimestamp() => Interlocked.Read(ref timestamp);
-        public void Advance(TimeSpan duration) => Interlocked.Add(ref timestamp, duration.Ticks);
-    }
 }

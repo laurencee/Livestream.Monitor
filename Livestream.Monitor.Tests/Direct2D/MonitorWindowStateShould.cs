@@ -19,30 +19,44 @@ public class MonitorWindowStateShould
 {
     private const string RefreshErrorTitle = "Error refreshing livestreams";
 
-    [Fact]
-    public async Task ShowRowsOnceTheFirstProviderRefreshesWhileStayingBusyUntilInitializationCompletes()
+    // The startup progress dialog opens only if no rows have arrived after a second, and never once rows are showing.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ShowRowsOnceTheFirstProviderRefreshesWhileStayingBusyUntilInitializationCompletes(bool slowStart)
     {
+        var progressShown = false;
         var progressClosed = false;
-        var model = Create(showProgress: (_, _) =>
-        {
-            var progress = Substitute.For<IDisposable>();
-            progress.When(x => x.Dispose()).Do(_ => progressClosed = true);
-            return progress;
-        });
+        var clock = new StartupClock();
+        var startupProgressDelay = TimeSpan.FromSeconds(1);
+        var model = Create(showProgress: ShowProgress, timeProvider: clock);
         var pending = new TaskCompletionSource();
         model.StreamsModel.Initialize(Arg.Any<IUserDialogs>(), Arg.Any<CancellationToken>()).Returns(pending.Task);
 
         model.StreamsModel.Livestreams.Add(Stream("offline", "Channel", "youtube", online: false, viewers: 0));
 
         var initialization = model.Initialize();
+        model.Tick();
 
-        Assert.False(progressClosed);
+        Assert.False(progressShown);
         Assert.True(model.IsContentLoading);
         Assert.False(model.CanOpenContextMenu);
 
-        model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
+        if (slowStart)
+        {
+            clock.Advance(startupProgressDelay);
+            model.Tick();
 
-        Assert.True(progressClosed);
+            Assert.True(progressShown);
+            Assert.False(progressClosed);
+        }
+
+        model.StreamsModel.ProviderRefreshComplete += Raise.Event<EventHandler>();
+        clock.Advance(startupProgressDelay);
+        model.Tick();
+
+        Assert.Equal(slowStart, progressShown);
+        Assert.Equal(slowStart, progressClosed);
         Assert.False(model.IsContentLoading);
         Assert.True(model.Busy);
 
@@ -65,6 +79,14 @@ public class MonitorWindowStateShould
         model.StreamsModel.CanRefreshLivestreams.Returns(true);
 
         Assert.True(model.FollowedRowsSettled);
+
+        IDisposable ShowProgress(string title, string message)
+        {
+            progressShown = true;
+            var progress = Substitute.For<IDisposable>();
+            progress.When(x => x.Dispose()).Do(_ => progressClosed = true);
+            return progress;
+        }
     }
 
     [Fact]
@@ -605,7 +627,8 @@ public class MonitorWindowStateShould
         IUserDialogs dialogs = null,
         Func<string, string, IDisposable> showProgress = null,
         Settings savedSettings = null,
-        Func<string, string, (IDisposable Dialog, Task Completion)> openBrowsingError = null)
+        Func<string, string, (IDisposable Dialog, Task Completion)> openBrowsingError = null,
+        TimeProvider timeProvider = null)
     {
         var settings = Substitute.For<ISettingsHandler>();
         settings.Settings.Returns(savedSettings ?? new Settings());
@@ -617,7 +640,8 @@ public class MonitorWindowStateShould
             apiClientFactory: Substitute.For<IApiClientFactory>(),
             monitorStreamsModel: streams,
             showProgress: showProgress,
-            openBrowsingError: openBrowsingError
+            openBrowsingError: openBrowsingError,
+            timeProvider: timeProvider
         );
     }
 

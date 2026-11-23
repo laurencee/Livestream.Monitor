@@ -161,9 +161,6 @@ internal abstract class CanvasWindow : DesktopWindow
         string affirmative,
         string negative = "Cancel")
     {
-        // A dialog's native message control shows through drawn content, so only the active dialog shows its message.
-        ActiveDialog?.Suspend();
-
         var dialog = new DialogPane(
             owner: this,
             title: title,
@@ -171,6 +168,18 @@ internal abstract class CanvasWindow : DesktopWindow
             kind: kind,
             affirmative: affirmative,
             negative: negative);
+
+        // A progress dialog that opens while another dialog is up (e.g. delayed startup progress over the Twitch authorization
+        // prompt) goes underneath it, so it cannot hide a prompt the operation is waiting on.
+        if (kind == DialogKind.Progress && ActiveDialog is { IsProgress: false })
+        {
+            dialog.Suspend();
+            dialogs.Insert(dialogs.Count - 1, dialog);
+            return dialog;
+        }
+
+        // A dialog's native message control shows through drawn content, so only the active dialog shows its message.
+        ActiveDialog?.Suspend();
 
         // The focus held before the first dialog returns when the last one closes.
         if (dialogs.Count == 0) focusBeforeDialogs = Ui.FocusedId;

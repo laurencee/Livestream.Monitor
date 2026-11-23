@@ -34,7 +34,13 @@ internal sealed class MonitorWindowState
     private const string RefreshErrorTitle = "Error refreshing livestreams";
     private const string VodChannelPrompt = "Enter or select a channel to browse VODs";
     private const int DefaultPageSize = 15;
+
+    // The list has its own loading spinner, so startup opens the progress dialog only if loading takes longer than this.
+    // Opening it at once would flash its bright backdrop on quick starts.
+    private static readonly TimeSpan StartupProgressDelay = TimeSpan.FromSeconds(1);
+
     private readonly IUserDialogs dialogs;
+    private readonly TimeProvider timeProvider;
     private readonly Func<string, string, IDisposable>? showProgress;
     private readonly Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError;
     private readonly List<LivestreamModel> topStreams = [];
@@ -49,17 +55,24 @@ internal sealed class MonitorWindowState
     private int vodPageSize = DefaultPageSize;
     private IDisposable? browsingError;
 
+    // When startup began, kept only while its progress dialog is still pending.
+    private long? startupProgressSince;
+
+    private IDisposable? startupProgress;
+
     public MonitorWindowState(
         IUserDialogs dialogs,
         ISettingsHandler? settingsHandler = null,
         IApiClientFactory? apiClientFactory = null,
         IMonitorStreamsModel? monitorStreamsModel = null,
         Func<string, string, IDisposable>? showProgress = null,
-        Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError = null)
+        Func<string, string, (IDisposable Dialog, Task Completion)>? openBrowsingError = null,
+        TimeProvider? timeProvider = null)
     {
         this.dialogs = dialogs;
         this.showProgress = showProgress;
         this.openBrowsingError = openBrowsingError;
+        this.timeProvider = timeProvider ?? TimeProvider.System;
         SettingsHandler = settingsHandler ?? new SettingsHandler();
         OnlineOnly = SettingsHandler.Settings.ShowOnlineOnly;
         ApiClientFactory = apiClientFactory ?? new ApiClientFactory(SettingsHandler, Program.CachePath);
@@ -191,14 +204,15 @@ internal sealed class MonitorWindowState
     public void BeginInitialQuery() => StreamsModel.BeginInitialQuery();
 
     /// <summary>
-    /// Loads followed channels and starts the first refresh. Shows rows when a provider's results are first applied.
-    /// Stays busy until the primary queries and any required rechecks complete.
+    /// Loads followed channels and starts the first refresh. Shows rows as soon as the first provider's results arrive; if
+    /// none have arrived after a short delay, <see cref="Tick"/> opens a progress dialog. Stays busy until the primary
+    /// queries and any required rechecks complete.
     /// </summary>
     public async Task Initialize()
     {
         await RunContentQuery(DescribeError, async () =>
         {
-            var progress = showProgress?.Invoke("Initializing", "Initializing App...");
+            startupProgressSince = timeProvider.GetTimestamp();
             StreamsModel.ProviderRefreshComplete += ShowRows;
             try
             {
@@ -210,22 +224,15 @@ internal sealed class MonitorWindowState
             {
                 StreamsModel.ProviderRefreshComplete -= ShowRows;
                 // Close the progress dialog before showing an error.
-                CloseProgress();
+                CloseStartupProgress();
             }
 
             void ShowRows(object? sender, EventArgs args)
             {
                 StreamsModel.ProviderRefreshComplete -= ShowRows;
-                CloseProgress();
+                CloseStartupProgress();
                 IsContentLoading = false;
                 Changed?.Invoke();
-            }
-
-            void CloseProgress()
-            {
-                // ReSharper disable once AccessToModifiedClosure -- clearing progress prevents the finally block from disposing it twice
-                progress?.Dispose();
-                progress = null;
             }
         });
 
@@ -235,6 +242,12 @@ internal sealed class MonitorWindowState
 
     public void Tick()
     {
+        if (startupProgressSince is { } since && timeProvider.GetElapsedTime(since) >= StartupProgressDelay)
+        {
+            startupProgressSince = null;
+            startupProgress = showProgress?.Invoke("Initializing", "Initializing App...");
+        }
+
         // Rescheduled before refreshing, so a failed refresh waits a full period instead of retrying every frame.
         if (!Busy && StreamsModel.Initialised && Environment.TickCount64 >= nextRefresh)
         {
@@ -591,6 +604,14 @@ internal sealed class MonitorWindowState
             Busy = false;
             Changed?.Invoke();
         }
+    }
+
+    // Cancels a pending dialog and closes an open one. Clearing the fields stops the finally block from closing it again.
+    private void CloseStartupProgress()
+    {
+        startupProgressSince = null;
+        startupProgress?.Dispose();
+        startupProgress = null;
     }
 
     private async Task RunContentQuery(Func<Exception, ErrorDialog> describeError, Func<Task> action, Func<bool>? isCurrent = null)
