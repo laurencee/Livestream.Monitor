@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -73,28 +74,36 @@ namespace ExternalAPIs
         {
             if (string.IsNullOrWhiteSpace(request)) throw new ArgumentNullException(nameof(request));
 
+            // With ResponseHeadersRead the client's own timeout ends once the headers arrive, so this deadline also covers reading the body.
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            deadline.CancelAfter(httpClient.Timeout);
+
             try
             {
-                var responseTask = httpClient.GetAsync(request, cancellationToken);
+                var responseTask = httpClient.GetAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
 
                 using var httpResponseMessage = await responseTask.ConfigureAwait(false);
-                await httpResponseMessage.EnsureSuccessStatusCodeAsync().ConfigureAwait(false);
-                var content = httpResponseMessage.Content;
-                var response = await content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return JsonSerializer.Deserialize<T>(response, JsonDefaults.Options);
+                await httpResponseMessage.EnsureSuccessStatusCodeAsync(deadline.Token).ConfigureAwait(false);
+
+                await using var body = await httpResponseMessage.Content.ReadAsStreamAsync(deadline.Token).ConfigureAwait(false);
+                return await JsonSerializer.DeserializeAsync<T>(body, JsonDefaults.Options, deadline.Token).ConfigureAwait(false);
             }
-            catch (TaskCanceledException e) when (!cancellationToken.IsCancellationRequested)
+            catch (OperationCanceledException e) when (!cancellationToken.IsCancellationRequested)
             {
                 throw new TimeoutException("Timed out executing web request", e);
             }
+            catch (IOException e)
+            {
+                // A connection lost while the body is read fails the stream read; callers handle it as a failed request.
+                throw new HttpRequestException(e.Message, e);
+            }
         }
 
-        private static async Task EnsureSuccessStatusCodeAsync(this HttpResponseMessage response)
+        private static async Task EnsureSuccessStatusCodeAsync(this HttpResponseMessage response, CancellationToken cancellationToken)
         {
             if (response.IsSuccessStatusCode) return;
 
-            // Use the response body as the error message. The status comes first so an empty body still shows a cause.
-            var content = await response.Content.ReadAsStringAsync();
+            var content = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             response.Content?.Dispose();
 
