@@ -482,6 +482,7 @@ namespace Livestream.Monitor.Model.Monitoring
             var refreshedChannels = new HashSet<ChannelIdentifier>(successfulQueries.Select(x => x.ChannelIdentifier));
             var removedStreams = Livestreams.Where(x => refreshedChannels.Contains(x.ChannelIdentifier)).Except(livestreamModels).ToList();
 
+            // Added before the old rows are removed: a new broadcast notifies only while its channel still has a row.
             foreach (var livestreamModel in newStreams)
             {
                 Livestreams.Add(livestreamModel);

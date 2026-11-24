@@ -349,6 +349,21 @@ public class MonitorWindowStateShould
 
         await model.Refresh();
         await dialogs.Received(ReportsSoFar + 1).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+
+        // An unanswered report does not hold up the automatic refreshes after it, and their failures are not reported on top of it.
+        model.SettingsHandler.Settings.DisableRefreshErrorDialogs = false;
+        var answer = new TaskCompletionSource<bool>();
+        dialogs.Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>()).Returns(answer.Task);
+        var unanswered = model.Refresh(automatic: true);
+        Assert.False(model.Busy);
+
+        model.StreamsModel.ClearReceivedCalls();
+        await model.Refresh(automatic: true);
+        await model.StreamsModel.Received(1).RefreshLivestreams();
+        await dialogs.Received(ReportsSoFar + 2).Confirm(RefreshErrorTitle, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+
+        answer.SetResult(true);
+        await unanswered;
     }
 
     [Fact]
@@ -430,6 +445,41 @@ public class MonitorWindowStateShould
 
         const int OverOneDaySeconds = 93784;
         Assert.Equal("26h 03m 04s", TimeSpan.FromSeconds(OverOneDaySeconds).ToTotalHoursText());
+    }
+
+    // YouTube adds a broadcast as a new row in place of its channel's offline row.
+    [Fact]
+    public void NotifyWhenAFollowedChannelGainsALiveRowAfterTheFirstRefresh()
+    {
+        var settings = new Settings();
+        var model = Create(savedSettings: settings);
+        var provider = Substitute.For<IApiClient>();
+        provider.ApiName.Returns("youtube");
+        var liveAtStartup = new ChannelIdentifier(provider, "live at startup");
+        var channel = new ChannelIdentifier(provider, "channel");
+        var muted = new ChannelIdentifier(provider, "muted");
+        var mutedOffline = new LivestreamModel("@muted", muted);
+        var rows = model.StreamsModel.Livestreams;
+        rows.Add(new LivestreamModel("@startup", liveAtStartup));
+        rows.Add(new LivestreamModel("@channel", channel));
+        rows.Add(mutedOffline);
+        settings.ToggleStreamMute(mutedOffline.UniqueStreamKey);
+        var notified = new List<LivestreamModel>();
+        model.StreamOnline += notified.Add;
+
+        // The startup queries find broadcasts that were already live.
+        rows.Add(Broadcast("startup video", liveAtStartup));
+        model.StreamsModel.LivestreamsRefreshComplete += Raise.Event<EventHandler>();
+        Assert.Empty(notified);
+
+        // Afterwards only a followed, unmuted channel's new broadcast notifies; a channel followed while live does not.
+        var video = Broadcast("video", channel);
+        rows.Add(video);
+        rows.Add(Broadcast("muted video", muted));
+        rows.Add(Broadcast("new video", new ChannelIdentifier(provider, "new")));
+        Assert.Equal([video], notified);
+
+        static LivestreamModel Broadcast(string id, ChannelIdentifier channel) => new(id, channel) { Live = true };
     }
 
     [Theory]

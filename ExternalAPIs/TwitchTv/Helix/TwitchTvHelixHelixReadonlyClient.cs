@@ -23,14 +23,17 @@ namespace ExternalAPIs.TwitchTv.Helix
 
             var request = $"{RequestConstants.FollowedChannels.Replace("{0}", userId)}&first={DefaultItemsPerQuery}";
             var followedChannelsRoot = await ExecuteRequest<FollowedChannelsRoot>(request, cancellationToken);
-            // if necessary, page until we get all followed streams
-            while (followedChannelsRoot.Total > 0 && followedChannelsRoot.FollowedChannels.Count < followedChannelsRoot.Total)
+            var followedChannels = followedChannelsRoot.FollowedChannels;
+
+            var cursor = followedChannelsRoot.Pagination?.Cursor;
+            while (!String.IsNullOrEmpty(cursor))
             {
-                var pagedRequest = $"{request}&after={followedChannelsRoot.Pagination.Cursor}";
-                var pagedFollows = await ExecuteRequest<FollowedChannelsRoot>(pagedRequest, cancellationToken);
-                followedChannelsRoot.FollowedChannels.AddRange(pagedFollows.FollowedChannels);
+                var page = await ExecuteRequest<FollowedChannelsRoot>($"{request}&after={cursor}", cancellationToken);
+                followedChannels.AddRange(page.FollowedChannels);
+                cursor = page.Pagination?.Cursor;
             }
-            return followedChannelsRoot.FollowedChannels;
+
+            return followedChannels;
         }
 
         public async Task<StreamsRoot> GetStreams(GetStreamsQuery getStreamsQuery, CancellationToken cancellationToken = default)

@@ -408,6 +408,7 @@ internal static class VirtualKey
     public const int Enter = 0x0D;
     public const int Shift = 0x10;
     public const int Control = 0x11;
+    public const int Alt = 0x12;
     public const int Escape = 0x1B;
     public const int Space = 0x20;
     public const int PageUp = 0x21;

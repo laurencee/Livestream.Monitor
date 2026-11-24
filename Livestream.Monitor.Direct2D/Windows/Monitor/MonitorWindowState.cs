@@ -49,6 +49,10 @@ internal sealed class MonitorWindowState
     private bool followedKeysStale = true;
     private long nextRefresh;
     private int failedAutomaticRefreshes;
+    private bool reportingRefreshFailure;
+
+    // The startup queries still add rows that are already live after the model reports itself initialised.
+    private bool firstRefreshComplete;
     private int gameSuggestionGeneration;
     private int contentQueryGeneration;
     private int topStreamsPageSize = DefaultPageSize;
@@ -84,6 +88,7 @@ internal sealed class MonitorWindowState
             {
                 stream.PropertyChanged += OnStreamChanged;
                 displayedUptimes[stream] = stream.Uptime.ToTotalHoursText();
+                if (stream.Live && firstRefreshComplete) NotifyAddedLiveRow(stream);
             }
 
             foreach (LivestreamModel stream in args.OldItems ?? Array.Empty<LivestreamModel>())
@@ -97,7 +102,11 @@ internal sealed class MonitorWindowState
         };
 
         StreamsModel.ProviderRefreshComplete += (_, _) => UpdateDisplayedUptimes();
-        StreamsModel.LivestreamsRefreshComplete += (_, _) => UpdateDisplayedUptimes();
+        StreamsModel.LivestreamsRefreshComplete += (_, _) =>
+        {
+            firstRefreshComplete = true;
+            UpdateDisplayedUptimes();
+        };
 
         SettingsHandler.Settings.PropertyChanged += (_, _) => Changed?.Invoke();
     }
@@ -260,29 +269,48 @@ internal sealed class MonitorWindowState
     /// Refreshes the followed channels. A requested refresh reports every failure. An automatic refresh reports nothing
     /// while another page is shown. On the followed page it reports failed provider queries only from the third failed
     /// refresh in a row, unless refresh error dialogs are disabled. Each reported failed provider query can be ignored for
-    /// the rest of the session.
+    /// the rest of the session. A report waits for its answer without keeping the state busy, so automatic refreshes
+    /// continue behind it; their failures are not reported while it is open.
     /// </summary>
     public async Task Refresh(bool automatic = false)
     {
-        await RunAndReport(ReportFailure, progress: null, async () =>
+        Exception? refreshFailure = null;
+        await RunAndReport(KeepFailure, progress: null, async () =>
         {
             await StreamsModel.RefreshLivestreams();
             ScheduleRefresh();
             if (automatic) failedAutomaticRefreshes = 0;
         });
 
-        // After the dialogs close, the next automatic refresh waits a full period.
+        // After a failure too, the next automatic refresh waits a full period.
         if (automatic) ScheduleRefresh();
+
+        // Off the followed page an automatic refresh failure is neither reported nor counted; the count restarts when the page is shown again.
+        if (refreshFailure == null || automatic && Page != MonitorPage.Followed) return;
+
+        if (automatic) failedAutomaticRefreshes++;
+        if (reportingRefreshFailure) return;
+
+        reportingRefreshFailure = true;
+        try
+        {
+            await ReportFailure(refreshFailure);
+        }
+        finally
+        {
+            reportingRefreshFailure = false;
+        }
+
+        Task KeepFailure(Exception exception)
+        {
+            refreshFailure = exception;
+            return Task.CompletedTask;
+        }
 
         // The list counts the refreshes that coincide with initialization as its first, so its first failure that
         // opens dialogs is the third failed refresh in a row.
         async Task ReportFailure(Exception exception)
         {
-            // Off the followed page an automatic refresh failure is neither reported nor counted; the count restarts when the page is shown again.
-            if (automatic && Page != MonitorPage.Followed) return;
-
-            if (automatic) failedAutomaticRefreshes++;
-
             if (exception is not AggregateException aggregate)
             {
                 await dialogs.ShowMessage(RefreshErrorTitle, exception.ExtractErrorMessage());
@@ -637,6 +665,25 @@ internal sealed class MonitorWindowState
             displayedUptimes[stream] = stream.Uptime.ToTotalHoursText();
 
         Changed?.Invoke();
+    }
+
+    // YouTube adds a broadcast as a new row in place of its channel's offline row, so going live there changes no row's
+    // state. A channel with no other row is only now being followed.
+    private void NotifyAddedLiveRow(LivestreamModel stream)
+    {
+        var settings = SettingsHandler.Settings;
+        if (settings.DisableNotifications) return;
+
+        var channelHasOtherRow = false;
+        foreach (var row in StreamsModel.Livestreams)
+        {
+            if (!row.ChannelIdentifier.Equals(stream.ChannelIdentifier)) continue;
+            if (settings.ExcludeFromNotifying.Contains(row.UniqueStreamKey)) return;
+
+            if (!ReferenceEquals(row, stream)) channelHasOtherRow = true;
+        }
+
+        if (channelHasOtherRow) StreamOnline?.Invoke(stream);
     }
 
     private void OnStreamChanged(object? sender, PropertyChangedEventArgs args)

@@ -1146,7 +1146,8 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
             return true;
         }
 
-        if (key == VirtualKey.A && Win32.IsKeyDown(VirtualKey.Control) && HasFocusedInput)
+        // AltGr reports Control and Alt together and types a character, such as "ą" on a Polish keyboard.
+        if (key == VirtualKey.A && Win32.IsKeyDown(VirtualKey.Control) && !Win32.IsKeyDown(VirtualKey.Alt) && HasFocusedInput)
         {
             var focusedInput = Win32.GetFocus();
             Win32.SendMessage(focusedInput, Win32.EmSetSelection, wParam: 0, lParam: -1);
@@ -1160,6 +1161,13 @@ internal sealed class SurfaceUi(DesktopWindow owner, List<DrawCommand> commands)
         }
 
         if (key == VirtualKey.Tab && MenuTakesTab) key = shift ? VirtualKey.Up : VirtualKey.Down;
+
+        // With no suggestion highlighted, Enter goes to the list's input below.
+        if (key == VirtualKey.Enter && menu is { Input: { } listInput, Selected: < 0 } &&
+            inputs.TryGetValue(listInput, out var suggestionInput) && suggestionInput.Handle == Win32.GetFocus())
+        {
+            menu = null;
+        }
 
         if (menu is { } active && key is VirtualKey.Up or VirtualKey.Down or VirtualKey.Enter)
         {

@@ -545,6 +545,23 @@ public sealed class SurfaceUiShould : IDisposable
 
         Assert.False(ui.HasMenu);
         Assert.Equal(1, chosen);
+
+        // Enter with no suggestion highlighted submits the text in the list's focused input, as it does without the list.
+        var submitted = 0;
+        var filter = new RectangleF(x: 10, y: 10, width: 150, height: 24);
+        ui.Begin(palette, viewport);
+        ui.Input("game", "Game filter", "Partial game name...", filter, enter: () => submitted++);
+        ui.End();
+        ui.MouseDown(new PointF(20, 20));
+        ui.MouseUp(new PointF(20, 20));
+        Assert.True(ui.HasFocusedInput);
+        ui.DropDown(id: "suggestions", name: "Suggestions", filter, choices: ["Game"], chosen: index => chosen = index, input: "game");
+
+        Assert.True(ui.Key(VirtualKey.Enter, shift: false));
+
+        Assert.False(ui.HasMenu);
+        Assert.Equal(1, submitted);
+        Assert.Equal(1, chosen);
     }
 
     [Theory]

@@ -268,7 +268,7 @@ internal sealed class MonitorWindow : CanvasWindow, INotificationHandler
             }
             else if (requestedForegroundStream is { } foregroundTarget)
             {
-                // A refresh error can keep the window busy after the followed rows have settled.
+                // Another operation can keep the window busy after the followed rows have settled.
                 requestedForegroundStream = null;
                 SelectForegroundStream(foregroundTarget);
             }
