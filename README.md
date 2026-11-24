@@ -10,8 +10,6 @@ You can install this on Win10/11 via cmd prompt or powershell `winget install St
 
 ![image](https://github.com/user-attachments/assets/32f00e83-1760-455f-9346-1e167bf9e367)
 
-The UI layout was influenced by [Skadi](https://github.com/s1mpl3x/skadi) which is a Java GUI for livestreamer/streamlink.
-
 ## Pre-requisites
 * Windows 10 or later and the [.NET 10 Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/thank-you/runtime-10.0.15-windows-x64-installer).
 * [streamlink](https://github.com/streamlink/streamlink) installed and configured
